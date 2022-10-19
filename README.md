@@ -1,29 +1,31 @@
-# Kubernetes Template Project
+# Ingress to Gateway
 
-The Kubernetes Template Project is a template for starting new projects in the GitHub organizations owned by Kubernetes. All Kubernetes projects, at minimum, must have the following files:
+This project helps translate Ingress resources to Gateway API resources,
+specifically HTTPRoutes. This project is managed by the [Gateway
+API](https://gateway-api.sigs.k8s.io/) SIG-Network subproject.
 
-- a `README.md` outlining the project goals, sponsoring sig, and community contact information
-- an `OWNERS` with the project leads listed as approvers ([docs on `OWNERS` files][owners])
-- a `CONTRIBUTING.md` outlining how to contribute to the project
-- an unmodified copy of `code-of-conduct.md` from this repo, which outlines community behavior and the consequences of breaking the code
-- a `LICENSE` which must be Apache 2.0 for code projects, or [Creative Commons 4.0] for documentation repositories, without any custom content
-- a `SECURITY_CONTACTS` with the contact points for the Product Security Team 
-  to reach out to for triaging and handling of incoming issues. They must agree to abide by the
-  [Embargo Policy](https://git.k8s.io/security/private-distributors-list.md#embargo-policy)
-  and will be removed and replaced if they violate that agreement.
+## Status
 
-## Community, discussion, contribution, and support
+This project is early in the development phase and is still experimental in
+nature. Both bugs and breaking changes are likely.
 
-Learn how to engage with the Kubernetes community on the [community page](http://kubernetes.io/community/).
+## Scope
 
-You can reach the maintainers of this project at:
+This project is primarily focused on translating Ingress resources to Gateway
+API resources. Some widely used annotations and/or CRDs _may_ be supported, as
+long as they can be translated to Gateway API directly. This project is not
+intended to copy annotations from Ingress to Gateway API.
 
-- [Slack](https://slack.k8s.io/)
-- [Mailing List](https://groups.google.com/a/kubernetes.io/g/dev)
+## Get Involved
+
+This project will be discussed in the same Slack channel and community meetings
+as the rest of the Gateway API subproject. For more information, refer to the
+[Gateway API Community](https://gateway-api.sigs.k8s.io/contributing/) page.
 
 ### Code of conduct
 
-Participation in the Kubernetes community is governed by the [Kubernetes Code of Conduct](code-of-conduct.md).
+Participation in the Kubernetes community is governed by the [Kubernetes Code of
+Conduct](code-of-conduct.md).
 
 [owners]: https://git.k8s.io/community/contributors/guide/owners.md
 [Creative Commons 4.0]: https://git.k8s.io/website/LICENSE
