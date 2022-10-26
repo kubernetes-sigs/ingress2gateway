@@ -46,6 +46,37 @@ support for the following annotations:
 If you are reliant on any annotations not listed above, you'll need to manually
 find a Gateway API equivalent. 
 
+## Conversion of Ingress resources to Gateway API
+
+### Processing Order and Conflicts
+
+Ingress resources will be processed with a defined order to ensure deterministic generated Gateway API configuration.
+This should also determine precedence order of Ingress resources and routes in case of conflicts.
+
+Ingress resources with the oldest creation timestamp will be sorted first and therefore given precedence.
+If creation timestamps are equal, then sorting will be done based on the namespace/name of the resources.
+If an Ingress rule conflicts with another (e.g. same path match but different backends) an error will be reported for the one that sorted later.
+
+Since the Ingress v1 spec does not itself have a conflict resolution guide, we have adopted this one.
+These rules are similar to the [Gateway API conflict resolution guidelines](https://gateway-api.sigs.k8s.io/concepts/guidelines/#conflicts).
+
+### Ingress resource fields to Gateway API fields
+
+| Ingress Field | Gateway API configuration |
+|---------------|---------------------------|
+| `ingressClassName` |                      |
+| `defaultBackend` |                        |
+| `tls[].hosts` | Each host in an IngressTLS will result in a HTTPS Listener on the generated Gateway with the following: `listeners[].hostname` = host as described, `listeners[].port` = `443`, `listeners[].protocol` = `HTTPS`, `listeners[].tls.mode` = `Terminate` |
+| `tls[].secretName` | The secret specified here will be referenced in the Gateway HTTPS Listeners mentioned above with the field `listeners[].tls.certificateRefs` |
+| `rules[].host` | |
+| `rules[].http.paths[].path` | |
+| `rules[].http.paths[].pathType` | |
+| `rules[].http.paths[].backend` | |
+
+### Ingress annotation to Gateway API fields
+
+TBD
+
 ## Get Involved
 
 This project will be discussed in the same Slack channel and community meetings
