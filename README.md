@@ -16,6 +16,36 @@ API resources. Some widely used annotations and/or CRDs _may_ be supported, as
 long as they can be translated to Gateway API directly. This project is not
 intended to copy annotations from Ingress to Gateway API.
 
+## Usage
+
+This project reads Ingress resources from a Kubernetes cluster based on your
+current Kube Config. It will output YAML for equivalent Gateway API resources
+to stdout. Until this project is released, the best way to use this is to run
+the following within the repo:
+
+```
+go run .
+```
+
+### Implementation-Specific Annotations
+
+Although most annotations are ignored, this project includes experimental
+support for the following annotations:
+
+* kubernetes.io/ingress.class
+
+#### ingress-nginx:
+
+* nginx.ingress.kubernetes.io/canary
+* nginx.ingress.kubernetes.io/canary-by-header
+* nginx.ingress.kubernetes.io/canary-by-header-value
+* nginx.ingress.kubernetes.io/canary-by-header-pattern
+* nginx.ingress.kubernetes.io/canary-weight
+* nginx.ingress.kubernetes.io/canary-weight-total
+
+If you are reliant on any annotations not listed above, you'll need to manually
+find a Gateway API equivalent. 
+
 ## Get Involved
 
 This project will be discussed in the same Slack channel and community meetings
