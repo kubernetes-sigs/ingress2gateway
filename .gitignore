@@ -22,3 +22,6 @@ go.work
 
 # Custom for this repo
 /tmp
+
+# GolangCI-Lint cache
+/cache
