@@ -45,11 +45,9 @@ test: vet;$(info $(M)...Begin to run tests.)  @ ## Run tests.
 # Build the binary
 .PHONY: build
 build: vet;$(info $(M)...Build the binary.)  @ ## Build the binary.
-	go build -o  ingress2gateway .
+	go build -o ingress2gateway .
 
 # Run static analysis.
 .PHONY: verify
 verify:
 	hack/verify-golint.sh
-
-
