@@ -1,5 +1,5 @@
 /*
-Copyright © 2022 Kubernetes Authors
+Copyright © 2023 Kubernetes Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,31 +13,36 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package cmd
 
 import (
-	"fmt"
-	"os"
-
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/spf13/cobra"
+
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/cmd/version"
 )
 
-var rootCmd = &cobra.Command{
-	Use:   "ingress2gateway",
-	Short: "Convert Ingress manifests to Gateway API manifests",
-	Run: func(cmd *cobra.Command, args []string) {
-		if err := cmd.ParseFlags(args); err != nil {
-			fmt.Printf("Error parsing flags: %v", err)
-		}
+const (
+	yamlOutput = "yaml"
+	jsonOutput = "json"
+)
 
-		i2gw.Run()
-	},
-}
+var (
+	output string
+)
 
-func Execute() {
-	err := rootCmd.Execute()
-	if err != nil {
-		os.Exit(1)
+func RegisterVersionCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "version",
+		Aliases: []string{"v"},
+		Short:   "Show versions.",
+		Long:    "",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return version.Print(cmd.OutOrStdout(), output)
+		},
 	}
+
+	cmd.PersistentFlags().StringVarP(&output, "output", "o", yamlOutput, "One of 'yaml' or 'json'")
+
+	return cmd
 }

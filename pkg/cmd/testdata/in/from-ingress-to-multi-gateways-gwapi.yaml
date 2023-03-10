@@ -1,0 +1,53 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-gateway-1
+spec:
+  ingressClassName: nginx-ingress-1
+  rules:
+    - host: gateway-1
+      http:
+        paths:
+          - path: /echo-1
+            pathType: Exact
+            backend:
+              service:
+                name: infra-backend-v1
+                port:
+                  number: 8088
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-gateway-2
+spec:
+  ingressClassName: nginx-ingress-2
+  rules:
+    - host: gateway-2
+      http:
+        paths:
+          - path: /echo-2
+            pathType: Exact
+            backend:
+              service:
+                name: infra-backend-v2
+                port:
+                  number: 8088
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-gateway-3
+spec:
+  ingressClassName: nginx-ingress-3
+  rules:
+    - host: gateway-3
+      http:
+        paths:
+          - path: /echo-3
+            pathType: Prefix
+            backend:
+              service:
+                name: infra-backend-v3
+                port:
+                  number: 8088

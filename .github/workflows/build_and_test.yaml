@@ -1,0 +1,87 @@
+name: Build and Test
+on:
+  push:
+    branches:
+    - "main"
+    - "release/v*"
+    paths-ignore:
+    - "**/*.png"
+  pull_request:
+    branches:
+    - "main"
+    - "release/v*"
+    paths-ignore:
+    - "**/*.png"
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: ./tools/github-actions/setup-deps
+    - run: make lint-deps
+    - run: make -k lint
+
+  coverage-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: ./tools/github-actions/setup-deps
+
+    - name: Run Coverage Tests
+      run: make go.test.coverage
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [lint, coverage-test]
+    steps:
+    - uses: actions/checkout@v3
+    - uses: ./tools/github-actions/setup-deps
+
+    - name: Build i2gw Multiarch Binaries
+      run: make build-multiarch PLATFORMS="linux_amd64 linux_arm64"
+
+    - name: Upload ingress2gateway Binaries
+      uses: actions/upload-artifact@v3
+      with:
+        name: i2gw
+        path: _output/
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+    - uses: actions/checkout@v3
+    - uses: ./tools/github-actions/setup-deps
+
+    - name: Download ingress2gateway Binaries
+      uses: actions/download-artifact@v3
+      with:
+        name: i2gw
+        path: _output/
+
+    - name: Give Privileges To ingress2gateway Binaries
+      run: |
+        chmod +x _output/linux/amd64/i2gw
+        chmod +x _output/linux/arm64/i2gw
+
+    # build and push image
+    - name: Login to DockerHub
+      if: github.event_name == 'push'
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+    - name: Setup Multiarch Environment
+      if: github.event_name == 'push'
+      run: make image.multiarch.setup
+
+    - name: Build and Push ingress2gateway Commit Image
+      if: github.event_name == 'push'
+      # tag is set to the short SHA of the commit
+      run: make image.push.multiarch PLATFORMS="linux_amd64 linux_arm64" IMAGE=bitliu/ingress2gateway
+
+    - name: Build and Push ingress2gateway Latest Image
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      # tag is set to `latest` when pushing to main branch
+      run: make image.push.multiarch TAG=latest PLATFORMS="linux_amd64 linux_arm64" IMAGE=bitliu/ingress2gateway

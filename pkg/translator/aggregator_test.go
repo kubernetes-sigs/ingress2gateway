@@ -1,5 +1,5 @@
 /*
-Copyright © 2022 Kubernetes Authors
+Copyright © 2023 Kubernetes Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package i2gw
+package translator
 
 import (
 	"testing"
@@ -36,13 +36,13 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 		name             string
 		ingresses        []networkingv1.Ingress
 		expectGateways   []gatewayv1beta1.Gateway
-		expectHttpRoutes []gatewayv1beta1.HTTPRoute
+		expectHTTPRoutes []gatewayv1beta1.HTTPRoute
 		expectErrors     []error
 	}{{
 		name:             "empty",
 		ingresses:        []networkingv1.Ingress{},
 		expectGateways:   []gatewayv1beta1.Gateway{},
-		expectHttpRoutes: []gatewayv1beta1.HTTPRoute{},
+		expectHTTPRoutes: []gatewayv1beta1.HTTPRoute{},
 		expectErrors:     []error{},
 	}, {
 		name: "simple ingress",
@@ -82,7 +82,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 				}},
 			},
 		}},
-		expectHttpRoutes: []gatewayv1beta1.HTTPRoute{{
+		expectHTTPRoutes: []gatewayv1beta1.HTTPRoute{{
 			ObjectMeta: metav1.ObjectMeta{Name: "example-com", Namespace: "test"},
 			Spec: gatewayv1beta1.HTTPRouteSpec{
 				CommonRouteSpec: gatewayv1beta1.CommonRouteSpec{
@@ -162,7 +162,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 				}},
 			},
 		}},
-		expectHttpRoutes: []gatewayv1beta1.HTTPRoute{{
+		expectHTTPRoutes: []gatewayv1beta1.HTTPRoute{{
 			ObjectMeta: metav1.ObjectMeta{Name: "example-com", Namespace: "test"},
 			Spec: gatewayv1beta1.HTTPRouteSpec{
 				CommonRouteSpec: gatewayv1beta1.CommonRouteSpec{
@@ -236,7 +236,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 				}},
 			},
 		}},
-		expectHttpRoutes: []gatewayv1beta1.HTTPRoute{{
+		expectHTTPRoutes: []gatewayv1beta1.HTTPRoute{{
 			ObjectMeta: metav1.ObjectMeta{Name: "example-net", Namespace: "different"},
 			Spec: gatewayv1beta1.HTTPRouteSpec{
 				CommonRouteSpec: gatewayv1beta1.CommonRouteSpec{
@@ -287,19 +287,19 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			aggregator := ingressAggregator{ruleGroups: map[ruleGroupKey]*ingressRuleGroup{}}
+			aggregator := NewAggregator()
 
 			for _, ingress := range tc.ingresses {
-				aggregator.addIngress(ingress)
+				aggregator.addIngress(IngressNginxIngressProvider, ingress)
 			}
 
-			httpRoutes, gateways, errors := aggregator.toHTTPRoutesAndGateways()
+			result, errors := aggregator.convert()
 
-			if len(httpRoutes) != len(tc.expectHttpRoutes) {
-				t.Errorf("Expected %d HTTPRoutes, got %d: %+v", len(tc.expectHttpRoutes), len(httpRoutes), httpRoutes)
+			if len(result.HTTPRoutes) != len(tc.expectHTTPRoutes) {
+				t.Errorf("Expected %d HTTPRoutes, got %d: %+v", len(tc.expectHTTPRoutes), len(result.HTTPRoutes), result.HTTPRoutes)
 			} else {
-				for i, got := range httpRoutes {
-					want := tc.expectHttpRoutes[i]
+				for i, got := range result.HTTPRoutes {
+					want := tc.expectHTTPRoutes[i]
 					want.SetGroupVersionKind(httpRouteGVK)
 					if !apiequality.Semantic.DeepEqual(got, want) {
 						t.Errorf("Expected HTTPRoute %d to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))
@@ -307,10 +307,10 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 				}
 			}
 
-			if len(gateways) != len(tc.expectGateways) {
-				t.Errorf("Expected %d Gateways, got %d: %+v", len(tc.expectGateways), len(gateways), gateways)
+			if len(result.Gateways) != len(tc.expectGateways) {
+				t.Errorf("Expected %d Gateways, got %d: %+v", len(tc.expectGateways), len(result.Gateways), result.Gateways)
 			} else {
-				for i, got := range gateways {
+				for i, got := range result.Gateways {
 					want := tc.expectGateways[i]
 					want.SetGroupVersionKind(gatewayGVK)
 					if !apiequality.Semantic.DeepEqual(got, want) {

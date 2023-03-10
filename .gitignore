@@ -25,3 +25,10 @@ go.work
 
 # GolangCI-Lint cache
 /cache
+_output/
+
+bin/
+
+coverage.xml
+
+.DS_Store

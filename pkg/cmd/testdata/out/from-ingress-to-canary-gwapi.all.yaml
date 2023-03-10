@@ -1,0 +1,62 @@
+Gateways:
+- apiVersion: gateway.networking.k8s.io/v1beta1
+  kind: Gateway
+  metadata:
+    creationTimestamp: null
+    name: nginx-ingress
+  spec:
+    gatewayClassName: nginx-ingress
+    listeners:
+    - hostname: canary
+      name: canary-http
+      port: 80
+      protocol: HTTP
+  status: {}
+HTTPRoutes:
+- apiVersion: gateway.networking.k8s.io/v1beta1
+  kind: HTTPRoute
+  metadata:
+    creationTimestamp: null
+    name: canary
+  spec:
+    hostnames:
+    - canary
+    parentRefs:
+    - name: nginx-ingress
+    rules:
+    - backendRefs:
+      - name: infra-backend-v1
+        port: 8088
+      matches:
+      - headers:
+        - name: traffic-split-1
+          type: Exact
+          value: foo
+        path:
+          type: Exact
+          value: /echo-1
+    - backendRefs:
+      - name: infra-backend-v1
+        port: 8088
+      matches:
+      - headers:
+        - name: traffic-split-2
+          type: Exact
+          value: bar
+        path:
+          type: Exact
+          value: /echo-1
+    - backendRefs:
+      - name: infra-backend-v2
+        port: 8080
+        weight: 30
+      matches:
+      - headers:
+        - name: traffic-split-2
+          type: RegularExpression
+          value: (?:\/([^?#]*))?
+        path:
+          type: PathPrefix
+          value: /echo-2
+  status:
+    parents: []

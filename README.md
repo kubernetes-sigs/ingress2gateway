@@ -16,15 +16,27 @@ API resources. Some widely used annotations and/or CRDs _may_ be supported, as
 long as they can be translated to Gateway API directly. This project is not
 intended to copy annotations from Ingress to Gateway API.
 
-## Usage
+## Install
 
 This project reads Ingress resources from a Kubernetes cluster based on your
 current Kube Config. It will output YAML for equivalent Gateway API resources
 to stdout. Until this project is released, the best way to use this is to run
 the following within the repo:
 
+```shell
+curl -fsSL https://raw.githubusercontent.com/kubernetes-sigs/ingress2gateway/main/tools/hack/install.sh | bash 
 ```
-go run .
+
+## QuickStart
+
+```shell
+curl -fsSL https://raw.githubusercontent.com/kubernetes-sigs/ingress2gateway/main/examples/demo.yaml | i2gw translate --mode=local -f -
+```
+
+## Development
+
+``` shell
+make help
 ```
 
 ## Conversion of Ingress resources to Gateway API
@@ -61,16 +73,16 @@ Given a set of Ingress resources, `ingress2gateway` will generate a Gateway with
 Although most annotations are ignored, this project includes experimental
 support for the following annotations:
 
-* kubernetes.io/ingress.class: Same behavior as the `ingressClassName` field above, if specified this value will be used as the `gatewayClassName` set on the corresponding generated Gateway.
+* `kubernetes.io/ingress.class`: Same behavior as the `ingressClassName` field above, if specified this value will be used as the `gatewayClassName` set on the corresponding generated Gateway.
 
 #### ingress-nginx:
 
-* nginx.ingress.kubernetes.io/canary: If set to `true` will enable weighting backends.
-* nginx.ingress.kubernetes.io/canary-by-header: If specified, the value of this annotation is the header name that will be added as a HTTPHeaderMatch for the routes generated from this Ingress. If not specified, no HTTPHeaderMatch will be generated.
-* nginx.ingress.kubernetes.io/canary-by-header-value: If specified, the value of this annotation is the header value to perform an `HeaderMatchExact` match on in the generated HTTPHeaderMatch.
-* nginx.ingress.kubernetes.io/canary-by-header-pattern: If specified, this is the  pattern to match against for the HTTPHeaderMatch, which will be of type `HeaderMatchRegularExpression`.
-* nginx.ingress.kubernetes.io/canary-weight: If specified and non-zero, this value will be applied as the weight of the backends for the routes generated from this Ingress resource.
-* nginx.ingress.kubernetes.io/canary-weight-total
+* `nginx.ingress.kubernetes.io/canary`: If set to `true` will enable weighting backends.
+* `nginx.ingress.kubernetes.io/canary-by-header`: If specified, the value of this annotation is the header name that will be added as a HTTPHeaderMatch for the routes generated from this Ingress. If not specified, no HTTPHeaderMatch will be generated.
+* `nginx.ingress.kubernetes.io/canary-by-header-value`: If specified, the value of this annotation is the header value to perform an `HeaderMatchExact` match on in the generated HTTPHeaderMatch.
+* `nginx.ingress.kubernetes.io/canary-by-header-pattern`: If specified, this is the  pattern to match against for the HTTPHeaderMatch, which will be of type `HeaderMatchRegularExpression`.
+* `nginx.ingress.kubernetes.io/canary-weight`: If specified and non-zero, this value will be applied as the weight of the backends for the routes generated from this Ingress resource.
+* `nginx.ingress.kubernetes.io/canary-weight-total`
 
 If you are reliant on any annotations not listed above, you'll need to manually
 find a Gateway API equivalent.

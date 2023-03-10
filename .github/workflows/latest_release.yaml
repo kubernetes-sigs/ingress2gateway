@@ -1,0 +1,58 @@
+name: Latest Release
+
+on:
+  push:
+    branches:
+    - "main"
+    paths-ignore:
+    - "**/*.png"
+
+jobs:
+  latest-release:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Build i2gw latest multiarch binaries
+      run: | 
+        make build-multiarch
+        tar -zcvf i2gw_latest_linux_amd64.tar.gz _output/linux/amd64/
+        tar -zcvf i2gw_latest_linux_arm64.tar.gz _output/linux/arm64/
+        tar -zcvf i2gw_latest_darwin_amd64.tar.gz _output/darwin/amd64/
+        tar -zcvf i2gw_latest_darwin_arm64.tar.gz _output/darwin/arm64/
+
+    # Ignore the error when we delete the latest release, it might not exist.
+    - name: Delete the Latest Release
+      continue-on-error: true
+      run: |
+        gh release delete latest --repo $GITHUB_REPOSITORY
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_REPOSITORY: ${{ github.repository_owner }}/${{ github.event.repository.name }}
+
+    # Ignore the error when we delete the latest tag, it might not exist.
+    - name: Delete the Latest Tag
+      continue-on-error: true
+      run:
+        gh api --method DELETE /repos/$GITHUB_REPOSITORY/git/refs/tags/latest
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_REPOSITORY: ${{ github.repository_owner }}/${{ github.event.repository.name }}
+
+    - name: Recreate the Latest Release and Tag
+      uses: softprops/action-gh-release@v1
+      with:
+        draft: false
+        prerelease: true
+        tag_name: latest
+        files: |
+          i2gw_latest_linux_amd64.tar.gz
+          i2gw_latest_linux_arm64.tar.gz
+          i2gw_latest_darwin_amd64.tar.gz
+          i2gw_latest_darwin_arm64.tar.gz
+        body: |
+          This is the "latest" release of **Ingress2Gateway**, which contains the most recent commits from the main branch.
+          
+          This release **might not be stable**.
+
+          It is only intended for developers wishing to try out the latest features in Ingress2Gateway, some of which may not be fully implemented.

@@ -1,0 +1,65 @@
+{
+    "HTTPRoutes": [
+        {
+            "kind": "HTTPRoute",
+            "apiVersion": "gateway.networking.k8s.io/v1beta1",
+            "metadata": {
+                "name": "foo-bar-com",
+                "creationTimestamp": null
+            },
+            "spec": {
+                "parentRefs": [
+                    {
+                        "name": "hello-world"
+                    }
+                ],
+                "hostnames": [
+                    "foo.bar.com"
+                ],
+                "rules": [
+                    {
+                        "matches": [
+                            {
+                                "path": {
+                                    "type": "PathPrefix",
+                                    "value": "/foo"
+                                }
+                            }
+                        ],
+                        "backendRefs": [
+                            {
+                                "name": "test",
+                                "port": 80
+                            }
+                        ]
+                    }
+                ]
+            },
+            "status": {
+                "parents": []
+            }
+        }
+    ],
+    "Gateways": [
+        {
+            "kind": "Gateway",
+            "apiVersion": "gateway.networking.k8s.io/v1beta1",
+            "metadata": {
+                "name": "hello-world",
+                "creationTimestamp": null
+            },
+            "spec": {
+                "gatewayClassName": "hello-world",
+                "listeners": [
+                    {
+                        "name": "foo-bar-com-http",
+                        "hostname": "foo.bar.com",
+                        "port": 80,
+                        "protocol": "HTTP"
+                    }
+                ]
+            },
+            "status": {}
+        }
+    ]
+}

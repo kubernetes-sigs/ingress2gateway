@@ -1,0 +1,101 @@
+Gateways:
+- apiVersion: gateway.networking.k8s.io/v1beta1
+  kind: Gateway
+  metadata:
+    creationTimestamp: null
+    name: nginx-ingress-1
+  spec:
+    gatewayClassName: nginx-ingress-1
+    listeners:
+    - hostname: gateway-1
+      name: gateway-1-http
+      port: 80
+      protocol: HTTP
+  status: {}
+- apiVersion: gateway.networking.k8s.io/v1beta1
+  kind: Gateway
+  metadata:
+    creationTimestamp: null
+    name: nginx-ingress-2
+  spec:
+    gatewayClassName: nginx-ingress-2
+    listeners:
+    - hostname: gateway-2
+      name: gateway-2-http
+      port: 80
+      protocol: HTTP
+  status: {}
+- apiVersion: gateway.networking.k8s.io/v1beta1
+  kind: Gateway
+  metadata:
+    creationTimestamp: null
+    name: nginx-ingress-3
+  spec:
+    gatewayClassName: nginx-ingress-3
+    listeners:
+    - hostname: gateway-3
+      name: gateway-3-http
+      port: 80
+      protocol: HTTP
+  status: {}
+HTTPRoutes:
+- apiVersion: gateway.networking.k8s.io/v1beta1
+  kind: HTTPRoute
+  metadata:
+    creationTimestamp: null
+    name: gateway-1
+  spec:
+    hostnames:
+    - gateway-1
+    parentRefs:
+    - name: nginx-ingress-1
+    rules:
+    - backendRefs:
+      - name: infra-backend-v1
+        port: 8088
+      matches:
+      - path:
+          type: Exact
+          value: /echo-1
+  status:
+    parents: []
+- apiVersion: gateway.networking.k8s.io/v1beta1
+  kind: HTTPRoute
+  metadata:
+    creationTimestamp: null
+    name: gateway-2
+  spec:
+    hostnames:
+    - gateway-2
+    parentRefs:
+    - name: nginx-ingress-2
+    rules:
+    - backendRefs:
+      - name: infra-backend-v2
+        port: 8088
+      matches:
+      - path:
+          type: Exact
+          value: /echo-2
+  status:
+    parents: []
+- apiVersion: gateway.networking.k8s.io/v1beta1
+  kind: HTTPRoute
+  metadata:
+    creationTimestamp: null
+    name: gateway-3
+  spec:
+    hostnames:
+    - gateway-3
+    parentRefs:
+    - name: nginx-ingress-3
+    rules:
+    - backendRefs:
+      - name: infra-backend-v3
+        port: 8088
+      matches:
+      - path:
+          type: PathPrefix
+          value: /echo-3
+  status:
+    parents: []

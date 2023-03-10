@@ -12,42 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# We need all the Make variables exported as env vars.
-# Note that the ?= operator works regardless.
+# All make targets should be implemented in tools/make/*.mk
+# ====================================================================================================
+# Supported Targets: (Run `make help` to see more information)
+# ====================================================================================================
 
-# Enable Go modules.
-export GO111MODULE=on
+# This file is a wrapper around `make` so that we can force on the
+# --warn-undefined-variables flag.  Sure, you can set
+# `MAKEFLAGS += --warn-undefined-variables` from inside of a Makefile,
+# but then it won't turn on until the second phase (recipe execution),
+# and won't actually be on during the initial phase (parsing).
+# See: https://www.gnu.org/software/make/manual/make.html#Reading-Makefiles
 
-# Print the help menu.
-.PHONY: help
-help:
-	@grep -hE '^[ a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
-		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-17s\033[0m %s\n", $$1, $$2}'
-
-.PHONY: all
-all: vet fmt verify test build;$(info $(M)...Begin to test, verify and build this project.) @ ## Test, verify and build this project.
-
-# Run go fmt against code
-.PHONY: fmt
-fmt: ;$(info $(M)...Begin to run go fmt against code.)  @ ## Run go fmt against code.
-	gofmt -w ./pkg ./cmd
-
-# Run go vet against code
-.PHONY: vet
-vet: ;$(info $(M)...Begin to run go vet against code.)  @ ## Run go vet against code.
-	go vet ./pkg/... ./cmd/...
-
-# Run go test against code
-.PHONY: test
-test: vet;$(info $(M)...Begin to run tests.)  @ ## Run tests.
-	go test -race -cover ./pkg/...
-
-# Build the binary
-.PHONY: build
-build: vet;$(info $(M)...Build the binary.)  @ ## Build the binary.
-	go build -o ingress2gateway .
-
-# Run static analysis.
-.PHONY: verify
-verify:
-	hack/verify-golint.sh
+# Have everything-else ("%") depend on _run (which uses
+# $(MAKECMDGOALS) to decide what to run), rather than having
+# everything else run $(MAKE) directly, since that'd end up running
+# multiple sub-Makes if you give multiple targets on the CLI.
+_run:
+	@$(MAKE) --warn-undefined-variables -f tools/make/common.mk $(MAKECMDGOALS)
+.PHONY: _run
+$(if $(MAKECMDGOALS),$(MAKECMDGOALS): %: _run)

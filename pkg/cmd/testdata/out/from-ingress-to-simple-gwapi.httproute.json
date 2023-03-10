@@ -1,0 +1,41 @@
+[
+    {
+        "kind": "HTTPRoute",
+        "apiVersion": "gateway.networking.k8s.io/v1beta1",
+        "metadata": {
+            "name": "foo-bar-com",
+            "creationTimestamp": null
+        },
+        "spec": {
+            "parentRefs": [
+                {
+                    "name": "hello-world"
+                }
+            ],
+            "hostnames": [
+                "foo.bar.com"
+            ],
+            "rules": [
+                {
+                    "matches": [
+                        {
+                            "path": {
+                                "type": "PathPrefix",
+                                "value": "/foo"
+                            }
+                        }
+                    ],
+                    "backendRefs": [
+                        {
+                            "name": "test",
+                            "port": 80
+                        }
+                    ]
+                }
+            ]
+        },
+        "status": {
+            "parents": []
+        }
+    }
+]
