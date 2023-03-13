@@ -1,5 +1,5 @@
 /*
-Copyright © 2023 Kubernetes Authors
+Copyright © 2022 Kubernetes Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -287,10 +288,11 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			aggregator := NewAggregator()
+			aggregator := newAggregator()
 
 			for _, ingress := range tc.ingresses {
-				aggregator.addIngress(IngressNginxIngressProvider, ingress)
+				err := aggregator.addIngress(IngressNginxIngressProvider, ingress)
+				require.NoError(t, err)
 			}
 
 			result, errors := aggregator.convert()

@@ -9,7 +9,7 @@ metadata:
 spec:
   ingressClassName: nginx-ingress
   rules:
-    - host: canary
+    - host: canary.io
       http:
         paths:
           - path: /echo-1
@@ -31,7 +31,7 @@ metadata:
 spec:
   ingressClassName: nginx-ingress
   rules:
-    - host: canary
+    - host: canary.io
       http:
         paths:
           - path: /echo-1
@@ -55,7 +55,7 @@ metadata:
 spec:
   ingressClassName: nginx-ingress
   rules:
-    - host: canary
+    - host: canary.io
       http:
         paths:
           - path: /echo-2

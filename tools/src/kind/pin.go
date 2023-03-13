@@ -2,7 +2,7 @@
 // +build pin
 
 /*
-Copyright © 2023 Kubernetes Authors
+Copyright © 2022 Kubernetes Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,4 +20,3 @@ limitations under the License.
 package ignore
 
 import "sigs.k8s.io/kind"
-

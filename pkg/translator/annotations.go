@@ -1,5 +1,5 @@
 /*
-Copyright © 2023 Kubernetes Authors
+Copyright © 2022 Kubernetes Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ limitations under the License.
 package translator
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -35,11 +36,31 @@ const (
 	IngressNginxProviderPrefix ProviderPrefix = "nginx.ingress.kubernetes.io"
 )
 
-type annotations struct {
-	canary *canary
+type annotationGroup struct {
+	provider IngressProvider
+	ingress  networkingv1.Ingress
+
+	canaryGroup *canaryGroup
 }
 
-type canary struct {
+func newAnnotationGroup(provider IngressProvider, ingress networkingv1.Ingress) *annotationGroup {
+	return &annotationGroup{
+		provider:    provider,
+		ingress:     ingress,
+		canaryGroup: &canaryGroup{},
+	}
+}
+
+func (a *annotationGroup) retrieve() (err error) {
+	a.canaryGroup, err = a.canaryGroup.retrieveAnnotations(a.provider, a.ingress)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type canaryGroup struct {
 	enable           bool
 	headerKey        string
 	headerValue      string
@@ -48,38 +69,57 @@ type canary struct {
 	weightTotal      int
 }
 
-func retrieveAnnotations(provider IngressProvider, ingress networkingv1.Ingress) *annotations {
-	anno := &annotations{}
-	if provider == IngressNginxIngressProvider {
-		if c := ingress.GetAnnotations()[constructAnnotation(provider, "canary")]; c == "true" {
-			anno.canary = &canary{enable: true}
-			if cHeader := ingress.GetAnnotations()[constructAnnotation(provider, "canary-by-header")]; cHeader != "" {
-				anno.canary.headerKey = cHeader
-				anno.canary.headerValue = "always"
-			}
-			if cHeaderVal := ingress.GetAnnotations()[constructAnnotation(provider, "canary-by-header-value")]; cHeaderVal != "" {
-				anno.canary.headerValue = cHeaderVal
-			}
-			if cHeaderRegex := ingress.GetAnnotations()[constructAnnotation(provider, "canary-by-header-pattern")]; cHeaderRegex != "" {
-				anno.canary.headerValue = cHeaderRegex
-				anno.canary.headerRegexMatch = true
-			}
-			if cHeaderWeight := ingress.GetAnnotations()[constructAnnotation(provider, "canary-weight")]; cHeaderWeight != "" {
-				anno.canary.weight, _ = strconv.Atoi(cHeaderWeight)
-				anno.canary.weightTotal = 100
-			}
-			if cHeaderWeightTotal := ingress.GetAnnotations()[constructAnnotation(provider, "canary-weight-total")]; cHeaderWeightTotal != "" {
-				anno.canary.weightTotal, _ = strconv.Atoi(cHeaderWeightTotal)
-			}
-		}
+func (c *canaryGroup) retrieveAnnotations(provider IngressProvider, ingress networkingv1.Ingress) (*canaryGroup, error) {
+	var (
+		cg  = &canaryGroup{}
+		err error
+	)
+
+	if ingress.Annotations == nil {
+		return nil, nil
 	}
 
-	return anno
+	switch provider {
+	case IngressNginxIngressProvider:
+		canary := ingress.Annotations[constructAnnotation(provider, "canary")]
+		if canary == "true" {
+			cg = &canaryGroup{enable: true}
+			if cHeader := ingress.Annotations[constructAnnotation(provider, "canary-by-header")]; cHeader != "" {
+				cg.headerKey = cHeader
+				cg.headerValue = "always"
+			}
+			if cHeaderVal := ingress.Annotations[constructAnnotation(provider, "canary-by-header-value")]; cHeaderVal != "" {
+				cg.headerValue = cHeaderVal
+			}
+			if cHeaderRegex := ingress.Annotations[constructAnnotation(provider, "canary-by-header-pattern")]; cHeaderRegex != "" {
+				cg.headerValue = cHeaderRegex
+				cg.headerRegexMatch = true
+			}
+			if cHeaderWeight := ingress.Annotations[constructAnnotation(provider, "canary-weight")]; cHeaderWeight != "" {
+				cg.weight, err = strconv.Atoi(cHeaderWeight)
+				cg.weightTotal = 100
+				if err != nil {
+					return nil, err
+				}
+			}
+			if cHeaderWeightTotal := ingress.Annotations[constructAnnotation(provider, "canary-weight-total")]; cHeaderWeightTotal != "" {
+				cg.weightTotal, err = strconv.Atoi(cHeaderWeightTotal)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+	default:
+		return nil, errors.New("unsupported ingress provider")
+	}
+
+	return cg, nil
 }
 
 func constructAnnotation(provider IngressProvider, key string) string {
 	if provider == IngressNginxIngressProvider {
 		return fmt.Sprintf("%s/%s", string(IngressNginxProviderPrefix), key)
 	}
+
 	return ""
 }

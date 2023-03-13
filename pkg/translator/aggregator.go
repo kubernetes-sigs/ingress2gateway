@@ -1,5 +1,5 @@
 /*
-Copyright © 2023 Kubernetes Authors
+Copyright © 2022 Kubernetes Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -40,81 +40,19 @@ var (
 	}
 )
 
-type ruleKeyGroup struct {
-	ruleGroup    *ingressRuleGroup
-	ruleGroupKey string
+type RuleGroupWithKey struct {
+	ruleGroup *ingressRuleGroup
+	Key       string
 }
 
-type IngressAggregator struct {
-	ruleGroups      []ruleKeyGroup
-	defaultBackends []ingressDefaultBackend
-}
-
-func findRuleGroupWithKey(key string, ruleGroups []ruleKeyGroup) (*ruleKeyGroup, int) {
+func findRuleGroupWithKey(key string, ruleGroups []RuleGroupWithKey) (*RuleGroupWithKey, int) {
 	for index, g := range ruleGroups {
-		if g.ruleGroupKey == key {
+		if g.Key == key {
 			return &g, index
 		}
 	}
 
 	return nil, 0
-}
-
-func NewAggregator() *IngressAggregator {
-	return &IngressAggregator{
-		ruleGroups:      make([]ruleKeyGroup, 0),
-		defaultBackends: make([]ingressDefaultBackend, 0),
-	}
-}
-
-type pathMatchKey string
-
-type ingressRuleGroup struct {
-	namespace    string
-	ingressClass string
-	host         string
-	tls          []networkingv1.IngressTLS
-	rules        []ingressRule
-}
-
-type ingressRule struct {
-	rule        networkingv1.IngressRule
-	annotations *annotations
-}
-
-type ingressDefaultBackend struct {
-	name         string
-	namespace    string
-	ingressClass string
-	backend      networkingv1.IngressBackend
-}
-
-type ingressPath struct {
-	path        networkingv1.HTTPIngressPath
-	annotations *annotations
-}
-
-func (a *IngressAggregator) addIngress(provider IngressProvider, ingress networkingv1.Ingress) {
-	var ingressClass string
-	if ingress.Spec.IngressClassName != nil && *ingress.Spec.IngressClassName != "" {
-		ingressClass = *ingress.Spec.IngressClassName
-	} else if _, ok := ingress.Annotations[networkingv1beta1.AnnotationIngressClass]; ok {
-		ingressClass = ingress.Annotations[networkingv1beta1.AnnotationIngressClass]
-	} else {
-		ingressClass = ingress.Name
-	}
-	anno := retrieveAnnotations(provider, ingress)
-	for _, rule := range ingress.Spec.Rules {
-		a.addIngressRule(ingress.Namespace, ingressClass, rule, ingress.Spec, anno)
-	}
-	if ingress.Spec.DefaultBackend != nil {
-		a.defaultBackends = append(a.defaultBackends, ingressDefaultBackend{
-			name:         ingress.Name,
-			namespace:    ingress.Namespace,
-			ingressClass: ingressClass,
-			backend:      *ingress.Spec.DefaultBackend,
-		})
-	}
 }
 
 type ListenersWithKey struct {
@@ -147,7 +85,90 @@ func findGatewayByKey(key string, gateways []GatewayWithKey) *GatewayWithKey {
 	return nil
 }
 
-func (a *IngressAggregator) addIngressRule(namespace, ingressClass string, rule networkingv1.IngressRule, iSpec networkingv1.IngressSpec, anno *annotations) {
+type PathsWithKey struct {
+	Key   string
+	Paths []ingressPath
+}
+
+func findPathsWithKey(key string, paths []PathsWithKey) (*PathsWithKey, int) {
+	for index, path := range paths {
+		if path.Key == key {
+			return &path, index
+		}
+	}
+	return nil, 0
+}
+
+type IngressAggregator struct {
+	ruleGroups      []RuleGroupWithKey
+	defaultBackends []ingressDefaultBackend
+}
+
+func newAggregator() *IngressAggregator {
+	return &IngressAggregator{
+		ruleGroups:      make([]RuleGroupWithKey, 0),
+		defaultBackends: make([]ingressDefaultBackend, 0),
+	}
+}
+
+type pathMatchKey string
+
+type ingressRuleGroup struct {
+	namespace    string
+	ingressClass string
+	host         string
+	tls          []networkingv1.IngressTLS
+	rules        []ingressRule
+}
+
+type ingressRule struct {
+	rule        networkingv1.IngressRule
+	annotations *annotationGroup
+}
+
+type ingressDefaultBackend struct {
+	name         string
+	namespace    string
+	ingressClass string
+	backend      networkingv1.IngressBackend
+}
+
+type ingressPath struct {
+	path        networkingv1.HTTPIngressPath
+	annotations *annotationGroup
+}
+
+func (a *IngressAggregator) addIngress(provider IngressProvider, ingress networkingv1.Ingress) error {
+	var ingressClass string
+	if ingress.Spec.IngressClassName != nil && *ingress.Spec.IngressClassName != "" {
+		ingressClass = *ingress.Spec.IngressClassName
+	} else if _, ok := ingress.Annotations[networkingv1beta1.AnnotationIngressClass]; ok {
+		ingressClass = ingress.Annotations[networkingv1beta1.AnnotationIngressClass]
+	} else {
+		ingressClass = ingress.Name
+	}
+
+	annotationGroup := newAnnotationGroup(provider, ingress)
+	if err := annotationGroup.retrieve(); err != nil {
+		return err
+	}
+
+	for _, rule := range ingress.Spec.Rules {
+		a.addIngressRule(ingress.Namespace, ingressClass, rule, ingress.Spec, annotationGroup)
+	}
+	if ingress.Spec.DefaultBackend != nil {
+		a.defaultBackends = append(a.defaultBackends, ingressDefaultBackend{
+			name:         ingress.Name,
+			namespace:    ingress.Namespace,
+			ingressClass: ingressClass,
+			backend:      *ingress.Spec.DefaultBackend,
+		})
+	}
+
+	return nil
+}
+
+func (a *IngressAggregator) addIngressRule(namespace, ingressClass string, rule networkingv1.IngressRule, iSpec networkingv1.IngressSpec, anno *annotationGroup) {
 	rgKey := fmt.Sprintf("%s/%s/%s", namespace, ingressClass, rule.Host)
 	rg, _ := findRuleGroupWithKey(rgKey, a.ruleGroups)
 	needCreate := false
@@ -159,9 +180,9 @@ func (a *IngressAggregator) addIngressRule(namespace, ingressClass string, rule 
 			host:         rule.Host,
 		}
 
-		rg = &ruleKeyGroup{
-			ruleGroup:    irg,
-			ruleGroupKey: rgKey,
+		rg = &RuleGroupWithKey{
+			ruleGroup: irg,
+			Key:       rgKey,
 		}
 	}
 
@@ -176,8 +197,8 @@ func (a *IngressAggregator) addIngressRule(namespace, ingressClass string, rule 
 	}
 }
 
-func (a *IngressAggregator) convert() (ResultResources, []error) {
-	result := NewResultResources()
+func (a *IngressAggregator) convert() (*Result, []error) {
+	result := NewResult()
 	var errs []error
 
 	listenersByNamespacedGateway := []ListenersWithKey{}
@@ -305,21 +326,7 @@ func (a *IngressAggregator) convert() (ResultResources, []error) {
 		result.Gateways = append(result.Gateways, gw.Gateway)
 	}
 
-	return *result, errs
-}
-
-type PathsWithKey struct {
-	PathMatchKey string
-	Paths        []ingressPath
-}
-
-func findPathWithKey(key string, paths []PathsWithKey) (*PathsWithKey, int) {
-	for index, path := range paths {
-		if path.PathMatchKey == key {
-			return &path, index
-		}
-	}
-	return nil, 0
+	return result, errs
 }
 
 func (rg *ingressRuleGroup) toHTTPRoute() (gatewayv1beta1.HTTPRoute, []error) {
@@ -330,11 +337,11 @@ func (rg *ingressRuleGroup) toHTTPRoute() (gatewayv1beta1.HTTPRoute, []error) {
 		for _, path := range ir.rule.HTTP.Paths {
 			ip := ingressPath{path: path, annotations: ir.annotations}
 			pmKey := getPathMatchKey(ip)
-			path, index := findPathWithKey(string(pmKey), pathsByMatchGroup)
+			path, index := findPathsWithKey(string(pmKey), pathsByMatchGroup)
 			if path == nil {
 				pathsByMatchGroup = append(pathsByMatchGroup, PathsWithKey{
-					PathMatchKey: string(pmKey),
-					Paths:        []ingressPath{ip},
+					Key:   string(pmKey),
+					Paths: []ingressPath{ip},
 				})
 			} else {
 				pathsByMatchGroup[index].Paths = append(pathsByMatchGroup[index].Paths, ip)
@@ -380,8 +387,8 @@ func (rg *ingressRuleGroup) toHTTPRoute() (gatewayv1beta1.HTTPRoute, []error) {
 				errors = append(errors, err)
 				continue
 			}
-			if path.annotations != nil && path.annotations.canary != nil && path.annotations.canary.weight != 0 {
-				weight := int32(path.annotations.canary.weight)
+			if path.annotations != nil && path.annotations.canaryGroup != nil && path.annotations.canaryGroup.weight != 0 {
+				weight := int32(path.annotations.canaryGroup.weight)
 				backendRef.Weight = &weight
 				totalWeightSet += weight
 				numWeightedBackends++
@@ -409,8 +416,8 @@ func getPathMatchKey(ip ingressPath) pathMatchKey {
 		pathType = string(*ip.path.PathType)
 	}
 	var canaryHeaderKey string
-	if ip.annotations != nil && ip.annotations.canary != nil && ip.annotations.canary.headerKey != "" {
-		canaryHeaderKey = ip.annotations.canary.headerKey
+	if ip.annotations != nil && ip.annotations.canaryGroup != nil && ip.annotations.canaryGroup.headerKey != "" {
+		canaryHeaderKey = ip.annotations.canaryGroup.headerKey
 	}
 	return pathMatchKey(fmt.Sprintf("%s/%s/%s", pathType, ip.path.Path, canaryHeaderKey))
 }
@@ -431,13 +438,13 @@ func toHTTPRouteMatch(ip ingressPath) (*gatewayv1beta1.HTTPRouteMatch, error) {
 		return nil, fmt.Errorf("unsupported path match type: %s", *ip.path.PathType)
 	}
 
-	if ip.annotations != nil && ip.annotations.canary != nil && ip.annotations.canary.headerKey != "" {
+	if ip.annotations != nil && ip.annotations.canaryGroup != nil && ip.annotations.canaryGroup.headerKey != "" {
 		headerMatch := gatewayv1beta1.HTTPHeaderMatch{
-			Name:  gatewayv1beta1.HTTPHeaderName(ip.annotations.canary.headerKey),
-			Value: ip.annotations.canary.headerValue,
+			Name:  gatewayv1beta1.HTTPHeaderName(ip.annotations.canaryGroup.headerKey),
+			Value: ip.annotations.canaryGroup.headerValue,
 			Type:  &hmExact,
 		}
-		if ip.annotations.canary.headerRegexMatch {
+		if ip.annotations.canaryGroup.headerRegexMatch {
 			headerMatch.Type = &hmRegex
 		}
 		match.Headers = []gatewayv1beta1.HTTPHeaderMatch{headerMatch}

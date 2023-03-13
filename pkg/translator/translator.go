@@ -1,5 +1,5 @@
 /*
-Copyright © 2023 Kubernetes Authors
+Copyright © 2022 Kubernetes Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -47,7 +46,7 @@ type Options struct {
 	Provider     IngressProvider
 }
 
-func NewOptions(w io.Writer, mode, filePath, outputType, resourceType, provider string) Options {
+func WithOptions(w io.Writer, mode, filePath, outputType, resourceType, provider string) Options {
 	return Options{
 		Writer:       w,
 		FilePath:     filePath,
@@ -64,7 +63,7 @@ func (t Translator) Run() error {
 	}
 
 	var (
-		result ResultResources
+		result *Result
 		errs   []error
 	)
 
@@ -78,7 +77,7 @@ func (t Translator) Run() error {
 		fmt.Fprintln(t.Writer, errs)
 	}
 
-	data, err := t.Marshal(result, t.OutputType, t.ResourceType)
+	data, err := t.Marshal(*result, t.OutputType, t.ResourceType)
 	if err != nil {
 		return err
 	}
@@ -117,32 +116,32 @@ func (t Translator) ConstructIngresses(mode, file string) ([]networkingv1.Ingres
 
 	cl, err := client.New(config.GetConfigOrDie(), client.Options{})
 	if err != nil {
-		fmt.Println("failed to create client")
-		os.Exit(1)
+		return nil, fmt.Errorf("failed to create client")
 	}
 
 	ingressList := &networkingv1.IngressList{}
 
 	err = cl.List(context.Background(), ingressList)
 	if err != nil {
-		fmt.Printf("failed to list ingresses: %v\n", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("failed to list ingresses: %v", err.Error())
 	}
 
 	return ingressList.Items, nil
 }
 
-func (t Translator) Convert(provider IngressProvider, ingresses []networkingv1.Ingress) (ResultResources, []error) {
-	aggregator := NewAggregator()
+func (t Translator) Convert(provider IngressProvider, ingresses []networkingv1.Ingress) (*Result, []error) {
+	aggregator := newAggregator()
 
 	for _, ingress := range ingresses {
-		aggregator.addIngress(provider, ingress)
+		if err := aggregator.addIngress(provider, ingress); err != nil {
+			return nil, []error{err}
+		}
 	}
 
 	return aggregator.convert()
 }
 
-func (t Translator) Marshal(result ResultResources, output, resourceType string) ([]byte, error) {
+func (t Translator) Marshal(result Result, output, resourceType string) ([]byte, error) {
 	var resData []byte
 	var err error
 

@@ -41,15 +41,9 @@ linters-settings:
 
 issues:
   exclude-rules:
-    - path: zz_generated
-      linters:
-        - goimports
     - linters:
         - staticcheck
       text: "SA1019:"
-    - path: test/e2e
-      linters:
-        - bodyclose
   # Show the complete output
   max-issues-per-linter: 0
   max-same-issues: 0

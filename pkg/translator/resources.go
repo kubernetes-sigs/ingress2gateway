@@ -1,5 +1,5 @@
 /*
-Copyright © 2023 Kubernetes Authors
+Copyright © 2022 Kubernetes Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,13 +18,13 @@ package translator
 
 import gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
-type ResultResources struct {
+type Result struct {
 	HTTPRoutes []gatewayv1beta1.HTTPRoute
 	Gateways   []gatewayv1beta1.Gateway
 }
 
-func NewResultResources() *ResultResources {
-	return &ResultResources{
+func NewResult() *Result {
+	return &Result{
 		HTTPRoutes: []gatewayv1beta1.HTTPRoute{},
 		Gateways:   []gatewayv1beta1.Gateway{},
 	}

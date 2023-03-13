@@ -5,13 +5,7 @@ labels: kind/bug
 
 ---
 <!--
-Thank you for your interest in Ingress2Gateway! Please note that bug reports 
-here should only be used for bugs with the API itself, such as:
-
-- Incomplete or inaccurate validation
-- Problems with the API specification
-- Unexpected errors with the validating webhook
-- Flaws in conformance tests
+Thank you for your interest in Ingress2Gateway!
 
 Please use this template while reporting a bug and provide as much info as
 possible. Not doing so may result in your bug not being addressed in a timely
