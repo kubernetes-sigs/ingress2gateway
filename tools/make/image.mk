@@ -1,6 +1,10 @@
 # This is a wrapper to build and push docker image
 #
 # All make targets related to docker image are defined in this file.
+#
+# Note that we did not start off to publish i2gw with image.
+# The make targets in this file, currently it helps you develop,
+# build and push image locally if you needed.
 
 # Docker variables
 # REGISTRY is the image registry to use for build and push image targets.

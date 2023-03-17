@@ -19,21 +19,18 @@ intended to copy annotations from Ingress to Gateway API.
 ## Install
 
 This project reads Ingress resources from a Kubernetes cluster based on your
-current Kube Config. It will output YAML for equivalent Gateway API resources
-to stdout. Until this project is released, the best way to use this is to run
-the following within the repo:
+current Kube Config or from the file you specified. It will output YAML or Json
+for equivalent Gateway API resources to stdout. Until this project is released,
+the best way to use this is to run the following within the repo:
 
 ```shell
-curl -fsSL https://raw.githubusercontent.com/kubernetes-sigs/ingress2gateway/main/tools/hack/install.sh | bash 
-```
-
-## QuickStart
-
-```shell
-curl -fsSL https://raw.githubusercontent.com/kubernetes-sigs/ingress2gateway/main/examples/demo.yaml | i2gw translate --mode=local -f -
+make build
 ```
 
 ## Development
+
+Ingress2Gateway provides many useful make targets to help develop, lint and test, build and publish.
+Try to run the following within the repo to see the make targets we provided:
 
 ``` shell
 make help

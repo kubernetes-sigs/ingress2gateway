@@ -20,7 +20,7 @@ lint: lint.golint
 lint-deps: $(tools/golangci-lint)
 lint.golint: $(tools/golangci-lint)
 	@$(LOG_TARGET)
-	$(tools/golangci-lint) run $(GOLANGCI_LINT_FLAGS) --build-tags=e2e --config=tools/linter/golangci-lint/.golangci.yml
+	$(tools/golangci-lint) run $(GOLANGCI_LINT_FLAGS) --config=tools/linter/golangci-lint/.golangci.yml
 
 .PHONY: lint.yamllint
 lint: lint.yamllint
@@ -55,8 +55,6 @@ lint.codespell: $(tools/codespell)
 
 
 .PHONY: lint.shellcheck
-lint: lint.shellcheck
-lint-deps: $(tools/shellcheck)
 lint.shellcheck: $(tools/shellcheck)
 	@$(LOG_TARGET)
 	$(tools/shellcheck) --severity=error tools/hack/*.sh
