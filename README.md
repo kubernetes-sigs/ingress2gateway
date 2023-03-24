@@ -16,15 +16,64 @@ API resources. Some widely used annotations and/or CRDs _may_ be supported, as
 long as they can be translated to Gateway API directly. This project is not
 intended to copy annotations from Ingress to Gateway API.
 
-## Usage
+## Install
 
 This project reads Ingress resources from a Kubernetes cluster based on your
-current Kube Config. It will output YAML for equivalent Gateway API resources
-to stdout. Until this project is released, the best way to use this is to run
-the following within the repo:
+current Kube Config or from the file you specified. It will output YAML or Json
+for equivalent Gateway API resources to stdout. Until this project is released,
+the best way to use this is to run the following within the repo:
 
+```shell
+make build
 ```
-go run .
+
+The build output will be in `_output/${OS}/${ARCH}/i2gw`.
+
+## Quickstart
+
+Translate Ingress from the file of the simple hello-world example into Gateway API Resources:
+
+```shell
+i2gw translate --mode=local -f examples/hello-world.yaml
+```
+
+Translate Ingress from the file of the canary example into Gateway API Resources in Yaml Output:
+
+```shell
+i2gw translate --mode=local -f examples/canary.yaml -o yaml
+```
+
+Translate Ingress from the file of the canary example into Gateway Resources:
+
+```shell
+i2gw translate --mode=local -f examples/canary.yaml --type gateway
+```
+
+Translate Ingress from the file of the canary example into HTTPRoutes Resources:
+
+```shell
+i2gw translate --mode=local -f examples/canary.yaml --type httproute
+```
+
+Translate Ingress from the file of the canary example into Gateway API Resources in Json Output:
+
+```shell
+i2gw translate --mode=local -f examples/canary.yaml -o json
+```
+
+Translate the Ingress from the resources in cluster into Gateway API Resources:
+
+```shell
+i2gw translate --mode=remote
+```
+
+## Development
+
+Ingress2Gateway provides many useful make targets to help develop, lint and test, build and publish.
+Try to run the following within the repo to see the make targets we provided:
+
+``` shell
+make help
 ```
 
 ## Conversion of Ingress resources to Gateway API
@@ -61,16 +110,16 @@ Given a set of Ingress resources, `ingress2gateway` will generate a Gateway with
 Although most annotations are ignored, this project includes experimental
 support for the following annotations:
 
-* kubernetes.io/ingress.class: Same behavior as the `ingressClassName` field above, if specified this value will be used as the `gatewayClassName` set on the corresponding generated Gateway.
+* `kubernetes.io/ingress.class`: Same behavior as the `ingressClassName` field above, if specified this value will be used as the `gatewayClassName` set on the corresponding generated Gateway.
 
 #### ingress-nginx:
 
-* nginx.ingress.kubernetes.io/canary: If set to `true` will enable weighting backends.
-* nginx.ingress.kubernetes.io/canary-by-header: If specified, the value of this annotation is the header name that will be added as a HTTPHeaderMatch for the routes generated from this Ingress. If not specified, no HTTPHeaderMatch will be generated.
-* nginx.ingress.kubernetes.io/canary-by-header-value: If specified, the value of this annotation is the header value to perform an `HeaderMatchExact` match on in the generated HTTPHeaderMatch.
-* nginx.ingress.kubernetes.io/canary-by-header-pattern: If specified, this is the  pattern to match against for the HTTPHeaderMatch, which will be of type `HeaderMatchRegularExpression`.
-* nginx.ingress.kubernetes.io/canary-weight: If specified and non-zero, this value will be applied as the weight of the backends for the routes generated from this Ingress resource.
-* nginx.ingress.kubernetes.io/canary-weight-total
+* `nginx.ingress.kubernetes.io/canary`: If set to `true` will enable weighting backends.
+* `nginx.ingress.kubernetes.io/canary-by-header`: If specified, the value of this annotation is the header name that will be added as a HTTPHeaderMatch for the routes generated from this Ingress. If not specified, no HTTPHeaderMatch will be generated.
+* `nginx.ingress.kubernetes.io/canary-by-header-value`: If specified, the value of this annotation is the header value to perform an `HeaderMatchExact` match on in the generated HTTPHeaderMatch.
+* `nginx.ingress.kubernetes.io/canary-by-header-pattern`: If specified, this is the  pattern to match against for the HTTPHeaderMatch, which will be of type `HeaderMatchRegularExpression`.
+* `nginx.ingress.kubernetes.io/canary-weight`: If specified and non-zero, this value will be applied as the weight of the backends for the routes generated from this Ingress resource.
+* `nginx.ingress.kubernetes.io/canary-weight-total`: If specified and non-zero, this value will be used as the total weight of the backends for the routes.
 
 If you are reliant on any annotations not listed above, you'll need to manually
 find a Gateway API equivalent.
