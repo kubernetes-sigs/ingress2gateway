@@ -1,0 +1,119 @@
+{
+  "HTTPRoutes": [
+      {
+          "kind": "HTTPRoute",
+          "apiVersion": "gateway.networking.k8s.io/v1beta1",
+          "metadata": {
+              "name": "canary",
+              "creationTimestamp": null
+          },
+          "spec": {
+              "parentRefs": [
+                  {
+                      "name": "nginx-ingress"
+                  }
+              ],
+              "hostnames": [
+                  "canary"
+              ],
+              "rules": [
+                  {
+                      "matches": [
+                          {
+                              "path": {
+                                  "type": "Exact",
+                                  "value": "/echo-1"
+                              },
+                              "headers": [
+                                  {
+                                      "type": "Exact",
+                                      "name": "traffic-split-1",
+                                      "value": "foo"
+                                  }
+                              ]
+                          }
+                      ],
+                      "backendRefs": [
+                          {
+                              "name": "infra-backend-v1",
+                              "port": 8088
+                          }
+                      ]
+                  },
+                  {
+                      "matches": [
+                          {
+                              "path": {
+                                  "type": "Exact",
+                                  "value": "/echo-1"
+                              },
+                              "headers": [
+                                  {
+                                      "type": "Exact",
+                                      "name": "traffic-split-2",
+                                      "value": "bar"
+                                  }
+                              ]
+                          }
+                      ],
+                      "backendRefs": [
+                          {
+                              "name": "infra-backend-v1",
+                              "port": 8088
+                          }
+                      ]
+                  },
+                  {
+                      "matches": [
+                          {
+                              "path": {
+                                  "type": "PathPrefix",
+                                  "value": "/echo-2"
+                              },
+                              "headers": [
+                                  {
+                                      "type": "RegularExpression",
+                                      "name": "traffic-split-2",
+                                      "value": "(?:\\/([^?#]*))?"
+                                  }
+                              ]
+                          }
+                      ],
+                      "backendRefs": [
+                          {
+                              "name": "infra-backend-v2",
+                              "port": 8080,
+                              "weight": 30
+                          }
+                      ]
+                  }
+              ]
+          },
+          "status": {
+              "parents": []
+          }
+      }
+  ],
+  "Gateways": [
+      {
+          "kind": "Gateway",
+          "apiVersion": "gateway.networking.k8s.io/v1beta1",
+          "metadata": {
+              "name": "nginx-ingress",
+              "creationTimestamp": null
+          },
+          "spec": {
+              "gatewayClassName": "nginx-ingress",
+              "listeners": [
+                  {
+                      "name": "canary-http",
+                      "hostname": "canary",
+                      "port": 80,
+                      "protocol": "HTTP"
+                  }
+              ]
+          },
+          "status": {}
+      }
+  ]
+}

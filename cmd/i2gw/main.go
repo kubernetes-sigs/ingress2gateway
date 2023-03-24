@@ -13,31 +13,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package cmd
+
+package main
 
 import (
 	"fmt"
 	"os"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/spf13/cobra"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/cmd"
 )
 
-var rootCmd = &cobra.Command{
-	Use:   "ingress2gateway",
-	Short: "Convert Ingress manifests to Gateway API manifests",
-	Run: func(cmd *cobra.Command, args []string) {
-		if err := cmd.ParseFlags(args); err != nil {
-			fmt.Printf("Error parsing flags: %v", err)
-		}
-
-		i2gw.Run()
-	},
-}
-
-func Execute() {
-	err := rootCmd.Execute()
-	if err != nil {
+func main() {
+	if err := cmd.GetRootCommand().Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }

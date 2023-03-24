@@ -1,0 +1,20 @@
+- apiVersion: gateway.networking.k8s.io/v1beta1
+  kind: HTTPRoute
+  metadata:
+    creationTimestamp: null
+    name: foo-bar-com
+  spec:
+    hostnames:
+    - foo.bar.com
+    parentRefs:
+    - name: hello-world
+    rules:
+    - backendRefs:
+      - name: test
+        port: 80
+      matches:
+      - path:
+          type: PathPrefix
+          value: /foo
+  status:
+    parents: []
