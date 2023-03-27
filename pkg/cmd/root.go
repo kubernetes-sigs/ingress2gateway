@@ -25,7 +25,7 @@ import (
 func GetRootCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ingress2gateway",
-		Short: "ingress2gateway converts Ingress to Gateway API",
+		Short: "ingress2gateway converts Ingress resources to Gateway API resources",
 	}
 
 	cmd.AddCommand(RegisterTranslateCommand())
