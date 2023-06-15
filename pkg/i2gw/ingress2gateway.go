@@ -27,7 +27,7 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-func Run() {
+func Run(printer printers.ResourcePrinter) {
 	cl, err := client.New(config.GetConfigOrDie(), client.Options{})
 	if err != nil {
 		fmt.Println("failed to create client")
@@ -42,7 +42,15 @@ func Run() {
 		os.Exit(1)
 	}
 
-	outputResult(ingresses2GatewaysAndHTTPRoutes(ingressList.Items))
+	httpRoutes, gateways, errors := ingresses2GatewaysAndHTTPRoutes(ingressList.Items)
+	if len(errors) > 0 {
+		fmt.Printf("# Encountered %d errors\n", len(errors))
+		for _, err := range errors {
+			fmt.Printf("# %s", err)
+		}
+	}
+
+	outputResult(printer, httpRoutes, gateways)
 }
 
 func ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, []error) {
@@ -55,25 +63,18 @@ func ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewa
 	return aggregator.toHTTPRoutesAndGateways()
 }
 
-func outputResult(httpRoutes []gatewayv1beta1.HTTPRoute, gateways []gatewayv1beta1.Gateway, errors []error) {
-	if len(errors) > 0 {
-		fmt.Printf("# Encountered %d errors\n", len(errors))
-		for _, err := range errors {
-			fmt.Printf("# %s", err)
-		}
-	}
-	y := printers.YAMLPrinter{}
-	for i := range gateways {
-		err := y.PrintObj(&gateways[i], os.Stdout)
+func outputResult(printer printers.ResourcePrinter, httpRoutes []gatewayv1beta1.HTTPRoute, gateways []gatewayv1beta1.Gateway) {
+	for _, gateway := range gateways {
+		err := printer.PrintObj(&gateway, os.Stdout)
 		if err != nil {
-			fmt.Printf("# Error printing YAML for %s HTTPRoute: %v\n", gateways[i].Name, err)
+			fmt.Printf("# Error printing %s HTTPRoute: %v\n", gateway.Name, err)
 		}
 	}
 
-	for i := range httpRoutes {
-		err := y.PrintObj(&httpRoutes[i], os.Stdout)
+	for _, httpRoute := range httpRoutes {
+		err := printer.PrintObj(&httpRoute, os.Stdout)
 		if err != nil {
-			fmt.Printf("# Error printing YAML for %s HTTPRoute: %v\n", httpRoutes[i].Name, err)
+			fmt.Printf("# Error printing %s HTTPRoute: %v\n", httpRoute.Name, err)
 		}
 	}
 }

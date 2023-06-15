@@ -24,7 +24,7 @@ to stdout. Until this project is released, the best way to use this is to run
 the following within the repo:
 
 ```
-go run .
+go run . print
 ```
 
 ## Conversion of Ingress resources to Gateway API
