@@ -18,25 +18,60 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/spf13/cobra"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/cli-runtime/pkg/printers"
 )
 
-var rootCmd = &cobra.Command{
-	Use:   "ingress2gateway",
-	Short: "Convert Ingress manifests to Gateway API manifests",
-	Run: func(cmd *cobra.Command, args []string) {
-		if err := cmd.ParseFlags(args); err != nil {
-			fmt.Printf("Error parsing flags: %v", err)
-		}
+type rootCmdOptions struct {
+	OutputFormat string
+}
 
-		i2gw.Run()
-	},
+func newRootCmdOptions() *rootCmdOptions {
+	return &rootCmdOptions{
+		OutputFormat: "yaml",
+	}
+}
+
+func newRootRunner(options *rootCmdOptions) *i2gw.RootRunner {
+	runner := i2gw.RootRunner{
+		ResourcePrinter: &printers.YAMLPrinter{},
+	}
+	if options.OutputFormat == "json" {
+		runner.ResourcePrinter = &printers.JSONPrinter{}
+	}
+	return &runner
+}
+
+func newRootCmd() *cobra.Command {
+	o := newRootCmdOptions()
+
+	cmd := cobra.Command{
+		Use:   "ingress2gateway",
+		Short: "Convert Ingress manifests to Gateway API manifests",
+		Run: func(cmd *cobra.Command, args []string) {
+			if err := cmd.ParseFlags(args); err != nil {
+				fmt.Printf("Error parsing flags: %v", err)
+			}
+
+			newRootRunner(o).Run()
+		},
+	}
+
+	var printFlags genericclioptions.JSONYamlPrintFlags
+	allowedFormats := printFlags.AllowedFormats()
+
+	cmd.Flags().StringVarP(&o.OutputFormat, "output", "o", o.OutputFormat,
+		fmt.Sprintf(`Output format. One of: (%s)`, strings.Join(allowedFormats, ", ")))
+
+	return &cmd
 }
 
 func Execute() {
-	err := rootCmd.Execute()
+	err := newRootCmd().Execute()
 	if err != nil {
 		os.Exit(1)
 	}
