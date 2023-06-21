@@ -26,7 +26,7 @@ import (
 )
 
 var (
-	output = "yaml"
+	outputFormat = "yaml"
 )
 
 // printCmd represents the print command. It prints ingress-converted
@@ -34,24 +34,34 @@ var (
 var printCmd = &cobra.Command{
 	Use:   "print",
 	Short: "Prints ingress-converted HTTPRoutes and Gateways",
-	Run: func(cmd *cobra.Command, args []string) {
-		resourcePrinter := getResourcePrinter()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		resourcePrinter := getResourcePrinter(outputFormat)
+		if resourcePrinter == nil {
+			return fmt.Errorf("%s is not a supported output format", outputFormat)
+		}
 		i2gw.Run(resourcePrinter)
+		return nil
 	},
 }
 
-func getResourcePrinter() printers.ResourcePrinter {
-	if output == "json" {
+// // getResourcePrinter returns a specific type of printers.ResourcePrinter
+// based on the provided outputFormat.
+func getResourcePrinter(outputFormat string) printers.ResourcePrinter {
+	switch outputFormat {
+	case "yaml", "":
+		return &printers.YAMLPrinter{}
+	case "json":
 		return &printers.JSONPrinter{}
+	default:
+		return nil
 	}
-	return &printers.YAMLPrinter{}
 }
 
 func init() {
 	var printFlags genericclioptions.JSONYamlPrintFlags
 	allowedFormats := printFlags.AllowedFormats()
 
-	printCmd.Flags().StringVarP(&output, "output", "o", "yaml",
+	printCmd.Flags().StringVarP(&outputFormat, "output", "o", "yaml",
 		fmt.Sprintf(`Output format. One of: (%s)`, strings.Join(allowedFormats, ", ")))
 
 	rootCmd.AddCommand(printCmd)
