@@ -16,6 +16,7 @@ limitations under the License.
 package i2gw
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -36,13 +37,13 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 		name             string
 		ingresses        []networkingv1.Ingress
 		expectGateways   []gatewayv1beta1.Gateway
-		expectHttpRoutes []gatewayv1beta1.HTTPRoute
+		expectHTTPRoutes []gatewayv1beta1.HTTPRoute
 		expectErrors     []error
 	}{{
 		name:             "empty",
 		ingresses:        []networkingv1.Ingress{},
 		expectGateways:   []gatewayv1beta1.Gateway{},
-		expectHttpRoutes: []gatewayv1beta1.HTTPRoute{},
+		expectHTTPRoutes: []gatewayv1beta1.HTTPRoute{},
 		expectErrors:     []error{},
 	}, {
 		name: "simple ingress",
@@ -82,7 +83,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 				}},
 			},
 		}},
-		expectHttpRoutes: []gatewayv1beta1.HTTPRoute{{
+		expectHTTPRoutes: []gatewayv1beta1.HTTPRoute{{
 			ObjectMeta: metav1.ObjectMeta{Name: "example-com", Namespace: "test"},
 			Spec: gatewayv1beta1.HTTPRouteSpec{
 				CommonRouteSpec: gatewayv1beta1.CommonRouteSpec{
@@ -162,7 +163,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 				}},
 			},
 		}},
-		expectHttpRoutes: []gatewayv1beta1.HTTPRoute{{
+		expectHTTPRoutes: []gatewayv1beta1.HTTPRoute{{
 			ObjectMeta: metav1.ObjectMeta{Name: "example-com", Namespace: "test"},
 			Spec: gatewayv1beta1.HTTPRouteSpec{
 				CommonRouteSpec: gatewayv1beta1.CommonRouteSpec{
@@ -236,7 +237,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 				}},
 			},
 		}},
-		expectHttpRoutes: []gatewayv1beta1.HTTPRoute{{
+		expectHTTPRoutes: []gatewayv1beta1.HTTPRoute{{
 			ObjectMeta: metav1.ObjectMeta{Name: "example-net", Namespace: "different"},
 			Spec: gatewayv1beta1.HTTPRouteSpec{
 				CommonRouteSpec: gatewayv1beta1.CommonRouteSpec{
@@ -293,13 +294,13 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 				aggregator.addIngress(ingress)
 			}
 
-			httpRoutes, gateways, errors := aggregator.toHTTPRoutesAndGateways()
+			httpRoutes, gateways, errs := aggregator.toHTTPRoutesAndGateways()
 
-			if len(httpRoutes) != len(tc.expectHttpRoutes) {
-				t.Errorf("Expected %d HTTPRoutes, got %d: %+v", len(tc.expectHttpRoutes), len(httpRoutes), httpRoutes)
+			if len(httpRoutes) != len(tc.expectHTTPRoutes) {
+				t.Errorf("Expected %d HTTPRoutes, got %d: %+v", len(tc.expectHTTPRoutes), len(httpRoutes), httpRoutes)
 			} else {
 				for i, got := range httpRoutes {
-					want := tc.expectHttpRoutes[i]
+					want := tc.expectHTTPRoutes[i]
 					want.SetGroupVersionKind(httpRouteGVK)
 					if !apiequality.Semantic.DeepEqual(got, want) {
 						t.Errorf("Expected HTTPRoute %d to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))
@@ -319,11 +320,11 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 				}
 			}
 
-			if len(errors) != len(tc.expectErrors) {
-				t.Errorf("Expected %d errors, got %d: %+v", len(tc.expectErrors), len(errors), errors)
+			if len(errs) != len(tc.expectErrors) {
+				t.Errorf("Expected %d errors, got %d: %+v", len(tc.expectErrors), len(errs), errs)
 			} else {
-				for i, e := range errors {
-					if e != tc.expectErrors[i] {
+				for i, e := range errs {
+					if errors.Is(e, tc.expectErrors[i]) {
 						t.Errorf("Unexpected error message at %d index. Got %s, want: %s", i, e, tc.expectErrors[i])
 					}
 				}

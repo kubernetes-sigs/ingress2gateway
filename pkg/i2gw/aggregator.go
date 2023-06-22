@@ -150,9 +150,9 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways() ([]gatewayv1beta1.HTTPRout
 		}
 		gwKey := fmt.Sprintf("%s/%s", rg.namespace, rg.ingressClass)
 		listenersByNamespacedGateway[gwKey] = append(listenersByNamespacedGateway[gwKey], listener)
-		httpRoute, errors := rg.toHTTPRoute()
+		httpRoute, errs := rg.toHTTPRoute()
 		httpRoutes = append(httpRoutes, httpRoute)
-		errors = append(errors, errors...)
+		errors = append(errors, errs...)
 	}
 
 	for _, db := range a.defaultBackends {
@@ -333,6 +333,8 @@ func toHTTPRouteMatch(ip ingressPath) (*gatewayv1beta1.HTTPRouteMatch, error) {
 	hmRegex := gatewayv1beta1.HeaderMatchRegularExpression
 
 	match := &gatewayv1beta1.HTTPRouteMatch{Path: &gatewayv1beta1.HTTPPathMatch{Value: &ip.path.Path}}
+	//exhaustive:ignore -explicit-exhaustive-switch
+	// networkingv1.PathTypeImplementationSpecific is not supported here, hence it goes into default case.
 	switch *ip.path.PathType {
 	case networkingv1.PathTypePrefix:
 		match.Path.Type = &pmPrefix
