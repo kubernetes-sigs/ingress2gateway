@@ -26,6 +26,8 @@ import (
 )
 
 var (
+	// outputFormat contains currently set output format. Value assigned via --output/-o flag.
+	// Defaults to YAML.
 	outputFormat = "yaml"
 )
 
@@ -35,9 +37,9 @@ var printCmd = &cobra.Command{
 	Use:   "print",
 	Short: "Prints HTTPRoutes and Gateways generated from Ingress resources",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		resourcePrinter := getResourcePrinter(outputFormat)
-		if resourcePrinter == nil {
-			return fmt.Errorf("%s is not a supported output format", outputFormat)
+		resourcePrinter, err := getResourcePrinter(outputFormat)
+		if err != nil {
+			return err
 		}
 		i2gw.Run(resourcePrinter)
 		return nil
@@ -46,14 +48,14 @@ var printCmd = &cobra.Command{
 
 // getResourcePrinter returns a specific type of printers.ResourcePrinter
 // based on the provided outputFormat.
-func getResourcePrinter(outputFormat string) printers.ResourcePrinter {
+func getResourcePrinter(outputFormat string) (printers.ResourcePrinter, error) {
 	switch outputFormat {
 	case "yaml", "":
-		return &printers.YAMLPrinter{}
+		return &printers.YAMLPrinter{}, nil
 	case "json":
-		return &printers.JSONPrinter{}
+		return &printers.JSONPrinter{}, nil
 	default:
-		return nil
+		return nil, fmt.Errorf("%s is not a supported output format", outputFormat)
 	}
 }
 

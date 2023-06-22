@@ -64,17 +64,17 @@ func ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewa
 }
 
 func outputResult(printer printers.ResourcePrinter, httpRoutes []gatewayv1beta1.HTTPRoute, gateways []gatewayv1beta1.Gateway) {
-	for _, gateway := range gateways {
-		err := printer.PrintObj(&gateway, os.Stdout)
+	for i := range gateways {
+		err := printer.PrintObj(&gateways[i], os.Stdout)
 		if err != nil {
-			fmt.Printf("# Error printing %s HTTPRoute: %v\n", gateway.Name, err)
+			fmt.Printf("# Error printing %s HTTPRoute: %v\n", gateways[i].Name, err)
 		}
 	}
 
-	for _, httpRoute := range httpRoutes {
-		err := printer.PrintObj(&httpRoute, os.Stdout)
+	for i := range httpRoutes {
+		err := printer.PrintObj(&httpRoutes[i], os.Stdout)
 		if err != nil {
-			fmt.Printf("# Error printing %s HTTPRoute: %v\n", httpRoute.Name, err)
+			fmt.Printf("# Error printing %s HTTPRoute: %v\n", httpRoutes[i].Name, err)
 		}
 	}
 }
