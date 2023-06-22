@@ -42,10 +42,10 @@ func Run() {
 		os.Exit(1)
 	}
 
-	outputResult(ingresses2GatewaysAndHttpRoutes(ingressList.Items))
+	outputResult(ingresses2GatewaysAndHTTPRoutes(ingressList.Items))
 }
 
-func ingresses2GatewaysAndHttpRoutes(ingresses []networkingv1.Ingress) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, []error) {
+func ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, []error) {
 	aggregator := ingressAggregator{ruleGroups: map[ruleGroupKey]*ingressRuleGroup{}}
 
 	for _, ingress := range ingresses {
@@ -63,17 +63,17 @@ func outputResult(httpRoutes []gatewayv1beta1.HTTPRoute, gateways []gatewayv1bet
 		}
 	}
 	y := printers.YAMLPrinter{}
-	for _, gateway := range gateways {
-		err := y.PrintObj(&gateway, os.Stdout)
+	for i := range gateways {
+		err := y.PrintObj(&gateways[i], os.Stdout)
 		if err != nil {
-			fmt.Printf("# Error printing YAML for %s HTTPRoute: %v\n", gateway.Name, err)
+			fmt.Printf("# Error printing YAML for %s HTTPRoute: %v\n", gateways[i].Name, err)
 		}
 	}
 
-	for _, httpRoute := range httpRoutes {
-		err := y.PrintObj(&httpRoute, os.Stdout)
+	for i := range httpRoutes {
+		err := y.PrintObj(&httpRoutes[i], os.Stdout)
 		if err != nil {
-			fmt.Printf("# Error printing YAML for %s HTTPRoute: %v\n", httpRoute.Name, err)
+			fmt.Printf("# Error printing YAML for %s HTTPRoute: %v\n", httpRoutes[i].Name, err)
 		}
 	}
 }
