@@ -29,11 +29,11 @@ var (
 	outputFormat = "yaml"
 )
 
-// printCmd represents the print command. It prints ingress-converted
-// HTTPRoutes and Gateways.
+// printCmd represents the print command. It prints HTTPRoutes and Gateways
+// generated from Ingress resources.
 var printCmd = &cobra.Command{
 	Use:   "print",
-	Short: "Prints ingress-converted HTTPRoutes and Gateways",
+	Short: "Prints HTTPRoutes and Gateways generated from Ingress resources",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		resourcePrinter := getResourcePrinter(outputFormat)
 		if resourcePrinter == nil {
@@ -44,7 +44,7 @@ var printCmd = &cobra.Command{
 	},
 }
 
-// // getResourcePrinter returns a specific type of printers.ResourcePrinter
+// getResourcePrinter returns a specific type of printers.ResourcePrinter
 // based on the provided outputFormat.
 func getResourcePrinter(outputFormat string) printers.ResourcePrinter {
 	switch outputFormat {
