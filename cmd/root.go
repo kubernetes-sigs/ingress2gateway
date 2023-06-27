@@ -16,23 +16,14 @@ limitations under the License.
 package cmd
 
 import (
-	"fmt"
 	"os"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/spf13/cobra"
 )
 
 var rootCmd = &cobra.Command{
 	Use:   "ingress2gateway",
 	Short: "Convert Ingress manifests to Gateway API manifests",
-	Run: func(cmd *cobra.Command, args []string) {
-		if err := cmd.ParseFlags(args); err != nil {
-			fmt.Printf("Error parsing flags: %v", err)
-		}
-
-		i2gw.Run()
-	},
 }
 
 func Execute() {
