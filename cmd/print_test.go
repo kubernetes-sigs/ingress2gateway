@@ -16,6 +16,8 @@ limitations under the License.
 package cmd
 
 import (
+	"fmt"
+	"log"
 	"os"
 	"reflect"
 	"testing"
@@ -141,7 +143,8 @@ func Test_getNamespaceFilter(t *testing.T) {
 }
 
 func setupKubeConfig() (func(), error) {
-	const kubeConfigFile = "/tmp/i2gw/.kube/config"
+	const kubeConfigPath = "/tmp/i2gw/.kube"
+	kubeConfigFile := fmt.Sprintf("%s/config", kubeConfigPath)
 
 	if err := os.Setenv("KUBECONFIG", kubeConfigFile); err != nil {
 		return nil, err
@@ -173,6 +176,11 @@ current-context: docker-desktop
 kind: Config
 preferences: {}
 `)
+
+	err := os.MkdirAll(kubeConfigPath, os.ModePerm)
+	if err != nil {
+		log.Println(err)
+	}
 
 	f, err := os.Create(kubeConfigFile)
 	if err != nil {
