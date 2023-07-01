@@ -31,14 +31,13 @@ var (
 	// Defaults to YAML.
 	outputFormat = "yaml"
 
-	// namespace contains currently set namespace that should be used. Value assigned via
+	// The namespace used to query Gateway API objects. Value assigned via
 	// --namespace/-n flag.
-	// Default behavior is to use the current namespace the user is in.
+	// On absence, the current user active namespace is used.
 	namespace string
 
 	// allNamespaces indicates whether all namespaces should be used. Value assigned via
 	// --all-namespaces/-A flag.
-	// If present, overrides the namespace variable.
 	allNamespaces bool
 )
 
