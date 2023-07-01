@@ -52,9 +52,9 @@ func Run(printer printers.ResourcePrinter, namespace string) {
 	if len(ingressList.Items) == 0 {
 		msg := "No resources found"
 		if namespace != "" {
-			fmt.Printf("%s in %s namespace", msg, namespace)
+			fmt.Printf("%s in %s namespace\n", msg, namespace)
 		} else {
-		        fmt.Println(msg)
+			fmt.Println(msg)
 		}
 		return
 	}

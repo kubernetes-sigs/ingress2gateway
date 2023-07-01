@@ -114,5 +114,7 @@ func init() {
 		fmt.Sprintf(`If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even
 if specified with --namespace.`))
 
+	printCmd.MarkFlagsMutuallyExclusive("namespace", "all-namespaces")
+
 	rootCmd.AddCommand(printCmd)
 }
