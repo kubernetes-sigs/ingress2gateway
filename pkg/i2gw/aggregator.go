@@ -25,6 +25,7 @@ import (
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
@@ -72,8 +73,11 @@ type ingressDefaultBackend struct {
 }
 
 type ingressPath struct {
-	path  networkingv1.HTTPIngressPath
-	extra *extra
+	ruleIdx  int
+	pathIdx  int
+	ruleType string
+	path     networkingv1.HTTPIngressPath
+	extra    *extra
 }
 
 type extra struct {
@@ -89,7 +93,7 @@ type canary struct {
 	weightTotal      int
 }
 
-func (a *ingressAggregator) addIngress(ingress networkingv1.Ingress) {
+func (a *ingressAggregator) addIngress(ingress networkingv1.Ingress) field.ErrorList {
 	var ingressClass string
 	if ingress.Spec.IngressClassName != nil && *ingress.Spec.IngressClassName != "" {
 		ingressClass = *ingress.Spec.IngressClassName
@@ -98,7 +102,10 @@ func (a *ingressAggregator) addIngress(ingress networkingv1.Ingress) {
 	} else {
 		ingressClass = ingress.Name
 	}
-	e := getExtra(ingress)
+	e, errs := getExtra(ingress)
+	if len(errs) > 0 {
+		return errs
+	}
 	for _, rule := range ingress.Spec.Rules {
 		a.addIngressRule(ingress.Namespace, ingressClass, rule, ingress.Spec, e)
 	}
@@ -110,6 +117,7 @@ func (a *ingressAggregator) addIngress(ingress networkingv1.Ingress) {
 			backend:      *ingress.Spec.DefaultBackend,
 		})
 	}
+	return nil
 }
 
 func (a *ingressAggregator) addIngressRule(namespace, ingressClass string, rule networkingv1.IngressRule, iSpec networkingv1.IngressSpec, e *extra) {
@@ -129,9 +137,9 @@ func (a *ingressAggregator) addIngressRule(namespace, ingressClass string, rule 
 	rg.rules = append(rg.rules, ingressRule{rule: rule, extra: e})
 }
 
-func (a *ingressAggregator) toHTTPRoutesAndGateways() ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, []error) {
+func (a *ingressAggregator) toHTTPRoutesAndGateways() ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, field.ErrorList) {
 	var httpRoutes []gatewayv1beta1.HTTPRoute
-	var errors []error
+	var errors field.ErrorList
 	listenersByNamespacedGateway := map[string][]gatewayv1beta1.Listener{}
 
 	for _, rg := range a.ruleGroups {
@@ -155,7 +163,7 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways() ([]gatewayv1beta1.HTTPRout
 		errors = append(errors, errs...)
 	}
 
-	for _, db := range a.defaultBackends {
+	for i, db := range a.defaultBackends {
 		httpRoute := gatewayv1beta1.HTTPRoute{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("%s-default-backend", db.name),
@@ -176,7 +184,7 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways() ([]gatewayv1beta1.HTTPRout
 		}
 		httpRoute.SetGroupVersionKind(httpRouteGVK)
 
-		backendRef, err := toBackendRef(db.backend)
+		backendRef, err := toBackendRef(db.backend, field.NewPath(db.name, "paths", "backends").Index(i))
 		if err != nil {
 			errors = append(errors, err)
 		} else {
@@ -192,7 +200,7 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways() ([]gatewayv1beta1.HTTPRout
 	for gwKey, listeners := range listenersByNamespacedGateway {
 		parts := strings.Split(gwKey, "/")
 		if len(parts) != 2 {
-			errors = append(errors, fmt.Errorf("Error generating Gateway listeners for key: %s", gwKey))
+			errors = append(errors, field.Invalid(field.NewPath(""), "", fmt.Sprintf("error generating Gateway listeners for key: %s", gwKey)))
 			continue
 		}
 		gateway := gatewaysByKey[gwKey]
@@ -241,13 +249,13 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways() ([]gatewayv1beta1.HTTPRout
 	return httpRoutes, gateways, errors
 }
 
-func (rg *ingressRuleGroup) toHTTPRoute() (gatewayv1beta1.HTTPRoute, []error) {
+func (rg *ingressRuleGroup) toHTTPRoute() (gatewayv1beta1.HTTPRoute, field.ErrorList) {
 	pathsByMatchGroup := map[pathMatchKey][]ingressPath{}
-	errors := []error{}
+	var errors field.ErrorList
 
-	for _, ir := range rg.rules {
-		for _, path := range ir.rule.HTTP.Paths {
-			ip := ingressPath{path: path, extra: ir.extra}
+	for i, ir := range rg.rules {
+		for j, path := range ir.rule.HTTP.Paths {
+			ip := ingressPath{ruleIdx: i, pathIdx: j, ruleType: "http", path: path, extra: ir.extra}
 			pmKey := getPathMatchKey(ip)
 			pathsByMatchGroup[pmKey] = append(pathsByMatchGroup[pmKey], ip)
 		}
@@ -275,7 +283,9 @@ func (rg *ingressRuleGroup) toHTTPRoute() (gatewayv1beta1.HTTPRoute, []error) {
 	}
 
 	for _, paths := range pathsByMatchGroup {
-		match, err := toHTTPRouteMatch(paths[0])
+		path := paths[0]
+		fieldPath := field.NewPath("spec", "rules").Index(path.ruleIdx).Child(path.ruleType).Child("paths").Index(path.pathIdx)
+		match, err := toHTTPRouteMatch(path, fieldPath)
 		if err != nil {
 			errors = append(errors, err)
 			continue
@@ -285,8 +295,8 @@ func (rg *ingressRuleGroup) toHTTPRoute() (gatewayv1beta1.HTTPRoute, []error) {
 		}
 
 		var numWeightedBackends, totalWeightSet int32
-		for _, path := range paths {
-			backendRef, err := toBackendRef(path.path.Backend)
+		for i, path := range paths {
+			backendRef, err := toBackendRef(path.path.Backend, field.NewPath("paths", "backends").Index(i))
 			if err != nil {
 				errors = append(errors, err)
 				continue
@@ -326,7 +336,7 @@ func getPathMatchKey(ip ingressPath) pathMatchKey {
 	return pathMatchKey(fmt.Sprintf("%s/%s/%s", pathType, ip.path.Path, canaryHeaderKey))
 }
 
-func toHTTPRouteMatch(ip ingressPath) (*gatewayv1beta1.HTTPRouteMatch, error) {
+func toHTTPRouteMatch(ip ingressPath, path *field.Path) (*gatewayv1beta1.HTTPRouteMatch, *field.Error) {
 	pmPrefix := gatewayv1beta1.PathMatchPathPrefix
 	pmExact := gatewayv1beta1.PathMatchExact
 	hmExact := gatewayv1beta1.HeaderMatchExact
@@ -341,7 +351,7 @@ func toHTTPRouteMatch(ip ingressPath) (*gatewayv1beta1.HTTPRouteMatch, error) {
 	case networkingv1.PathTypeExact:
 		match.Path.Type = &pmExact
 	default:
-		return nil, fmt.Errorf("Unsupported path match type: %s", *ip.path.PathType)
+		return nil, field.Invalid(path.Child("pathType"), ip.path.PathType, fmt.Sprintf("unsupported path match type: %s", *ip.path.PathType))
 	}
 
 	if ip.extra != nil && ip.extra.canary != nil && ip.extra.canary.headerKey != "" {
@@ -359,10 +369,11 @@ func toHTTPRouteMatch(ip ingressPath) (*gatewayv1beta1.HTTPRouteMatch, error) {
 	return match, nil
 }
 
-func toBackendRef(ib networkingv1.IngressBackend) (*gatewayv1beta1.BackendRef, error) {
+func toBackendRef(ib networkingv1.IngressBackend, path *field.Path) (*gatewayv1beta1.BackendRef, *field.Error) {
 	if ib.Service != nil {
 		if ib.Service.Port.Name != "" {
-			return nil, fmt.Errorf("Named ports not supported: %s", ib.Service.Port.Name)
+			fieldPath := path.Child("service", "port")
+			return nil, field.Invalid(fieldPath, "name", fmt.Sprintf("named ports not supported: %s", ib.Service.Port.Name))
 		}
 		return &gatewayv1beta1.BackendRef{
 			BackendObjectReference: gatewayv1beta1.BackendObjectReference{
@@ -394,7 +405,12 @@ func nameFromHost(host string) string {
 	return step2
 }
 
-func getExtra(ingress networkingv1.Ingress) *extra {
+func getExtra(ingress networkingv1.Ingress) (*extra, field.ErrorList) {
+	var errs field.ErrorList
+	var err error
+
+	fieldPath := field.NewPath(ingress.Name).Child("metadata").Child("annotations")
+
 	e := &extra{}
 	if c := ingress.Annotations["nginx.ingress.kubernetes.io/canary"]; c == "true" {
 		e.canary = &canary{enable: true}
@@ -410,12 +426,18 @@ func getExtra(ingress networkingv1.Ingress) *extra {
 			e.canary.headerRegexMatch = true
 		}
 		if cHeaderWeight := ingress.Annotations["nginx.ingress.kubernetes.io/canary-weight"]; cHeaderWeight != "" {
-			e.canary.weight, _ = strconv.Atoi(cHeaderWeight)
+			e.canary.weight, err = strconv.Atoi(cHeaderWeight)
+			if err != nil {
+				errs = append(errs, field.TypeInvalid(fieldPath, "nginx.ingress.kubernetes.io/canary-weight", err.Error()))
+			}
 			e.canary.weightTotal = 100
 		}
 		if cHeaderWeightTotal := ingress.Annotations["nginx.ingress.kubernetes.io/canary-weight-total"]; cHeaderWeightTotal != "" {
-			e.canary.weightTotal, _ = strconv.Atoi(cHeaderWeightTotal)
+			e.canary.weightTotal, err = strconv.Atoi(cHeaderWeightTotal)
+			if err != nil {
+				errs = append(errs, field.TypeInvalid(fieldPath, "nginx.ingress.kubernetes.io/canary-weight-total", err.Error()))
+			}
 		}
 	}
-	return e
+	return e, errs
 }
