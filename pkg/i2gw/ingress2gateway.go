@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,6 +26,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	kubeyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/cli-runtime/pkg/printers"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -76,9 +77,10 @@ func Run(printer printers.ResourcePrinter, namespace, inputFile string) {
 	httpRoutes, gateways, errors := ingresses2GatewaysAndHTTPRoutes(ingressList.Items)
 	if len(errors) > 0 {
 		fmt.Printf("# Encountered %d errors\n", len(errors))
-		for _, err := range errors {
-			fmt.Printf("# %s", err)
+		for _, err = range errors {
+			fmt.Printf("# %s\n", err)
 		}
+		return
 	}
 
 	outputResult(printer, httpRoutes, gateways)
@@ -158,11 +160,15 @@ func constructIngressesFromFile(l *networkingv1.IngressList, inputFile string) e
 	return nil
 }
 
-func ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, []error) {
+func ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, field.ErrorList) {
 	aggregator := ingressAggregator{ruleGroups: map[ruleGroupKey]*ingressRuleGroup{}}
 
+	var errs field.ErrorList
 	for _, ingress := range ingresses {
-		aggregator.addIngress(ingress)
+		errs = append(errs, aggregator.addIngress(ingress)...)
+	}
+	if len(errs) > 0 {
+		return nil, nil, errs
 	}
 
 	return aggregator.toHTTPRoutesAndGateways()
