@@ -50,4 +50,4 @@ build: vet;$(info $(M)...Build the binary.)  @ ## Build the binary.
 # Run static analysis.
 .PHONY: verify
 verify:
-	hack/verify-golint.sh
+	hack/verify-all.sh
