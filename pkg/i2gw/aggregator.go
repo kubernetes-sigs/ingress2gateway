@@ -26,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/pointer"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
@@ -294,34 +295,56 @@ func (rg *ingressRuleGroup) toHTTPRoute() (gatewayv1beta1.HTTPRoute, field.Error
 			Matches: []gatewayv1beta1.HTTPRouteMatch{*match},
 		}
 
-		var numWeightedBackends, totalWeightSet int32
-		for i, path := range paths {
-			backendRef, err := toBackendRef(path.path.Backend, field.NewPath("paths", "backends").Index(i))
-			if err != nil {
-				errors = append(errors, err)
-				continue
-			}
-			if path.extra != nil && path.extra.canary != nil && path.extra.canary.weight != 0 {
-				weight := int32(path.extra.canary.weight)
-				backendRef.Weight = &weight
-				totalWeightSet += weight
-				numWeightedBackends++
-			}
-			hrRule.BackendRefs = append(hrRule.BackendRefs, gatewayv1beta1.HTTPBackendRef{BackendRef: *backendRef})
-		}
-		if numWeightedBackends > 0 && numWeightedBackends < int32(len(hrRule.BackendRefs)) {
-			weightToSet := (int32(100) - totalWeightSet) / (int32(len(hrRule.BackendRefs)) - numWeightedBackends)
-			for i, br := range hrRule.BackendRefs {
-				if br.Weight == nil {
-					br.Weight = &weightToSet
-					hrRule.BackendRefs[i] = br
-				}
-			}
-		}
+		backendRefs, errs := rg.calculateBackendRefWeight(paths)
+		errors = append(errors, errs...)
+		hrRule.BackendRefs = backendRefs
+
 		httpRoute.Spec.Rules = append(httpRoute.Spec.Rules, hrRule)
 	}
 
 	return httpRoute, errors
+}
+
+func (rg *ingressRuleGroup) calculateBackendRefWeight(paths []ingressPath) ([]gatewayv1beta1.HTTPBackendRef, field.ErrorList) {
+	var errors field.ErrorList
+	var backendRefs []gatewayv1beta1.HTTPBackendRef
+
+	var numWeightedBackends, totalWeightSet int32
+	var weightTotal = 100
+	for i, path := range paths {
+		backendRef, err := toBackendRef(path.path.Backend, field.NewPath("paths", "backends").Index(i))
+		if err != nil {
+			errors = append(errors, err)
+			continue
+		}
+		if path.extra != nil && path.extra.canary != nil && path.extra.canary.weight != 0 {
+			weight := int32(path.extra.canary.weight)
+			backendRef.Weight = &weight
+			totalWeightSet += weight
+			numWeightedBackends++
+			if path.extra.canary.weightTotal > 0 {
+				weightTotal = path.extra.canary.weightTotal
+			}
+		}
+		backendRefs = append(backendRefs, gatewayv1beta1.HTTPBackendRef{BackendRef: *backendRef})
+	}
+	if numWeightedBackends > 0 && numWeightedBackends < int32(len(backendRefs)) {
+		weightToSet := (int32(weightTotal) - totalWeightSet) / (int32(len(backendRefs)) - numWeightedBackends)
+		if weightToSet < 0 {
+			weightToSet = 0
+		}
+		for i := range backendRefs {
+			if backendRefs[i].Weight == nil {
+				backendRefs[i].Weight = &weightToSet
+			}
+			if *backendRefs[i].Weight > int32(weightTotal) {
+				backendRefs[i].Weight = pointer.Int32(int32(weightTotal))
+
+			}
+		}
+	}
+
+	return backendRefs, errors
 }
 
 func getPathMatchKey(ip ingressPath) pathMatchKey {
