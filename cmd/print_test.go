@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -143,44 +144,52 @@ func Test_getNamespaceFilter(t *testing.T) {
 }
 
 func setupKubeConfig() (func(), error) {
-	const kubeConfigPath = "/tmp/i2gw/.kube"
-	kubeConfigFile := fmt.Sprintf("%s/config", kubeConfigPath)
-
-	if err := os.Setenv("KUBECONFIG", kubeConfigFile); err != nil {
-		return nil, err
-	}
 
 	// Clean up from the last test, just in case...
-	os.Remove(kubeConfigFile)
+	cleanupFunc := func() {
+		globPattern := filepath.Join(os.TempDir(), "*-kube")
+		matches, err := filepath.Glob(globPattern)
+		if err != nil {
+			log.Fatalf("Failed to match %q: %v", globPattern, err)
+		}
+		for _, match := range matches {
+			if err = os.RemoveAll(match); err != nil {
+				log.Printf("Failed to remove %q: %v", match, err)
+			}
+		}
+	}
+	cleanupFunc()
 
 	content := []byte(`
 apiVersion: v1
 clusters:
 - cluster:
-    server: https://kubernetes.docker.internal:6443
-  name: docker-desktop
+    server: https://127.0.0.1:6443
+  name: example
 - cluster:
     server: https://127.0.0.1:54873
   name: kind-i2gw
 contexts:
 - context:
-    cluster: docker-desktop
+    cluster: example
     namespace: non-default-ns
-    user: docker-desktop
-  name: docker-desktop
+    user: example
+  name: example
 - context:
     cluster: kind-i2gw
     user: kind-i2gw
   name: kind-i2gw
-current-context: docker-desktop
+current-context: example
 kind: Config
 preferences: {}
 `)
 
-	err := os.MkdirAll(kubeConfigPath, os.ModePerm)
+	dir, err := os.MkdirTemp(os.TempDir(), "*-kube")
 	if err != nil {
 		log.Println(err)
 	}
+
+	kubeConfigFile := fmt.Sprintf("%s/config", dir)
 
 	f, err := os.Create(kubeConfigFile)
 	if err != nil {
@@ -196,9 +205,11 @@ preferences: {}
 		return nil, err
 	}
 
-	return func() {
-		os.Remove(kubeConfigFile)
-	}, nil
+	if err = os.Setenv("KUBECONFIG", kubeConfigFile); err != nil {
+		return nil, err
+	}
+
+	return cleanupFunc, nil
 }
 
 func Test_getNamespaceInCurrentContext(t *testing.T) {
