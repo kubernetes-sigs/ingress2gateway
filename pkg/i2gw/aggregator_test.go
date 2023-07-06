@@ -363,6 +363,100 @@ func gatewayHostnamePtr(s string) *gatewayv1beta1.Hostname {
 	return &h
 }
 
+func Test_getExtra(t *testing.T) {
+	testCases := []struct {
+		name          string
+		ingress       networkingv1.Ingress
+		expectedExtra *extra
+		expectedError field.ErrorList
+	}{
+		{
+			name: "actually get weights",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/canary":              "true",
+						"nginx.ingress.kubernetes.io/canary-weight":       "50",
+						"nginx.ingress.kubernetes.io/canary-weight-total": "100",
+					},
+				},
+			},
+			expectedExtra: &extra{
+				canary: &canary{
+					enable:      true,
+					weight:      50,
+					weightTotal: 100,
+				},
+			},
+		},
+		{
+			name: "assigns default weight total",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/canary":        "true",
+						"nginx.ingress.kubernetes.io/canary-weight": "50",
+					},
+				},
+			},
+			expectedExtra: &extra{
+				canary: &canary{
+					enable:      true,
+					weight:      50,
+					weightTotal: 100,
+				},
+			},
+		},
+		{
+			name: "errors on non integer weight",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/canary":        "true",
+						"nginx.ingress.kubernetes.io/canary-weight": "50.5",
+					},
+				},
+			},
+			expectedExtra: &extra{},
+			expectedError: field.ErrorList{field.TypeInvalid(field.NewPath(""), "", "")},
+		},
+		{
+			name: "errors on non integer weight total",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/canary":              "true",
+						"nginx.ingress.kubernetes.io/canary-weight-total": "50.5",
+					},
+				},
+			},
+			expectedExtra: &extra{},
+			expectedError: field.ErrorList{field.TypeInvalid(field.NewPath(""), "", "")},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+
+			actualExtra, errs := getExtra(tc.ingress)
+			if len(errs) != len(tc.expectedError) {
+				t.Fatalf("expected %d errors, got %d", len(tc.expectedError), len(errs))
+			}
+
+			if len(tc.expectedError) > 0 {
+				return
+			}
+
+			actualCanary := actualExtra.canary
+			expectedCanary := tc.expectedExtra.canary
+
+			if diff := cmp.Diff(*actualCanary, *expectedCanary, cmp.AllowUnexported(canary{})); diff != "" {
+				t.Fatalf("getExtra() mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
 func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 	testCases := []struct {
 		name                string
@@ -480,7 +574,7 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 			var irg ingressRuleGroup
 			actualBackendRefs, errs := irg.calculateBackendRefWeight(tc.paths)
 			if len(errs) != len(tc.expectedErrors) {
-				t.Fatalf("expected %d errors, got %d", len(tc.expectedErrors), len(actualBackendRefs))
+				t.Fatalf("expected %d errors, got %d", len(tc.expectedErrors), len(errs))
 			}
 
 			if len(actualBackendRefs) != len(tc.expectedBackendRefs) {
