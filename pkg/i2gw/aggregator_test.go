@@ -24,6 +24,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
@@ -333,6 +334,10 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 	}
 }
 
+func int32Ptr(n int32) *int32 {
+	return &n
+}
+
 func stringPtr(s string) *string {
 	return &s
 }
@@ -356,4 +361,137 @@ func portNumberPtr(p int) *gatewayv1beta1.PortNumber {
 func gatewayHostnamePtr(s string) *gatewayv1beta1.Hostname {
 	h := gatewayv1beta1.Hostname(s)
 	return &h
+}
+
+func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
+	testCases := []struct {
+		name                string
+		paths               []ingressPath
+		expectedBackendRefs []gatewayv1beta1.HTTPBackendRef
+		expectedErrors      field.ErrorList
+	}{
+		{
+			name: "respect weight boundaries",
+			paths: []ingressPath{
+				{
+					path: networkingv1.HTTPIngressPath{
+						Backend: networkingv1.IngressBackend{
+							Resource: &corev1.TypedLocalObjectReference{
+								Name:     "canary",
+								Kind:     "StorageBucket",
+								APIGroup: stringPtr("vendor.example.com"),
+							},
+						},
+					},
+					extra: &extra{canary: &canary{
+						weight: 101,
+					}},
+				},
+				{
+					path: networkingv1.HTTPIngressPath{
+						Backend: networkingv1.IngressBackend{
+							Resource: &corev1.TypedLocalObjectReference{
+								Name:     "prod",
+								Kind:     "StorageBucket",
+								APIGroup: stringPtr("vendor.example.com"),
+							},
+						},
+					},
+				},
+			},
+			expectedBackendRefs: []gatewayv1beta1.HTTPBackendRef{
+				{BackendRef: gatewayv1beta1.BackendRef{Weight: int32Ptr(100)}},
+				{BackendRef: gatewayv1beta1.BackendRef{Weight: int32Ptr(0)}},
+			},
+		},
+		{
+			name: "default total weight",
+			paths: []ingressPath{
+				{
+					path: networkingv1.HTTPIngressPath{
+						Backend: networkingv1.IngressBackend{
+							Resource: &corev1.TypedLocalObjectReference{
+								Name:     "canary",
+								Kind:     "StorageBucket",
+								APIGroup: stringPtr("vendor.example.com"),
+							},
+						},
+					},
+					extra: &extra{canary: &canary{
+						weight: 30,
+					}},
+				},
+				{
+					path: networkingv1.HTTPIngressPath{
+						Backend: networkingv1.IngressBackend{
+							Resource: &corev1.TypedLocalObjectReference{
+								Name:     "prod",
+								Kind:     "StorageBucket",
+								APIGroup: stringPtr("vendor.example.com"),
+							},
+						},
+					},
+				},
+			},
+			expectedBackendRefs: []gatewayv1beta1.HTTPBackendRef{
+				{BackendRef: gatewayv1beta1.BackendRef{Weight: int32Ptr(30)}},
+				{BackendRef: gatewayv1beta1.BackendRef{Weight: int32Ptr(70)}},
+			},
+		},
+		{
+			name: "weight total assigned",
+			paths: []ingressPath{
+				{
+					path: networkingv1.HTTPIngressPath{
+						Backend: networkingv1.IngressBackend{
+							Resource: &corev1.TypedLocalObjectReference{
+								Name:     "canary",
+								Kind:     "StorageBucket",
+								APIGroup: stringPtr("vendor.example.com"),
+							},
+						},
+					},
+					extra: &extra{canary: &canary{
+						weight:      50,
+						weightTotal: 200,
+					}},
+				},
+				{
+					path: networkingv1.HTTPIngressPath{
+						Backend: networkingv1.IngressBackend{
+							Resource: &corev1.TypedLocalObjectReference{
+								Name:     "prod",
+								Kind:     "StorageBucket",
+								APIGroup: stringPtr("vendor.example.com"),
+							},
+						},
+					},
+				},
+			},
+			expectedBackendRefs: []gatewayv1beta1.HTTPBackendRef{
+				{BackendRef: gatewayv1beta1.BackendRef{Weight: int32Ptr(50)}},
+				{BackendRef: gatewayv1beta1.BackendRef{Weight: int32Ptr(150)}},
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+
+			var irg ingressRuleGroup
+			actualBackendRefs, errs := irg.calculateBackendRefWeight(tc.paths)
+			if len(errs) != len(tc.expectedErrors) {
+				t.Fatalf("expected %d errors, got %d", len(tc.expectedErrors), len(actualBackendRefs))
+			}
+
+			if len(actualBackendRefs) != len(tc.expectedBackendRefs) {
+				t.Fatalf("expected %d backend refs, got %d", len(tc.expectedBackendRefs), len(actualBackendRefs))
+			}
+			for i := 0; i < len(tc.expectedBackendRefs); i++ {
+				if *tc.expectedBackendRefs[i].Weight != *actualBackendRefs[i].Weight {
+					t.Fatalf("%s backendRef expected weight is %d, actual %d",
+						actualBackendRefs[i].Name, *tc.expectedBackendRefs[i].Weight, *actualBackendRefs[i].Weight)
+				}
+			}
+		})
+	}
 }
