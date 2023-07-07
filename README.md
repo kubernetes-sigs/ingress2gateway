@@ -32,6 +32,10 @@ git clone https://github.com/kubernetes-sigs/ingress2gateway.git && cd ingress2g
 make build
 ```
 
+## Download from GitHub Release
+
+Download the binary from <a  href ="https://github.com/kubernetes-sigs/ingress2gateway/releases">GitHub releases</a>. 
+
 ## Usage
 
 This project reads Ingress resources from a Kubernetes cluster based on your
