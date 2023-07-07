@@ -22,10 +22,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	kubeyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/cli-runtime/pkg/printers"
@@ -34,14 +36,8 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-func Run(printer printers.ResourcePrinter, namespace, inputFile string) {
-	conf, err := config.GetConfig()
-	if err != nil {
-		fmt.Println("failed to get client config")
-		os.Exit(1)
-	}
-
-	cl, err := client.New(conf, client.Options{})
+func Run(printer printers.ResourcePrinter, namespace string, inputFile string) {
+	cl, err := client.New(config.GetConfigOrDie(), client.Options{})
 	if err != nil {
 		fmt.Println("failed to create client")
 		os.Exit(1)
