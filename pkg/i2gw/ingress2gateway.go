@@ -19,15 +19,18 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/cli-runtime/pkg/printers"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-func Run(printer printers.ResourcePrinter) {
+func Run(printer printers.ResourcePrinter, inputFile string) {
 	cl, err := client.New(config.GetConfigOrDie(), client.Options{})
 	if err != nil {
 		fmt.Println("failed to create client")
@@ -36,10 +39,18 @@ func Run(printer printers.ResourcePrinter) {
 
 	ingressList := &networkingv1.IngressList{}
 
-	err = cl.List(context.Background(), ingressList)
-	if err != nil {
-		fmt.Printf("failed to list ingresses: %v\n", err)
-		os.Exit(1)
+	if inputFile != "" {
+		err := readFile(ingressList, inputFile)
+		if err != nil {
+			fmt.Printf("failed to open input file: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		err = cl.List(context.Background(), ingressList)
+		if err != nil {
+			fmt.Printf("failed to list ingresses: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	httpRoutes, gateways, errors := ingresses2GatewaysAndHTTPRoutes(ingressList.Items)
@@ -51,6 +62,29 @@ func Run(printer printers.ResourcePrinter) {
 	}
 
 	outputResult(printer, httpRoutes, gateways)
+}
+
+func readFile(l *networkingv1.IngressList, inputFile string) error {
+	stream, err := os.ReadFile(inputFile)
+	if err != nil {
+		return err
+	}
+
+	fileAsString := string(stream)
+	separatedFile := strings.Split(fileAsString, "---")
+
+	for _, section := range separatedFile {
+		trimmedSection := strings.TrimLeft(section, "\n")
+		sch := runtime.NewScheme()
+		_ = networkingv1.AddToScheme(sch)
+		decode := serializer.NewCodecFactory(sch).UniversalDeserializer().Decode
+		obj, groupKindVersion, _ := decode([]byte(trimmedSection), nil, nil)
+		if groupKindVersion != nil && groupKindVersion.Kind == "Ingress" {
+			i := obj.(*networkingv1.Ingress)
+			l.Items = append(l.Items, *i)
+		}
+	}
+	return nil
 }
 
 func ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, []error) {

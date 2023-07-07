@@ -29,6 +29,8 @@ var (
 	// outputFormat contains currently set output format. Value assigned via --output/-o flag.
 	// Defaults to YAML.
 	outputFormat = "yaml"
+	// The path to the input yaml config file. Value assigned via --input_file/-i flag
+	inputFile = ""
 )
 
 // printCmd represents the print command. It prints HTTPRoutes and Gateways
@@ -41,7 +43,7 @@ var printCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		i2gw.Run(resourcePrinter)
+		i2gw.Run(resourcePrinter, inputFile)
 		return nil
 	},
 }
@@ -65,6 +67,9 @@ func init() {
 
 	printCmd.Flags().StringVarP(&outputFormat, "output", "o", "yaml",
 		fmt.Sprintf(`Output format. One of: (%s)`, strings.Join(allowedFormats, ", ")))
+
+	printCmd.Flags().StringVarP(&inputFile, "input_file", "i", "",
+		fmt.Sprintf(`Path to your input yaml file. Default to ingress resources in your kubernetes cluster`))
 
 	rootCmd.AddCommand(printCmd)
 }
