@@ -16,14 +16,16 @@ limitations under the License.
 package i2gw
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
-	"strings"
 
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
+	kubeyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/cli-runtime/pkg/printers"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -64,25 +66,69 @@ func Run(printer printers.ResourcePrinter, inputFile string) {
 	outputResult(printer, httpRoutes, gateways)
 }
 
+func splitYAMLOrJSON(reader io.Reader) ([]*unstructured.Unstructured, error) {
+	d := kubeyaml.NewYAMLOrJSONDecoder(reader, 4096)
+	var objs []*unstructured.Unstructured
+	for {
+		u := &unstructured.Unstructured{}
+		if err := d.Decode(&u); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return objs, fmt.Errorf("failed to unmarshal manifest: %v", err)
+		}
+		if u == nil {
+			continue
+		}
+		objs = append(objs, u)
+	}
+	return objs, nil
+}
+
 func readFile(l *networkingv1.IngressList, inputFile string) error {
 	stream, err := os.ReadFile(inputFile)
 	if err != nil {
 		return err
 	}
 
-	fileAsString := string(stream)
-	separatedFile := strings.Split(fileAsString, "---")
+	reader := bytes.NewReader(stream)
+	objs, err := splitYAMLOrJSON(reader)
+	if err != nil {
+		return err
+	}
 
-	for _, section := range separatedFile {
-		trimmedSection := strings.TrimLeft(section, "\n")
-		sch := runtime.NewScheme()
-		_ = networkingv1.AddToScheme(sch)
-		decode := serializer.NewCodecFactory(sch).UniversalDeserializer().Decode
-		obj, groupKindVersion, _ := decode([]byte(trimmedSection), nil, nil)
-		if groupKindVersion != nil && groupKindVersion.Kind == "Ingress" {
-			i := obj.(*networkingv1.Ingress)
-			l.Items = append(l.Items, *i)
+	finalObjs := []*unstructured.Unstructured{}
+	for _, obj := range objs {
+		tmpObjs := []*unstructured.Unstructured{}
+		if obj.IsList() {
+			err = obj.EachListItem(func(object runtime.Object) error {
+				unstructuredObj, ok := object.(*unstructured.Unstructured)
+				if ok {
+					tmpObjs = append(tmpObjs, unstructuredObj)
+					return nil
+				}
+				return fmt.Errorf("Resource list item has unexpected type")
+			})
+			if err != nil {
+				return err
+			}
+		} else {
+			tmpObjs = append(tmpObjs, obj)
 		}
+		finalObjs = append(finalObjs, tmpObjs...)
+	}
+
+	for _, f := range finalObjs {
+		if !f.GroupVersionKind().Empty() && f.GroupVersionKind().Kind == "Ingress" {
+			var i networkingv1.Ingress
+			err = runtime.DefaultUnstructuredConverter.
+				FromUnstructured(f.UnstructuredContent(), &i)
+			if err != nil {
+				return err
+			}
+			l.Items = append(l.Items, i)
+		}
+
 	}
 	return nil
 }

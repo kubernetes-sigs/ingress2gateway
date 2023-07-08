@@ -25,7 +25,6 @@ import (
 )
 
 func Test_inputFile(t *testing.T) {
-	testFile := "tests/input-file.yaml"
 	iPrefix := networkingv1.PathTypePrefix
 	ingress1ClassName := "ingress1-example"
 	ingress2ClassName := "ingress2-example"
@@ -89,17 +88,34 @@ func Test_inputFile(t *testing.T) {
 		},
 	}
 
-	t.Run("Test input yaml file with multiple resources", func(t *testing.T) {
-		ingressList := &networkingv1.IngressList{}
-		err := readFile(ingressList, testFile)
-		if err != nil {
-			t.Errorf("Failed to open test yaml file: %v", err)
-		}
-		for i, got := range ingressList.Items {
-			want := expectIngresses[i]
-			if !apiequality.Semantic.DeepEqual(got, want) {
-				t.Errorf("Expected Ingress %d to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))
+	testCases := []struct {
+		name            string
+		filePath        string
+		expectIngresses []networkingv1.Ingress
+	}{{
+		name:            "Test yaml input file with multiple resources",
+		filePath:        "tests/input-file.yaml",
+		expectIngresses: expectIngresses,
+	}, {
+		name:            "Test json input file with multiple resources",
+		filePath:        "tests/input-file.json",
+		expectIngresses: expectIngresses,
+	},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ingressList := &networkingv1.IngressList{}
+			err := readFile(ingressList, tc.filePath)
+			if err != nil {
+				t.Errorf("Failed to open test file: %v", err)
 			}
-		}
-	})
+			for i, got := range ingressList.Items {
+				want := expectIngresses[i]
+				if !apiequality.Semantic.DeepEqual(got, want) {
+					t.Errorf("Expected Ingress %d to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))
+				}
+			}
+		})
+	}
 }
