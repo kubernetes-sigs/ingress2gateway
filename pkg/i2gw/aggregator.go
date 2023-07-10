@@ -310,7 +310,10 @@ func (rg *ingressRuleGroup) calculateBackendRefWeight(paths []ingressPath) ([]ga
 	var backendRefs []gatewayv1beta1.HTTPBackendRef
 
 	var numWeightedBackends, totalWeightSet int32
+
+	// This is the default value for nginx annotation nginx.ingress.kubernetes.io/canary-weight-total
 	var weightTotal = 100
+
 	for i, path := range paths {
 		backendRef, err := toBackendRef(path.path.Backend, field.NewPath("paths", "backends").Index(i))
 		if err != nil {
