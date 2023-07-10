@@ -23,12 +23,22 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 var (
 	// outputFormat contains currently set output format. Value assigned via --output/-o flag.
 	// Defaults to YAML.
 	outputFormat = "yaml"
+
+	// The namespace used to query Gateway API objects. Value assigned via
+	// --namespace/-n flag.
+	// On absence, the current user active namespace is used.
+	namespace string
+
+	// allNamespaces indicates whether all namespaces should be used. Value assigned via
+	// --all-namespaces/-A flag.
+	allNamespaces bool
 )
 
 // printCmd represents the print command. It prints HTTPRoutes and Gateways
@@ -41,7 +51,11 @@ var printCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		i2gw.Run(resourcePrinter)
+		namespaceFilter, err := getNamespaceFilter(namespace, allNamespaces)
+		if err != nil {
+			return err
+		}
+		i2gw.Run(resourcePrinter, namespaceFilter)
 		return nil
 	},
 }
@@ -59,12 +73,48 @@ func getResourcePrinter(outputFormat string) (printers.ResourcePrinter, error) {
 	}
 }
 
+// getNamespaceFilter returns a namespace filter, taking into consideration whether a specific
+// namespace is requested, or all of them are.
+func getNamespaceFilter(requestedNamespace string, useAllNamespaces bool) (string, error) {
+
+	// When we should use all namespaces, return an empty string.
+	// This is the first condition since it should override the requestedNamespace,
+	// if specified.
+	if useAllNamespaces {
+		return "", nil
+	}
+
+	if requestedNamespace == "" {
+		return getNamespaceInCurrentContext()
+	}
+	return requestedNamespace, nil
+}
+
+// getNamespaceInCurrentContext returns the namespace in the current active context of the user.
+func getNamespaceInCurrentContext() (string, error) {
+	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+
+	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, &clientcmd.ConfigOverrides{})
+	currentNamespace, _, err := kubeConfig.Namespace()
+
+	return currentNamespace, err
+}
+
 func init() {
 	var printFlags genericclioptions.JSONYamlPrintFlags
 	allowedFormats := printFlags.AllowedFormats()
 
 	printCmd.Flags().StringVarP(&outputFormat, "output", "o", "yaml",
 		fmt.Sprintf(`Output format. One of: (%s)`, strings.Join(allowedFormats, ", ")))
+
+	printCmd.Flags().StringVarP(&namespace, "namespace", "n", "",
+		fmt.Sprintf(`If present, the namespace scope for this CLI request`))
+
+	printCmd.Flags().BoolVarP(&allNamespaces, "all-namespaces", "A", false,
+		fmt.Sprintf(`If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even
+if specified with --namespace.`))
+
+	printCmd.MarkFlagsMutuallyExclusive("namespace", "all-namespaces")
 
 	rootCmd.AddCommand(printCmd)
 }

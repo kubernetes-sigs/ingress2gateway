@@ -27,12 +27,19 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-func Run(printer printers.ResourcePrinter) {
-	cl, err := client.New(config.GetConfigOrDie(), client.Options{})
+func Run(printer printers.ResourcePrinter, namespace string) {
+	conf, err := config.GetConfig()
+	if err != nil {
+		fmt.Println("failed to get client config")
+		os.Exit(1)
+	}
+
+	cl, err := client.New(conf, client.Options{})
 	if err != nil {
 		fmt.Println("failed to create client")
 		os.Exit(1)
 	}
+	cl = client.NewNamespacedClient(cl, namespace)
 
 	ingressList := &networkingv1.IngressList{}
 
@@ -40,6 +47,16 @@ func Run(printer printers.ResourcePrinter) {
 	if err != nil {
 		fmt.Printf("failed to list ingresses: %v\n", err)
 		os.Exit(1)
+	}
+
+	if len(ingressList.Items) == 0 {
+		msg := "No resources found"
+		if namespace != "" {
+			fmt.Printf("%s in %s namespace\n", msg, namespace)
+		} else {
+			fmt.Println(msg)
+		}
+		return
 	}
 
 	httpRoutes, gateways, errors := ingresses2GatewaysAndHTTPRoutes(ingressList.Items)
