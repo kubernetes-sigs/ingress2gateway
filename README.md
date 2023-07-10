@@ -16,6 +16,22 @@ API resources. Some widely used annotations and/or CRDs _may_ be supported, as
 long as they can be translated to Gateway API directly. This project is not
 intended to copy annotations from Ingress to Gateway API.
 
+## Build from Source
+
+1. Ensure that your system meets the following requirements:
+- Install Git: Make sure Git is installed on your system to clone the project repository.
+- Install Go: Make sure the go language is installed on your system. You can download it from the official website (https://golang.org/dl/) and follow the installation instructions.
+
+2. Clone the project repository
+```shell
+git clone https://github.com/kubernetes-sigs/ingress2gateway.git && cd ingress2gateway
+```
+
+3. Build the project
+```shell
+make build
+```
+
 ## Usage
 
 This project reads Ingress resources from a Kubernetes cluster based on your
