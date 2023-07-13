@@ -42,9 +42,6 @@ var (
 	// allNamespaces indicates whether all namespaces should be used. Value assigned via
 	// --all-namespaces/-A flag.
 	allNamespaces bool
-
-	// The path to the input yaml config file. Value assigned via --input_file/-i flag
-	inputFile = ""
 )
 
 // printCmd represents the print command. It prints HTTPRoutes and Gateways
@@ -124,9 +121,6 @@ func init() {
 if specified with --namespace.`))
 
 	printCmd.MarkFlagsMutuallyExclusive("namespace", "all-namespaces")
-
-	printCmd.Flags().StringVarP(&inputFile, "input_file", "i", "",
-		fmt.Sprintf(`Path to your input yaml file. Default to ingress resources in your kubernetes cluster`))
 
 	rootCmd.AddCommand(printCmd)
 }
