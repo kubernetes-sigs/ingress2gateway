@@ -83,6 +83,9 @@ func Run(printer printers.ResourcePrinter, namespace, inputFile string) {
 	outputResult(printer, httpRoutes, gateways)
 }
 
+// extractObjectsFromReader extracts all objects from a reader,
+// which is created from YAML or JSON input files.
+// It retrieves all objects, including nested ones if they are contained within a list.
 func extractObjectsFromReader(reader io.Reader) ([]*unstructured.Unstructured, error) {
 	d := kubeyaml.NewYAMLOrJSONDecoder(reader, 4096)
 	var objs []*unstructured.Unstructured

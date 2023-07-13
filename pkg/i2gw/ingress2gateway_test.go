@@ -94,11 +94,11 @@ func Test_inputFile(t *testing.T) {
 		expectIngresses []networkingv1.Ingress
 	}{{
 		name:            "Test yaml input file with multiple resources",
-		filePath:        "tests/input-file.yaml",
+		filePath:        "testdata/input-file.yaml",
 		expectIngresses: expectIngresses,
 	}, {
 		name:            "Test json input file with multiple resources",
-		filePath:        "tests/input-file.json",
+		filePath:        "testdata/input-file.json",
 		expectIngresses: expectIngresses,
 	},
 	}
