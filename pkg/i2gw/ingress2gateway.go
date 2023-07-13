@@ -18,6 +18,7 @@ package i2gw
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -49,7 +50,7 @@ func Run(printer printers.ResourcePrinter, namespace, inputFile string) {
 	ingressList := &networkingv1.IngressList{}
 
 	if inputFile != "" {
-		err := constructIngressesFromFile(ingressList, inputFile)
+		err = constructIngressesFromFile(ingressList, inputFile)
 		if err != nil {
 			fmt.Printf("failed to open input file: %v\n", err)
 			os.Exit(1)
@@ -92,10 +93,10 @@ func extractObjectsFromReader(reader io.Reader) ([]*unstructured.Unstructured, e
 	for {
 		u := &unstructured.Unstructured{}
 		if err := d.Decode(&u); err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
-			return objs, fmt.Errorf("failed to unmarshal manifest: %v", err)
+			return objs, fmt.Errorf("failed to unmarshal manifest: %w", err)
 		}
 		if u == nil {
 			continue
