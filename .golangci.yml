@@ -17,6 +17,7 @@ linters:
   - exportloopref
   disable:
   - scopelint
+  - musttag
   disable-all: false
   presets:
   - bugs
