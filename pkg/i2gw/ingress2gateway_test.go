@@ -106,7 +106,7 @@ func Test_inputFile(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ingressList := &networkingv1.IngressList{}
-			err := readFile(ingressList, tc.filePath)
+			err := constructIngressesFromFile(ingressList, tc.filePath)
 			if err != nil {
 				t.Errorf("Failed to open test file: %v", err)
 			}

@@ -104,7 +104,7 @@ func extractObjectsFromReader(reader io.Reader) ([]*unstructured.Unstructured, e
 	for _, obj := range objs {
 		tmpObjs := []*unstructured.Unstructured{}
 		if obj.IsList() {
-			err = obj.EachListItem(func(object runtime.Object) error {
+			err := obj.EachListItem(func(object runtime.Object) error {
 				unstructuredObj, ok := object.(*unstructured.Unstructured)
 				if ok {
 					tmpObjs = append(tmpObjs, unstructuredObj)
@@ -113,7 +113,7 @@ func extractObjectsFromReader(reader io.Reader) ([]*unstructured.Unstructured, e
 				return fmt.Errorf("Resource list item has unexpected type")
 			})
 			if err != nil {
-				return err
+				return nil, err
 			}
 		} else {
 			tmpObjs = append(tmpObjs, obj)
@@ -153,8 +153,6 @@ func constructIngressesFromFile(l *networkingv1.IngressList, inputFile string) e
 	}
 	return nil
 }
-
-func recursiveSplitYAMLOrJSON
 
 func ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, []error) {
 	aggregator := ingressAggregator{ruleGroups: map[ruleGroupKey]*ingressRuleGroup{}}
