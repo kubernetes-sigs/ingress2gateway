@@ -49,7 +49,7 @@ func Run(printer printers.ResourcePrinter, namespace, inputFile string) {
 	ingressList := &networkingv1.IngressList{}
 
 	if inputFile != "" {
-		err := readFile(ingressList, inputFile)
+		err := constructIngressesFromFile(ingressList, inputFile)
 		if err != nil {
 			fmt.Printf("failed to open input file: %v\n", err)
 			os.Exit(1)
@@ -83,7 +83,7 @@ func Run(printer printers.ResourcePrinter, namespace, inputFile string) {
 	outputResult(printer, httpRoutes, gateways)
 }
 
-func splitYAMLOrJSON(reader io.Reader) ([]*unstructured.Unstructured, error) {
+func extractObjectsFromReader(reader io.Reader) ([]*unstructured.Unstructured, error) {
 	d := kubeyaml.NewYAMLOrJSONDecoder(reader, 4096)
 	var objs []*unstructured.Unstructured
 	for {
@@ -98,20 +98,6 @@ func splitYAMLOrJSON(reader io.Reader) ([]*unstructured.Unstructured, error) {
 			continue
 		}
 		objs = append(objs, u)
-	}
-	return objs, nil
-}
-
-func readFile(l *networkingv1.IngressList, inputFile string) error {
-	stream, err := os.ReadFile(inputFile)
-	if err != nil {
-		return err
-	}
-
-	reader := bytes.NewReader(stream)
-	objs, err := splitYAMLOrJSON(reader)
-	if err != nil {
-		return err
 	}
 
 	finalObjs := []*unstructured.Unstructured{}
@@ -135,7 +121,25 @@ func readFile(l *networkingv1.IngressList, inputFile string) error {
 		finalObjs = append(finalObjs, tmpObjs...)
 	}
 
-	for _, f := range finalObjs {
+	return finalObjs, nil
+}
+
+// constructIngressesFromFile reads the inputFile in either json/yaml formats,
+// then deserialize the file into Ingresses resources.
+// All ingresses will be pushed into the supplied IngressList for return.
+func constructIngressesFromFile(l *networkingv1.IngressList, inputFile string) error {
+	stream, err := os.ReadFile(inputFile)
+	if err != nil {
+		return err
+	}
+
+	reader := bytes.NewReader(stream)
+	objs, err := extractObjectsFromReader(reader)
+	if err != nil {
+		return err
+	}
+
+	for _, f := range objs {
 		if !f.GroupVersionKind().Empty() && f.GroupVersionKind().Kind == "Ingress" {
 			var i networkingv1.Ingress
 			err = runtime.DefaultUnstructuredConverter.
@@ -149,6 +153,8 @@ func readFile(l *networkingv1.IngressList, inputFile string) error {
 	}
 	return nil
 }
+
+func recursiveSplitYAMLOrJSON
 
 func ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, []error) {
 	aggregator := ingressAggregator{ruleGroups: map[ruleGroupKey]*ingressRuleGroup{}}

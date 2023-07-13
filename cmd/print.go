@@ -31,8 +31,8 @@ var (
 	// Defaults to YAML.
 	outputFormat = "yaml"
 
-	// The path to the input yaml config file. Value assigned via --input_file/-i flag
-	inputFile = ""
+	// The path to the input yaml config file. Value assigned via --input_file flag
+	inputFile string
 
 	// The namespace used to query Gateway API objects. Value assigned via
 	// --namespace/-n flag.
@@ -110,8 +110,8 @@ func init() {
 	printCmd.Flags().StringVarP(&outputFormat, "output", "o", "yaml",
 		fmt.Sprintf(`Output format. One of: (%s)`, strings.Join(allowedFormats, ", ")))
 
-	printCmd.Flags().StringVarP(&inputFile, "input_file", "i", "",
-		fmt.Sprintf(`Path to your input yaml file. Default to ingress resources in your kubernetes cluster`))
+	printCmd.Flags().StringVar(&inputFile, "input_file", "",
+		fmt.Sprintf(`Path to the manifest file. When set, the tool will read ingresses from the file instead of reading from the cluster. Supported files are yaml and json`))
 
 	printCmd.Flags().StringVarP(&namespace, "namespace", "n", "",
 		fmt.Sprintf(`If present, the namespace scope for this CLI request`))
