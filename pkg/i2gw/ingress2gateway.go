@@ -21,6 +21,7 @@ import (
 	"os"
 
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/cli-runtime/pkg/printers"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -62,19 +63,24 @@ func Run(printer printers.ResourcePrinter, namespace string) {
 	httpRoutes, gateways, errors := ingresses2GatewaysAndHTTPRoutes(ingressList.Items)
 	if len(errors) > 0 {
 		fmt.Printf("# Encountered %d errors\n", len(errors))
-		for _, err := range errors {
-			fmt.Printf("# %s", err)
+		for _, err = range errors {
+			fmt.Printf("# %s\n", err)
 		}
+		return
 	}
 
 	outputResult(printer, httpRoutes, gateways)
 }
 
-func ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, []error) {
+func ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, field.ErrorList) {
 	aggregator := ingressAggregator{ruleGroups: map[ruleGroupKey]*ingressRuleGroup{}}
 
+	var errs field.ErrorList
 	for _, ingress := range ingresses {
-		aggregator.addIngress(ingress)
+		errs = append(errs, aggregator.addIngress(ingress)...)
+	}
+	if len(errs) > 0 {
+		return nil, nil, errs
 	}
 
 	return aggregator.toHTTPRoutesAndGateways()
