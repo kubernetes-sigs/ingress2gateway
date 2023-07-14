@@ -16,19 +16,25 @@ limitations under the License.
 package i2gw
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	kubeyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/cli-runtime/pkg/printers"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-func Run(printer printers.ResourcePrinter, namespace string) {
+func Run(printer printers.ResourcePrinter, namespace string, inputFile string) {
 	conf, err := config.GetConfig()
 	if err != nil {
 		fmt.Println("failed to get client config")
@@ -44,10 +50,18 @@ func Run(printer printers.ResourcePrinter, namespace string) {
 
 	ingressList := &networkingv1.IngressList{}
 
-	err = cl.List(context.Background(), ingressList)
-	if err != nil {
-		fmt.Printf("failed to list ingresses: %v\n", err)
-		os.Exit(1)
+	if inputFile != "" {
+		err = constructIngressesFromFile(ingressList, inputFile)
+		if err != nil {
+			fmt.Printf("failed to open input file: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		err = cl.List(context.Background(), ingressList)
+		if err != nil {
+			fmt.Printf("failed to list ingresses: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	if len(ingressList.Items) == 0 {
@@ -100,4 +114,75 @@ func outputResult(printer printers.ResourcePrinter, httpRoutes []gatewayv1beta1.
 			fmt.Printf("# Error printing %s HTTPRoute: %v\n", httpRoutes[i].Name, err)
 		}
 	}
+}
+
+func extractObjectsFromReader(reader io.Reader) ([]*unstructured.Unstructured, error) {
+	d := kubeyaml.NewYAMLOrJSONDecoder(reader, 4096)
+	var objs []*unstructured.Unstructured
+	for {
+		u := &unstructured.Unstructured{}
+		if err := d.Decode(&u); err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return objs, fmt.Errorf("failed to unmarshal manifest: %w", err)
+		}
+		if u == nil {
+			continue
+		}
+		objs = append(objs, u)
+	}
+
+	finalObjs := []*unstructured.Unstructured{}
+	for _, obj := range objs {
+		tmpObjs := []*unstructured.Unstructured{}
+		if obj.IsList() {
+			err := obj.EachListItem(func(object runtime.Object) error {
+				unstructuredObj, ok := object.(*unstructured.Unstructured)
+				if ok {
+					tmpObjs = append(tmpObjs, unstructuredObj)
+					return nil
+				}
+				return fmt.Errorf("Resource list item has unexpected type")
+			})
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			tmpObjs = append(tmpObjs, obj)
+		}
+		finalObjs = append(finalObjs, tmpObjs...)
+	}
+
+	return finalObjs, nil
+}
+
+// constructIngressesFromFile reads the inputFile in either json/yaml formats,
+// then deserialize the file into Ingresses resources.
+// All ingresses will be pushed into the supplied IngressList for return.
+func constructIngressesFromFile(l *networkingv1.IngressList, inputFile string) error {
+	stream, err := os.ReadFile(inputFile)
+	if err != nil {
+		return err
+	}
+
+	reader := bytes.NewReader(stream)
+	objs, err := extractObjectsFromReader(reader)
+	if err != nil {
+		return err
+	}
+
+	for _, f := range objs {
+		if !f.GroupVersionKind().Empty() && f.GroupVersionKind().Kind == "Ingress" {
+			var i networkingv1.Ingress
+			err = runtime.DefaultUnstructuredConverter.
+				FromUnstructured(f.UnstructuredContent(), &i)
+			if err != nil {
+				return err
+			}
+			l.Items = append(l.Items, i)
+		}
+
+	}
+	return nil
 }
