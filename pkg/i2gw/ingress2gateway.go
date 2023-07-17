@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -116,6 +116,9 @@ func outputResult(printer printers.ResourcePrinter, httpRoutes []gatewayv1beta1.
 	}
 }
 
+// extractObjectsFromReader extracts all objects from a reader,
+// which is created from YAML or JSON input files.
+// It retrieves all objects, including nested ones if they are contained within a list.
 func extractObjectsFromReader(reader io.Reader) ([]*unstructured.Unstructured, error) {
 	d := kubeyaml.NewYAMLOrJSONDecoder(reader, 4096)
 	var objs []*unstructured.Unstructured
