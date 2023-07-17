@@ -34,7 +34,7 @@ kind: Ingress
 metadata:
   name: ingress1
 spec:
-  ingressClassName: ingress1-example
+  ingressClassName: ingress1-with-test1-backend-on-443
   rules:
   - http:
       paths:
@@ -51,7 +51,7 @@ kind: Ingress
 metadata:
   name: ingress2
 spec:
-  ingressClassName: ingress2-example
+  ingressClassName: ingress2-with-test2-backend-on-80
   rules:
   - http:
       paths:

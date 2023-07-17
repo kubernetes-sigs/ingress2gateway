@@ -24,12 +24,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func Test_inputFile(t *testing.T) {
+func Test_constructIngressesFromFile(t *testing.T) {
 	iPrefix := networkingv1.PathTypePrefix
-	ingress1ClassName := "ingress1-example"
-	ingress2ClassName := "ingress2-example"
+	ingress1ClassName := "ingress1-with-test1-backend-on-443"
+	ingress2ClassName := "ingress2-with-test2-backend-on-80"
 
-	expectIngresses := []networkingv1.Ingress{
+	wantIngressList := []networkingv1.Ingress{
 		{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "Ingress",
@@ -91,31 +91,35 @@ func Test_inputFile(t *testing.T) {
 	testCases := []struct {
 		name            string
 		filePath        string
-		expectIngresses []networkingv1.Ingress
+		wantIngressList []networkingv1.Ingress
 	}{{
 		name:            "Test yaml input file with multiple resources",
 		filePath:        "testdata/input-file.yaml",
-		expectIngresses: expectIngresses,
+		wantIngressList: wantIngressList,
 	}, {
 		name:            "Test json input file with multiple resources",
 		filePath:        "testdata/input-file.json",
-		expectIngresses: expectIngresses,
+		wantIngressList: wantIngressList,
 	},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ingressList := &networkingv1.IngressList{}
-			err := constructIngressesFromFile(ingressList, tc.filePath)
+			gotIngressList := &networkingv1.IngressList{}
+			err := constructIngressesFromFile(gotIngressList, tc.filePath)
 			if err != nil {
 				t.Errorf("Failed to open test file: %v", err)
 			}
-			for i, got := range ingressList.Items {
-				want := expectIngresses[i]
-				if !apiequality.Semantic.DeepEqual(got, want) {
-					t.Errorf("Expected Ingress %d to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))
-				}
-			}
+			checkIngressEquality(gotIngressList, tc.wantIngressList, t)
 		})
+	}
+}
+
+func checkIngressEquality(gotIngressList *networkingv1.IngressList, wantIngressList []networkingv1.Ingress, t *testing.T) {
+	for i, got := range gotIngressList.Items {
+		want := wantIngressList[i]
+		if !apiequality.Semantic.DeepEqual(got, want) {
+			t.Errorf("Expected Ingress %d to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))
+		}
 	}
 }
