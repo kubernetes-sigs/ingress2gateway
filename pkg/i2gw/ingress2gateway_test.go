@@ -26,8 +26,8 @@ import (
 
 func Test_constructIngressesFromFile(t *testing.T) {
 	iPrefix := networkingv1.PathTypePrefix
-	ingress1ClassName := "ingress1-with-test1-backend-on-443"
-	ingress2ClassName := "ingress2-with-test2-backend-on-80"
+	ingress1ClassName := "ingressClass1"
+	ingress2ClassName := "ingressClass2"
 
 	wantIngressList := []networkingv1.Ingress{
 		{
@@ -110,12 +110,12 @@ func Test_constructIngressesFromFile(t *testing.T) {
 			if err != nil {
 				t.Errorf("Failed to open test file: %v", err)
 			}
-			checkIngressEquality(gotIngressList, tc.wantIngressList, t)
+			compareIngressLists(t, gotIngressList, tc.wantIngressList)
 		})
 	}
 }
 
-func checkIngressEquality(gotIngressList *networkingv1.IngressList, wantIngressList []networkingv1.Ingress, t *testing.T) {
+func compareIngressLists(t *testing.T, gotIngressList *networkingv1.IngressList, wantIngressList []networkingv1.Ingress) {
 	for i, got := range gotIngressList.Items {
 		want := wantIngressList[i]
 		if !apiequality.Semantic.DeepEqual(got, want) {
