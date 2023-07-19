@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package cmd
 
 import (
@@ -30,6 +31,9 @@ var (
 	// outputFormat contains currently set output format. Value assigned via --output/-o flag.
 	// Defaults to YAML.
 	outputFormat = "yaml"
+
+	// The path to the input yaml config file. Value assigned via --input_file flag
+	inputFile string
 
 	// The namespace used to query Gateway API objects. Value assigned via
 	// --namespace/-n flag.
@@ -55,7 +59,7 @@ var printCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		i2gw.Run(resourcePrinter, namespaceFilter)
+		i2gw.Run(resourcePrinter, namespaceFilter, inputFile)
 		return nil
 	},
 }
@@ -106,6 +110,9 @@ func init() {
 
 	printCmd.Flags().StringVarP(&outputFormat, "output", "o", "yaml",
 		fmt.Sprintf(`Output format. One of: (%s)`, strings.Join(allowedFormats, ", ")))
+
+	printCmd.Flags().StringVar(&inputFile, "input_file", "",
+		fmt.Sprintf(`Path to the manifest file. When set, the tool will read ingresses from the file instead of reading from the cluster. Supported files are yaml and json`))
 
 	printCmd.Flags().StringVarP(&namespace, "namespace", "n", "",
 		fmt.Sprintf(`If present, the namespace scope for this CLI request`))
