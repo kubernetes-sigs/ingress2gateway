@@ -55,7 +55,11 @@ var printCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		namespaceFilter, err := getNamespaceFilter(namespace, allNamespaces)
+		inputFileMode := false
+		if inputFile != "" {
+			inputFileMode = true
+		}
+		namespaceFilter, err := getNamespaceFilter(namespace, allNamespaces, inputFileMode)
 		if err != nil {
 			return err
 		}
@@ -79,7 +83,7 @@ func getResourcePrinter(outputFormat string) (printers.ResourcePrinter, error) {
 
 // getNamespaceFilter returns a namespace filter, taking into consideration whether a specific
 // namespace is requested, or all of them are.
-func getNamespaceFilter(requestedNamespace string, useAllNamespaces bool) (string, error) {
+func getNamespaceFilter(requestedNamespace string, useAllNamespaces bool, inputFileMode bool) (string, error) {
 
 	// When we should use all namespaces, return an empty string.
 	// This is the first condition since it should override the requestedNamespace,
@@ -89,17 +93,22 @@ func getNamespaceFilter(requestedNamespace string, useAllNamespaces bool) (strin
 	}
 
 	if requestedNamespace == "" {
-		return getNamespaceInCurrentContext()
+		getNamespaceInCurrentContext(inputFileMode)
 	}
 	return requestedNamespace, nil
 }
 
 // getNamespaceInCurrentContext returns the namespace in the current active context of the user.
-func getNamespaceInCurrentContext() (string, error) {
+func getNamespaceInCurrentContext(inputFileMode bool) (string, error) {
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 
 	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, &clientcmd.ConfigOverrides{})
 	currentNamespace, _, err := kubeConfig.Namespace()
+
+	// process all namespaces if context does not exist while reading from file
+	if err != nil && inputFileMode {
+		return "", nil
+	}
 
 	return currentNamespace, err
 }
