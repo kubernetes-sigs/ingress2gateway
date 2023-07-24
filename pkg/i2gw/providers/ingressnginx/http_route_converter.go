@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package i2gw
+package ingressnginx
 
 import (
 	"fmt"
@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,6 +31,32 @@ import (
 	"k8s.io/utils/pointer"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
+
+// httpRouteConverter implements the ConvertHTTPRoutes function of i2gw.ResourceConverter interface.
+type httpRouteConverter struct {
+	conf *i2gw.ProviderConf
+}
+
+// newHTTPRouteConverter returns an httpRouteConverter instance.
+func newHTTPRouteConverter(conf *i2gw.ProviderConf) *httpRouteConverter {
+	return &httpRouteConverter{
+		conf: conf,
+	}
+}
+
+func (c *httpRouteConverter) ConvertHTTPRoutes(ingresses []networkingv1.Ingress, crds interface{}) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, field.ErrorList) {
+	aggregator := ingressAggregator{ruleGroups: map[ruleGroupKey]*ingressRuleGroup{}}
+
+	var errs field.ErrorList
+	for _, ingress := range ingresses {
+		errs = append(errs, aggregator.addIngress(ingress)...)
+	}
+	if len(errs) > 0 {
+		return nil, nil, errs
+	}
+
+	return aggregator.toHTTPRoutesAndGateways()
+}
 
 var (
 	gatewayGVK = schema.GroupVersionKind{
