@@ -55,16 +55,16 @@ var printCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		inputFileMode := false
-		if inputFile != "" {
-			inputFileMode = true
+		namespaceFilter, err := getNamespaceFilter(namespace, allNamespaces)
+		if err == nil {
+			i2gw.Run(resourcePrinter, namespaceFilter, inputFile)
+			return nil
+		} else if clientcmd.IsConfigurationInvalid(err) && inputFile != "" {
+			// process all namespaces if context does not exist while reading from file
+			i2gw.Run(resourcePrinter, "", inputFile)
+			return nil
 		}
-		namespaceFilter, err := getNamespaceFilter(namespace, allNamespaces, inputFileMode)
-		if err != nil {
-			return err
-		}
-		i2gw.Run(resourcePrinter, namespaceFilter, inputFile)
-		return nil
+		return err
 	},
 }
 
@@ -83,7 +83,7 @@ func getResourcePrinter(outputFormat string) (printers.ResourcePrinter, error) {
 
 // getNamespaceFilter returns a namespace filter, taking into consideration whether a specific
 // namespace is requested, or all of them are.
-func getNamespaceFilter(requestedNamespace string, useAllNamespaces bool, inputFileMode bool) (string, error) {
+func getNamespaceFilter(requestedNamespace string, useAllNamespaces bool) (string, error) {
 
 	// When we should use all namespaces, return an empty string.
 	// This is the first condition since it should override the requestedNamespace,
@@ -93,22 +93,17 @@ func getNamespaceFilter(requestedNamespace string, useAllNamespaces bool, inputF
 	}
 
 	if requestedNamespace == "" {
-		getNamespaceInCurrentContext(inputFileMode)
+		return getNamespaceInCurrentContext()
 	}
 	return requestedNamespace, nil
 }
 
 // getNamespaceInCurrentContext returns the namespace in the current active context of the user.
-func getNamespaceInCurrentContext(inputFileMode bool) (string, error) {
+func getNamespaceInCurrentContext() (string, error) {
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 
 	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, &clientcmd.ConfigOverrides{})
 	currentNamespace, _, err := kubeConfig.Namespace()
-
-	// process all namespaces if context does not exist while reading from file
-	if err != nil && inputFileMode {
-		return "", nil
-	}
 
 	return currentNamespace, err
 }
@@ -121,14 +116,14 @@ func init() {
 		fmt.Sprintf(`Output format. One of: (%s)`, strings.Join(allowedFormats, ", ")))
 
 	printCmd.Flags().StringVar(&inputFile, "input_file", "",
-		fmt.Sprintf(`Path to the manifest file. When set, the tool will read ingresses from the file instead of reading from the cluster. Supported files are yaml and json`))
+		`Path to the manifest file. When set, the tool will read ingresses from the file instead of reading from the cluster. Supported files are yaml and json`)
 
 	printCmd.Flags().StringVarP(&namespace, "namespace", "n", "",
-		fmt.Sprintf(`If present, the namespace scope for this CLI request`))
+		`If present, the namespace scope for this CLI request`)
 
 	printCmd.Flags().BoolVarP(&allNamespaces, "all-namespaces", "A", false,
-		fmt.Sprintf(`If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even
-if specified with --namespace.`))
+		`If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even
+if specified with --namespace.`)
 
 	printCmd.MarkFlagsMutuallyExclusive("namespace", "all-namespaces")
 
