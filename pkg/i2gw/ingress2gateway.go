@@ -31,7 +31,6 @@ import (
 	kubeyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/cli-runtime/pkg/printers"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
@@ -116,83 +115,6 @@ type ResourceConverter interface {
 	// ConvertHTTPRoutes converts the received ingresses and custom resources
 	// associated with the Provider into HTTPRoutes and Gateways.
 	ConvertHTTPRoutes(ingresses []networkingv1.Ingress, customResources interface{}) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, field.ErrorList)
-}
-
-func Run(printer printers.ResourcePrinter, namespace string, inputFile string) error {
-	conf, err := config.GetConfig()
-	if err != nil {
-		return fmt.Errorf("failed to get client config: %w", err)
-	}
-
-	cl, err := client.New(conf, client.Options{})
-	if err != nil {
-		return fmt.Errorf("failed to create client: %w", err)
-	}
-	cl = client.NewNamespacedClient(cl, namespace)
-
-	var ingresses networkingv1.IngressList
-	if inputFile != "" {
-		err = ConstructIngressesFromFile(&ingresses, inputFile, namespace)
-		if err != nil {
-			fmt.Printf("failed to open input file: %v\n", err)
-			os.Exit(1)
-		}
-	} else {
-		err = cl.List(context.Background(), &ingresses)
-		if err != nil {
-			fmt.Printf("failed to list ingresses: %v\n", err)
-			os.Exit(1)
-		}
-	}
-
-	if len(ingresses.Items) == 0 {
-		msg := "No resources found"
-		if namespace != "" {
-			fmt.Printf("%s in %s namespace\n", msg, namespace)
-		} else {
-			fmt.Println(msg)
-		}
-		return nil
-	}
-
-	var gateways []gatewayv1beta1.Gateway
-	var httpRoutes []gatewayv1beta1.HTTPRoute
-	var errs field.ErrorList
-
-	providerByName := constructProviders(&ProviderConf{})
-	if len(providerByName) == 0 {
-		return fmt.Errorf("no providers")
-	}
-
-	for name, provider := range providerByName {
-		var customResources interface{}
-
-		if err = provider.ReadResourcesFromCluster(context.Background(), &customResources); err != nil {
-			return fmt.Errorf("failed to read %s resources from the cluster: %w", name, err)
-		}
-
-		// TODO: Open a new issue - the ingress-nginx provider contains conversion logic which
-		// will be common to all the other providers. Extract it from there and create a common
-		// ingress conversion function.
-		convertedHTTPRoutes, convertedGateways, conversionErrs := provider.ConvertHTTPRoutes(ingresses.Items, customResources)
-		httpRoutes = append(httpRoutes, convertedHTTPRoutes...)
-		gateways = append(gateways, convertedGateways...)
-		errs = append(errs, conversionErrs...)
-	}
-
-	// TODO: Open a new issue - collate gateways (extract logic from toHTTPRoutesAndGateways).
-
-	if len(errs) > 0 {
-		fmt.Printf("# Encountered %d errors\n", len(errs))
-		for _, err = range errs {
-			fmt.Printf("# %s\n", err)
-		}
-		return nil
-	}
-
-	outputResult(printer, httpRoutes, gateways)
-
-	return nil
 }
 
 // constructProviders constructs a map of concrete Provider implementations
