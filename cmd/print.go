@@ -56,14 +56,15 @@ var printCmd = &cobra.Command{
 			return err
 		}
 		namespaceFilter, err := getNamespaceFilter(namespace, allNamespaces)
-		if err == nil {
-			i2gw.Run(resourcePrinter, namespaceFilter, inputFile)
-			return nil
-		} else if clientcmd.IsConfigurationInvalid(err) && inputFile != "" {
-			// process all namespaces if context does not exist while reading from file
-			i2gw.Run(resourcePrinter, "", inputFile)
-			return nil
+		if err != nil && inputFile == "" {
+			// When asked to read from the cluster, but getting the current namespace
+			// failed for whatever reason - do not process the request.
+			return err
 		}
+		// If err is nil we got the right filtered namespace.
+		// If the input file is specified, and we failed to get the namespace, use all namespaces.
+		i2gw.Run(resourcePrinter, namespaceFilter, inputFile)
+		return nil
 		return err
 	},
 }
