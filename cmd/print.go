@@ -65,7 +65,6 @@ var printCmd = &cobra.Command{
 		// If the input file is specified, and we failed to get the namespace, use all namespaces.
 		i2gw.Run(resourcePrinter, namespaceFilter, inputFile)
 		return nil
-		return err
 	},
 }
 
