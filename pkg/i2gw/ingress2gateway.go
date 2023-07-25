@@ -73,50 +73,6 @@ func Ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewa
 	return httpRoutes, gateways, nil
 }
 
-// ProviderConstructorByName is a map of ProviderConstructor functions by a
-// provider name. Different Provider implementations should add their construction
-// func at startup.
-var ProviderConstructorByName = map[ProviderName]ProviderConstructor{}
-
-// ProviderName is a string alias that stores the concrete Provider name.
-type ProviderName string
-
-// ProviderConstructor is a construction function that constructs concrete
-// implementations of the Provider interface.
-type ProviderConstructor func(conf *ProviderConf) Provider
-
-// ProviderConf contains all the configuration required for every concrete
-// Provider implementation.
-type ProviderConf struct{}
-
-// The Provider interface specifies the required functionality which needs to be
-// implemented by every concrete Ingress/Gateway-API provider, in order for it to
-// be used.
-type Provider interface {
-	CustomResourceReader
-	ResourceConverter
-}
-
-type CustomResourceReader interface {
-
-	// ReadResourcesFromCluster reads custom resources associated with
-	// the underlying Provider implementation from the kubernetes cluster.
-	ReadResourcesFromCluster(ctx context.Context, customResources interface{}) error
-
-	// ReadResourcesFromFiles reads custom resources associated with
-	// the underlying Provider implementation from the files.
-	ReadResourcesFromFiles(ctx context.Context, customResources interface{}, filename string) error
-}
-
-// The ResourceConverter interface specifies all the implemented Gateway API resource
-// conversion functions.
-type ResourceConverter interface {
-
-	// ConvertHTTPRoutes converts the received ingresses and custom resources
-	// associated with the Provider into HTTPRoutes and Gateways.
-	ConvertHTTPRoutes(ingresses []networkingv1.Ingress, customResources interface{}) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, field.ErrorList)
-}
-
 // constructProviders constructs a map of concrete Provider implementations
 // by their ProviderName.
 //
