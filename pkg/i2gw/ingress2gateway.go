@@ -36,28 +36,27 @@ import (
 )
 
 func Run(printer printers.ResourcePrinter, namespace string, inputFile string) {
-	conf, err := config.GetConfig()
-	if err != nil {
-		fmt.Println("failed to get client config")
-		os.Exit(1)
-	}
-
-	cl, err := client.New(conf, client.Options{})
-	if err != nil {
-		fmt.Println("failed to create client")
-		os.Exit(1)
-	}
-	cl = client.NewNamespacedClient(cl, namespace)
-
 	ingressList := &networkingv1.IngressList{}
-
 	if inputFile != "" {
-		err = constructIngressesFromFile(ingressList, inputFile)
+		err := constructIngressesFromFile(ingressList, inputFile, namespace)
 		if err != nil {
 			fmt.Printf("failed to open input file: %v\n", err)
 			os.Exit(1)
 		}
 	} else {
+		conf, err := config.GetConfig()
+		if err != nil {
+			fmt.Println("failed to get client config")
+			os.Exit(1)
+		}
+
+		cl, err := client.New(conf, client.Options{})
+		if err != nil {
+			fmt.Println("failed to create client")
+			os.Exit(1)
+		}
+		cl = client.NewNamespacedClient(cl, namespace)
+
 		err = cl.List(context.Background(), ingressList)
 		if err != nil {
 			fmt.Printf("failed to list ingresses: %v\n", err)
@@ -78,7 +77,7 @@ func Run(printer printers.ResourcePrinter, namespace string, inputFile string) {
 	httpRoutes, gateways, errors := ingresses2GatewaysAndHTTPRoutes(ingressList.Items)
 	if len(errors) > 0 {
 		fmt.Printf("# Encountered %d errors\n", len(errors))
-		for _, err = range errors {
+		for _, err := range errors {
 			fmt.Printf("# %s\n", err)
 		}
 		return
@@ -147,7 +146,7 @@ func extractObjectsFromReader(reader io.Reader) ([]*unstructured.Unstructured, e
 					tmpObjs = append(tmpObjs, unstructuredObj)
 					return nil
 				}
-				return fmt.Errorf("Resource list item has unexpected type")
+				return fmt.Errorf("resource list item has unexpected type")
 			})
 			if err != nil {
 				return nil, err
@@ -164,7 +163,7 @@ func extractObjectsFromReader(reader io.Reader) ([]*unstructured.Unstructured, e
 // constructIngressesFromFile reads the inputFile in either json/yaml formats,
 // then deserialize the file into Ingresses resources.
 // All ingresses will be pushed into the supplied IngressList for return.
-func constructIngressesFromFile(l *networkingv1.IngressList, inputFile string) error {
+func constructIngressesFromFile(l *networkingv1.IngressList, inputFile string, namespace string) error {
 	stream, err := os.ReadFile(inputFile)
 	if err != nil {
 		return err
@@ -177,6 +176,9 @@ func constructIngressesFromFile(l *networkingv1.IngressList, inputFile string) e
 	}
 
 	for _, f := range objs {
+		if namespace != "" && f.GetNamespace() != namespace {
+			continue
+		}
 		if !f.GroupVersionKind().Empty() && f.GroupVersionKind().Kind == "Ingress" {
 			var i networkingv1.Ingress
 			err = runtime.DefaultUnstructuredConverter.

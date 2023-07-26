@@ -56,9 +56,13 @@ var printCmd = &cobra.Command{
 			return err
 		}
 		namespaceFilter, err := getNamespaceFilter(namespace, allNamespaces)
-		if err != nil {
+		if err != nil && inputFile == "" {
+			// When asked to read from the cluster, but getting the current namespace
+			// failed for whatever reason - do not process the request.
 			return err
 		}
+		// If err is nil we got the right filtered namespace.
+		// If the input file is specified, and we failed to get the namespace, use all namespaces.
 		i2gw.Run(resourcePrinter, namespaceFilter, inputFile)
 		return nil
 	},
@@ -112,14 +116,14 @@ func init() {
 		fmt.Sprintf(`Output format. One of: (%s)`, strings.Join(allowedFormats, ", ")))
 
 	printCmd.Flags().StringVar(&inputFile, "input_file", "",
-		fmt.Sprintf(`Path to the manifest file. When set, the tool will read ingresses from the file instead of reading from the cluster. Supported files are yaml and json`))
+		`Path to the manifest file. When set, the tool will read ingresses from the file instead of reading from the cluster. Supported files are yaml and json`)
 
 	printCmd.Flags().StringVarP(&namespace, "namespace", "n", "",
-		fmt.Sprintf(`If present, the namespace scope for this CLI request`))
+		`If present, the namespace scope for this CLI request`)
 
 	printCmd.Flags().BoolVarP(&allNamespaces, "all-namespaces", "A", false,
-		fmt.Sprintf(`If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even
-if specified with --namespace.`))
+		`If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even
+if specified with --namespace.`)
 
 	printCmd.MarkFlagsMutuallyExclusive("namespace", "all-namespaces")
 
