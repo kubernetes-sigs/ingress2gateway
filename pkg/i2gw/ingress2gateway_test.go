@@ -141,7 +141,7 @@ func Test_constructIngressesFromFile(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			gotIngressList := &networkingv1.IngressList{}
-			err := constructIngressesFromFile(gotIngressList, tc.filePath, tc.namespace)
+			err := ConstructIngressesFromFile(gotIngressList, tc.filePath, tc.namespace)
 			if err != nil {
 				t.Errorf("Failed to open test file: %v", err)
 			}

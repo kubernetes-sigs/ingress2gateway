@@ -62,7 +62,8 @@ func Test_getResourcePrinter(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := getResourcePrinter(tc.outputFormat)
+			pr := PrintRunner{outputFormat: tc.outputFormat}
+			err := pr.InitializeResourcePrinter()
 
 			if tc.expectingError && err == nil {
 				t.Errorf("Expected error but got none")
@@ -71,8 +72,8 @@ func Test_getResourcePrinter(t *testing.T) {
 				t.Errorf("Expected no error but got %v", err)
 			}
 
-			if !reflect.DeepEqual(result, tc.expectedPrinter) {
-				t.Errorf("getResourcePrinter(%s) = %v, expected %v", tc.outputFormat, result, tc.expectedPrinter)
+			if !reflect.DeepEqual(pr.resourcePrinter, tc.expectedPrinter) {
+				t.Errorf("getResourcePrinter(%s) = %v, expected %v", tc.outputFormat, pr.resourcePrinter, tc.expectedPrinter)
 			}
 		})
 
@@ -122,7 +123,11 @@ func Test_getNamespaceFilter(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			actualNamespaceFilter, err := getNamespaceFilter(tc.namespace, tc.allNamespaces)
+			pr := PrintRunner{
+				namespace:     tc.namespace,
+				allNamespaces: tc.allNamespaces,
+			}
+			err := pr.InitializeNamespaceFilter()
 
 			if tc.expectingError && err == nil {
 				t.Errorf("Expected error but got none")
@@ -132,12 +137,12 @@ func Test_getNamespaceFilter(t *testing.T) {
 			}
 
 			if tc.expectingCurrentNamespace {
-				tc.expectedNamespaceFilter, _ = getNamespaceFilter(tc.namespace, tc.allNamespaces)
+				tc.expectedNamespaceFilter = pr.namespaceFilter
 			}
 
-			if actualNamespaceFilter != tc.expectedNamespaceFilter {
+			if pr.namespaceFilter != tc.expectedNamespaceFilter {
 				t.Errorf(`getNamespaceFilter("%s", %v) = %v, expected %v`,
-					tc.namespace, tc.allNamespaces, actualNamespaceFilter, tc.expectedNamespaceFilter)
+					tc.namespace, tc.allNamespaces, pr.namespaceFilter, tc.expectedNamespaceFilter)
 			}
 		})
 
