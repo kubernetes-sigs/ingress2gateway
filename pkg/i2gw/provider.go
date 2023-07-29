@@ -63,13 +63,13 @@ type CustomResourceReader interface {
 // conversion functions.
 type ResourceConverter interface {
 
-	// ConvertHTTPRoutes converts the received ingresses and custom resources
-	// associated with the Provider into HTTPRoutes and Gateways.
-	ConvertHTTPRoutes(ingresses []networkingv1.Ingress, customResources interface{}) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, field.ErrorList)
+	// IngressToGateway converts the received IngressResources associated
+	// with the Provider into GatewayResources.
+	IngressToGateway(resources IngressResources) (GatewayResources, field.ErrorList)
 }
 
 type IngressResources struct {
-	Ingresses       networkingv1.Ingress
+	Ingresses       []networkingv1.Ingress
 	CustomResources interface{}
 }
 

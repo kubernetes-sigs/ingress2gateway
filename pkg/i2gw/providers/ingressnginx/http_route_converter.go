@@ -18,6 +18,7 @@ package ingressnginx
 
 import (
 	"fmt"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"regexp"
 	"strconv"
 	"strings"
@@ -44,18 +45,13 @@ func newHTTPRouteConverter(conf *i2gw.ProviderConf) *httpRouteConverter {
 	}
 }
 
-func (c *httpRouteConverter) ConvertHTTPRoutes(ingresses []networkingv1.Ingress, crds interface{}) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, field.ErrorList) {
-	aggregator := ingressAggregator{ruleGroups: map[ruleGroupKey]*ingressRuleGroup{}}
-
-	var errs field.ErrorList
-	for _, ingress := range ingresses {
-		errs = append(errs, aggregator.addIngress(ingress)...)
-	}
+func (c *httpRouteConverter) IngressToGateway(resources i2gw.IngressResources) (i2gw.GatewayResources, field.ErrorList) {
+	gatewayResources, errs := common.IngressToGateway(resources.Ingresses)
 	if len(errs) > 0 {
-		return nil, nil, errs
+		return i2gw.GatewayResources{}, errs
 	}
 
-	return aggregator.toHTTPRoutesAndGateways()
+	return gatewayResources, nil
 }
 
 var (

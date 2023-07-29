@@ -31,7 +31,7 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-func ConvertHTTPRoutes(ingresses []networkingv1.Ingress) (i2gw.GatewayResources, field.ErrorList) {
+func IngressToGateway(ingresses []networkingv1.Ingress) (i2gw.GatewayResources, field.ErrorList) {
 	aggregator := ingressAggregator{ruleGroups: map[ruleGroupKey]*ingressRuleGroup{}}
 
 	var errs field.ErrorList

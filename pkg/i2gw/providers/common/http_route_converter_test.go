@@ -314,7 +314,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			gatewayResources, errs := ConvertHTTPRoutes(tc.ingresses)
+			gatewayResources, errs := IngressToGateway(tc.ingresses)
 
 			if len(gatewayResources.HTTPRoutes) != len(tc.expectedGatewayResources.HTTPRoutes) {
 				t.Errorf("Expected %d HTTPRoutes, got %d: %+v",

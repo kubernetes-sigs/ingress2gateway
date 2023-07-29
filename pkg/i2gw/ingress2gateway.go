@@ -53,21 +53,23 @@ func Ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewa
 		return nil, nil, errs
 	}
 
-	for name, provider := range providerByName {
-		var customResources interface{}
+	resources := IngressResources{Ingresses: ingresses}
 
-		if err := provider.ReadResourcesFromCluster(context.Background(), &customResources); err != nil {
+	for name, provider := range providerByName {
+
+		if err := provider.ReadResourcesFromCluster(context.Background(), &resources.CustomResources); err != nil {
 			errs = append(errs, field.Invalid(nil, "", fmt.Sprintf("failed to read %s resources from the cluster: %w", name, err)))
 			return nil, nil, errs
 		}
 
-		// TODO: Open a new issue - the ingress-nginx provider contains conversion logic which
-		// will be common to all the other providers. Extract it from there and create a common
-		// ingress conversion function.
-		convertedHTTPRoutes, convertedGateways, conversionErrs := provider.ConvertHTTPRoutes(ingresses, customResources)
-		httpRoutes = append(httpRoutes, convertedHTTPRoutes...)
-		gateways = append(gateways, convertedGateways...)
+		gatewayResources, conversionErrs := provider.IngressToGateway(resources)
 		errs = append(errs, conversionErrs...)
+		for _, gateway := range gatewayResources.Gateways {
+			gateways = append(gateways, gateway)
+		}
+		for _, route := range gatewayResources.HTTPRoutes {
+			httpRoutes = append(httpRoutes, route)
+		}
 	}
 
 	return httpRoutes, gateways, nil
