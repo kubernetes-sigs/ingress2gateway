@@ -32,14 +32,14 @@ type Provider struct {
 	conf *i2gw.ProviderConf
 
 	*resourceReader
-	*httpRouteConverter
+	*converter
 }
 
 // NewProvider constructs and returns the ingress-nginx implementation of i2gw.Provider.
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 	return &Provider{
-		conf:               conf,
-		resourceReader:     newResourceReader(conf),
-		httpRouteConverter: newHTTPRouteConverter(conf),
+		conf:           conf,
+		resourceReader: newResourceReader(conf),
+		converter:      newConverter(conf),
 	}
 }

@@ -68,20 +68,24 @@ type ResourceConverter interface {
 	IngressToGateway(resources IngressResources) (GatewayResources, field.ErrorList)
 }
 
+// IngressResources contains all Ingress related objects, and Provider specific
+// custom resources.
 type IngressResources struct {
 	Ingresses       []networkingv1.Ingress
 	CustomResources interface{}
 }
 
+// GatewayResources contains all Gateway-API objects.
 type GatewayResources struct {
 	Gateways   map[GatewayKey]gatewayv1beta1.Gateway
 	HTTPRoutes map[HTTPRouteKey]gatewayv1beta1.HTTPRoute
 }
 
 // GatewayKey is a unique identifier for a gateway object.
-// Constructed by namespace:class:name.
+// Constructed by namespace:name.
 type GatewayKey string
 
+// GatewayToGatewayKey assembles the GatewayKey out of a Gateway.
 func GatewayToGatewayKey(g gatewayv1beta1.Gateway) GatewayKey {
 	return GatewayKey(g.Namespace + ":" + g.Name)
 }
@@ -90,6 +94,14 @@ func GatewayToGatewayKey(g gatewayv1beta1.Gateway) GatewayKey {
 // Constructed by namespace:name.
 type HTTPRouteKey string
 
+// HTTPRouteToHTTPRouteKey assembles the HTTPRouteKey out of an HTTPRoute.
 func HTTPRouteToHTTPRouteKey(r gatewayv1beta1.HTTPRoute) HTTPRouteKey {
 	return HTTPRouteKey(r.Namespace + ":" + r.Name)
 }
+
+// FeatureParser is a function that reads the IngressResources, and applies
+// the appropriate modifications to the GatewayResources.
+//
+// Different FeatureParsers will run in undetermined order. The function must
+// modify / create only the required fields of the gateway resources and nothing else.
+type FeatureParser func(IngressResources, *GatewayResources) field.ErrorList

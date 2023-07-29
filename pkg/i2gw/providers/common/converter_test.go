@@ -14,14 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package ingressnginx
+package common
 
 import (
 	"errors"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -41,12 +41,13 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 		ingresses                []networkingv1.Ingress
 		expectedGatewayResources i2gw.GatewayResources
 		expectedErrors           field.ErrorList
-	}{{
-		name:                     "empty",
-		ingresses:                []networkingv1.Ingress{},
-		expectedGatewayResources: i2gw.GatewayResources{},
-		expectedErrors:           field.ErrorList{},
-	},
+	}{
+		{
+			name:                     "empty",
+			ingresses:                []networkingv1.Ingress{},
+			expectedGatewayResources: i2gw.GatewayResources{},
+			expectedErrors:           field.ErrorList{},
+		},
 		{
 			name: "simple ingress",
 			ingresses: []networkingv1.Ingress{{
@@ -314,14 +315,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			provider := NewProvider(&i2gw.ProviderConf{})
-
-			resources := i2gw.IngressResources{
-				Ingresses:       tc.ingresses,
-				CustomResources: nil,
-			}
-
-			gatewayResources, errs := provider.IngressToGateway(resources)
+			gatewayResources, errs := IngressToGateway(tc.ingresses)
 
 			if len(gatewayResources.HTTPRoutes) != len(tc.expectedGatewayResources.HTTPRoutes) {
 				t.Errorf("Expected %d HTTPRoutes, got %d: %+v",
@@ -329,7 +323,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 			} else {
 				for i, got := range gatewayResources.HTTPRoutes {
 					want := tc.expectedGatewayResources.HTTPRoutes[i2gw.HTTPRouteToHTTPRouteKey(got)]
-					want.SetGroupVersionKind(httpRouteGVK)
+					want.SetGroupVersionKind(HTTPRouteGVK)
 					if !apiequality.Semantic.DeepEqual(got, want) {
 						t.Errorf("Expected HTTPRoute %s to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))
 					}
@@ -342,7 +336,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 			} else {
 				for i, got := range gatewayResources.Gateways {
 					want := tc.expectedGatewayResources.Gateways[i2gw.GatewayToGatewayKey(got)]
-					want.SetGroupVersionKind(gatewayGVK)
+					want.SetGroupVersionKind(GatewayGVK)
 					if !apiequality.Semantic.DeepEqual(got, want) {
 						t.Errorf("Expected Gateway %s to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))
 					}
@@ -360,10 +354,6 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 			}
 		})
 	}
-}
-
-func int32Ptr(n int32) *int32 {
-	return &n
 }
 
 func stringPtr(s string) *string {
@@ -389,231 +379,4 @@ func portNumberPtr(p int) *gatewayv1beta1.PortNumber {
 func gatewayHostnamePtr(s string) *gatewayv1beta1.Hostname {
 	h := gatewayv1beta1.Hostname(s)
 	return &h
-}
-
-func Test_getExtra(t *testing.T) {
-	testCases := []struct {
-		name          string
-		ingress       networkingv1.Ingress
-		expectedExtra *extra
-		expectedError field.ErrorList
-	}{
-		{
-			name: "actually get weights",
-			ingress: networkingv1.Ingress{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						"nginx.ingress.kubernetes.io/canary":              "true",
-						"nginx.ingress.kubernetes.io/canary-weight":       "50",
-						"nginx.ingress.kubernetes.io/canary-weight-total": "100",
-					},
-				},
-			},
-			expectedExtra: &extra{
-				canary: &canary{
-					enable:      true,
-					weight:      50,
-					weightTotal: 100,
-				},
-			},
-		},
-		{
-			name: "assigns default weight total",
-			ingress: networkingv1.Ingress{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						"nginx.ingress.kubernetes.io/canary":        "true",
-						"nginx.ingress.kubernetes.io/canary-weight": "50",
-					},
-				},
-			},
-			expectedExtra: &extra{
-				canary: &canary{
-					enable:      true,
-					weight:      50,
-					weightTotal: 100,
-				},
-			},
-		},
-		{
-			name: "errors on non integer weight",
-			ingress: networkingv1.Ingress{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						"nginx.ingress.kubernetes.io/canary":        "true",
-						"nginx.ingress.kubernetes.io/canary-weight": "50.5",
-					},
-				},
-			},
-			expectedExtra: &extra{},
-			expectedError: field.ErrorList{field.TypeInvalid(field.NewPath(""), "", "")},
-		},
-		{
-			name: "errors on non integer weight total",
-			ingress: networkingv1.Ingress{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						"nginx.ingress.kubernetes.io/canary":              "true",
-						"nginx.ingress.kubernetes.io/canary-weight-total": "50.5",
-					},
-				},
-			},
-			expectedExtra: &extra{},
-			expectedError: field.ErrorList{field.TypeInvalid(field.NewPath(""), "", "")},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-
-			actualExtra, errs := getExtra(tc.ingress)
-			if len(errs) != len(tc.expectedError) {
-				t.Fatalf("expected %d errors, got %d", len(tc.expectedError), len(errs))
-			}
-
-			if len(tc.expectedError) > 0 {
-				return
-			}
-
-			actualCanary := actualExtra.canary
-			expectedCanary := tc.expectedExtra.canary
-
-			if diff := cmp.Diff(*actualCanary, *expectedCanary, cmp.AllowUnexported(canary{})); diff != "" {
-				t.Fatalf("getExtra() mismatch (-want +got):\n%s", diff)
-			}
-		})
-	}
-}
-
-func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
-	testCases := []struct {
-		name                string
-		paths               []ingressPath
-		expectedBackendRefs []gatewayv1beta1.HTTPBackendRef
-		expectedErrors      field.ErrorList
-	}{
-		{
-			name: "respect weight boundaries",
-			paths: []ingressPath{
-				{
-					path: networkingv1.HTTPIngressPath{
-						Backend: networkingv1.IngressBackend{
-							Resource: &corev1.TypedLocalObjectReference{
-								Name:     "canary",
-								Kind:     "StorageBucket",
-								APIGroup: stringPtr("vendor.example.com"),
-							},
-						},
-					},
-					extra: &extra{canary: &canary{
-						weight: 101,
-					}},
-				},
-				{
-					path: networkingv1.HTTPIngressPath{
-						Backend: networkingv1.IngressBackend{
-							Resource: &corev1.TypedLocalObjectReference{
-								Name:     "prod",
-								Kind:     "StorageBucket",
-								APIGroup: stringPtr("vendor.example.com"),
-							},
-						},
-					},
-				},
-			},
-			expectedBackendRefs: []gatewayv1beta1.HTTPBackendRef{
-				{BackendRef: gatewayv1beta1.BackendRef{Weight: int32Ptr(100)}},
-				{BackendRef: gatewayv1beta1.BackendRef{Weight: int32Ptr(0)}},
-			},
-		},
-		{
-			name: "default total weight",
-			paths: []ingressPath{
-				{
-					path: networkingv1.HTTPIngressPath{
-						Backend: networkingv1.IngressBackend{
-							Resource: &corev1.TypedLocalObjectReference{
-								Name:     "canary",
-								Kind:     "StorageBucket",
-								APIGroup: stringPtr("vendor.example.com"),
-							},
-						},
-					},
-					extra: &extra{canary: &canary{
-						weight: 30,
-					}},
-				},
-				{
-					path: networkingv1.HTTPIngressPath{
-						Backend: networkingv1.IngressBackend{
-							Resource: &corev1.TypedLocalObjectReference{
-								Name:     "prod",
-								Kind:     "StorageBucket",
-								APIGroup: stringPtr("vendor.example.com"),
-							},
-						},
-					},
-				},
-			},
-			expectedBackendRefs: []gatewayv1beta1.HTTPBackendRef{
-				{BackendRef: gatewayv1beta1.BackendRef{Weight: int32Ptr(30)}},
-				{BackendRef: gatewayv1beta1.BackendRef{Weight: int32Ptr(70)}},
-			},
-		},
-		{
-			name: "weight total assigned",
-			paths: []ingressPath{
-				{
-					path: networkingv1.HTTPIngressPath{
-						Backend: networkingv1.IngressBackend{
-							Resource: &corev1.TypedLocalObjectReference{
-								Name:     "canary",
-								Kind:     "StorageBucket",
-								APIGroup: stringPtr("vendor.example.com"),
-							},
-						},
-					},
-					extra: &extra{canary: &canary{
-						weight:      50,
-						weightTotal: 200,
-					}},
-				},
-				{
-					path: networkingv1.HTTPIngressPath{
-						Backend: networkingv1.IngressBackend{
-							Resource: &corev1.TypedLocalObjectReference{
-								Name:     "prod",
-								Kind:     "StorageBucket",
-								APIGroup: stringPtr("vendor.example.com"),
-							},
-						},
-					},
-				},
-			},
-			expectedBackendRefs: []gatewayv1beta1.HTTPBackendRef{
-				{BackendRef: gatewayv1beta1.BackendRef{Weight: int32Ptr(50)}},
-				{BackendRef: gatewayv1beta1.BackendRef{Weight: int32Ptr(150)}},
-			},
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-
-			var irg ingressRuleGroup
-			actualBackendRefs, errs := irg.calculateBackendRefWeight(tc.paths)
-			if len(errs) != len(tc.expectedErrors) {
-				t.Fatalf("expected %d errors, got %d", len(tc.expectedErrors), len(errs))
-			}
-
-			if len(actualBackendRefs) != len(tc.expectedBackendRefs) {
-				t.Fatalf("expected %d backend refs, got %d", len(tc.expectedBackendRefs), len(actualBackendRefs))
-			}
-			for i := 0; i < len(tc.expectedBackendRefs); i++ {
-				if *tc.expectedBackendRefs[i].Weight != *actualBackendRefs[i].Weight {
-					t.Fatalf("%s backendRef expected weight is %d, actual %d",
-						actualBackendRefs[i].Name, *tc.expectedBackendRefs[i].Weight, *actualBackendRefs[i].Weight)
-				}
-			}
-		})
-	}
 }

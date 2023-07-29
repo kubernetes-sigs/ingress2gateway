@@ -22,7 +22,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 )
 
-// httpRouteConverter implements the i2gw.CustomResourceReader interface.
+// converter implements the i2gw.CustomResourceReader interface.
 type resourceReader struct {
 	conf *i2gw.ProviderConf
 }
