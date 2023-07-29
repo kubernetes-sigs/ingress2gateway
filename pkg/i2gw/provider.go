@@ -67,3 +67,29 @@ type ResourceConverter interface {
 	// associated with the Provider into HTTPRoutes and Gateways.
 	ConvertHTTPRoutes(ingresses []networkingv1.Ingress, customResources interface{}) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, field.ErrorList)
 }
+
+type IngressResources struct {
+	Ingresses       networkingv1.Ingress
+	CustomResources interface{}
+}
+
+type GatewayResources struct {
+	Gateways   map[GatewayKey]gatewayv1beta1.Gateway
+	HTTPRoutes map[HTTPRouteKey]gatewayv1beta1.HTTPRoute
+}
+
+// GatewayKey is a unique identifier for a gateway object.
+// Constructed by namespace:class:name.
+type GatewayKey string
+
+func GatewayToGatewayKey(g gatewayv1beta1.Gateway) GatewayKey {
+	return GatewayKey(g.Namespace + ":" + g.Name)
+}
+
+// HTTPRouteKey is a unique identifier for an HTTPRoute object.
+// Constructed by namespace:name.
+type HTTPRouteKey string
+
+func HTTPRouteToHTTPRouteKey(r gatewayv1beta1.HTTPRoute) HTTPRouteKey {
+	return HTTPRouteKey(r.Namespace + ":" + r.Name)
+}
