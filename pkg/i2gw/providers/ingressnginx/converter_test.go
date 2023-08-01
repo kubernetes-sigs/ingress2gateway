@@ -1,5 +1,5 @@
 /*
-Copyright 2022 The Kubernetes Authors.
+Copyright 2023 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
+func Test_ToGateway(t *testing.T) {
 	iPrefix := networkingv1.PathTypePrefix
 	//iExact := networkingv1.PathTypeExact
 	gPathPrefix := gatewayv1beta1.PathMatchPathPrefix
@@ -175,7 +175,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 				CustomResources: nil,
 			}
 
-			gatewayResources, errs := provider.IngressToGateway(resources)
+			gatewayResources, errs := provider.ToGateway(resources)
 
 			if len(gatewayResources.HTTPRoutes) != len(tc.expectedGatewayResources.HTTPRoutes) {
 				t.Errorf("Expected %d HTTPRoutes, got %d: %+v",

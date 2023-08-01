@@ -1,5 +1,5 @@
 /*
-Copyright 2022 The Kubernetes Authors.
+Copyright 2023 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -42,6 +42,41 @@ func ConstructIngressesFromCluster(cl client.Client, ingressList *networkingv1.I
 	return nil
 }
 
+//func Run(ctx context.Context, printer printers.ResourcePrinter, namespace string, inputFile string) error {
+//	conf, err := config.GetConfig()
+//	if err != nil {
+//		return fmt.Errorf("failed to get client config: %w", err)
+//	}
+//
+//	cl, err := client.New(conf, client.Options{})
+//	if err != nil {
+//		return fmt.Errorf("failed to create client: %w", err)
+//	}
+//	cl = client.NewNamespacedClient(cl, namespace)
+//
+//	var ingresses networkingv1.IngressList
+//	if inputFile != "" {
+//		if err = constructIngressesFromFile(&ingresses, inputFile); err != nil {
+//			return fmt.Errorf("failed to open input file: %w", err)
+//		}
+//	} else {
+//		if err = cl.List(ctx, &ingresses); err != nil {
+//			return fmt.Errorf("failed to list ingresses: %w", err)
+//		}
+//	}
+//
+//	if len(ingresses.Items) == 0 {
+//		msg := "No resources found"
+//		if namespace != "" {
+//			fmt.Printf("%s in %s namespace\n", msg, namespace)
+//		} else {
+//			fmt.Println(msg)
+//		}
+//		return nil
+//	}
+//	return nil
+//}
+
 func Ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, field.ErrorList) {
 	var gateways []gatewayv1beta1.Gateway
 	var httpRoutes []gatewayv1beta1.HTTPRoute
@@ -62,7 +97,7 @@ func Ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewa
 			return nil, nil, errs
 		}
 
-		gatewayResources, conversionErrs := provider.IngressToGateway(resources)
+		gatewayResources, conversionErrs := provider.ToGateway(resources)
 		errs = append(errs, conversionErrs...)
 		for _, gateway := range gatewayResources.Gateways {
 			gateways = append(gateways, gateway)
@@ -78,7 +113,7 @@ func Ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewa
 // constructProviders constructs a map of concrete Provider implementations
 // by their ProviderName.
 //
-// TODO: Open a new issue - let users filter by provider name.
+// TODO: Issue #45 - let users filter by provider name.
 func constructProviders(conf *ProviderConf) map[ProviderName]Provider {
 	providerByName := make(map[ProviderName]Provider, len(ProviderConstructorByName))
 

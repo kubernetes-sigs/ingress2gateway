@@ -1,5 +1,5 @@
 /*
-Copyright 2022 The Kubernetes Authors.
+Copyright 2023 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,9 +29,9 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-// IngressToGateway converts the received ingresses to i2gw.GatewayResources,
+// ToGateway converts the received ingresses to i2gw.GatewayResources,
 // without taking into consideration any provider specific logic.
-func IngressToGateway(ingresses []networkingv1.Ingress) (i2gw.GatewayResources, field.ErrorList) {
+func ToGateway(ingresses []networkingv1.Ingress) (i2gw.GatewayResources, field.ErrorList) {
 	aggregator := ingressAggregator{ruleGroups: map[ruleGroupKey]*ingressRuleGroup{}}
 
 	var errs field.ErrorList

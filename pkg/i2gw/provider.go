@@ -1,5 +1,5 @@
 /*
-Copyright 2022 The Kubernetes Authors.
+Copyright 2023 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -63,9 +63,9 @@ type CustomResourceReader interface {
 // conversion functions.
 type ResourceConverter interface {
 
-	// IngressToGateway converts the received IngressResources associated
+	// ToGateway converts the received IngressResources associated
 	// with the Provider into GatewayResources.
-	IngressToGateway(resources IngressResources) (GatewayResources, field.ErrorList)
+	ToGateway(resources IngressResources) (GatewayResources, field.ErrorList)
 }
 
 // IngressResources contains all Ingress related objects, and Provider specific

@@ -1,5 +1,5 @@
 /*
-Copyright 2022 The Kubernetes Authors.
+Copyright 2023 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -39,13 +39,13 @@ func newConverter(conf *i2gw.ProviderConf) *converter {
 	}
 }
 
-// IngressToGateway converts the received i2gw.IngressResources to i2gw.GatewayResources
+// ToGateway converts the received i2gw.IngressResources to i2gw.GatewayResources
 // including the ingress-nginx specific features.
-func (c *converter) IngressToGateway(resources i2gw.IngressResources) (i2gw.GatewayResources, field.ErrorList) {
+func (c *converter) ToGateway(resources i2gw.IngressResources) (i2gw.GatewayResources, field.ErrorList) {
 
 	// Convert plain ingress resources to gateway resources, ignoring all
 	// provider-specific features.
-	gatewayResources, errs := common.IngressToGateway(resources.Ingresses)
+	gatewayResources, errs := common.ToGateway(resources.Ingresses)
 	if len(errs) > 0 {
 		return i2gw.GatewayResources{}, errs
 	}
