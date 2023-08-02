@@ -21,14 +21,13 @@ import (
 	"os"
 	"strings"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/datasource"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/spf13/cobra"
-	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/client-go/tools/clientcmd"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 type PrintRunner struct {
@@ -55,32 +54,29 @@ type PrintRunner struct {
 	namespaceFilter string
 }
 
+// PrintGatewaysAndHttpRoutes performs necessary steps to digest and print
+// converted Gateways and HTTP Routes. The steps includes reading from the source,
+// construct ingresses, convert them, then print them out.
 func (pr *PrintRunner) PrintGatewaysAndHttpRoutes(cmd *cobra.Command, args []string) error {
-	ingressList := &networkingv1.IngressList{}
-	if pr.inputFile != "" {
-		err := i2gw.ConstructIngressesFromFile(ingressList, pr.inputFile, pr.namespace)
-		if err != nil {
-			fmt.Printf("failed to open input file: %v\n", err)
-			os.Exit(1)
-		}
-	} else {
-		cl := pr.GetNamespacedClient()
-		err := i2gw.ConstructIngressesFromKubeCluster(cl, ingressList)
-		if err != nil {
-			fmt.Printf("failed to get ingress resources from kubenetes cluster: %v\n", err)
-			os.Exit(1)
-		}
+	err := pr.initializeResourcePrinter()
+	if err != nil {
+		fmt.Printf("Failed to initialize resrouce printer: %v", err)
+		os.Exit(1)
+	}
+	err = pr.initializeNamespaceFilter()
+	if err != nil {
+		fmt.Printf("Failed to initialize namespace filter: %v", err)
+		os.Exit(1)
 	}
 
-	if len(ingressList.Items) == 0 {
-		msg := "No resources found"
-		if pr.namespace != "" {
-			fmt.Printf("%s in %s namespace\n", msg, pr.namespace)
-			os.Exit(1)
-		} else {
-			fmt.Print(msg)
-			os.Exit(1)
-		}
+	ds := datasource.DataSource{
+		NamespaceFilter: pr.namespaceFilter,
+		InputFile:       pr.inputFile,
+	}
+	ingressList, err := ds.GetIngessList()
+	if err != nil {
+		fmt.Printf("Failed to get ingresses from source: %v", err)
+		os.Exit(1)
 	}
 
 	httpRoutes, gateways, errors := i2gw.Ingresses2GatewaysAndHTTPRoutes(ingressList.Items)
@@ -92,33 +88,30 @@ func (pr *PrintRunner) PrintGatewaysAndHttpRoutes(cmd *cobra.Command, args []str
 		os.Exit(1)
 	}
 
-	i2gw.OutputResult(pr.resourcePrinter, httpRoutes, gateways)
+	pr.outputResult(httpRoutes, gateways)
 
 	return nil
 }
 
-func (pr *PrintRunner) GetNamespacedClient() client.Client {
-	conf, err := config.GetConfig()
-	if err != nil {
-		fmt.Println("failed to get client config")
-		os.Exit(1)
+func (pr *PrintRunner) outputResult(httpRoutes []gatewayv1beta1.HTTPRoute, gateways []gatewayv1beta1.Gateway) {
+	for i := range gateways {
+		err := pr.resourcePrinter.PrintObj(&gateways[i], os.Stdout)
+		if err != nil {
+			fmt.Printf("# Error printing %s HTTPRoute: %v\n", gateways[i].Name, err)
+		}
 	}
 
-	cl, err := client.New(conf, client.Options{})
-	if err != nil {
-		fmt.Println("failed to create client")
-		os.Exit(1)
+	for i := range httpRoutes {
+		err := pr.resourcePrinter.PrintObj(&httpRoutes[i], os.Stdout)
+		if err != nil {
+			fmt.Printf("# Error printing %s HTTPRoute: %v\n", httpRoutes[i].Name, err)
+		}
 	}
-	if pr.namespace == "" {
-		fmt.Println("failed to get client config because no namespace was specified")
-		os.Exit(1)
-	}
-	return client.NewNamespacedClient(cl, pr.namespace)
 }
 
-// InitializeResourcePrinter assign a specific type of printers.ResourcePrinter
+// initializeResourcePrinter assign a specific type of printers.ResourcePrinter
 // based on the outputFormat of the printRunner struct.
-func (pr *PrintRunner) InitializeResourcePrinter() error {
+func (pr *PrintRunner) initializeResourcePrinter() error {
 	switch pr.outputFormat {
 	case "yaml", "":
 		pr.resourcePrinter = &printers.YAMLPrinter{}
@@ -132,9 +125,9 @@ func (pr *PrintRunner) InitializeResourcePrinter() error {
 
 }
 
-// InitializeNamespaceFilter generate the corret namespace filter, taking into consideration whether a specific
+// initializeNamespaceFilter generate the corret namespace filter, taking into consideration whether a specific
 // namespace is requested, or all of them are.
-func (pr *PrintRunner) InitializeNamespaceFilter() error {
+func (pr *PrintRunner) initializeNamespaceFilter() error {
 	// When we should use all namespaces, empty string is used as the filter.
 	if pr.allNamespaces {
 		pr.namespaceFilter = ""
@@ -159,7 +152,7 @@ func (pr *PrintRunner) InitializeNamespaceFilter() error {
 }
 
 func newPrintCommand() *cobra.Command {
-	pr := PrintRunner{}
+	pr := &PrintRunner{}
 	var printFlags genericclioptions.JSONYamlPrintFlags
 	allowedFormats := printFlags.AllowedFormats()
 
@@ -185,8 +178,6 @@ func newPrintCommand() *cobra.Command {
 if specified with --namespace.`)
 
 	cmd.MarkFlagsMutuallyExclusive("namespace", "all-namespaces")
-	pr.InitializeResourcePrinter()
-	pr.InitializeNamespaceFilter()
 	return cmd
 }
 

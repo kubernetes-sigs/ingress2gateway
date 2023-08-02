@@ -29,12 +29,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	kubeyaml "k8s.io/apimachinery/pkg/util/yaml"
-	"k8s.io/cli-runtime/pkg/printers"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-func ConstructIngressesFromKubeCluster(cl client.Client, ingressList *networkingv1.IngressList) error {
+func ConstructIngressesFromCluster(cl client.Client, ingressList *networkingv1.IngressList) error {
 	err := cl.List(context.Background(), ingressList)
 	if err != nil {
 		return fmt.Errorf("failed to get ingresses from the cluster: %v", err)
@@ -54,22 +53,6 @@ func Ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewa
 	}
 
 	return aggregator.toHTTPRoutesAndGateways()
-}
-
-func OutputResult(printer printers.ResourcePrinter, httpRoutes []gatewayv1beta1.HTTPRoute, gateways []gatewayv1beta1.Gateway) {
-	for i := range gateways {
-		err := printer.PrintObj(&gateways[i], os.Stdout)
-		if err != nil {
-			fmt.Printf("# Error printing %s HTTPRoute: %v\n", gateways[i].Name, err)
-		}
-	}
-
-	for i := range httpRoutes {
-		err := printer.PrintObj(&httpRoutes[i], os.Stdout)
-		if err != nil {
-			fmt.Printf("# Error printing %s HTTPRoute: %v\n", httpRoutes[i].Name, err)
-		}
-	}
 }
 
 // extractObjectsFromReader extracts all objects from a reader,

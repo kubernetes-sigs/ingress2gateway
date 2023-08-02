@@ -63,7 +63,7 @@ func Test_getResourcePrinter(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			pr := PrintRunner{outputFormat: tc.outputFormat}
-			err := pr.InitializeResourcePrinter()
+			err := pr.initializeResourcePrinter()
 
 			if tc.expectingError && err == nil {
 				t.Errorf("Expected error but got none")
@@ -127,7 +127,7 @@ func Test_getNamespaceFilter(t *testing.T) {
 				namespace:     tc.namespace,
 				allNamespaces: tc.allNamespaces,
 			}
-			err := pr.InitializeNamespaceFilter()
+			err := pr.initializeNamespaceFilter()
 
 			if tc.expectingError && err == nil {
 				t.Errorf("Expected error but got none")
