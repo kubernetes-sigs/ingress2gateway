@@ -82,7 +82,9 @@ func Ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewa
 	var httpRoutes []gatewayv1beta1.HTTPRoute
 	var errs field.ErrorList
 
-	providerByName := constructProviders(&ProviderConf{})
+	providerByName := constructProviders(&ProviderConf{
+		Client: cl,
+	})
 	if len(providerByName) == 0 {
 		errs = append(errs, field.Invalid(nil, "", "no providers"))
 		return nil, nil, errs
@@ -113,7 +115,7 @@ func Ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewa
 // constructProviders constructs a map of concrete Provider implementations
 // by their ProviderName.
 //
-// TODO: Issue #45 - let users filter by provider name.
+// TODO (levikobi): Issue #45 - let users filter by provider name.
 func constructProviders(conf *ProviderConf) map[ProviderName]Provider {
 	providerByName := make(map[ProviderName]Provider, len(ProviderConstructorByName))
 

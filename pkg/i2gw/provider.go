@@ -21,6 +21,7 @@ import (
 
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
@@ -38,7 +39,9 @@ type ProviderConstructor func(conf *ProviderConf) Provider
 
 // ProviderConf contains all the configuration required for every concrete
 // Provider implementation.
-type ProviderConf struct{}
+type ProviderConf struct {
+	Client client.Client
+}
 
 // The Provider interface specifies the required functionality which needs to be
 // implemented by every concrete Ingress/Gateway-API provider, in order for it to

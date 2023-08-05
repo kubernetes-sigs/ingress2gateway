@@ -50,9 +50,11 @@ func (c *converter) ToGateway(resources i2gw.IngressResources) (i2gw.GatewayReso
 		return i2gw.GatewayResources{}, errs
 	}
 
-	// Apply all patch functions on the gateway resources, one by one.
-	for _, parseFeature := range c.featureParsers {
-		errs = append(errs, parseFeature(resources, &gatewayResources)...)
+	for _, parseFeatureFunc := range c.featureParsers {
+		// Apply the feature parsing function to the gateway resources, one by one.
+		parseErrs := parseFeatureFunc(resources, &gatewayResources)
+		// Append the parsing errors to the error list.
+		errs = append(errs, parseErrs...)
 	}
 
 	return gatewayResources, errs
