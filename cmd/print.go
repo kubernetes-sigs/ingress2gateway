@@ -123,8 +123,10 @@ func (pr *PrintRunner) initializeResourcePrinter() error {
 
 }
 
-// initializeNamespaceFilter generate the corret namespace filter, taking into consideration whether a specific
-// namespace is requested, or all of them are.
+// initializeNamespaceFilter initializes the correct namespace filter for resource processing with these scenarios:
+// 1. If the --all-namespaces flag is used, it processes all resources, regardless of whether they are from the cluster or file.
+// 2. If namespace is specified, it filters resources based on that namespace.
+// 3. If no namespace is specified and reading from the cluster, initialization fails; but if reading from a file, it reads all resources.
 func (pr *PrintRunner) initializeNamespaceFilter() error {
 	// When we should use all namespaces, empty string is used as the filter.
 	if pr.allNamespaces {
