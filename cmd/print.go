@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -60,13 +61,11 @@ type PrintRunner struct {
 func (pr *PrintRunner) PrintGatewaysAndHttpRoutes(cmd *cobra.Command, args []string) error {
 	err := pr.initializeResourcePrinter()
 	if err != nil {
-		fmt.Printf("Failed to initialize resrouce printer: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("Failed to initialize resrouce printer: %v", err)
 	}
 	err = pr.initializeNamespaceFilter()
 	if err != nil {
-		fmt.Printf("Failed to initialize namespace filter: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("Failed to initialize namespace filter: %v", err)
 	}
 
 	ds := datasource.DataSource{
@@ -75,17 +74,16 @@ func (pr *PrintRunner) PrintGatewaysAndHttpRoutes(cmd *cobra.Command, args []str
 	}
 	ingressList, err := ds.GetIngessList()
 	if err != nil {
-		fmt.Printf("Failed to get ingresses from source: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("Failed to get ingresses from source: %v", err)
 	}
 
-	httpRoutes, gateways, errors := i2gw.Ingresses2GatewaysAndHTTPRoutes(ingressList.Items)
-	if len(errors) > 0 {
-		fmt.Printf("# Encountered %d errors\n", len(errors))
-		for _, err := range errors {
-			fmt.Printf("# %s\n", err)
+	httpRoutes, gateways, errList := i2gw.Ingresses2GatewaysAndHTTPRoutes(ingressList.Items)
+	if len(errList) > 0 {
+		errMsg := errors.New(fmt.Sprintf("# Encountered %d errors\n", len(errList)))
+		for _, err := range errList {
+			errMsg = fmt.Errorf("%w # %s\n", errMsg, err)
 		}
-		os.Exit(1)
+		return errMsg
 	}
 
 	pr.outputResult(httpRoutes, gateways)
@@ -134,6 +132,7 @@ func (pr *PrintRunner) initializeNamespaceFilter() error {
 		return nil
 	}
 
+	// If namespace flag is not specified, try to use the default namespace from the cluster
 	if pr.namespace == "" {
 		ns, err := getNamespaceInCurrentContext()
 		if err != nil && pr.inputFile == "" {
