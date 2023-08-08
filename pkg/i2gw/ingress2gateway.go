@@ -36,7 +36,7 @@ import (
 func ConstructIngressesFromCluster(cl client.Client, ingressList *networkingv1.IngressList) error {
 	err := cl.List(context.Background(), ingressList)
 	if err != nil {
-		return fmt.Errorf("failed to get ingresses from the cluster: %v", err)
+		return fmt.Errorf("failed to get ingresses from the cluster: %w", err)
 	}
 	return nil
 }

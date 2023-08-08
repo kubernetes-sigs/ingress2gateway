@@ -36,13 +36,13 @@ func (ds *DataSource) GetIngessList() (*networkingv1.IngressList, error) {
 	if ds.InputFile != "" {
 		err := i2gw.ConstructIngressesFromFile(ingressList, ds.InputFile, ds.NamespaceFilter)
 		if err != nil {
-			return nil, fmt.Errorf("failed to open input file: %v", err)
+			return nil, fmt.Errorf("failed to open input file: %w", err)
 		}
 	} else {
 		cl := ds.getNamespacedClient()
 		err := i2gw.ConstructIngressesFromCluster(cl, ingressList)
 		if err != nil {
-			return nil, fmt.Errorf("\nfailed to get ingress resources from kubenetes cluster: %v", err)
+			return nil, fmt.Errorf("\nfailed to get ingress resources from kubenetes cluster: %w", err)
 		}
 	}
 
