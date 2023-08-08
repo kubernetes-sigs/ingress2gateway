@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress1
+  namespace: namespace1
+spec:
+  ingressClassName: ingressClass1
+  rules:
+  - http:
+      paths:
+      - path: /test-1
+        pathType: Prefix
+        backend:
+          service:
+            name: test1
+            port:
+              number: 443
