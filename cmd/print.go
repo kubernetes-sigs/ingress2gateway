@@ -21,12 +21,15 @@ import (
 	"os"
 	"strings"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/datasource"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/spf13/cobra"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/client-go/tools/clientcmd"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
@@ -67,11 +70,7 @@ func (pr *PrintRunner) PrintGatewaysAndHTTPRoutes(cmd *cobra.Command, args []str
 		return fmt.Errorf("failed to initialize namespace filter: %w", err)
 	}
 
-	ds := datasource.DataSource{
-		NamespaceFilter: pr.namespaceFilter,
-		InputFile:       pr.inputFile,
-	}
-	ingressList, err := ds.GetIngessList()
+	ingressList, err := getIngessList(pr.namespaceFilter, pr.inputFile)
 	if err != nil {
 		return fmt.Errorf("failed to get ingresses from source: %w", err)
 	}
@@ -88,6 +87,51 @@ func (pr *PrintRunner) PrintGatewaysAndHTTPRoutes(cmd *cobra.Command, args []str
 	pr.outputResult(httpRoutes, gateways)
 
 	return nil
+}
+
+func getIngessList(namespaceFilter string, inputFile string) (*networkingv1.IngressList, error) {
+	ingressList := &networkingv1.IngressList{}
+	if inputFile != "" {
+		err := i2gw.ConstructIngressesFromFile(ingressList, inputFile, namespaceFilter)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open input file: %w", err)
+		}
+	} else {
+		cl, err := getNamespacedClient(namespaceFilter)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get client from kubenetes cluster: %w", err)
+		}
+
+		err = i2gw.ConstructIngressesFromCluster(cl, ingressList)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get ingress resources from kubenetes cluster: %w", err)
+		}
+	}
+
+	if len(ingressList.Items) == 0 {
+		msg := "No resources found"
+		if namespaceFilter != "" {
+			return nil, fmt.Errorf("%s in %s namespace", msg, namespaceFilter)
+		}
+		return nil, fmt.Errorf(msg)
+	}
+	return ingressList, nil
+}
+
+func getNamespacedClient(namespaceFilter string) (client.Client, error) {
+	conf, err := config.GetConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client config: %w", err)
+	}
+
+	cl, err := client.New(conf, client.Options{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create client: %w", err)
+	}
+	if namespaceFilter == "" {
+		return nil, fmt.Errorf("failed to get client config because no namespace was specified")
+	}
+	return client.NewNamespacedClient(cl, namespaceFilter), nil
 }
 
 func (pr *PrintRunner) outputResult(httpRoutes []gatewayv1beta1.HTTPRoute, gateways []gatewayv1beta1.Gateway) {
