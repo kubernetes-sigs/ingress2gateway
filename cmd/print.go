@@ -17,7 +17,6 @@ limitations under the License.
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -55,17 +54,17 @@ type PrintRunner struct {
 	namespaceFilter string
 }
 
-// PrintGatewaysAndHttpRoutes performs necessary steps to digest and print
+// PrintGatewaysAndHTTPRoutes performs necessary steps to digest and print
 // converted Gateways and HTTP Routes. The steps includes reading from the source,
 // construct ingresses, convert them, then print them out.
-func (pr *PrintRunner) PrintGatewaysAndHttpRoutes(cmd *cobra.Command, args []string) error {
+func (pr *PrintRunner) PrintGatewaysAndHTTPRoutes(cmd *cobra.Command, args []string) error {
 	err := pr.initializeResourcePrinter()
 	if err != nil {
-		return fmt.Errorf("Failed to initialize resrouce printer: %v", err)
+		return fmt.Errorf("failed to initialize resrouce printer: %w", err)
 	}
 	err = pr.initializeNamespaceFilter()
 	if err != nil {
-		return fmt.Errorf("Failed to initialize namespace filter: %v", err)
+		return fmt.Errorf("failed to initialize namespace filter: %w", err)
 	}
 
 	ds := datasource.DataSource{
@@ -74,14 +73,14 @@ func (pr *PrintRunner) PrintGatewaysAndHttpRoutes(cmd *cobra.Command, args []str
 	}
 	ingressList, err := ds.GetIngessList()
 	if err != nil {
-		return fmt.Errorf("Failed to get ingresses from source: %v", err)
+		return fmt.Errorf("failed to get ingresses from source: %w", err)
 	}
 
 	httpRoutes, gateways, errList := i2gw.Ingresses2GatewaysAndHTTPRoutes(ingressList.Items)
 	if len(errList) > 0 {
-		errMsg := errors.New(fmt.Sprintf("# Encountered %d errors\n", len(errList)))
+		errMsg := fmt.Errorf("\n# Encountered %d errors", len(errList))
 		for _, err := range errList {
-			errMsg = fmt.Errorf("%w # %s\n", errMsg, err)
+			errMsg = fmt.Errorf("\n%w # %s", errMsg, err)
 		}
 		return errMsg
 	}
@@ -163,7 +162,7 @@ func newPrintCommand() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:   "print",
 		Short: "Prints HTTPRoutes and Gateways generated from Ingress resources",
-		RunE:  pr.PrintGatewaysAndHttpRoutes,
+		RunE:  pr.PrintGatewaysAndHTTPRoutes,
 	}
 
 	cmd.Flags().StringVarP(&pr.outputFormat, "output", "o", "yaml",
