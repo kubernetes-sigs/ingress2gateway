@@ -97,10 +97,16 @@ func getIngessList(namespaceFilter string, inputFile string) (*networkingv1.Ingr
 			return nil, fmt.Errorf("failed to open input file: %w", err)
 		}
 	} else {
-		cl, err := getNamespacedClient(namespaceFilter)
+		conf, err := config.GetConfig()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get client from kubenetes cluster: %w", err)
+			return nil, fmt.Errorf("failed to get client config: %w", err)
 		}
+
+		cl, err := client.New(conf, client.Options{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create client: %w", err)
+		}
+		cl = client.NewNamespacedClient(cl, namespaceFilter)
 
 		err = i2gw.ConstructIngressesFromCluster(cl, ingressList)
 		if err != nil {
@@ -116,22 +122,6 @@ func getIngessList(namespaceFilter string, inputFile string) (*networkingv1.Ingr
 		return nil, fmt.Errorf(msg)
 	}
 	return ingressList, nil
-}
-
-func getNamespacedClient(namespaceFilter string) (client.Client, error) {
-	conf, err := config.GetConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get client config: %w", err)
-	}
-
-	cl, err := client.New(conf, client.Options{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create client: %w", err)
-	}
-	if namespaceFilter == "" {
-		return nil, fmt.Errorf("failed to get client config because no namespace was specified")
-	}
-	return client.NewNamespacedClient(cl, namespaceFilter), nil
 }
 
 func (pr *PrintRunner) outputResult(httpRoutes []gatewayv1beta1.HTTPRoute, gateways []gatewayv1beta1.Gateway) {
