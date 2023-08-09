@@ -34,6 +34,7 @@ kind: Ingress
 metadata:
   name: ingress1
   namespace: namespace1
+  resourceVersion: "999"
 spec:
   ingressClassName: ingressClass-ingress1
   rules:
@@ -52,6 +53,7 @@ kind: Ingress
 metadata:
   name: ingress2
   namespace: namespace2
+  resourceVersion: "999"
 spec:
   ingressClassName: ingressClass-ingress2
   rules:
@@ -69,6 +71,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: ingress-no-namespace
+  resourceVersion: "999"
 spec:
   ingressClassName: ingressClass-ingress-no-namespace
   rules:
