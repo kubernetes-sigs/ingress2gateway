@@ -19,13 +19,12 @@ package i2gw
 import (
 	"testing"
 
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
 	"github.com/google/go-cmp/cmp"
 	networkingv1 "k8s.io/api/networking/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func Test_constructIngressesFromFile(t *testing.T) {
