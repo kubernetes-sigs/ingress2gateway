@@ -74,9 +74,9 @@ func ingress(port int32, name, namespace string) networkingv1.Ingress {
 	iService := "service-" + name
 	var objMeta metav1.ObjectMeta
 	if namespace != "" {
-		objMeta = metav1.ObjectMeta{Name: name, ResourceVersion: "999", Namespace: namespace}
+		objMeta = metav1.ObjectMeta{Name: name, Namespace: namespace}
 	} else {
-		objMeta = metav1.ObjectMeta{Name: name, ResourceVersion: "999"}
+		objMeta = metav1.ObjectMeta{Name: name}
 	}
 
 	ing := networkingv1.Ingress{
