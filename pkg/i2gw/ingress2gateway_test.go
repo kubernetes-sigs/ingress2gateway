@@ -28,9 +28,9 @@ import (
 )
 
 func Test_constructIngressesFromFile(t *testing.T) {
-	ingress1 := createIngress(443, "ingress1", "namespace1", "/test-1", "ingressClass1")
-	ingress2 := createIngress(80, "ingress2", "namespace2", "/test-2", "ingressClass2")
-	ingressNoNamespace := createIngress(80, "ingress-no-namespace", "", "/test-no-namespace", "ingressClassNoNamespace")
+	ingress1 := ingress(443, "ingress1", "namespace1")
+	ingress2 := ingress(80, "ingress2", "namespace2")
+	ingressNoNamespace := ingress(80, "ingress-no-namespace", "")
 
 	testCases := []struct {
 		name            string
@@ -67,8 +67,11 @@ func Test_constructIngressesFromFile(t *testing.T) {
 	}
 }
 
-func createIngress(port int32, name, namespace, path, ingressClass string) networkingv1.Ingress {
+func ingress(port int32, name, namespace string) networkingv1.Ingress {
 	iPrefix := networkingv1.PathTypePrefix
+	iPath := "/path-" + name
+	iClass := "ingressClass-" + name
+	iService := "service-" + name
 	var objMeta metav1.ObjectMeta
 	if namespace != "" {
 		objMeta = metav1.ObjectMeta{Name: name, ResourceVersion: "999", Namespace: namespace}
@@ -83,16 +86,16 @@ func createIngress(port int32, name, namespace, path, ingressClass string) netwo
 		},
 		ObjectMeta: objMeta,
 		Spec: networkingv1.IngressSpec{
-			IngressClassName: &ingressClass,
+			IngressClassName: &iClass,
 			Rules: []networkingv1.IngressRule{{
 				IngressRuleValue: networkingv1.IngressRuleValue{
 					HTTP: &networkingv1.HTTPIngressRuleValue{
 						Paths: []networkingv1.HTTPIngressPath{{
-							Path:     path,
+							Path:     iPath,
 							PathType: &iPrefix,
 							Backend: networkingv1.IngressBackend{
 								Service: &networkingv1.IngressServiceBackend{
-									Name: name,
+									Name: iService,
 									Port: networkingv1.ServiceBackendPort{
 										Number: port,
 									},
@@ -117,8 +120,8 @@ func compareIngressLists(t *testing.T, gotIngressList *networkingv1.IngressList,
 }
 
 func Test_constructIngressesFromCluster(t *testing.T) {
-	ingress1 := createIngress(443, "ingress1", "namespace1", "/test-1", "ingressClass1")
-	ingress2 := createIngress(80, "ingress2", "namespace2", "/test-2", "ingressClass2")
+	ingress1 := ingress(443, "ingress1", "namespace1")
+	ingress2 := ingress(80, "ingress2", "namespace2")
 	testCases := []struct {
 		name          string
 		runtimeObjs   []runtime.Object

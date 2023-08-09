@@ -35,15 +35,15 @@ metadata:
   name: ingress1
   namespace: namespace1
 spec:
-  ingressClassName: ingressClass1
+  ingressClassName: ingressClass-ingress1
   rules:
   - http:
       paths:
-      - path: /test-1
+      - path: /path-ingress1
         pathType: Prefix
         backend:
           service:
-            name: ingress1
+            name: service-ingress1
             port:
               number: 443
 ---
@@ -53,15 +53,15 @@ metadata:
   name: ingress2
   namespace: namespace2
 spec:
-  ingressClassName: ingressClass2
+  ingressClassName: ingressClass-ingress2
   rules:
   - http:
       paths:
-      - path: /test-2
+      - path: /path-ingress2
         pathType: Prefix
         backend:
           service:
-            name: ingress2
+            name: service-ingress2
             port:
               number: 80
 ---
@@ -70,14 +70,14 @@ kind: Ingress
 metadata:
   name: ingress-no-namespace
 spec:
-  ingressClassName: ingressClassNoNamespace
+  ingressClassName: ingressClass-ingress-no-namespace
   rules:
   - http:
       paths:
-      - path: /test-no-namespace
+      - path: /path-ingress-no-namespace
         pathType: Prefix
         backend:
           service:
-            name: ingress-no-namespace
+            name: service-ingress-no-namespace
             port:
               number: 80
