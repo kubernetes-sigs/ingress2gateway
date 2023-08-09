@@ -19,10 +19,13 @@ package i2gw
 import (
 	"testing"
 
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
 	"github.com/google/go-cmp/cmp"
 	networkingv1 "k8s.io/api/networking/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func Test_constructIngressesFromFile(t *testing.T) {
@@ -156,5 +159,53 @@ func compareIngressLists(t *testing.T, gotIngressList *networkingv1.IngressList,
 		if !apiequality.Semantic.DeepEqual(got, want) {
 			t.Errorf("Expected Ingress %d to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))
 		}
+	}
+}
+
+func Test_constructIngressesFromCluster(t *testing.T) {
+	ingress1 := networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "ingress1",
+			Namespace:       "namespace1",
+			ResourceVersion: "999",
+		},
+	}
+	ingress2 := networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            "ingress2",
+			Namespace:       "namespace2",
+			ResourceVersion: "999",
+		},
+	}
+	testCases := []struct {
+		name        string
+		runtimeObjs []runtime.Object
+		wantIngress []networkingv1.Ingress
+	}{{
+		name:        "Test cluster client with 2 resources",
+		runtimeObjs: []runtime.Object{&ingress1, &ingress2},
+		wantIngress: []networkingv1.Ingress{ingress1, ingress2},
+	}, {
+		name:        "Test cluster client without resources",
+		runtimeObjs: []runtime.Object{},
+		wantIngress: []networkingv1.Ingress{},
+	},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ingressList := &networkingv1.IngressList{}
+			cl := fake.NewClientBuilder().WithRuntimeObjects(tc.runtimeObjs...).Build()
+			err := ConstructIngressesFromCluster(cl, ingressList)
+			if err != nil {
+				t.Errorf("test failed unexpectedly: %v", err)
+			}
+
+			got := []networkingv1.Ingress{}
+			got = append(got, ingressList.Items...)
+			if !apiequality.Semantic.DeepEqual(tc.wantIngress, got) {
+				t.Errorf("Expected Ingress list to be %+v\n Got: %+v\n Diff: %s", tc.wantIngress, got, cmp.Diff(tc.wantIngress, got))
+			}
+		})
 	}
 }
