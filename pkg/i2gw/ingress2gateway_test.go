@@ -28,94 +28,9 @@ import (
 )
 
 func Test_constructIngressesFromFile(t *testing.T) {
-	iPrefix := networkingv1.PathTypePrefix
-	ingress1ClassName := "ingressClass1"
-	ingress2ClassName := "ingressClass2"
-	ingressNoNamespaceClassName := "ingressClassNoNamespace"
-	ingress1 := networkingv1.Ingress{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Ingress",
-			APIVersion: "networking.k8s.io/v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{Name: "ingress1", Namespace: "namespace1"},
-		Spec: networkingv1.IngressSpec{
-			IngressClassName: &ingress1ClassName,
-			Rules: []networkingv1.IngressRule{{
-				IngressRuleValue: networkingv1.IngressRuleValue{
-					HTTP: &networkingv1.HTTPIngressRuleValue{
-						Paths: []networkingv1.HTTPIngressPath{{
-							Path:     "/test-1",
-							PathType: &iPrefix,
-							Backend: networkingv1.IngressBackend{
-								Service: &networkingv1.IngressServiceBackend{
-									Name: "test1",
-									Port: networkingv1.ServiceBackendPort{
-										Number: 443,
-									},
-								},
-							},
-						}},
-					},
-				},
-			}},
-		},
-	}
-	ingress2 := networkingv1.Ingress{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Ingress",
-			APIVersion: "networking.k8s.io/v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{Name: "ingress2", Namespace: "namespace2"},
-		Spec: networkingv1.IngressSpec{
-			IngressClassName: &ingress2ClassName,
-			Rules: []networkingv1.IngressRule{{
-				IngressRuleValue: networkingv1.IngressRuleValue{
-					HTTP: &networkingv1.HTTPIngressRuleValue{
-						Paths: []networkingv1.HTTPIngressPath{{
-							Path:     "/test-2",
-							PathType: &iPrefix,
-							Backend: networkingv1.IngressBackend{
-								Service: &networkingv1.IngressServiceBackend{
-									Name: "test2",
-									Port: networkingv1.ServiceBackendPort{
-										Number: 80,
-									},
-								},
-							},
-						}},
-					},
-				},
-			}},
-		},
-	}
-	ingressNoNamespace := networkingv1.Ingress{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Ingress",
-			APIVersion: "networking.k8s.io/v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{Name: "ingress-no-namespace"},
-		Spec: networkingv1.IngressSpec{
-			IngressClassName: &ingressNoNamespaceClassName,
-			Rules: []networkingv1.IngressRule{{
-				IngressRuleValue: networkingv1.IngressRuleValue{
-					HTTP: &networkingv1.HTTPIngressRuleValue{
-						Paths: []networkingv1.HTTPIngressPath{{
-							Path:     "/test-no-namespace",
-							PathType: &iPrefix,
-							Backend: networkingv1.IngressBackend{
-								Service: &networkingv1.IngressServiceBackend{
-									Name: "test-no-namespace",
-									Port: networkingv1.ServiceBackendPort{
-										Number: 80,
-									},
-								},
-							},
-						}},
-					},
-				},
-			}},
-		},
-	}
+	ingress1 := createIngress(443, "ingress1", "namespace1", "/test-1", "ingressClass1")
+	ingress2 := createIngress(80, "ingress2", "namespace2", "/test-2", "ingressClass2")
+	ingressNoNamespace := createIngress(80, "ingress-no-namespace", "", "/test-no-namespace", "ingressClassNoNamespace")
 
 	testCases := []struct {
 		name            string
@@ -152,6 +67,46 @@ func Test_constructIngressesFromFile(t *testing.T) {
 	}
 }
 
+func createIngress(port int32, name, namespace, path, ingressClass string) networkingv1.Ingress {
+	iPrefix := networkingv1.PathTypePrefix
+	var objMeta metav1.ObjectMeta
+	if namespace != "" {
+		objMeta = metav1.ObjectMeta{Name: name, ResourceVersion: "999", Namespace: namespace}
+	} else {
+		objMeta = metav1.ObjectMeta{Name: name, ResourceVersion: "999"}
+	}
+
+	ing := networkingv1.Ingress{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Ingress",
+			APIVersion: "networking.k8s.io/v1",
+		},
+		ObjectMeta: objMeta,
+		Spec: networkingv1.IngressSpec{
+			IngressClassName: &ingressClass,
+			Rules: []networkingv1.IngressRule{{
+				IngressRuleValue: networkingv1.IngressRuleValue{
+					HTTP: &networkingv1.HTTPIngressRuleValue{
+						Paths: []networkingv1.HTTPIngressPath{{
+							Path:     path,
+							PathType: &iPrefix,
+							Backend: networkingv1.IngressBackend{
+								Service: &networkingv1.IngressServiceBackend{
+									Name: name,
+									Port: networkingv1.ServiceBackendPort{
+										Number: port,
+									},
+								},
+							},
+						}},
+					},
+				},
+			}},
+		},
+	}
+	return ing
+}
+
 func compareIngressLists(t *testing.T, gotIngressList *networkingv1.IngressList, wantIngressList []networkingv1.Ingress) {
 	for i, got := range gotIngressList.Items {
 		want := wantIngressList[i]
@@ -162,49 +117,32 @@ func compareIngressLists(t *testing.T, gotIngressList *networkingv1.IngressList,
 }
 
 func Test_constructIngressesFromCluster(t *testing.T) {
-	ingress1 := networkingv1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            "ingress1",
-			Namespace:       "namespace1",
-			ResourceVersion: "999",
-		},
-	}
-	ingress2 := networkingv1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            "ingress2",
-			Namespace:       "namespace2",
-			ResourceVersion: "999",
-		},
-	}
+	ingress1 := createIngress(443, "ingress1", "namespace1", "/test-1", "ingressClass1")
+	ingress2 := createIngress(80, "ingress2", "namespace2", "/test-2", "ingressClass2")
 	testCases := []struct {
-		name        string
-		runtimeObjs []runtime.Object
-		wantIngress []networkingv1.Ingress
+		name          string
+		runtimeObjs   []runtime.Object
+		wantIngresses []networkingv1.Ingress
 	}{{
-		name:        "Test cluster client with 2 resources",
-		runtimeObjs: []runtime.Object{&ingress1, &ingress2},
-		wantIngress: []networkingv1.Ingress{ingress1, ingress2},
+		name:          "Test cluster client with 2 resources",
+		runtimeObjs:   []runtime.Object{&ingress1, &ingress2},
+		wantIngresses: []networkingv1.Ingress{ingress1, ingress2},
 	}, {
-		name:        "Test cluster client without resources",
-		runtimeObjs: []runtime.Object{},
-		wantIngress: []networkingv1.Ingress{},
+		name:          "Test cluster client without resources",
+		runtimeObjs:   []runtime.Object{},
+		wantIngresses: []networkingv1.Ingress{},
 	},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ingressList := &networkingv1.IngressList{}
+			gotIngresses := &networkingv1.IngressList{}
 			cl := fake.NewClientBuilder().WithRuntimeObjects(tc.runtimeObjs...).Build()
-			err := ConstructIngressesFromCluster(cl, ingressList)
+			err := ConstructIngressesFromCluster(cl, gotIngresses)
 			if err != nil {
 				t.Errorf("test failed unexpectedly: %v", err)
 			}
-
-			got := []networkingv1.Ingress{}
-			got = append(got, ingressList.Items...)
-			if !apiequality.Semantic.DeepEqual(tc.wantIngress, got) {
-				t.Errorf("Expected Ingress list to be %+v\n Got: %+v\n Diff: %s", tc.wantIngress, got, cmp.Diff(tc.wantIngress, got))
-			}
+			compareIngressLists(t, gotIngresses, tc.wantIngresses)
 		})
 	}
 }

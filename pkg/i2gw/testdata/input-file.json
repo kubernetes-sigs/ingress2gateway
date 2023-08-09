@@ -75,7 +75,7 @@
                                     "pathType": "Prefix",
                                     "backend": {
                                         "service": {
-                                            "name": "test1",
+                                            "name": "ingress1",
                                             "port": {
                                                 "number": 443
                                             }
@@ -106,7 +106,7 @@
                                     "pathType": "Prefix",
                                     "backend": {
                                         "service": {
-                                            "name": "test2",
+                                            "name": "ingress2",
                                             "port": {
                                                 "number": 80
                                             }
@@ -136,7 +136,7 @@
                                     "pathType": "Prefix",
                                     "backend": {
                                         "service": {
-                                            "name": "test-no-namespace",
+                                            "name": "ingress-no-namespace",
                                             "port": {
                                                 "number": 80
                                             }
