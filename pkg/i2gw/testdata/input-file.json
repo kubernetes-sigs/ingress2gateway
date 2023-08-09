@@ -61,7 +61,8 @@
             "apiVersion": "networking.k8s.io/v1",
             "kind": "Ingress",
             "metadata": {
-                "name": "ingress1"
+                "name": "ingress1",
+                "namespace": "namespace1"
             },
             "spec": {
                 "ingressClassName": "ingressClass1",
@@ -91,7 +92,8 @@
             "apiVersion": "networking.k8s.io/v1",
             "kind": "Ingress",
             "metadata": {
-                "name": "ingress2"
+                "name": "ingress2",
+                "namespace": "namespace2"
             },
             "spec": {
                 "ingressClassName": "ingressClass2",
@@ -105,6 +107,36 @@
                                     "backend": {
                                         "service": {
                                             "name": "test2",
+                                            "port": {
+                                                "number": 80
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "apiVersion": "networking.k8s.io/v1",
+            "kind": "Ingress",
+            "metadata": {
+                "name": "ingress-no-namespace"
+            },
+            "spec": {
+                "ingressClassName": "ingressClassNoNamespace",
+                "rules": [
+                    {
+                        "http": {
+                            "paths": [
+                                {
+                                    "path": "/test-no-namespace",
+                                    "pathType": "Prefix",
+                                    "backend": {
+                                        "service": {
+                                            "name": "test-no-namespace",
                                             "port": {
                                                 "number": 80
                                             }

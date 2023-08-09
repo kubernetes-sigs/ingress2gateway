@@ -29,65 +29,19 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	kubeyaml "k8s.io/apimachinery/pkg/util/yaml"
-	"k8s.io/cli-runtime/pkg/printers"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-func Run(printer printers.ResourcePrinter, namespace string, inputFile string) {
-	conf, err := config.GetConfig()
+func ConstructIngressesFromCluster(cl client.Client, ingressList *networkingv1.IngressList) error {
+	err := cl.List(context.Background(), ingressList)
 	if err != nil {
-		fmt.Println("failed to get client config")
-		os.Exit(1)
+		return fmt.Errorf("failed to get ingresses from the cluster: %w", err)
 	}
-
-	cl, err := client.New(conf, client.Options{})
-	if err != nil {
-		fmt.Println("failed to create client")
-		os.Exit(1)
-	}
-	cl = client.NewNamespacedClient(cl, namespace)
-
-	ingressList := &networkingv1.IngressList{}
-
-	if inputFile != "" {
-		err = constructIngressesFromFile(ingressList, inputFile)
-		if err != nil {
-			fmt.Printf("failed to open input file: %v\n", err)
-			os.Exit(1)
-		}
-	} else {
-		err = cl.List(context.Background(), ingressList)
-		if err != nil {
-			fmt.Printf("failed to list ingresses: %v\n", err)
-			os.Exit(1)
-		}
-	}
-
-	if len(ingressList.Items) == 0 {
-		msg := "No resources found"
-		if namespace != "" {
-			fmt.Printf("%s in %s namespace\n", msg, namespace)
-		} else {
-			fmt.Println(msg)
-		}
-		return
-	}
-
-	httpRoutes, gateways, errors := ingresses2GatewaysAndHTTPRoutes(ingressList.Items)
-	if len(errors) > 0 {
-		fmt.Printf("# Encountered %d errors\n", len(errors))
-		for _, err = range errors {
-			fmt.Printf("# %s\n", err)
-		}
-		return
-	}
-
-	outputResult(printer, httpRoutes, gateways)
+	return nil
 }
 
-func ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, field.ErrorList) {
+func Ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, field.ErrorList) {
 	aggregator := ingressAggregator{ruleGroups: map[ruleGroupKey]*ingressRuleGroup{}}
 
 	var errs field.ErrorList
@@ -99,22 +53,6 @@ func ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewa
 	}
 
 	return aggregator.toHTTPRoutesAndGateways()
-}
-
-func outputResult(printer printers.ResourcePrinter, httpRoutes []gatewayv1beta1.HTTPRoute, gateways []gatewayv1beta1.Gateway) {
-	for i := range gateways {
-		err := printer.PrintObj(&gateways[i], os.Stdout)
-		if err != nil {
-			fmt.Printf("# Error printing %s HTTPRoute: %v\n", gateways[i].Name, err)
-		}
-	}
-
-	for i := range httpRoutes {
-		err := printer.PrintObj(&httpRoutes[i], os.Stdout)
-		if err != nil {
-			fmt.Printf("# Error printing %s HTTPRoute: %v\n", httpRoutes[i].Name, err)
-		}
-	}
 }
 
 // extractObjectsFromReader extracts all objects from a reader,
@@ -147,7 +85,7 @@ func extractObjectsFromReader(reader io.Reader) ([]*unstructured.Unstructured, e
 					tmpObjs = append(tmpObjs, unstructuredObj)
 					return nil
 				}
-				return fmt.Errorf("Resource list item has unexpected type")
+				return fmt.Errorf("resource list item has unexpected type")
 			})
 			if err != nil {
 				return nil, err
@@ -161,10 +99,10 @@ func extractObjectsFromReader(reader io.Reader) ([]*unstructured.Unstructured, e
 	return finalObjs, nil
 }
 
-// constructIngressesFromFile reads the inputFile in either json/yaml formats,
+// ConstructIngressesFromFile reads the inputFile in either json/yaml formats,
 // then deserialize the file into Ingresses resources.
 // All ingresses will be pushed into the supplied IngressList for return.
-func constructIngressesFromFile(l *networkingv1.IngressList, inputFile string) error {
+func ConstructIngressesFromFile(l *networkingv1.IngressList, inputFile string, namespace string) error {
 	stream, err := os.ReadFile(inputFile)
 	if err != nil {
 		return err
@@ -177,6 +115,9 @@ func constructIngressesFromFile(l *networkingv1.IngressList, inputFile string) e
 	}
 
 	for _, f := range objs {
+		if namespace != "" && f.GetNamespace() != namespace {
+			continue
+		}
 		if !f.GroupVersionKind().Empty() && f.GroupVersionKind().Kind == "Ingress" {
 			var i networkingv1.Ingress
 			err = runtime.DefaultUnstructuredConverter.
