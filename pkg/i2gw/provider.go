@@ -22,6 +22,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
@@ -80,8 +81,15 @@ type IngressResources struct {
 
 // GatewayResources contains all Gateway-API objects.
 type GatewayResources struct {
-	Gateways   map[GatewayKey]gatewayv1beta1.Gateway
+	Gateways       map[GatewayKey]gatewayv1beta1.Gateway
+	GatewayClasses map[GatewayClassKey]gatewayv1beta1.GatewayClass
+
 	HTTPRoutes map[HTTPRouteKey]gatewayv1beta1.HTTPRoute
+	TLSRoutes  map[TLSRouteKey]gatewayv1alpha2.TLSRoute
+	TCPRoutes  map[TCPRouteKey]gatewayv1alpha2.TCPRoute
+	UDPRoutes  map[UDPRouteKey]gatewayv1alpha2.UDPRoute
+
+	ReferenceGrants map[ReferenceGrantKey]gatewayv1alpha2.ReferenceGrant
 }
 
 // GatewayKey is a unique identifier for a gateway object.
@@ -93,6 +101,10 @@ func GatewayToGatewayKey(g gatewayv1beta1.Gateway) GatewayKey {
 	return GatewayKey(g.Namespace + ":" + g.Name)
 }
 
+// GatewayClassKey is a unique identifier for a GatewayClass object.
+// Constructed by namespace:name.
+type GatewayClassKey string
+
 // HTTPRouteKey is a unique identifier for an HTTPRoute object.
 // Constructed by namespace:name.
 type HTTPRouteKey string
@@ -101,6 +113,22 @@ type HTTPRouteKey string
 func HTTPRouteToHTTPRouteKey(r gatewayv1beta1.HTTPRoute) HTTPRouteKey {
 	return HTTPRouteKey(r.Namespace + ":" + r.Name)
 }
+
+// ReferenceGrantKey is a unique identifier for a ReferenceGrant object.
+// Constructed by namespace:name.
+type ReferenceGrantKey string
+
+// TLSRouteKey is a unique identifier for a TLSRoute object.
+// Constructed by namespace:name.
+type TLSRouteKey string
+
+// TCPRouteKey is a unique identifier for a TCPRoute object.
+// Constructed by namespace:name.
+type TCPRouteKey string
+
+// UDPRouteKey is a unique identifier for a UDPRoute object.
+// Constructed by namespace:name.
+type UDPRouteKey string
 
 // FeatureParser is a function that reads the IngressResources, and applies
 // the appropriate modifications to the GatewayResources.
