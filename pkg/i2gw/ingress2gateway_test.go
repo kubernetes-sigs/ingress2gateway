@@ -17,6 +17,7 @@ limitations under the License.
 package i2gw
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -69,9 +70,7 @@ func Test_constructIngressesFromFile(t *testing.T) {
 
 func ingress(port int32, name, namespace string) networkingv1.Ingress {
 	iPrefix := networkingv1.PathTypePrefix
-	iPath := "/path-" + name
-	iClass := "ingressClass-" + name
-	iService := "service-" + name
+	ingressClassName := fmt.Sprintf("ingressClass-%s", name)
 	var objMeta metav1.ObjectMeta
 	if namespace != "" {
 		objMeta = metav1.ObjectMeta{Name: name, ResourceVersion: "999", Namespace: namespace}
@@ -86,16 +85,16 @@ func ingress(port int32, name, namespace string) networkingv1.Ingress {
 		},
 		ObjectMeta: objMeta,
 		Spec: networkingv1.IngressSpec{
-			IngressClassName: &iClass,
+			IngressClassName: &ingressClassName,
 			Rules: []networkingv1.IngressRule{{
 				IngressRuleValue: networkingv1.IngressRuleValue{
 					HTTP: &networkingv1.HTTPIngressRuleValue{
 						Paths: []networkingv1.HTTPIngressPath{{
-							Path:     iPath,
+							Path:     fmt.Sprintf("/path-%s", name),
 							PathType: &iPrefix,
 							Backend: networkingv1.IngressBackend{
 								Service: &networkingv1.IngressServiceBackend{
-									Name: iService,
+									Name: fmt.Sprintf("service-%s", name),
 									Port: networkingv1.ServiceBackendPort{
 										Number: port,
 									},
