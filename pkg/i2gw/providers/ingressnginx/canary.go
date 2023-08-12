@@ -23,12 +23,13 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/pointer"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-func canaryFeature(ingressResources i2gw.IngressResources, gatewayResources *i2gw.GatewayResources) field.ErrorList {
+func canaryFeature(ingressResources i2gw.InputResources, gatewayResources *i2gw.GatewayResources) field.ErrorList {
 	ruleGroups := common.GetRuleGroups(ingressResources.Ingresses)
 
 	for _, rg := range ruleGroups {
@@ -43,8 +44,8 @@ func canaryFeature(ingressResources i2gw.IngressResources, gatewayResources *i2g
 			backendRefs, calculationErrs := calculateBackendRefWeight(paths)
 			errs = append(errs, calculationErrs...)
 
-			httpRouteKey := i2gw.HTTPRouteKey(path.ingress.Namespace + ":" + common.NameFromHost(rg.Host))
-			httpRoute, ok := gatewayResources.HTTPRoutes[httpRouteKey]
+			key := types.NamespacedName{Namespace: path.ingress.Namespace, Name: common.NameFromHost(rg.Host)}
+			httpRoute, ok := gatewayResources.HTTPRoutes[key]
 			if !ok {
 				panic("HTTPRoute not exists - this should never happen")
 			}

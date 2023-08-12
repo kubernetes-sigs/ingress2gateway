@@ -20,6 +20,7 @@ import (
 	"context"
 
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
@@ -67,72 +68,34 @@ type CustomResourceReader interface {
 // conversion functions.
 type ResourceConverter interface {
 
-	// ToGateway converts the received IngressResources associated
+	// ToGatewayResources converts the received InputResources associated
 	// with the Provider into GatewayResources.
-	ToGateway(resources IngressResources) (GatewayResources, field.ErrorList)
+	ToGatewayResources(resources InputResources) (GatewayResources, field.ErrorList)
 }
 
-// IngressResources contains all Ingress related objects, and Provider specific
+// InputResources contains all Ingress objects, and Provider specific
 // custom resources.
-type IngressResources struct {
+type InputResources struct {
 	Ingresses       []networkingv1.Ingress
 	CustomResources interface{}
 }
 
 // GatewayResources contains all Gateway-API objects.
 type GatewayResources struct {
-	Gateways       map[GatewayKey]gatewayv1beta1.Gateway
-	GatewayClasses map[GatewayClassKey]gatewayv1beta1.GatewayClass
+	Gateways       map[types.NamespacedName]gatewayv1beta1.Gateway
+	GatewayClasses map[types.NamespacedName]gatewayv1beta1.GatewayClass
 
-	HTTPRoutes map[HTTPRouteKey]gatewayv1beta1.HTTPRoute
-	TLSRoutes  map[TLSRouteKey]gatewayv1alpha2.TLSRoute
-	TCPRoutes  map[TCPRouteKey]gatewayv1alpha2.TCPRoute
-	UDPRoutes  map[UDPRouteKey]gatewayv1alpha2.UDPRoute
+	HTTPRoutes map[types.NamespacedName]gatewayv1beta1.HTTPRoute
+	TLSRoutes  map[types.NamespacedName]gatewayv1alpha2.TLSRoute
+	TCPRoutes  map[types.NamespacedName]gatewayv1alpha2.TCPRoute
+	UDPRoutes  map[types.NamespacedName]gatewayv1alpha2.UDPRoute
 
-	ReferenceGrants map[ReferenceGrantKey]gatewayv1alpha2.ReferenceGrant
+	ReferenceGrants map[types.NamespacedName]gatewayv1alpha2.ReferenceGrant
 }
 
-// GatewayKey is a unique identifier for a gateway object.
-// Constructed by namespace:name.
-type GatewayKey string
-
-// GatewayToGatewayKey assembles the GatewayKey out of a Gateway.
-func GatewayToGatewayKey(g gatewayv1beta1.Gateway) GatewayKey {
-	return GatewayKey(g.Namespace + ":" + g.Name)
-}
-
-// GatewayClassKey is a unique identifier for a GatewayClass object.
-// Constructed by namespace:name.
-type GatewayClassKey string
-
-// HTTPRouteKey is a unique identifier for an HTTPRoute object.
-// Constructed by namespace:name.
-type HTTPRouteKey string
-
-// HTTPRouteToHTTPRouteKey assembles the HTTPRouteKey out of an HTTPRoute.
-func HTTPRouteToHTTPRouteKey(r gatewayv1beta1.HTTPRoute) HTTPRouteKey {
-	return HTTPRouteKey(r.Namespace + ":" + r.Name)
-}
-
-// ReferenceGrantKey is a unique identifier for a ReferenceGrant object.
-// Constructed by namespace:name.
-type ReferenceGrantKey string
-
-// TLSRouteKey is a unique identifier for a TLSRoute object.
-// Constructed by namespace:name.
-type TLSRouteKey string
-
-// TCPRouteKey is a unique identifier for a TCPRoute object.
-// Constructed by namespace:name.
-type TCPRouteKey string
-
-// UDPRouteKey is a unique identifier for a UDPRoute object.
-// Constructed by namespace:name.
-type UDPRouteKey string
-
-// FeatureParser is a function that reads the IngressResources, and applies
+// FeatureParser is a function that reads the InputResources, and applies
 // the appropriate modifications to the GatewayResources.
 //
 // Different FeatureParsers will run in undetermined order. The function must
 // modify / create only the required fields of the gateway resources and nothing else.
-type FeatureParser func(IngressResources, *GatewayResources) field.ErrorList
+type FeatureParser func(InputResources, *GatewayResources) field.ErrorList

@@ -25,6 +25,7 @@ import (
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
@@ -47,14 +48,16 @@ func ToGateway(ingresses []networkingv1.Ingress) (i2gw.GatewayResources, field.E
 		return i2gw.GatewayResources{}, errs
 	}
 
-	routeByKey := make(map[i2gw.HTTPRouteKey]gatewayv1beta1.HTTPRoute)
+	routeByKey := make(map[types.NamespacedName]gatewayv1beta1.HTTPRoute)
 	for _, route := range routes {
-		routeByKey[i2gw.HTTPRouteToHTTPRouteKey(route)] = route
+		key := types.NamespacedName{Namespace: route.Namespace, Name: route.Name}
+		routeByKey[key] = route
 	}
 
-	gatewayByKey := make(map[i2gw.GatewayKey]gatewayv1beta1.Gateway)
+	gatewayByKey := make(map[types.NamespacedName]gatewayv1beta1.Gateway)
 	for _, gateway := range gateways {
-		gatewayByKey[i2gw.GatewayToGatewayKey(gateway)] = gateway
+		key := types.NamespacedName{Namespace: gateway.Namespace, Name: gateway.Name}
+		gatewayByKey[key] = gateway
 	}
 
 	return i2gw.GatewayResources{

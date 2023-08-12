@@ -27,6 +27,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
@@ -103,8 +104,8 @@ func Test_ToGateway(t *testing.T) {
 				},
 			},
 			expectedGatewayResources: i2gw.GatewayResources{
-				Gateways: map[i2gw.GatewayKey]gatewayv1beta1.Gateway{
-					"default:ingress-nginx": {
+				Gateways: map[types.NamespacedName]gatewayv1beta1.Gateway{
+					types.NamespacedName{Namespace: "default", Name: "ingress-nginx"}: {
 						ObjectMeta: metav1.ObjectMeta{Name: "ingress-nginx", Namespace: "default"},
 						Spec: gatewayv1beta1.GatewaySpec{
 							GatewayClassName: "ingress-nginx",
@@ -117,8 +118,8 @@ func Test_ToGateway(t *testing.T) {
 						},
 					},
 				},
-				HTTPRoutes: map[i2gw.HTTPRouteKey]gatewayv1beta1.HTTPRoute{
-					"default:echo-prod-mydomain-com": {
+				HTTPRoutes: map[types.NamespacedName]gatewayv1beta1.HTTPRoute{
+					types.NamespacedName{Namespace: "default", Name: "echo-prod-mydomain-com"}: {
 						ObjectMeta: metav1.ObjectMeta{Name: "echo-prod-mydomain-com", Namespace: "default"},
 						Spec: gatewayv1beta1.HTTPRouteSpec{
 							CommonRouteSpec: gatewayv1beta1.CommonRouteSpec{
@@ -170,19 +171,20 @@ func Test_ToGateway(t *testing.T) {
 
 			provider := NewProvider(&i2gw.ProviderConf{})
 
-			resources := i2gw.IngressResources{
+			resources := i2gw.InputResources{
 				Ingresses:       tc.ingresses,
 				CustomResources: nil,
 			}
 
-			gatewayResources, errs := provider.ToGateway(resources)
+			gatewayResources, errs := provider.ToGatewayResources(resources)
 
 			if len(gatewayResources.HTTPRoutes) != len(tc.expectedGatewayResources.HTTPRoutes) {
 				t.Errorf("Expected %d HTTPRoutes, got %d: %+v",
 					len(tc.expectedGatewayResources.HTTPRoutes), len(gatewayResources.HTTPRoutes), gatewayResources.HTTPRoutes)
 			} else {
 				for i, got := range gatewayResources.HTTPRoutes {
-					want := tc.expectedGatewayResources.HTTPRoutes[i2gw.HTTPRouteToHTTPRouteKey(got)]
+					key := types.NamespacedName{Namespace: got.Namespace, Name: got.Name}
+					want := tc.expectedGatewayResources.HTTPRoutes[key]
 					want.SetGroupVersionKind(common.HTTPRouteGVK)
 					if !apiequality.Semantic.DeepEqual(got, want) {
 						t.Errorf("Expected HTTPRoute %s to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))
@@ -195,7 +197,8 @@ func Test_ToGateway(t *testing.T) {
 					len(tc.expectedGatewayResources.Gateways), len(gatewayResources.Gateways), gatewayResources.Gateways)
 			} else {
 				for i, got := range gatewayResources.Gateways {
-					want := tc.expectedGatewayResources.Gateways[i2gw.GatewayToGatewayKey(got)]
+					key := types.NamespacedName{Namespace: got.Namespace, Name: got.Name}
+					want := tc.expectedGatewayResources.Gateways[key]
 					want.SetGroupVersionKind(common.GatewayGVK)
 					if !apiequality.Semantic.DeepEqual(got, want) {
 						t.Errorf("Expected Gateway %s to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))

@@ -1,5 +1,5 @@
 /*
-Copyright 2023 The Kubernetes Authors.
+Copyright 2022 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -42,45 +43,23 @@ func ConstructIngressesFromCluster(cl client.Client, ingressList *networkingv1.I
 	return nil
 }
 
-//func Run(ctx context.Context, printer printers.ResourcePrinter, namespace string, inputFile string) error {
-//	conf, err := config.GetConfig()
-//	if err != nil {
-//		return fmt.Errorf("failed to get client config: %w", err)
-//	}
-//
-//	cl, err := client.New(conf, client.Options{})
-//	if err != nil {
-//		return fmt.Errorf("failed to create client: %w", err)
-//	}
-//	cl = client.NewNamespacedClient(cl, namespace)
-//
-//	var ingresses networkingv1.IngressList
-//	if inputFile != "" {
-//		if err = constructIngressesFromFile(&ingresses, inputFile); err != nil {
-//			return fmt.Errorf("failed to open input file: %w", err)
-//		}
-//	} else {
-//		if err = cl.List(ctx, &ingresses); err != nil {
-//			return fmt.Errorf("failed to list ingresses: %w", err)
-//		}
-//	}
-//
-//	if len(ingresses.Items) == 0 {
-//		msg := "No resources found"
-//		if namespace != "" {
-//			fmt.Printf("%s in %s namespace\n", msg, namespace)
-//		} else {
-//			fmt.Println(msg)
-//		}
-//		return nil
-//	}
-//	return nil
-//}
-
 func Ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, field.ErrorList) {
 	var gateways []gatewayv1beta1.Gateway
 	var httpRoutes []gatewayv1beta1.HTTPRoute
 	var errs field.ErrorList
+
+	conf, err := config.GetConfig()
+	if err != nil {
+		errs = append(errs, field.Invalid(nil, "", fmt.Sprintf("failed to get client config: %v", err)))
+		return nil, nil, errs
+	}
+
+	cl, err := client.New(conf, client.Options{})
+	if err != nil {
+		errs = append(errs, field.Invalid(nil, "", fmt.Sprintf("failed to create client: %v", err)))
+		return nil, nil, errs
+	}
+	cl = client.NewNamespacedClient(cl, "") // FIXME
 
 	providerByName := constructProviders(&ProviderConf{
 		Client: cl,
@@ -90,7 +69,7 @@ func Ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewa
 		return nil, nil, errs
 	}
 
-	resources := IngressResources{Ingresses: ingresses}
+	resources := InputResources{Ingresses: ingresses}
 
 	for name, provider := range providerByName {
 
@@ -99,7 +78,7 @@ func Ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewa
 			return nil, nil, errs
 		}
 
-		gatewayResources, conversionErrs := provider.ToGateway(resources)
+		gatewayResources, conversionErrs := provider.ToGatewayResources(resources)
 		errs = append(errs, conversionErrs...)
 		for _, gateway := range gatewayResources.Gateways {
 			gateways = append(gateways, gateway)
