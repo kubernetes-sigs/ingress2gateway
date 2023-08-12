@@ -50,7 +50,7 @@ func Test_ToGateway(t *testing.T) {
 				{
 					ObjectMeta: metav1.ObjectMeta{Name: "production", Namespace: "default"},
 					Spec: networkingv1.IngressSpec{
-						IngressClassName: stringPtr("ingress-nginx"),
+						IngressClassName: ptrTo("ingress-nginx"),
 						Rules: []networkingv1.IngressRule{{
 							Host: "echo.prod.mydomain.com",
 							IngressRuleValue: networkingv1.IngressRuleValue{
@@ -62,7 +62,7 @@ func Test_ToGateway(t *testing.T) {
 											Resource: &corev1.TypedLocalObjectReference{
 												Name:     "production",
 												Kind:     "StorageBucket",
-												APIGroup: stringPtr("vendor.example.com"),
+												APIGroup: ptrTo("vendor.example.com"),
 											},
 										},
 									}},
@@ -81,7 +81,7 @@ func Test_ToGateway(t *testing.T) {
 						},
 					},
 					Spec: networkingv1.IngressSpec{
-						IngressClassName: stringPtr("ingress-nginx"),
+						IngressClassName: ptrTo("ingress-nginx"),
 						Rules: []networkingv1.IngressRule{{
 							Host: "echo.prod.mydomain.com",
 							IngressRuleValue: networkingv1.IngressRuleValue{
@@ -93,7 +93,7 @@ func Test_ToGateway(t *testing.T) {
 											Resource: &corev1.TypedLocalObjectReference{
 												Name:     "canary",
 												Kind:     "StorageBucket",
-												APIGroup: stringPtr("vendor.example.com"),
+												APIGroup: ptrTo("vendor.example.com"),
 											},
 										},
 									}},
@@ -113,7 +113,7 @@ func Test_ToGateway(t *testing.T) {
 								Name:     "echo-prod-mydomain-com-http",
 								Port:     80,
 								Protocol: gatewayv1beta1.HTTPProtocolType,
-								Hostname: gatewayHostnamePtr("echo.prod.mydomain.com"),
+								Hostname: ptrTo(gatewayv1beta1.Hostname("echo.prod.mydomain.com")),
 							}},
 						},
 					},
@@ -132,7 +132,7 @@ func Test_ToGateway(t *testing.T) {
 								Matches: []gatewayv1beta1.HTTPRouteMatch{{
 									Path: &gatewayv1beta1.HTTPPathMatch{
 										Type:  &gPathPrefix,
-										Value: stringPtr("/"),
+										Value: ptrTo("/"),
 									},
 								}},
 								BackendRefs: []gatewayv1beta1.HTTPBackendRef{
@@ -140,20 +140,20 @@ func Test_ToGateway(t *testing.T) {
 										BackendRef: gatewayv1beta1.BackendRef{
 											BackendObjectReference: gatewayv1beta1.BackendObjectReference{
 												Name:  "production",
-												Group: apiGroupPtr("vendor.example.com"),
-												Kind:  apiKindPtr("StorageBucket"),
+												Group: ptrTo(gatewayv1beta1.Group("vendor.example.com")),
+												Kind:  ptrTo(gatewayv1beta1.Kind("StorageBucket")),
 											},
-											Weight: int32Ptr(80),
+											Weight: ptrTo(int32(80)),
 										},
 									},
 									{
 										BackendRef: gatewayv1beta1.BackendRef{
 											BackendObjectReference: gatewayv1beta1.BackendObjectReference{
 												Name:  "canary",
-												Group: apiGroupPtr("vendor.example.com"),
-												Kind:  apiKindPtr("StorageBucket"),
+												Group: ptrTo(gatewayv1beta1.Group("vendor.example.com")),
+												Kind:  ptrTo(gatewayv1beta1.Kind("StorageBucket")),
 											},
-											Weight: int32Ptr(20),
+											Weight: ptrTo(int32(20)),
 										},
 									},
 								},
@@ -219,26 +219,6 @@ func Test_ToGateway(t *testing.T) {
 	}
 }
 
-func int32Ptr(n int32) *int32 {
-	return &n
-}
-
-func stringPtr(s string) *string {
-	return &s
-}
-
-// TODO: Replace these with Gateway API util funcs.
-func apiGroupPtr(s string) *gatewayv1beta1.Group {
-	g := gatewayv1beta1.Group(s)
-	return &g
-}
-
-func apiKindPtr(s string) *gatewayv1beta1.Kind {
-	k := gatewayv1beta1.Kind(s)
-	return &k
-}
-
-func gatewayHostnamePtr(s string) *gatewayv1beta1.Hostname {
-	h := gatewayv1beta1.Hostname(s)
-	return &h
+func ptrTo[T any](a T) *T {
+	return &a
 }

@@ -43,7 +43,7 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 							Resource: &corev1.TypedLocalObjectReference{
 								Name:     "canary",
 								Kind:     "StorageBucket",
-								APIGroup: stringPtr("vendor.example.com"),
+								APIGroup: ptrTo("vendor.example.com"),
 							},
 						},
 					},
@@ -57,15 +57,15 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 							Resource: &corev1.TypedLocalObjectReference{
 								Name:     "prod",
 								Kind:     "StorageBucket",
-								APIGroup: stringPtr("vendor.example.com"),
+								APIGroup: ptrTo("vendor.example.com"),
 							},
 						},
 					},
 				},
 			},
 			expectedBackendRefs: []gatewayv1beta1.HTTPBackendRef{
-				{BackendRef: gatewayv1beta1.BackendRef{Weight: int32Ptr(100)}},
-				{BackendRef: gatewayv1beta1.BackendRef{Weight: int32Ptr(0)}},
+				{BackendRef: gatewayv1beta1.BackendRef{Weight: ptrTo(int32(100))}},
+				{BackendRef: gatewayv1beta1.BackendRef{Weight: ptrTo(int32(0))}},
 			},
 		},
 		{
@@ -77,7 +77,7 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 							Resource: &corev1.TypedLocalObjectReference{
 								Name:     "canary",
 								Kind:     "StorageBucket",
-								APIGroup: stringPtr("vendor.example.com"),
+								APIGroup: ptrTo("vendor.example.com"),
 							},
 						},
 					},
@@ -91,15 +91,15 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 							Resource: &corev1.TypedLocalObjectReference{
 								Name:     "prod",
 								Kind:     "StorageBucket",
-								APIGroup: stringPtr("vendor.example.com"),
+								APIGroup: ptrTo("vendor.example.com"),
 							},
 						},
 					},
 				},
 			},
 			expectedBackendRefs: []gatewayv1beta1.HTTPBackendRef{
-				{BackendRef: gatewayv1beta1.BackendRef{Weight: int32Ptr(30)}},
-				{BackendRef: gatewayv1beta1.BackendRef{Weight: int32Ptr(70)}},
+				{BackendRef: gatewayv1beta1.BackendRef{Weight: ptrTo(int32(30))}},
+				{BackendRef: gatewayv1beta1.BackendRef{Weight: ptrTo(int32(70))}},
 			},
 		},
 		{
@@ -111,7 +111,7 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 							Resource: &corev1.TypedLocalObjectReference{
 								Name:     "canary",
 								Kind:     "StorageBucket",
-								APIGroup: stringPtr("vendor.example.com"),
+								APIGroup: ptrTo("vendor.example.com"),
 							},
 						},
 					},
@@ -126,15 +126,15 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 							Resource: &corev1.TypedLocalObjectReference{
 								Name:     "prod",
 								Kind:     "StorageBucket",
-								APIGroup: stringPtr("vendor.example.com"),
+								APIGroup: ptrTo("vendor.example.com"),
 							},
 						},
 					},
 				},
 			},
 			expectedBackendRefs: []gatewayv1beta1.HTTPBackendRef{
-				{BackendRef: gatewayv1beta1.BackendRef{Weight: int32Ptr(50)}},
-				{BackendRef: gatewayv1beta1.BackendRef{Weight: int32Ptr(150)}},
+				{BackendRef: gatewayv1beta1.BackendRef{Weight: ptrTo(int32(50))}},
+				{BackendRef: gatewayv1beta1.BackendRef{Weight: ptrTo(int32(150))}},
 			},
 		},
 	}

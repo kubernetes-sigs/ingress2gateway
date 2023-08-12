@@ -85,7 +85,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 								Name:     "example-com-http",
 								Port:     80,
 								Protocol: gatewayv1beta1.HTTPProtocolType,
-								Hostname: gatewayHostnamePtr("example.com"),
+								Hostname: ptrTo(gatewayv1beta1.Hostname("example.com")),
 							}},
 						},
 					},
@@ -104,14 +104,14 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 								Matches: []gatewayv1beta1.HTTPRouteMatch{{
 									Path: &gatewayv1beta1.HTTPPathMatch{
 										Type:  &gPathPrefix,
-										Value: stringPtr("/foo"),
+										Value: ptrTo("/foo"),
 									},
 								}},
 								BackendRefs: []gatewayv1beta1.HTTPBackendRef{{
 									BackendRef: gatewayv1beta1.BackendRef{
 										BackendObjectReference: gatewayv1beta1.BackendObjectReference{
 											Name: "example",
-											Port: portNumberPtr(3000),
+											Port: ptrTo(gatewayv1beta1.PortNumber(3000)),
 										},
 									},
 								}},
@@ -162,12 +162,12 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 								Name:     "example-com-http",
 								Port:     80,
 								Protocol: gatewayv1beta1.HTTPProtocolType,
-								Hostname: gatewayHostnamePtr("example.com"),
+								Hostname: ptrTo(gatewayv1beta1.Hostname("example.com")),
 							}, {
 								Name:     "example-com-https",
 								Port:     443,
 								Protocol: gatewayv1beta1.HTTPSProtocolType,
-								Hostname: gatewayHostnamePtr("example.com"),
+								Hostname: ptrTo(gatewayv1beta1.Hostname("example.com")),
 								TLS: &gatewayv1beta1.GatewayTLSConfig{
 									CertificateRefs: []gatewayv1beta1.SecretObjectReference{{
 										Name: "example-cert",
@@ -191,14 +191,14 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 								Matches: []gatewayv1beta1.HTTPRouteMatch{{
 									Path: &gatewayv1beta1.HTTPPathMatch{
 										Type:  &gPathPrefix,
-										Value: stringPtr("/foo"),
+										Value: ptrTo("/foo"),
 									},
 								}},
 								BackendRefs: []gatewayv1beta1.HTTPBackendRef{{
 									BackendRef: gatewayv1beta1.BackendRef{
 										BackendObjectReference: gatewayv1beta1.BackendObjectReference{
 											Name: "example",
-											Port: portNumberPtr(3000),
+											Port: ptrTo(gatewayv1beta1.PortNumber(3000)),
 										},
 									},
 								}},
@@ -214,7 +214,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 			ingresses: []networkingv1.Ingress{{
 				ObjectMeta: metav1.ObjectMeta{Name: "net", Namespace: "different"},
 				Spec: networkingv1.IngressSpec{
-					IngressClassName: stringPtr("example-proxy"),
+					IngressClassName: ptrTo("example-proxy"),
 					Rules: []networkingv1.IngressRule{{
 						Host: "example.net",
 						IngressRuleValue: networkingv1.IngressRuleValue{
@@ -226,7 +226,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 										Resource: &corev1.TypedLocalObjectReference{
 											Name:     "custom",
 											Kind:     "StorageBucket",
-											APIGroup: stringPtr("vendor.example.com"),
+											APIGroup: ptrTo("vendor.example.com"),
 										},
 									},
 								}},
@@ -253,7 +253,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 								Name:     "example-net-http",
 								Port:     80,
 								Protocol: gatewayv1beta1.HTTPProtocolType,
-								Hostname: gatewayHostnamePtr("example.net"),
+								Hostname: ptrTo(gatewayv1beta1.Hostname("example.net")),
 							}},
 						},
 					},
@@ -272,15 +272,15 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 								Matches: []gatewayv1beta1.HTTPRouteMatch{{
 									Path: &gatewayv1beta1.HTTPPathMatch{
 										Type:  &gExact,
-										Value: stringPtr("/bar"),
+										Value: ptrTo("/bar"),
 									},
 								}},
 								BackendRefs: []gatewayv1beta1.HTTPBackendRef{{
 									BackendRef: gatewayv1beta1.BackendRef{
 										BackendObjectReference: gatewayv1beta1.BackendObjectReference{
 											Name:  "custom",
-											Group: apiGroupPtr("vendor.example.com"),
-											Kind:  apiKindPtr("StorageBucket"),
+											Group: ptrTo(gatewayv1beta1.Group("vendor.example.com")),
+											Kind:  ptrTo(gatewayv1beta1.Kind("StorageBucket")),
 										},
 									},
 								}},
@@ -300,7 +300,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 									BackendRef: gatewayv1beta1.BackendRef{
 										BackendObjectReference: gatewayv1beta1.BackendObjectReference{
 											Name: "default",
-											Port: portNumberPtr(8080),
+											Port: ptrTo(gatewayv1beta1.PortNumber(8080)),
 										},
 									}},
 								}},
@@ -359,27 +359,6 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 	}
 }
 
-func stringPtr(s string) *string {
-	return &s
-}
-
-// TODO: Replace these with Gateway API util funcs.
-func apiGroupPtr(s string) *gatewayv1beta1.Group {
-	g := gatewayv1beta1.Group(s)
-	return &g
-}
-
-func apiKindPtr(s string) *gatewayv1beta1.Kind {
-	k := gatewayv1beta1.Kind(s)
-	return &k
-}
-
-func portNumberPtr(p int) *gatewayv1beta1.PortNumber {
-	pn := gatewayv1beta1.PortNumber(p)
-	return &pn
-}
-
-func gatewayHostnamePtr(s string) *gatewayv1beta1.Hostname {
-	h := gatewayv1beta1.Hostname(s)
-	return &h
+func ptrTo[T any](a T) *T {
+	return &a
 }
