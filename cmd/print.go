@@ -60,9 +60,9 @@ type PrintRunner struct {
 }
 
 // PrintGatewaysAndHTTPRoutes performs necessary steps to digest and print
-// converted Gateways and HTTP Routes. The steps includes reading from the source,
+// converted Gateways and HTTP Routes. The steps include reading from the source,
 // construct ingresses, convert them, then print them out.
-func (pr *PrintRunner) PrintGatewaysAndHTTPRoutes(cmd *cobra.Command, args []string) error {
+func (pr *PrintRunner) PrintGatewaysAndHTTPRoutes(cmd *cobra.Command, _ []string) error {
 	err := pr.initializeResourcePrinter()
 	if err != nil {
 		return fmt.Errorf("failed to initialize resrouce printer: %w", err)
@@ -72,15 +72,15 @@ func (pr *PrintRunner) PrintGatewaysAndHTTPRoutes(cmd *cobra.Command, args []str
 		return fmt.Errorf("failed to initialize namespace filter: %w", err)
 	}
 
-	ingressList, err := getIngessList(pr.namespaceFilter, pr.inputFile)
+	ingressList, err := getIngressList(pr.namespaceFilter, pr.inputFile)
 	if err != nil {
 		return fmt.Errorf("failed to get ingresses from source: %w", err)
 	}
 
-	httpRoutes, gateways, errList := i2gw.Ingresses2GatewaysAndHTTPRoutes(ingressList.Items)
+	httpRoutes, gateways, errList := i2gw.ToGatewayResources(cmd.Context(), ingressList.Items)
 	if len(errList) > 0 {
 		errMsg := fmt.Errorf("\n# Encountered %d errors", len(errList))
-		for _, err := range errList {
+		for _, err = range errList {
 			errMsg = fmt.Errorf("\n%w # %s", errMsg, err)
 		}
 		return errMsg
@@ -91,7 +91,7 @@ func (pr *PrintRunner) PrintGatewaysAndHTTPRoutes(cmd *cobra.Command, args []str
 	return nil
 }
 
-func getIngessList(namespaceFilter string, inputFile string) (*networkingv1.IngressList, error) {
+func getIngressList(namespaceFilter string, inputFile string) (*networkingv1.IngressList, error) {
 	ingressList := &networkingv1.IngressList{}
 	if inputFile != "" {
 		err := i2gw.ConstructIngressesFromFile(ingressList, inputFile, namespaceFilter)
@@ -117,7 +117,7 @@ func getIngessList(namespaceFilter string, inputFile string) (*networkingv1.Ingr
 	}
 
 	if len(ingressList.Items) == 0 {
-		msg := "No resources found"
+		msg := "no resources found"
 		if namespaceFilter != "" {
 			return nil, fmt.Errorf("%s in %s namespace", msg, namespaceFilter)
 		}

@@ -23,15 +23,14 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	kubeyaml "k8s.io/apimachinery/pkg/util/yaml"
-	"k8s.io/cli-runtime/pkg/printers"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
@@ -43,10 +42,18 @@ func ConstructIngressesFromCluster(cl client.Client, ingressList *networkingv1.I
 	return nil
 }
 
-func Ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, field.ErrorList) {
+func ToGatewayResources(ctx context.Context, ingresses []networkingv1.Ingress) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, field.ErrorList) {
 	var gateways []gatewayv1beta1.Gateway
 	var httpRoutes []gatewayv1beta1.HTTPRoute
 	var errs field.ErrorList
+
+	// ----------------------------------------------------------------------
+	/**
+	* FIXME
+	*  Instantiating the kube client here will result in a bug since we do not have
+	*  information regarding namespace, and where we're supposed to read from.
+	*  This information needs to be passed to this function.
+	**/
 
 	conf, err := config.GetConfig()
 	if err != nil {
@@ -59,11 +66,14 @@ func Ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewa
 		errs = append(errs, field.Invalid(nil, "", fmt.Sprintf("failed to create client: %v", err)))
 		return nil, nil, errs
 	}
-	cl = client.NewNamespacedClient(cl, "") // FIXME
+	cl = client.NewNamespacedClient(cl, "")
+
+	// ----------------------------------------------------------------------
 
 	providerByName := constructProviders(&ProviderConf{
 		Client: cl,
 	})
+
 	if len(providerByName) == 0 {
 		errs = append(errs, field.Invalid(nil, "", "no providers"))
 		return nil, nil, errs
@@ -73,8 +83,8 @@ func Ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewa
 
 	for name, provider := range providerByName {
 
-		if err := provider.ReadResourcesFromCluster(context.Background(), &resources.CustomResources); err != nil {
-			errs = append(errs, field.Invalid(nil, "", fmt.Sprintf("failed to read %s resources from the cluster: %w", name, err)))
+		if err = provider.ReadResourcesFromCluster(ctx, &resources.CustomResources); err != nil {
+			errs = append(errs, field.Invalid(nil, "", fmt.Sprintf("failed to read %s resources from the cluster: %v", name, err)))
 			return nil, nil, errs
 		}
 
@@ -103,22 +113,6 @@ func constructProviders(conf *ProviderConf) map[ProviderName]Provider {
 	}
 
 	return providerByName
-}
-
-func outputResult(printer printers.ResourcePrinter, httpRoutes []gatewayv1beta1.HTTPRoute, gateways []gatewayv1beta1.Gateway) {
-	for i := range gateways {
-		err := printer.PrintObj(&gateways[i], os.Stdout)
-		if err != nil {
-			fmt.Printf("# Error printing %s HTTPRoute: %v\n", gateways[i].Name, err)
-		}
-	}
-
-	for i := range httpRoutes {
-		err := printer.PrintObj(&httpRoutes[i], os.Stdout)
-		if err != nil {
-			fmt.Printf("# Error printing %s HTTPRoute: %v\n", httpRoutes[i].Name, err)
-		}
-	}
 }
 
 // extractObjectsFromReader extracts all objects from a reader,

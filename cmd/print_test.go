@@ -127,7 +127,7 @@ func Test_getNamespaceFilter(t *testing.T) {
 				namespace:     tc.namespace,
 				allNamespaces: tc.allNamespaces,
 			}
-			err := pr.initializeNamespaceFilter()
+			err = pr.initializeNamespaceFilter()
 
 			if tc.expectingError && err == nil {
 				t.Errorf("Expected error but got none")
