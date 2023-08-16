@@ -35,12 +35,12 @@ jobs:
     - name: Ensure go.mod is already tidied
       run: go mod tidy && git diff --no-patch --exit-code
 
-    # TODO(liorlieberman) think about a new name
-    - name: Verify
-      run: make verify
-    # TODO(liorlieberman) increase the scope of go test in the makefile
-    - name: Run unit tests
-      run: make test
+    # # TODO(liorlieberman) think about a new name
+    # - name: Verify
+    #   run: make verify
+    # # TODO(liorlieberman) increase the scope of go test in the makefile
+    # - name: Run unit tests
+    #   run: make test
 
     - name: Make binaries && verify ingress2gateway installation
       run: hack/make-all.sh

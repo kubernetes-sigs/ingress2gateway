@@ -19,5 +19,6 @@ package main
 import "github.com/kubernetes-sigs/ingress2gateway/cmd"
 
 func main() {
+	// test comment
 	cmd.Execute()
 }
