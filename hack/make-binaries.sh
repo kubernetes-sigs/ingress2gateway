@@ -40,4 +40,4 @@ env CGO_ENABLED=0 gox -osarch="${OSARCH:-$supported_platforms}" \
   -tags netgo \
   -mod readonly \
   -output="out/bin/ingress2gateway-{{.OS}}_{{.Arch}}" \
-  ./...
+  .
