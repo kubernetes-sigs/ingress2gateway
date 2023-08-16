@@ -1,0 +1,63 @@
+name: Kubernetes-sigs/ingress2gateway CI
+on:
+  push:
+    branches:
+      - '*'
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches:
+      - '*'
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: '1.18'
+      id: go
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Install dependencies
+      run: go mod download
+
+    - name: Install gox
+      run: hack/install-gox.sh
+
+    - name: Ensure go.mod is already tidied
+      run: go mod tidy && git diff --no-patch --exit-code
+
+    # TODO(liorlieberman) think about a new name
+    - name: Verify
+      run: make verify
+    # TODO(liorlieberman) increase the scope of go test in the makefile
+    - name: Run unit tests
+      run: make test
+
+    - name: Make binaries && verify ingress2gateway installation
+      run: hack/make-all.sh
+
+    - name: Make release notes
+      if: contains(github.ref, 'tags')
+      run: |
+        echo 'RELEASE_NOTES<<EOF' >> $GITHUB_ENV
+        TAG=$GITHUB_REF_NAME hack/make-release-notes.sh >> $GITHUB_ENV
+        echo 'EOF' >> $GITHUB_ENV
+
+    - name: Create a new release
+      if: contains(github.ref, 'tags')
+      id: create_release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: Release ${{ github.ref_name }}
+        files: out/ingress2gateway*
+        body: ${{ env.RELEASE_NOTES }}
+        fail_on_unmatched_files: true
