@@ -77,7 +77,7 @@ func (pr *PrintRunner) PrintGatewaysAndHTTPRoutes(cmd *cobra.Command, _ []string
 		return fmt.Errorf("failed to get ingresses from source: %w", err)
 	}
 
-	httpRoutes, gateways, errList := i2gw.ToGatewayResources(cmd.Context(), ingressList.Items)
+	httpRoutes, gateways, errList := i2gw.ToGatewayAPIResources(cmd.Context(), ingressList.Items)
 	if len(errList) > 0 {
 		errMsg := fmt.Errorf("\n# Encountered %d errors", len(errList))
 		for _, err = range errList {

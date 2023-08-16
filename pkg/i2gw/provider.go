@@ -68,9 +68,9 @@ type CustomResourceReader interface {
 // conversion functions.
 type ResourceConverter interface {
 
-	// ToGatewayResources converts the received InputResources associated
+	// ToGatewayAPIResources converts the received InputResources associated
 	// with the Provider into GatewayResources.
-	ToGatewayResources(resources InputResources) (GatewayResources, field.ErrorList)
+	ToGatewayAPI(resources InputResources) (GatewayResources, field.ErrorList)
 }
 
 // InputResources contains all Ingress objects, and Provider specific

@@ -42,7 +42,9 @@ func ConstructIngressesFromCluster(cl client.Client, ingressList *networkingv1.I
 	return nil
 }
 
-func ToGatewayResources(ctx context.Context, ingresses []networkingv1.Ingress) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, field.ErrorList) {
+// TODO
+// Move PrintRunner to here, and getIngressList
+func ToGatewayAPIResources(ctx context.Context, ingresses []networkingv1.Ingress) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, field.ErrorList) {
 	var gateways []gatewayv1beta1.Gateway
 	var httpRoutes []gatewayv1beta1.HTTPRoute
 	var errs field.ErrorList
@@ -88,7 +90,7 @@ func ToGatewayResources(ctx context.Context, ingresses []networkingv1.Ingress) (
 			return nil, nil, errs
 		}
 
-		gatewayResources, conversionErrs := provider.ToGatewayResources(resources)
+		gatewayResources, conversionErrs := provider.ToGatewayAPI(resources)
 		errs = append(errs, conversionErrs...)
 		for _, gateway := range gatewayResources.Gateways {
 			gateways = append(gateways, gateway)

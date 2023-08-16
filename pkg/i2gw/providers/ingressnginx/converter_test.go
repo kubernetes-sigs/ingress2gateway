@@ -176,7 +176,7 @@ func Test_ToGateway(t *testing.T) {
 				CustomResources: nil,
 			}
 
-			gatewayResources, errs := provider.ToGatewayResources(resources)
+			gatewayResources, errs := provider.ToGatewayAPI(resources)
 
 			if len(gatewayResources.HTTPRoutes) != len(tc.expectedGatewayResources.HTTPRoutes) {
 				t.Errorf("Expected %d HTTPRoutes, got %d: %+v",
