@@ -77,7 +77,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 			}},
 			expectedGatewayResources: i2gw.GatewayResources{
 				Gateways: map[types.NamespacedName]gatewayv1beta1.Gateway{
-					types.NamespacedName{Namespace: "test", Name: "example"}: {
+					{Namespace: "test", Name: "example"}: {
 						ObjectMeta: metav1.ObjectMeta{Name: "example", Namespace: "test"},
 						Spec: gatewayv1beta1.GatewaySpec{
 							GatewayClassName: "example",
@@ -91,7 +91,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 					},
 				},
 				HTTPRoutes: map[types.NamespacedName]gatewayv1beta1.HTTPRoute{
-					types.NamespacedName{Namespace: "test", Name: "example-com"}: {
+					{Namespace: "test", Name: "example-com"}: {
 						ObjectMeta: metav1.ObjectMeta{Name: "example-com", Namespace: "test"},
 						Spec: gatewayv1beta1.HTTPRouteSpec{
 							CommonRouteSpec: gatewayv1beta1.CommonRouteSpec{
@@ -154,7 +154,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 			}},
 			expectedGatewayResources: i2gw.GatewayResources{
 				Gateways: map[types.NamespacedName]gatewayv1beta1.Gateway{
-					types.NamespacedName{Namespace: "test", Name: "example"}: {
+					{Namespace: "test", Name: "example"}: {
 						ObjectMeta: metav1.ObjectMeta{Name: "example", Namespace: "test"},
 						Spec: gatewayv1beta1.GatewaySpec{
 							GatewayClassName: "example",
@@ -178,7 +178,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 					},
 				},
 				HTTPRoutes: map[types.NamespacedName]gatewayv1beta1.HTTPRoute{
-					types.NamespacedName{Namespace: "test", Name: "example-com"}: {
+					{Namespace: "test", Name: "example-com"}: {
 						ObjectMeta: metav1.ObjectMeta{Name: "example-com", Namespace: "test"},
 						Spec: gatewayv1beta1.HTTPRouteSpec{
 							CommonRouteSpec: gatewayv1beta1.CommonRouteSpec{
@@ -245,7 +245,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 			}},
 			expectedGatewayResources: i2gw.GatewayResources{
 				Gateways: map[types.NamespacedName]gatewayv1beta1.Gateway{
-					types.NamespacedName{Namespace: "different", Name: "example-proxy"}: {
+					{Namespace: "different", Name: "example-proxy"}: {
 						ObjectMeta: metav1.ObjectMeta{Name: "example-proxy", Namespace: "different"},
 						Spec: gatewayv1beta1.GatewaySpec{
 							GatewayClassName: "example-proxy",
@@ -259,7 +259,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 					},
 				},
 				HTTPRoutes: map[types.NamespacedName]gatewayv1beta1.HTTPRoute{
-					types.NamespacedName{Namespace: "different", Name: "example-net"}: {
+					{Namespace: "different", Name: "example-net"}: {
 						ObjectMeta: metav1.ObjectMeta{Name: "example-net", Namespace: "different"},
 						Spec: gatewayv1beta1.HTTPRouteSpec{
 							CommonRouteSpec: gatewayv1beta1.CommonRouteSpec{
@@ -287,7 +287,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 							}},
 						},
 					},
-					types.NamespacedName{Namespace: "different", Name: "net-default-backend"}: {
+					{Namespace: "different", Name: "net-default-backend"}: {
 						ObjectMeta: metav1.ObjectMeta{Name: "net-default-backend", Namespace: "different"},
 						Spec: gatewayv1beta1.HTTPRouteSpec{
 							CommonRouteSpec: gatewayv1beta1.CommonRouteSpec{

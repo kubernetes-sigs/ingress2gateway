@@ -34,102 +34,82 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, field.ErrorList) {
-	var errs field.ErrorList
-
+func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, error) {
 	conf, err := config.GetConfig()
 	if err != nil {
-		errs = append(errs, field.Invalid(nil, "", fmt.Sprintf("failed to get client config: %v", err)))
-		return nil, nil, errs
+		return nil, nil, fmt.Errorf("failed to get client config: %w", err)
 	}
 
 	cl, err := client.New(conf, client.Options{})
 	if err != nil {
-		errs = append(errs, field.Invalid(nil, "", fmt.Sprintf("failed to create client: %v", err)))
-		return nil, nil, errs
+		return nil, nil, fmt.Errorf("failed to create client: %w", err)
 	}
 	cl = client.NewNamespacedClient(cl, namespace)
 
 	var ingresses networkingv1.IngressList
-
 	var gateways []gatewayv1beta1.Gateway
 	var httpRoutes []gatewayv1beta1.HTTPRoute
 
 	providerByName := constructProviders(&ProviderConf{
 		Client: cl,
 	})
-	if len(providerByName) == 0 {
-		errs = append(errs, field.Invalid(nil, "", "no providers"))
-		return nil, nil, errs
-	}
 
 	resources := InputResources{}
 
 	if inputFile != "" {
 		if err = ConstructIngressesFromFile(&ingresses, inputFile, namespace); err != nil {
-			errs = append(errs, field.Invalid(nil, "", fmt.Sprintf("failed to read ingresses from file: %v", err)))
-			return nil, nil, errs
+			return nil, nil, fmt.Errorf("failed to read ingresses from file: %w", err)
 		}
 		resources.Ingresses = ingresses.Items
-		if providerResourcesErrs := readProviderResourcesFromFile(ctx, providerByName, &resources, inputFile); providerResourcesErrs != nil {
-			errs = append(errs, providerResourcesErrs)
-			return nil, nil, errs
+		if err = readProviderResourcesFromFile(ctx, providerByName, &resources, inputFile); err != nil {
+			return nil, nil, err
 		}
 	} else {
 		if err = ConstructIngressesFromCluster(ctx, cl, &ingresses); err != nil {
-			errs = append(errs, field.Invalid(nil, "", fmt.Sprintf("failed to read ingresses from cluster: %v", err)))
-			return nil, nil, errs
+			return nil, nil, fmt.Errorf("failed to read ingresses from cluster: %w", err)
 		}
 		resources.Ingresses = ingresses.Items
-		if providerResourcesErrs := readProviderResourcesFromCluster(ctx, providerByName, &resources); providerResourcesErrs != nil {
-			errs = append(errs, providerResourcesErrs)
-			return nil, nil, errs
+		if err = readProviderResourcesFromCluster(ctx, providerByName, &resources); err != nil {
+			return nil, nil, err
+		}
 	}
 
-	gatewayResources, conversionErrs := provider.ToGatewayAPI(resources)
-	errs = append(errs, conversionErrs...)
-	for _, gateway := range gatewayResources.Gateways {
-		gateways = append(gateways, gateway)
+	var errs field.ErrorList
+	for _, provider := range providerByName {
+		gatewayResources, conversionErrs := provider.ToGatewayAPI(resources)
+		errs = append(errs, conversionErrs...)
+		for _, gateway := range gatewayResources.Gateways {
+			gateways = append(gateways, gateway)
+		}
+		for _, route := range gatewayResources.HTTPRoutes {
+			httpRoutes = append(httpRoutes, route)
+		}
 	}
-	for _, route := range gatewayResources.HTTPRoutes {
-		httpRoutes = append(httpRoutes, route)
+	if len(errs) > 0 {
+		return nil, nil, aggregatedErrs(errs)
 	}
 
 	return httpRoutes, gateways, nil
 }
 
-
-func readProviderResourcesFromFile(ctx context.Context, providerByName map[ProviderName]Provider, resources *InputResources, inputFile string) field.ErrorList {
-	var errs field.ErrorList
+func readProviderResourcesFromFile(ctx context.Context, providerByName map[ProviderName]Provider, resources *InputResources, inputFile string) error {
 	for name, provider := range providerByName {
-		if err = provider.ReadResourcesFromFiles(ctx, resources.CustomResources, inputFile); err != nil {
-			errs = append(errs, field.Invalid(nil, "", fmt.Sprintf("failed to read %s resources from file: %v", name, err)))
+		if err := provider.ReadResourcesFromFiles(ctx, resources.CustomResources, inputFile); err != nil {
+			return fmt.Errorf("failed to read %s resources from file: %w", name, err)
 		}
 	}
-	return errs
+	return nil
 }
 
-func readProviderResourcesFromCluster(ctx context.Context, providerByName map[ProviderName]Provider, resources *InputResources) field.ErrorList {
-	var errs field.ErrorList
+func readProviderResourcesFromCluster(ctx context.Context, providerByName map[ProviderName]Provider, resources *InputResources) error {
 	for name, provider := range providerByName {
-		if err = provider.ReadResourcesFromCluster(ctx, resources.CustomResources); err != nil {
-			errs = append(errs, field.Invalid(nil, "", fmt.Sprintf("failed to read %s resources from the cluster: %v", name, err)))
+		if err := provider.ReadResourcesFromCluster(ctx, resources.CustomResources); err != nil {
+			return fmt.Errorf("failed to read %s resources from the cluster: %w", name, err)
 		}
 	}
-	return errs
+	return nil
 }
 
-// I do not think thats needed anymore
-func exitIfNoIngresses(ingresses []networkingv1.ingress, ns string) {
-	if len(ingresses) == 0 {
-		msg := "No resources found"
-		if ns != "" {
-			msg = fmt.Sprintf("%s in %s namespace\n", msg, ns)
-		}
-		fmt.Println(msg)
-		os.Exit(0)
-	}
-}
 func ConstructIngressesFromCluster(ctx context.Context, cl client.Client, ingressList *networkingv1.IngressList) error {
 	err := cl.List(ctx, ingressList)
 	if err != nil {
@@ -227,4 +207,12 @@ func ConstructIngressesFromFile(l *networkingv1.IngressList, inputFile string, n
 
 	}
 	return nil
+}
+
+func aggregatedErrs(errs field.ErrorList) error {
+	errMsg := fmt.Errorf("\n# Encountered %d errors", len(errs))
+	for _, err := range errs {
+		errMsg = fmt.Errorf("\n%w # %s", errMsg, err)
+	}
+	return errMsg
 }

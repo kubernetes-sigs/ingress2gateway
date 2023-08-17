@@ -69,13 +69,9 @@ func (pr *PrintRunner) PrintGatewaysAndHTTPRoutes(cmd *cobra.Command, _ []string
 		return fmt.Errorf("failed to initialize namespace filter: %w", err)
 	}
 
-	httpRoutes, gateways, errList := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile)
-	if len(errList) > 0 {
-		errMsg := fmt.Errorf("\n# Encountered %d errors", len(errList))
-		for _, err = range errList {
-			errMsg = fmt.Errorf("\n%w # %s", errMsg, err)
-		}
-		return errMsg
+	httpRoutes, gateways, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile)
+	if err != nil {
+		return err
 	}
 
 	pr.outputResult(httpRoutes, gateways)
@@ -84,6 +80,15 @@ func (pr *PrintRunner) PrintGatewaysAndHTTPRoutes(cmd *cobra.Command, _ []string
 }
 
 func (pr *PrintRunner) outputResult(httpRoutes []gatewayv1beta1.HTTPRoute, gateways []gatewayv1beta1.Gateway) {
+	if len(httpRoutes)+len(gateways) == 0 {
+		msg := "No resources found"
+		if pr.namespaceFilter != "" {
+			msg = fmt.Sprintf("%s in %s namespace", msg, pr.namespaceFilter)
+		}
+		fmt.Println(msg)
+		return
+	}
+
 	for i := range gateways {
 		err := pr.resourcePrinter.PrintObj(&gateways[i], os.Stdout)
 		if err != nil {

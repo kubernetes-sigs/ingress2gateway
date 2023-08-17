@@ -105,7 +105,7 @@ func Test_ToGateway(t *testing.T) {
 			},
 			expectedGatewayResources: i2gw.GatewayResources{
 				Gateways: map[types.NamespacedName]gatewayv1beta1.Gateway{
-					types.NamespacedName{Namespace: "default", Name: "ingress-nginx"}: {
+					{Namespace: "default", Name: "ingress-nginx"}: {
 						ObjectMeta: metav1.ObjectMeta{Name: "ingress-nginx", Namespace: "default"},
 						Spec: gatewayv1beta1.GatewaySpec{
 							GatewayClassName: "ingress-nginx",
@@ -119,7 +119,7 @@ func Test_ToGateway(t *testing.T) {
 					},
 				},
 				HTTPRoutes: map[types.NamespacedName]gatewayv1beta1.HTTPRoute{
-					types.NamespacedName{Namespace: "default", Name: "echo-prod-mydomain-com"}: {
+					{Namespace: "default", Name: "echo-prod-mydomain-com"}: {
 						ObjectMeta: metav1.ObjectMeta{Name: "echo-prod-mydomain-com", Namespace: "default"},
 						Spec: gatewayv1beta1.HTTPRouteSpec{
 							CommonRouteSpec: gatewayv1beta1.CommonRouteSpec{
