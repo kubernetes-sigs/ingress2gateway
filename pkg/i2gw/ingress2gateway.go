@@ -51,27 +51,6 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 	cl = client.NewNamespacedClient(cl, namespace)
 
 	var ingresses networkingv1.IngressList
-	if inputFile != "" {
-		if err = ConstructIngressesFromFile(&ingresses, inputFile, namespace); err != nil {
-			errs = append(errs, field.Invalid(nil, "", fmt.Sprintf("failed to open input file: %v", err)))
-			return nil, nil, errs
-		}
-	} else {
-		if err = ConstructIngressesFromCluster(ctx, cl, &ingresses); err != nil {
-			errs = append(errs, field.Invalid(nil, "", fmt.Sprintf("failed to list ingresses: %v", err)))
-			return nil, nil, errs
-		}
-	}
-
-	if len(ingresses.Items) == 0 {
-		msg := "No resources found"
-		if namespace != "" {
-			fmt.Printf("%s in %s namespace\n", msg, namespace)
-		} else {
-			fmt.Println(msg)
-		}
-		return nil, nil, nil
-	}
 
 	var gateways []gatewayv1beta1.Gateway
 	var httpRoutes []gatewayv1beta1.HTTPRoute
@@ -79,41 +58,78 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 	providerByName := constructProviders(&ProviderConf{
 		Client: cl,
 	})
-
 	if len(providerByName) == 0 {
 		errs = append(errs, field.Invalid(nil, "", "no providers"))
 		return nil, nil, errs
 	}
 
-	resources := InputResources{Ingresses: ingresses.Items}
+	resources := InputResources{}
 
-	for name, provider := range providerByName {
+	if inputFile != "" {
+		if err = ConstructIngressesFromFile(&ingresses, inputFile, namespace); err != nil {
+			errs = append(errs, field.Invalid(nil, "", fmt.Sprintf("failed to read ingresses from file: %v", err)))
+			return nil, nil, errs
+		}
+		resources.Ingresses = ingresses.Items
+		if providerResourcesErrs := readProviderResourcesFromFile(ctx, providerByName, &resources, inputFile); providerResourcesErrs != nil {
+			errs = append(errs, providerResourcesErrs)
+			return nil, nil, errs
+		}
+	} else {
+		if err = ConstructIngressesFromCluster(ctx, cl, &ingresses); err != nil {
+			errs = append(errs, field.Invalid(nil, "", fmt.Sprintf("failed to read ingresses from cluster: %v", err)))
+			return nil, nil, errs
+		}
+		resources.Ingresses = ingresses.Items
+		if providerResourcesErrs := readProviderResourcesFromCluster(ctx, providerByName, &resources); providerResourcesErrs != nil {
+			errs = append(errs, providerResourcesErrs)
+			return nil, nil, errs
+	}
 
-		if inputFile != "" {
-			if err = provider.ReadResourcesFromFiles(ctx, &resources.CustomResources, inputFile); err != nil {
-				errs = append(errs, field.Invalid(nil, "", fmt.Sprintf("failed to read %s resources from the cluster: %v", name, err)))
-				return nil, nil, errs
-			}
-		} else {
-			if err = provider.ReadResourcesFromCluster(ctx, &resources.CustomResources); err != nil {
-				errs = append(errs, field.Invalid(nil, "", fmt.Sprintf("failed to read %s resources from the cluster: %v", name, err)))
-				return nil, nil, errs
-			}
-		}
-
-		gatewayResources, conversionErrs := provider.ToGatewayAPI(resources)
-		errs = append(errs, conversionErrs...)
-		for _, gateway := range gatewayResources.Gateways {
-			gateways = append(gateways, gateway)
-		}
-		for _, route := range gatewayResources.HTTPRoutes {
-			httpRoutes = append(httpRoutes, route)
-		}
+	gatewayResources, conversionErrs := provider.ToGatewayAPI(resources)
+	errs = append(errs, conversionErrs...)
+	for _, gateway := range gatewayResources.Gateways {
+		gateways = append(gateways, gateway)
+	}
+	for _, route := range gatewayResources.HTTPRoutes {
+		httpRoutes = append(httpRoutes, route)
 	}
 
 	return httpRoutes, gateways, nil
 }
 
+
+func readProviderResourcesFromFile(ctx context.Context, providerByName map[ProviderName]Provider, resources *InputResources, inputFile string) field.ErrorList {
+	var errs field.ErrorList
+	for name, provider := range providerByName {
+		if err = provider.ReadResourcesFromFiles(ctx, resources.CustomResources, inputFile); err != nil {
+			errs = append(errs, field.Invalid(nil, "", fmt.Sprintf("failed to read %s resources from file: %v", name, err)))
+		}
+	}
+	return errs
+}
+
+func readProviderResourcesFromCluster(ctx context.Context, providerByName map[ProviderName]Provider, resources *InputResources) field.ErrorList {
+	var errs field.ErrorList
+	for name, provider := range providerByName {
+		if err = provider.ReadResourcesFromCluster(ctx, resources.CustomResources); err != nil {
+			errs = append(errs, field.Invalid(nil, "", fmt.Sprintf("failed to read %s resources from the cluster: %v", name, err)))
+		}
+	}
+	return errs
+}
+
+// I do not think thats needed anymore
+func exitIfNoIngresses(ingresses []networkingv1.ingress, ns string) {
+	if len(ingresses) == 0 {
+		msg := "No resources found"
+		if ns != "" {
+			msg = fmt.Sprintf("%s in %s namespace\n", msg, ns)
+		}
+		fmt.Println(msg)
+		os.Exit(0)
+	}
+}
 func ConstructIngressesFromCluster(ctx context.Context, cl client.Client, ingressList *networkingv1.IngressList) error {
 	err := cl.List(ctx, ingressList)
 	if err != nil {
