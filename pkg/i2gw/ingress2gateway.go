@@ -30,29 +30,106 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	kubeyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-func ConstructIngressesFromCluster(cl client.Client, ingressList *networkingv1.IngressList) error {
-	err := cl.List(context.Background(), ingressList)
+func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, error) {
+	conf, err := config.GetConfig()
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get client config: %w", err)
+	}
+
+	cl, err := client.New(conf, client.Options{})
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create client: %w", err)
+	}
+	cl = client.NewNamespacedClient(cl, namespace)
+
+	var ingresses networkingv1.IngressList
+	var gateways []gatewayv1beta1.Gateway
+	var httpRoutes []gatewayv1beta1.HTTPRoute
+
+	providerByName := constructProviders(&ProviderConf{
+		Client: cl,
+	})
+
+	resources := InputResources{}
+
+	if inputFile != "" {
+		if err = ConstructIngressesFromFile(&ingresses, inputFile, namespace); err != nil {
+			return nil, nil, fmt.Errorf("failed to read ingresses from file: %w", err)
+		}
+		resources.Ingresses = ingresses.Items
+		if err = readProviderResourcesFromFile(ctx, providerByName, &resources, inputFile); err != nil {
+			return nil, nil, err
+		}
+	} else {
+		if err = ConstructIngressesFromCluster(ctx, cl, &ingresses); err != nil {
+			return nil, nil, fmt.Errorf("failed to read ingresses from cluster: %w", err)
+		}
+		resources.Ingresses = ingresses.Items
+		if err = readProviderResourcesFromCluster(ctx, providerByName, &resources); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	var errs field.ErrorList
+	for _, provider := range providerByName {
+		gatewayResources, conversionErrs := provider.ToGatewayAPI(resources)
+		errs = append(errs, conversionErrs...)
+		for _, gateway := range gatewayResources.Gateways {
+			gateways = append(gateways, gateway)
+		}
+		for _, route := range gatewayResources.HTTPRoutes {
+			httpRoutes = append(httpRoutes, route)
+		}
+	}
+	if len(errs) > 0 {
+		return nil, nil, aggregatedErrs(errs)
+	}
+
+	return httpRoutes, gateways, nil
+}
+
+func readProviderResourcesFromFile(ctx context.Context, providerByName map[ProviderName]Provider, resources *InputResources, inputFile string) error {
+	for name, provider := range providerByName {
+		if err := provider.ReadResourcesFromFiles(ctx, resources.CustomResources, inputFile); err != nil {
+			return fmt.Errorf("failed to read %s resources from file: %w", name, err)
+		}
+	}
+	return nil
+}
+
+func readProviderResourcesFromCluster(ctx context.Context, providerByName map[ProviderName]Provider, resources *InputResources) error {
+	for name, provider := range providerByName {
+		if err := provider.ReadResourcesFromCluster(ctx, resources.CustomResources); err != nil {
+			return fmt.Errorf("failed to read %s resources from the cluster: %w", name, err)
+		}
+	}
+	return nil
+}
+
+func ConstructIngressesFromCluster(ctx context.Context, cl client.Client, ingressList *networkingv1.IngressList) error {
+	err := cl.List(ctx, ingressList)
 	if err != nil {
 		return fmt.Errorf("failed to get ingresses from the cluster: %w", err)
 	}
 	return nil
 }
 
-func Ingresses2GatewaysAndHTTPRoutes(ingresses []networkingv1.Ingress) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, field.ErrorList) {
-	aggregator := ingressAggregator{ruleGroups: map[ruleGroupKey]*ingressRuleGroup{}}
+// constructProviders constructs a map of concrete Provider implementations
+// by their ProviderName.
+//
+// TODO (levikobi): Issue #45 - let users filter by provider name.
+func constructProviders(conf *ProviderConf) map[ProviderName]Provider {
+	providerByName := make(map[ProviderName]Provider, len(ProviderConstructorByName))
 
-	var errs field.ErrorList
-	for _, ingress := range ingresses {
-		errs = append(errs, aggregator.addIngress(ingress)...)
-	}
-	if len(errs) > 0 {
-		return nil, nil, errs
+	for name, newProviderFunc := range ProviderConstructorByName {
+		providerByName[name] = newProviderFunc(conf)
 	}
 
-	return aggregator.toHTTPRoutesAndGateways()
+	return providerByName
 }
 
 // extractObjectsFromReader extracts all objects from a reader,
@@ -130,4 +207,12 @@ func ConstructIngressesFromFile(l *networkingv1.IngressList, inputFile string, n
 
 	}
 	return nil
+}
+
+func aggregatedErrs(errs field.ErrorList) error {
+	errMsg := fmt.Errorf("\n# Encountered %d errors", len(errs))
+	for _, err := range errs {
+		errMsg = fmt.Errorf("\n%w # %s", errMsg, err)
+	}
+	return errMsg
 }

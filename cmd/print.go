@@ -21,16 +21,15 @@ import (
 	"os"
 	"strings"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/spf13/cobra"
-	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/client-go/tools/clientcmd"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+
+	// Call init function for the providers
+	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 )
 
 type PrintRunner struct {
@@ -58,9 +57,9 @@ type PrintRunner struct {
 }
 
 // PrintGatewaysAndHTTPRoutes performs necessary steps to digest and print
-// converted Gateways and HTTP Routes. The steps includes reading from the source,
+// converted Gateways and HTTP Routes. The steps include reading from the source,
 // construct ingresses, convert them, then print them out.
-func (pr *PrintRunner) PrintGatewaysAndHTTPRoutes(cmd *cobra.Command, args []string) error {
+func (pr *PrintRunner) PrintGatewaysAndHTTPRoutes(cmd *cobra.Command, _ []string) error {
 	err := pr.initializeResourcePrinter()
 	if err != nil {
 		return fmt.Errorf("failed to initialize resrouce printer: %w", err)
@@ -70,18 +69,9 @@ func (pr *PrintRunner) PrintGatewaysAndHTTPRoutes(cmd *cobra.Command, args []str
 		return fmt.Errorf("failed to initialize namespace filter: %w", err)
 	}
 
-	ingressList, err := getIngessList(pr.namespaceFilter, pr.inputFile)
+	httpRoutes, gateways, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile)
 	if err != nil {
-		return fmt.Errorf("failed to get ingresses from source: %w", err)
-	}
-
-	httpRoutes, gateways, errList := i2gw.Ingresses2GatewaysAndHTTPRoutes(ingressList.Items)
-	if len(errList) > 0 {
-		errMsg := fmt.Errorf("\n# Encountered %d errors", len(errList))
-		for _, err := range errList {
-			errMsg = fmt.Errorf("\n%w # %s", errMsg, err)
-		}
-		return errMsg
+		return err
 	}
 
 	pr.outputResult(httpRoutes, gateways)
@@ -89,42 +79,16 @@ func (pr *PrintRunner) PrintGatewaysAndHTTPRoutes(cmd *cobra.Command, args []str
 	return nil
 }
 
-func getIngessList(namespaceFilter string, inputFile string) (*networkingv1.IngressList, error) {
-	ingressList := &networkingv1.IngressList{}
-	if inputFile != "" {
-		err := i2gw.ConstructIngressesFromFile(ingressList, inputFile, namespaceFilter)
-		if err != nil {
-			return nil, fmt.Errorf("failed to open input file: %w", err)
-		}
-	} else {
-		conf, err := config.GetConfig()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get client config: %w", err)
-		}
-
-		cl, err := client.New(conf, client.Options{})
-		if err != nil {
-			return nil, fmt.Errorf("failed to create client: %w", err)
-		}
-		cl = client.NewNamespacedClient(cl, namespaceFilter)
-
-		err = i2gw.ConstructIngressesFromCluster(cl, ingressList)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get ingress resources from kubenetes cluster: %w", err)
-		}
-	}
-
-	if len(ingressList.Items) == 0 {
-		msg := "No resources found"
-		if namespaceFilter != "" {
-			return nil, fmt.Errorf("%s in %s namespace", msg, namespaceFilter)
-		}
-		return nil, fmt.Errorf(msg)
-	}
-	return ingressList, nil
-}
-
 func (pr *PrintRunner) outputResult(httpRoutes []gatewayv1beta1.HTTPRoute, gateways []gatewayv1beta1.Gateway) {
+	if len(httpRoutes)+len(gateways) == 0 {
+		msg := "No resources found"
+		if pr.namespaceFilter != "" {
+			msg = fmt.Sprintf("%s in %s namespace", msg, pr.namespaceFilter)
+		}
+		fmt.Println(msg)
+		return
+	}
+
 	for i := range gateways {
 		err := pr.resourcePrinter.PrintObj(&gateways[i], os.Stdout)
 		if err != nil {
