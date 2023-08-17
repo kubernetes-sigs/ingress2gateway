@@ -62,20 +62,21 @@
             "kind": "Ingress",
             "metadata": {
                 "name": "ingress1",
-                "namespace": "namespace1"
+                "namespace": "namespace1",
+                "resourceVersion": "999"
             },
             "spec": {
-                "ingressClassName": "ingressClass1",
+                "ingressClassName": "ingressClass-ingress1",
                 "rules": [
                     {
                         "http": {
                             "paths": [
                                 {
-                                    "path": "/test-1",
+                                    "path": "/path-ingress1",
                                     "pathType": "Prefix",
                                     "backend": {
                                         "service": {
-                                            "name": "test1",
+                                            "name": "service-ingress1",
                                             "port": {
                                                 "number": 443
                                             }
@@ -93,20 +94,21 @@
             "kind": "Ingress",
             "metadata": {
                 "name": "ingress2",
-                "namespace": "namespace2"
+                "namespace": "namespace2",
+                "resourceVersion": "999"
             },
             "spec": {
-                "ingressClassName": "ingressClass2",
+                "ingressClassName": "ingressClass-ingress2",
                 "rules": [
                     {
                         "http": {
                             "paths": [
                                 {
-                                    "path": "/test-2",
+                                    "path": "/path-ingress2",
                                     "pathType": "Prefix",
                                     "backend": {
                                         "service": {
-                                            "name": "test2",
+                                            "name": "service-ingress2",
                                             "port": {
                                                 "number": 80
                                             }
@@ -123,20 +125,21 @@
             "apiVersion": "networking.k8s.io/v1",
             "kind": "Ingress",
             "metadata": {
-                "name": "ingress-no-namespace"
+                "name": "ingress-no-namespace",
+                "resourceVersion": "999"
             },
             "spec": {
-                "ingressClassName": "ingressClassNoNamespace",
+                "ingressClassName": "ingressClass-ingress-no-namespace",
                 "rules": [
                     {
                         "http": {
                             "paths": [
                                 {
-                                    "path": "/test-no-namespace",
+                                    "path": "/path-ingress-no-namespace",
                                     "pathType": "Prefix",
                                     "backend": {
                                         "service": {
-                                            "name": "test-no-namespace",
+                                            "name": "service-ingress-no-namespace",
                                             "port": {
                                                 "number": 80
                                             }
