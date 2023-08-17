@@ -34,28 +34,8 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-func ConstructIngressesFromCluster(cl client.Client, ingressList *networkingv1.IngressList) error {
-	err := cl.List(context.Background(), ingressList)
-	if err != nil {
-		return fmt.Errorf("failed to get ingresses from the cluster: %w", err)
-	}
-	return nil
-}
-
-// TODO
-// Move PrintRunner to here, and getIngressList
-func ToGatewayAPIResources(ctx context.Context, ingresses []networkingv1.Ingress) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, field.ErrorList) {
-	var gateways []gatewayv1beta1.Gateway
-	var httpRoutes []gatewayv1beta1.HTTPRoute
+func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, field.ErrorList) {
 	var errs field.ErrorList
-
-	// ----------------------------------------------------------------------
-	/**
-	* FIXME
-	*  Instantiating the kube client here will result in a bug since we do not have
-	*  information regarding namespace, and where we're supposed to read from.
-	*  This information needs to be passed to this function.
-	**/
 
 	conf, err := config.GetConfig()
 	if err != nil {
@@ -68,9 +48,33 @@ func ToGatewayAPIResources(ctx context.Context, ingresses []networkingv1.Ingress
 		errs = append(errs, field.Invalid(nil, "", fmt.Sprintf("failed to create client: %v", err)))
 		return nil, nil, errs
 	}
-	cl = client.NewNamespacedClient(cl, "")
+	cl = client.NewNamespacedClient(cl, namespace)
 
-	// ----------------------------------------------------------------------
+	var ingresses networkingv1.IngressList
+	if inputFile != "" {
+		if err = ConstructIngressesFromFile(&ingresses, inputFile, namespace); err != nil {
+			errs = append(errs, field.Invalid(nil, "", fmt.Sprintf("failed to open input file: %v", err)))
+			return nil, nil, errs
+		}
+	} else {
+		if err = ConstructIngressesFromCluster(ctx, cl, &ingresses); err != nil {
+			errs = append(errs, field.Invalid(nil, "", fmt.Sprintf("failed to list ingresses: %v", err)))
+			return nil, nil, errs
+		}
+	}
+
+	if len(ingresses.Items) == 0 {
+		msg := "No resources found"
+		if namespace != "" {
+			fmt.Printf("%s in %s namespace\n", msg, namespace)
+		} else {
+			fmt.Println(msg)
+		}
+		return nil, nil, nil
+	}
+
+	var gateways []gatewayv1beta1.Gateway
+	var httpRoutes []gatewayv1beta1.HTTPRoute
 
 	providerByName := constructProviders(&ProviderConf{
 		Client: cl,
@@ -81,13 +85,20 @@ func ToGatewayAPIResources(ctx context.Context, ingresses []networkingv1.Ingress
 		return nil, nil, errs
 	}
 
-	resources := InputResources{Ingresses: ingresses}
+	resources := InputResources{Ingresses: ingresses.Items}
 
 	for name, provider := range providerByName {
 
-		if err = provider.ReadResourcesFromCluster(ctx, &resources.CustomResources); err != nil {
-			errs = append(errs, field.Invalid(nil, "", fmt.Sprintf("failed to read %s resources from the cluster: %v", name, err)))
-			return nil, nil, errs
+		if inputFile != "" {
+			if err = provider.ReadResourcesFromFiles(ctx, &resources.CustomResources, inputFile); err != nil {
+				errs = append(errs, field.Invalid(nil, "", fmt.Sprintf("failed to read %s resources from the cluster: %v", name, err)))
+				return nil, nil, errs
+			}
+		} else {
+			if err = provider.ReadResourcesFromCluster(ctx, &resources.CustomResources); err != nil {
+				errs = append(errs, field.Invalid(nil, "", fmt.Sprintf("failed to read %s resources from the cluster: %v", name, err)))
+				return nil, nil, errs
+			}
 		}
 
 		gatewayResources, conversionErrs := provider.ToGatewayAPI(resources)
@@ -101,6 +112,14 @@ func ToGatewayAPIResources(ctx context.Context, ingresses []networkingv1.Ingress
 	}
 
 	return httpRoutes, gateways, nil
+}
+
+func ConstructIngressesFromCluster(ctx context.Context, cl client.Client, ingressList *networkingv1.IngressList) error {
+	err := cl.List(ctx, ingressList)
+	if err != nil {
+		return fmt.Errorf("failed to get ingresses from the cluster: %w", err)
+	}
+	return nil
 }
 
 // constructProviders constructs a map of concrete Provider implementations
