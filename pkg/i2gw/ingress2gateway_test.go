@@ -17,6 +17,7 @@ limitations under the License.
 package i2gw
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -38,22 +39,23 @@ func Test_constructIngressesFromFile(t *testing.T) {
 		filePath        string
 		namespace       string
 		wantIngressList []networkingv1.Ingress
-	}{{
-		name:            "Test yaml input file with multiple resources with no namespace flag",
-		filePath:        "testdata/input-file.yaml",
-		namespace:       "",
-		wantIngressList: []networkingv1.Ingress{ingress1, ingress2, ingressNoNamespace},
-	}, {
-		name:            "Test json input file with multiple resources with no namespace flag",
-		filePath:        "testdata/input-file.json",
-		namespace:       "",
-		wantIngressList: []networkingv1.Ingress{ingress1, ingress2, ingressNoNamespace},
-	}, {
-		name:            "Test yaml input file with multiple resources with namespace1 flag",
-		filePath:        "testdata/input-file.yaml",
-		namespace:       "namespace1",
-		wantIngressList: []networkingv1.Ingress{ingress1},
-	},
+	}{
+		{
+			name:            "Test yaml input file with multiple resources with no namespace flag",
+			filePath:        "testdata/input-file.yaml",
+			namespace:       "",
+			wantIngressList: []networkingv1.Ingress{ingress1, ingress2, ingressNoNamespace},
+		}, {
+			name:            "Test json input file with multiple resources with no namespace flag",
+			filePath:        "testdata/input-file.json",
+			namespace:       "",
+			wantIngressList: []networkingv1.Ingress{ingress1, ingress2, ingressNoNamespace},
+		}, {
+			name:            "Test yaml input file with multiple resources with namespace1 flag",
+			filePath:        "testdata/input-file.yaml",
+			namespace:       "namespace1",
+			wantIngressList: []networkingv1.Ingress{ingress1},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -140,7 +142,7 @@ func Test_constructIngressesFromCluster(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			gotIngresses := &networkingv1.IngressList{}
 			cl := fake.NewClientBuilder().WithRuntimeObjects(tc.runtimeObjs...).Build()
-			err := ConstructIngressesFromCluster(cl, gotIngresses)
+			err := ConstructIngressesFromCluster(context.Background(), cl, gotIngresses)
 			if err != nil {
 				t.Errorf("test failed unexpectedly: %v", err)
 			}
