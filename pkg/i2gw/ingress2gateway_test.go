@@ -150,3 +150,73 @@ func Test_constructIngressesFromCluster(t *testing.T) {
 		})
 	}
 }
+
+func Test_constructProviders(t *testing.T) {
+	supportProviders := []string{"ingress-nginx"}
+	for _, provider := range supportProviders {
+		ProviderConstructorByName[ProviderName(provider)] = func(conf *ProviderConf) Provider { return nil }
+	}
+	testCases := []struct {
+		name              string
+		providers         []string
+		expectedProviders []string
+		expectedError     error
+	}{{
+		name:              "Test construct providers with default providers",
+		providers:         GetSupportedProviders(),
+		expectedProviders: supportProviders,
+		expectedError:     nil,
+	}, {
+		name:              "Test construct providers with provider that not supported",
+		providers:         []string{"ingress-nginx", "fake-provider"},
+		expectedProviders: []string{},
+		expectedError:     fmt.Errorf("%s is not a supported provider", "fake-provider"),
+	}}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cl := fake.NewClientBuilder().WithRuntimeObjects([]runtime.Object{}...).Build()
+			providerByName, err := constructProviders(&ProviderConf{
+				Client: cl,
+			}, tc.providers)
+			if tc.expectedError != nil {
+				if err == nil {
+					t.Errorf("Expected error but got none")
+				} else if tc.expectedError.Error() != err.Error() {
+					t.Errorf("The got error '%s' not equal to expected error '%s'", err.Error(), tc.expectedError.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error but got %v", err)
+				}
+				if len(tc.expectedProviders) != len(providerByName) {
+					t.Errorf("Expected contructed providers num is %d but got %d", len(tc.providers), len(providerByName))
+				}
+				for _, provider := range tc.expectedProviders {
+					if _, ok := providerByName[ProviderName(provider)]; !ok {
+						t.Errorf("The expected provider %s was not constructed", provider)
+					}
+				}
+			}
+		})
+	}
+}
+
+func Test_GetSupportedProviders(t *testing.T) {
+	supportProviders := []string{"ingress-nginx"}
+	for _, provider := range supportProviders {
+		ProviderConstructorByName[ProviderName(provider)] = func(conf *ProviderConf) Provider { return nil }
+	}
+	t.Run("Test GetSupportedProviders", func(t *testing.T) {
+		allProviders := GetSupportedProviders()
+		if len(allProviders) != len(ProviderConstructorByName) {
+			t.Errorf("The acutal number of the providers we supported is %d but we got the number is: %d",
+				len(ProviderConstructorByName), len(allProviders))
+		}
+		for _, provider := range allProviders {
+			providerName := ProviderName(provider)
+			if _, ok := ProviderConstructorByName[providerName]; !ok {
+				t.Errorf("%s is not a supported provider", providerName)
+			}
+		}
+	})
+}

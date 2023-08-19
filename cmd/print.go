@@ -54,6 +54,9 @@ type PrintRunner struct {
 
 	// Only resources that matches this filter will be processed.
 	namespaceFilter string
+
+	// providers indicates which providers are used to execute convert action.
+	providers []string
 }
 
 // PrintGatewaysAndHTTPRoutes performs necessary steps to digest and print
@@ -69,7 +72,7 @@ func (pr *PrintRunner) PrintGatewaysAndHTTPRoutes(cmd *cobra.Command, _ []string
 		return fmt.Errorf("failed to initialize namespace filter: %w", err)
 	}
 
-	httpRoutes, gateways, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile)
+	httpRoutes, gateways, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers)
 	if err != nil {
 		return err
 	}
@@ -175,6 +178,9 @@ func newPrintCommand() *cobra.Command {
 	cmd.Flags().BoolVarP(&pr.allNamespaces, "all-namespaces", "A", false,
 		`If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even
 if specified with --namespace.`)
+
+	cmd.Flags().StringSliceVar(&pr.providers, "providers", i2gw.GetSupportedProviders(),
+		fmt.Sprintf("If present, the tool will try to convert only resources related to the specified providers, supported values are %v", i2gw.GetSupportedProviders()))
 
 	cmd.MarkFlagsMutuallyExclusive("namespace", "all-namespaces")
 	return cmd
