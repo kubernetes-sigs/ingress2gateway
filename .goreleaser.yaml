@@ -11,8 +11,8 @@ builds:
       - CGO_ENABLED=0
     goos:
       - linux
-      # - windows
-      # - darwin
+      - darwin
+      - windows
 
 archives:
   - format: tar.gz
@@ -40,12 +40,13 @@ release:
     To install this release, refer to the instructions at https://github.com/LiorLieberman/ingress2gateway/blob/v{{.Version}}/README.md
 
 changelog:
-  use: github-native
-  # sort: asc
-  # filters:
-  #   exclude:
-  #     - '^docs:'
-  #     - '^test:'
+  # leaving this github-native option in case we will want to use the GitHub release notes generation API in the future.
+  # use: github-native
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
 
 # The lines beneath this are called `modelines`. See `:help modeline`
 # Feel free to remove those if you don't want/use them.
