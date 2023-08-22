@@ -37,13 +37,17 @@ release:
   header: |
     ## Installation
 
-    To install this release, refer to the instructions at "https://github.com/LiorLieberman/ingress2gateway/blob/v{{.Version}}/README.md"
+    To install this release, refer to the instructions at https://github.com/LiorLieberman/ingress2gateway/blob/v{{.Version}}/README.md
+    
+    Thanks to our contributors for helping out with v{{.Version}}:
+
 changelog:
-  sort: asc
-  filters:
-    exclude:
-      - '^docs:'
-      - '^test:'
+  use: github-native
+  # sort: asc
+  # filters:
+  #   exclude:
+  #     - '^docs:'
+  #     - '^test:'
 
 # The lines beneath this are called `modelines`. See `:help modeline`
 # Feel free to remove those if you don't want/use them.
