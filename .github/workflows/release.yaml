@@ -1,4 +1,4 @@
-name: release
+name: Kubernetes-sigs/ingress2gateway release
 on:
   push:
     tags:
@@ -21,7 +21,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: GoReleaser
+      - name: GoReleaser - Release
         uses: goreleaser/goreleaser-action@v4
         with:
           version: latest
