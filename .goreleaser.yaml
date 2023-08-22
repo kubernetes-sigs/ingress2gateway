@@ -32,6 +32,12 @@ checksum:
   name_template: 'checksums.txt'
 snapshot:
   name_template: "{{ incpatch .Version }}-next"
+release:
+  name_template: "Release-v{{.Version}}"
+  header: |
+    ## Installation
+
+    To install this release, refer to the instructions at "https://github.com/LiorLieberman/ingress2gateway/blob/v{{.Version}}/README.md"
 changelog:
   sort: asc
   filters:
