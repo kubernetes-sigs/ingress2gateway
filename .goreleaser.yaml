@@ -39,6 +39,8 @@ release:
 
     To install this release, refer to the instructions at https://github.com/LiorLieberman/ingress2gateway/blob/v{{.Version}}/README.md
 
+    (ingress2gateway v{{.Version}} was tagged on {{.Date}}.)
+
 changelog:
   # leaving this github-native option in case we will want to use the GitHub release notes generation API in the future.
   # use: github-native
