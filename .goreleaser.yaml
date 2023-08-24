@@ -37,7 +37,7 @@ release:
   header: |
     ## Installation
 
-    To install this release, refer to the instructions at https://github.com/LiorLieberman/ingress2gateway/blob/v{{.Version}}/README.md
+    To install this release, refer to the instructions at https://github.com/kubernetes-sigs/ingress2gateway/blob/v{{.Version}}/README.md
 
     (ingress2gateway v{{.Version}} was tagged on {{.Date}}.)
 
