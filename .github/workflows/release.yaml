@@ -1,8 +1,8 @@
-name: Kubernetes-sigs/ingress2gateway release
+name: release
 on:
   push:
     tags:
-      - v*
+      - "v*.*.*"
 permissions:
   contents: write
 jobs:
