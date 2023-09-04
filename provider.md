@@ -13,6 +13,8 @@ A provider must be able to read its custom resources, and convert them.
 * A setup Go development environment.
 
 ## Step-by-Step Implementation
+In this section, we will walk through a demo of how to add support for the `example-gateway` provider.
+
 1. Add a new package under the `providers` package. Say we want to add a new gateway provider example.
 ```
 .
