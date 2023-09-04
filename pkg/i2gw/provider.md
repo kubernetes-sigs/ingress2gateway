@@ -2,7 +2,7 @@
 This document will guide you through the process of creating a concrete resource converter that implements the `Provider` interface in the `i2gw` package.
 
 ## Overview
-Each provider implementation in the `i2gw/providers` package is responsible for converting a provider specific `Ingress` related resources into `Gateway API` resources.
+Each provider implementation in the `i2gw/providers` package is responsible for converting a provider specific `Ingress` and related resources (e.g istio VirtualService) into `Gateway API` resources.
 A provider must be able to read its custom resources, and convert them.
 
 ## Prerequisites
