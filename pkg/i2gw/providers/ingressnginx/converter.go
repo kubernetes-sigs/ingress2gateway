@@ -22,7 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-// converter implements the ConvertHTTPRoutes function of i2gw.ResourceConverter interface.
+// converter implements the ToGatewayAPI function of i2gw.ResourceConverter interface.
 type converter struct {
 	conf *i2gw.ProviderConf
 
