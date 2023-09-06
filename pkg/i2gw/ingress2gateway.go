@@ -34,7 +34,7 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, error) {
+func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string, providers []string) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, error) {
 	conf, err := config.GetConfig()
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get client config: %w", err)
@@ -50,9 +50,12 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 	var gateways []gatewayv1beta1.Gateway
 	var httpRoutes []gatewayv1beta1.HTTPRoute
 
-	providerByName := constructProviders(&ProviderConf{
+	providerByName, err := constructProviders(&ProviderConf{
 		Client: cl,
-	})
+	}, providers)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	resources := InputResources{}
 
@@ -120,16 +123,19 @@ func ConstructIngressesFromCluster(ctx context.Context, cl client.Client, ingres
 
 // constructProviders constructs a map of concrete Provider implementations
 // by their ProviderName.
-//
-// TODO (levikobi): Issue #45 - let users filter by provider name.
-func constructProviders(conf *ProviderConf) map[ProviderName]Provider {
+func constructProviders(conf *ProviderConf, providers []string) (map[ProviderName]Provider, error) {
 	providerByName := make(map[ProviderName]Provider, len(ProviderConstructorByName))
 
-	for name, newProviderFunc := range ProviderConstructorByName {
-		providerByName[name] = newProviderFunc(conf)
+	for _, requestedProvider := range providers {
+		requestedProviderName := ProviderName(requestedProvider)
+		newProviderFunc, ok := ProviderConstructorByName[requestedProviderName]
+		if !ok {
+			return nil, fmt.Errorf("%s is not a supported provider", requestedProvider)
+		}
+		providerByName[requestedProviderName] = newProviderFunc(conf)
 	}
 
-	return providerByName
+	return providerByName, nil
 }
 
 // extractObjectsFromReader extracts all objects from a reader,
@@ -215,4 +221,13 @@ func aggregatedErrs(errs field.ErrorList) error {
 		errMsg = fmt.Errorf("\n%w # %s", errMsg, err)
 	}
 	return errMsg
+}
+
+// GetSupportedProviders returns the names of all providers that are supported now
+func GetSupportedProviders() []string {
+	supportedProviders := make([]string, 0, len(ProviderConstructorByName))
+	for key := range ProviderConstructorByName {
+		supportedProviders = append(supportedProviders, string(key))
+	}
+	return supportedProviders
 }
