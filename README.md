@@ -42,8 +42,8 @@ ingress2gateway print
 ```
 
 This above command will:
-1. Read your Kube config file to extract the cluster connection and the current-active namespace.
-2. Search for ingresses and for provider specific resources in that namespace.
+1. Read your Kube config file to extract the cluster credentials and the current active namespace.
+2. Search for ingresses and provider-specific resources in that namespace.
 3. Convert them to Gateway-API resources (Currently only Gateways and HTTPRoutes).
 
 ## Options
@@ -92,7 +92,7 @@ Ingress2gateway also supports translating provider-specific resources and ingres
 
 - [ingress-nginx](pkg/i2gw/providers/ingressnginx/README.md)
 
-If your provider is not currently supported, please feel free to open an issue and provide a description of your use case.
+If your provider, or a specific feature, is not currently supported, please open an issue and describe your use case.
 
 To contribute a new provider support - please read [PROVIDER.md](PROVIDER.md).
 
