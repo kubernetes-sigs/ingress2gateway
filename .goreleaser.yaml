@@ -43,6 +43,7 @@ release:
 changelog:
   # leaving this github-native option in case we will want to use the GitHub release notes generation API in the future.
   # use: github-native
+  use: github
   sort: asc
   filters:
     exclude:
