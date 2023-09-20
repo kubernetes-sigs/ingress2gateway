@@ -19,36 +19,40 @@ Note: Ingress2gateway is not intended to copy annotations from Ingress to Gatewa
 ## Build from Source
 
 1. Ensure that your system meets the following requirements:
-- Install Git: Make sure Git is installed on your system to clone the project repository.
-- Install Go: Make sure the go language is installed on your system. You can download it from the official website (https://golang.org/dl/) and follow the installation instructions.
 
-2. Clone the project repository
-```shell
-git clone https://github.com/kubernetes-sigs/ingress2gateway.git && cd ingress2gateway
-```
+   - Install Git: Make sure Git is installed on your system to clone the project repository.
+   - Install Go: Make sure the go language is installed on your system. You can download it from the official website (https://golang.org/dl/) and follow the installation instructions.
 
-3. Build the project
-```shell
-make build
-```
+1. Clone the project repository
+
+   ```shell
+   git clone https://github.com/kubernetes-sigs/ingress2gateway.git && cd ingress2gateway
+   ```
+
+1. Build the project
+
+   ```shell
+   make build
+   ```
 
 ## Usage
 
 Ingress2gateway reads Ingress resources and/or provider-specifc CRDs from a Kubernetes cluster or a file. It will output the equivalent Gateway API resources in a YAML/JSON format
 to stdout. To run ingress2gateway with default options simply run:
 
-```
-ingress2gateway print
+```shell
+./ingress2gateway print
 ```
 
 This above command will:
 1. Read your Kube config file to extract the cluster credentials and the current active namespace.
-2. Search for ingresses and provider-specific resources in that namespace.
-3. Convert them to Gateway-API resources (Currently only Gateways and HTTPRoutes).
+1. Search for ingresses and provider-specific resources in that namespace.
+1. Convert them to Gateway-API resources (Currently only Gateways and HTTPRoutes).
 
 ## Options
 
-| Flag                    | Default Value | Required | Description                                                                                                                                            |
+### `print` command
+
 | Flag           | Default Value           | Required | Description                                                                                                                                                                             |
 | -------------- | ----------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | namespace      |                         | No       | If present, the namespace scope for the invocation                                                                                                                                      |
