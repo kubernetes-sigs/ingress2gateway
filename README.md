@@ -48,7 +48,6 @@ This above command will:
 
 ## Options
 
-| Flag                    | Default Value | Required | Description                                                                                                                                            |
 | Flag           | Default Value           | Required | Description                                                                                                                                                                             |
 | -------------- | ----------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | namespace      |                         | No       | If present, the namespace scope for the invocation                                                                                                                                      |
