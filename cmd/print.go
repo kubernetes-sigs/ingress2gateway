@@ -29,6 +29,7 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	// Call init function for the providers
+	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingresskong"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 )
 
