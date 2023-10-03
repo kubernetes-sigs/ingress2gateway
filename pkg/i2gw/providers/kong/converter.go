@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package ingresskong
+package kong
 
 import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
@@ -29,7 +29,7 @@ type converter struct {
 	featureParsers []i2gw.FeatureParser
 }
 
-// newConverter returns an ingress-kong converter instance.
+// newConverter returns an kong converter instance.
 func newConverter(conf *i2gw.ProviderConf) *converter {
 	return &converter{
 		conf: conf,
@@ -40,8 +40,8 @@ func newConverter(conf *i2gw.ProviderConf) *converter {
 	}
 }
 
-// ToGatewayAPIResources converts the received i2gw.InputResources to i2gw.GatewayResources
-// including the ingress-kong specific features.
+// ToGatewayAPI converts the received i2gw.InputResources to i2gw.GatewayResources
+// including the kong specific features.
 func (c *converter) ToGatewayAPI(resources i2gw.InputResources) (i2gw.GatewayResources, field.ErrorList) {
 
 	// Convert plain ingress resources to gateway resources, ignoring all

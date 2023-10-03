@@ -39,7 +39,7 @@ func newConverter(conf *i2gw.ProviderConf) *converter {
 	}
 }
 
-// ToGatewayAPIResources converts the received i2gw.InputResources to i2gw.GatewayResources
+// ToGatewayAPI converts the received i2gw.InputResources to i2gw.GatewayResources
 // including the ingress-nginx specific features.
 func (c *converter) ToGatewayAPI(resources i2gw.InputResources) (i2gw.GatewayResources, field.ErrorList) {
 

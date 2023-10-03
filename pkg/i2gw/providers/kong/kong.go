@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package ingresskong
+package kong
 
 import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
@@ -35,7 +35,7 @@ type Provider struct {
 	*converter
 }
 
-// NewProvider constructs and returns the ingress-kong implementation of i2gw.Provider.
+// NewProvider constructs and returns the kong implementation of i2gw.Provider.
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 	return &Provider{
 		conf:           conf,

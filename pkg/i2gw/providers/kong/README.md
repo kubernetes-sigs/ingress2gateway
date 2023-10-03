@@ -1,6 +1,6 @@
 # Ingress Kong Provider
 
-The project supports translating ingress-kong specific annotations.
+The project supports translating kong specific annotations.
 
 Current supported annotations:
 

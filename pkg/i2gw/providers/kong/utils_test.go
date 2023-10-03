@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package ingresskong
+package kong
 
 import gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
