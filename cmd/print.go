@@ -30,6 +30,7 @@ import (
 
 	// Call init function for the providers
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
+	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
 )
 
 type PrintRunner struct {
