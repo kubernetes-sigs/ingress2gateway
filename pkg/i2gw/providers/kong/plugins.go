@@ -1,0 +1,82 @@
+/*
+Copyright 2023 The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package kong
+
+import (
+	"strings"
+
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/validation/field"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+)
+
+// pluginsFeature parses the Kong Ingress Controller plugins annotation and converts it
+// into HTTPRoutes rule's ExtensionRef filters.
+// It's possible to define a list of plugins to attach to the same HTTPRoute by setting
+// a comma-separated list.
+//
+// Example: konghq.com/plugins: "plugin1,plugin2"
+func pluginsFeature(ingressResources i2gw.InputResources, gatewayResources *i2gw.GatewayResources) field.ErrorList {
+	ruleGroups := common.GetRuleGroups(ingressResources.Ingresses)
+	for _, rg := range ruleGroups {
+		for _, rule := range rg.Rules {
+			key := types.NamespacedName{Namespace: rule.Ingress.Namespace, Name: common.NameFromHost(rg.Host)}
+			httpRoute, ok := gatewayResources.HTTPRoutes[key]
+			if !ok {
+				panic("HTTPRoute does not exist - this should never happen")
+			}
+			filters := parsePluginsAnnotation(rule.Ingress.ObjectMeta.Namespace, rule.Ingress.ObjectMeta.Name, rule.Ingress.Annotations)
+			patchHTTPRoutePlugins(&httpRoute, filters)
+		}
+	}
+	return nil
+}
+
+func parsePluginsAnnotation(ingressNamespace, ingressName string, annotations map[string]string) []gatewayv1beta1.HTTPRouteFilter {
+	filters := make([]gatewayv1beta1.HTTPRouteFilter, 0)
+	mkey := kongAnnotation(pluginsKey)
+	for key, val := range annotations {
+		if key == mkey {
+			filtersValues := strings.Split(val, ",")
+			for _, v := range filtersValues {
+				if v == "" {
+					continue
+				}
+				filters = append(filters, gatewayv1beta1.HTTPRouteFilter{
+					Type: gatewayv1beta1.HTTPRouteFilterExtensionRef,
+					ExtensionRef: &gatewayv1beta1.LocalObjectReference{
+						Group: gatewayv1beta1.Group("configuration.konghq.com/v1"),
+						Kind:  gatewayv1beta1.Kind("KongPlugin"),
+						Name:  gatewayv1beta1.ObjectName(v),
+					},
+				})
+			}
+		}
+	}
+	return filters
+}
+
+func patchHTTPRoutePlugins(httpRoute *gatewayv1beta1.HTTPRoute, extensionRefs []gatewayv1beta1.HTTPRouteFilter) {
+	for i := range httpRoute.Spec.Rules {
+		if httpRoute.Spec.Rules[i].Filters == nil {
+			httpRoute.Spec.Rules[i].Filters = make([]gatewayv1beta1.HTTPRouteFilter, 0)
+		}
+		httpRoute.Spec.Rules[i].Filters = append(httpRoute.Spec.Rules[i].Filters, extensionRefs...)
+	}
+}

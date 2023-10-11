@@ -42,7 +42,7 @@ func Test_ToGateway(t *testing.T) {
 		expectedErrors           field.ErrorList
 	}{
 		{
-			name: "header matching, method matching, single ingress rule",
+			name: "header matching, method matching, plugin, single ingress rule",
 			ingresses: []networkingv1.Ingress{
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -51,6 +51,7 @@ func Test_ToGateway(t *testing.T) {
 						Annotations: map[string]string{
 							"konghq.com/headers.key1": "val1",
 							"konghq.com/methods":      "GET,POST",
+							"konghq.com/plugins":      "plugin1",
 						},
 					},
 					Spec: networkingv1.IngressSpec{
@@ -129,6 +130,16 @@ func Test_ToGateway(t *testing.T) {
 											},
 										},
 										Method: ptrTo(gatewayv1beta1.HTTPMethodPost),
+									},
+								},
+								Filters: []gatewayv1beta1.HTTPRouteFilter{
+									{
+										Type: gatewayv1beta1.HTTPRouteFilterExtensionRef,
+										ExtensionRef: &gatewayv1beta1.LocalObjectReference{
+											Group: gatewayv1beta1.Group("configuration.konghq.com/v1"),
+											Kind:  gatewayv1beta1.Kind("KongPlugin"),
+											Name:  gatewayv1beta1.ObjectName("plugin1"),
+										},
 									},
 								},
 								BackendRefs: []gatewayv1beta1.HTTPBackendRef{

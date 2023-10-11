@@ -29,7 +29,7 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-func TestPathMatchingFeature(t *testing.T) {
+func TestMethodMatchingFeature(t *testing.T) {
 	iPrefix := networkingv1.PathTypePrefix
 
 	testCases := []struct {
