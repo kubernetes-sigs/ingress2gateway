@@ -12,5 +12,8 @@ Current supported annotations:
   in the annotation key after `.`, and the annotations value can contain multiple
   header values separated by commas. All the header values for a specific header
   name are intended to be ORed. Example: `konghq.com/headers.x-routing: "alpha,bravo"`.
+- `konghq.com/plugins`: If specified, the values of this annotation are used to
+  configure plugins on the associated ingress rules. Multiple plugins can be specified
+  by separating values with commas. Example: `konghq.com/plugins: "plugin1,plugin2"`.
 
 If you are reliant on any annotations not listed above, please open an issue.
