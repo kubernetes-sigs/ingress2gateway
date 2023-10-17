@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Ingress2Gateway Project is CLI project that helps with translating Ingress and provider related resources to [Gateway API](https://github.com/kubernetes-sigs/gateway-api) resources.
+The Ingress2Gateway Project is a CLI project that helps translate Ingress and provider related resources to [Gateway API](https://github.com/kubernetes-sigs/gateway-api) resources.
 
 ## Releasing a new version
 
