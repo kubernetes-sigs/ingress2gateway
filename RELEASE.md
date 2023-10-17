@@ -25,19 +25,36 @@ release.
 
 ### Patch a release
 
-<!-- TODO(liorlieberman) -->
+1. Create a new branch in your fork named something like `<githubuser>/release-x.x.x`. Use the new branch
+  in the upcoming steps.
+1. Use `git` to cherry-pick all relevant PRs into your branch.
+1. Update the version references in the codebase with the new semver tag.
+1. Create a pull request of the `<githubuser>/release-x.x.x` branch into the `release-x.x` branch upstream
+  (which should already exist since this is a patch release). Add a hold on this PR waiting for at least
+  one maintainer/codeowner to provide a `lgtm`.
+1. Create a tag using the `HEAD` of the `release-x.x` branch. This can be done using the `git` CLI or
+  Github's [release][release] page.
 
 ### Release a MAJOR or MINOR release
 
-<!-- TODO(liorlieberman) -->
+1. Cut a `release-major.minor` branch that we can tag things in as needed.
+1. Check out the `release-major.minor` release branch locally.
+1. Update the version references in the codebase with the new semver tag.
+1. Verify the changelog is up to date with the desired changes.
+1. Create a tag using the `HEAD` of the `release-x.x` branch. This can be done using `git tag -sa $VERSION` CLI or
+  Github's [release][release] page.
+1. Run `git push origin $VERSION`, this will trigger a github workflow that will create the release.
+1. Verify the [releases page](https://github.com/kubernetes-sigs/ingress2gateway/releases) to ensure that the release meets the expectations.
+1. Optional: Send an annoncement email to `kubernetes-sig-network@googlegroups.com` with the subject `[ANNOUNCE] ingress2gateway $VERSION is released`
+
 
 ### Release a RC release
 
 1. Open a PR with changes of the version references in the codebase.
-2. Include necessary changelog updates to CHANGELOG.md in this PR.
-4. Merge the PR
-5. Tag the release using the commit on main where the PR merged. This can be done using the git CLI `git tag -sa $VERSION`.
-6. Run `git push origin $VERSION`, this will trigger a github workflow that will create the release.
-7. Verify the [releases page](https://github.com/kubernetes-sigs/ingress2gateway/releases) to ensure that the release meets the expectations.
-<!-- TODO(liorlieberman) is this needed? -->
-8.  An announcement email is sent to `dev@kubernetes.io` with the subject `[ANNOUNCE] kubernetes-template-project $VERSION is released`
+1. Include necessary changelog updates to CHANGELOG.md in this PR.
+1. Merge the PR
+1. Tag the release using the commit on main where the PR merged. This can be done using the git CLI `git tag -sa $VERSION`.
+1. Run `git push origin $VERSION`, this will trigger a github workflow that will create the release.
+1. Verify the [releases page](https://github.com/kubernetes-sigs/ingress2gateway/releases) to ensure that the release meets the expectations.
+1. Optional: Send an annoncement email to `kubernetes-sig-network@googlegroups.com` with the subject `[ANNOUNCE] ingress2gateway $VERSION is released`
+
