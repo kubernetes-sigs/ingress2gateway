@@ -1,5 +1,4 @@
-# This is an example .goreleaser.yml file with some sensible defaults.
-# Make sure to check the documentation at https://goreleaser.com
+# goreleaser documentation at https://goreleaser.com
 before:
   hooks:
     # You may remove this if you don't use go modules.
@@ -44,6 +43,7 @@ release:
 changelog:
   # leaving this github-native option in case we will want to use the GitHub release notes generation API in the future.
   # use: github-native
+  use: github
   sort: asc
   filters:
     exclude:
