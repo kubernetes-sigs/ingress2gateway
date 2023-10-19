@@ -35,24 +35,11 @@ import (
 )
 
 func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string, providers []string) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, error) {
-	conf, err := config.GetConfig()
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get client config: %w", err)
-	}
-
-	cl, err := client.New(conf, client.Options{})
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create client: %w", err)
-	}
-	cl = client.NewNamespacedClient(cl, namespace)
-
 	var ingresses networkingv1.IngressList
 	var gateways []gatewayv1beta1.Gateway
 	var httpRoutes []gatewayv1beta1.HTTPRoute
 
-	providerByName, err := constructProviders(&ProviderConf{
-		Client: cl,
-	}, providers)
+	providerByName, err := constructProviders(providers)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -68,11 +55,21 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 			return nil, nil, err
 		}
 	} else {
+		conf, err := config.GetConfig()
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to get client config: %w", err)
+		}
+
+		cl, err := client.New(conf, client.Options{})
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to create client: %w", err)
+		}
+		cl = client.NewNamespacedClient(cl, namespace)
 		if err = ConstructIngressesFromCluster(ctx, cl, &ingresses); err != nil {
 			return nil, nil, fmt.Errorf("failed to read ingresses from cluster: %w", err)
 		}
 		resources.Ingresses = ingresses.Items
-		if err = readProviderResourcesFromCluster(ctx, providerByName, &resources); err != nil {
+		if err = readProviderResourcesFromCluster(ctx, cl, providerByName, &resources); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -104,9 +101,9 @@ func readProviderResourcesFromFile(ctx context.Context, providerByName map[Provi
 	return nil
 }
 
-func readProviderResourcesFromCluster(ctx context.Context, providerByName map[ProviderName]Provider, resources *InputResources) error {
+func readProviderResourcesFromCluster(ctx context.Context, cl client.Client, providerByName map[ProviderName]Provider, resources *InputResources) error {
 	for name, provider := range providerByName {
-		if err := provider.ReadResourcesFromCluster(ctx, resources.CustomResources); err != nil {
+		if err := provider.ReadResourcesFromCluster(ctx, cl, resources.CustomResources); err != nil {
 			return fmt.Errorf("failed to read %s resources from the cluster: %w", name, err)
 		}
 	}
@@ -123,7 +120,7 @@ func ConstructIngressesFromCluster(ctx context.Context, cl client.Client, ingres
 
 // constructProviders constructs a map of concrete Provider implementations
 // by their ProviderName.
-func constructProviders(conf *ProviderConf, providers []string) (map[ProviderName]Provider, error) {
+func constructProviders(providers []string) (map[ProviderName]Provider, error) {
 	providerByName := make(map[ProviderName]Provider, len(ProviderConstructorByName))
 
 	for _, requestedProvider := range providers {
@@ -132,7 +129,8 @@ func constructProviders(conf *ProviderConf, providers []string) (map[ProviderNam
 		if !ok {
 			return nil, fmt.Errorf("%s is not a supported provider", requestedProvider)
 		}
-		providerByName[requestedProviderName] = newProviderFunc(conf)
+		conf := ProviderConfByName[requestedProviderName]
+		providerByName[requestedProviderName] = newProviderFunc(&conf)
 	}
 
 	return providerByName, nil
@@ -213,6 +211,31 @@ func ConstructIngressesFromFile(l *networkingv1.IngressList, inputFile string, n
 
 	}
 	return nil
+}
+
+// ConstructOtherResourcesFromFile reads the inputFile in either json/yaml formats,
+// then deserialize the file into client.object resources.
+func ConstructOtherResourcesFromFile(namespace string, inputFile string, providers []string) ([]*unstructured.Unstructured, error) {
+	providerByName, err := constructProviders(providers)
+	if err != nil {
+		return nil, err
+	}
+
+	stream, err := os.ReadFile(inputFile)
+	if err != nil {
+		return nil, err
+	}
+
+	reader := bytes.NewReader(stream)
+	objs, err := extractObjectsFromReader(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, p := range providerByName {
+		objs = p.Filter(objs)
+	}
+	return objs, err
 }
 
 func aggregatedErrs(errs field.ErrorList) error {

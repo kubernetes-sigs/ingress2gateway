@@ -20,6 +20,8 @@ import (
 	"context"
 
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,6 +34,10 @@ import (
 // func at startup.
 var ProviderConstructorByName = map[ProviderName]ProviderConstructor{}
 
+// ProviderConfByName ProviderConstructorByName is a map of ProviderConf by a
+// provider name. Different Provider implementations should add their conf at startup.
+var ProviderConfByName = map[ProviderName]ProviderConf{}
+
 // ProviderName is a string alias that stores the concrete Provider name.
 type ProviderName string
 
@@ -42,7 +48,20 @@ type ProviderConstructor func(conf *ProviderConf) Provider
 // ProviderConf contains all the configuration required for every concrete
 // Provider implementation.
 type ProviderConf struct {
-	Client client.Client
+	FilteredObjects []schema.GroupKind
+}
+
+// DefaultFilteredObjects is the default list of the resources not to be listed
+// when printing all the resources.
+var DefaultFilteredObjects = []schema.GroupKind{
+	{
+		Group: networkingv1.SchemeGroupVersion.Group,
+		Kind:  "Ingress",
+	},
+	{
+		Group: networkingv1.SchemeGroupVersion.Group,
+		Kind:  "IngressClass",
+	},
 }
 
 // The Provider interface specifies the required functionality which needs to be
@@ -51,13 +70,14 @@ type ProviderConf struct {
 type Provider interface {
 	CustomResourceReader
 	ResourceConverter
+	ResourceFilter
 }
 
 type CustomResourceReader interface {
 
 	// ReadResourcesFromCluster reads custom resources associated with
 	// the underlying Provider implementation from the kubernetes cluster.
-	ReadResourcesFromCluster(ctx context.Context, customResources interface{}) error
+	ReadResourcesFromCluster(ctx context.Context, cl client.Client, customResources interface{}) error
 
 	// ReadResourcesFromFiles reads custom resources associated with
 	// the underlying Provider implementation from the files.
@@ -71,6 +91,11 @@ type ResourceConverter interface {
 	// ToGatewayAPIResources converts the received InputResources associated
 	// with the Provider into GatewayResources.
 	ToGatewayAPI(resources InputResources) (GatewayResources, field.ErrorList)
+}
+
+type ResourceFilter interface {
+	// Filter filters out the objects that must not be printed.
+	Filter([]*unstructured.Unstructured) []*unstructured.Unstructured
 }
 
 // InputResources contains all Ingress objects, and Provider specific

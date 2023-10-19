@@ -174,10 +174,7 @@ func Test_constructProviders(t *testing.T) {
 	}}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			cl := fake.NewClientBuilder().WithRuntimeObjects([]runtime.Object{}...).Build()
-			providerByName, err := constructProviders(&ProviderConf{
-				Client: cl,
-			}, tc.providers)
+			providerByName, err := constructProviders(tc.providers)
 			if tc.expectedError != nil {
 				if err == nil {
 					t.Errorf("Expected error but got none")

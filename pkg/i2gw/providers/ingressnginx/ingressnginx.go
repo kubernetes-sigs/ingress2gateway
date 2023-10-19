@@ -32,6 +32,7 @@ type Provider struct {
 	conf *i2gw.ProviderConf
 
 	*resourceReader
+	*resourceFilter
 	*converter
 }
 
@@ -40,6 +41,7 @@ func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 	return &Provider{
 		conf:           conf,
 		resourceReader: newResourceReader(conf),
+		resourceFilter: newResourceFilter(conf),
 		converter:      newConverter(conf),
 	}
 }
