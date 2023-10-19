@@ -16,7 +16,15 @@ translated to [Gateway API](https://gateway-api.sigs.k8s.io/) directly.
 
 Note: Ingress2gateway is not intended to copy annotations from Ingress to Gateway API.
 
-## Build from Source
+## Installation
+
+If you have a Go development environment locally, you can install ingress2gateway with `go install github.com/kubernetes-sigs/ingress2gateway@v0.1.0`
+
+This will put `ingress2gateway` binary in `$(go env GOPATH)/bin`
+
+Alternatively, you can download the binary at the [releases page](https://github.com/kubernetes-sigs/ingress2gateway/releases)
+
+### Build from Source
 
 1. Ensure that your system meets the following requirements:
 
