@@ -26,6 +26,11 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
+const (
+	kongPluginGroup gatewayv1beta1.Group = "configuration.konghq.com/v1"
+	kongPluginKind  gatewayv1beta1.Kind  = "KongPlugin"
+)
+
 // pluginsFeature parses the Kong Ingress Controller plugins annotation and converts it
 // into HTTPRoutes rule's ExtensionRef filters.
 // It's possible to define a list of plugins to attach to the same HTTPRoute by setting
@@ -61,8 +66,8 @@ func parsePluginsAnnotation(ingressNamespace, ingressName string, annotations ma
 				filters = append(filters, gatewayv1beta1.HTTPRouteFilter{
 					Type: gatewayv1beta1.HTTPRouteFilterExtensionRef,
 					ExtensionRef: &gatewayv1beta1.LocalObjectReference{
-						Group: gatewayv1beta1.Group("configuration.konghq.com/v1"),
-						Kind:  gatewayv1beta1.Kind("KongPlugin"),
+						Group: kongPluginGroup,
+						Kind:  kongPluginKind,
 						Name:  gatewayv1beta1.ObjectName(v),
 					},
 				})

@@ -136,8 +136,8 @@ func Test_ToGateway(t *testing.T) {
 									{
 										Type: gatewayv1beta1.HTTPRouteFilterExtensionRef,
 										ExtensionRef: &gatewayv1beta1.LocalObjectReference{
-											Group: gatewayv1beta1.Group("configuration.konghq.com/v1"),
-											Kind:  gatewayv1beta1.Kind("KongPlugin"),
+											Group: kongPluginGroup,
+											Kind:  kongPluginKind,
 											Name:  gatewayv1beta1.ObjectName("plugin1"),
 										},
 									},
