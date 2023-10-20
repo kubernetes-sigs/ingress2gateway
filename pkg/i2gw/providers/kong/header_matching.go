@@ -41,7 +41,7 @@ func headerMatchingFeature(ingressResources i2gw.InputResources, gatewayResource
 	for _, rg := range ruleGroups {
 		for _, rule := range rg.Rules {
 			headerskeys, headersValues := parseHeadersAnnotations(rule.Ingress.Annotations)
-			key := types.NamespacedName{Namespace: rule.Ingress.Namespace, Name: common.NameFromHost(rg.Host)}
+			key := types.NamespacedName{Namespace: rule.Ingress.Namespace, Name: common.HTTPRouteName(rg.Name, rg.Host)}
 			httpRoute, ok := gatewayResources.HTTPRoutes[key]
 			if !ok {
 				panic("HTTPRoute does not exist - this should never happen")

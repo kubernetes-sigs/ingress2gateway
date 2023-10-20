@@ -44,7 +44,7 @@ func canaryFeature(ingressResources i2gw.InputResources, gatewayResources *i2gw.
 			backendRefs, calculationErrs := calculateBackendRefWeight(paths)
 			errs = append(errs, calculationErrs...)
 
-			key := types.NamespacedName{Namespace: path.ingress.Namespace, Name: common.NameFromHost(rg.Host)}
+			key := types.NamespacedName{Namespace: path.ingress.Namespace, Name: common.HTTPRouteName(rg.Name, rg.Host)}
 			httpRoute, ok := gatewayResources.HTTPRoutes[key]
 			if !ok {
 				panic("HTTPRoute not exists - this should never happen")
