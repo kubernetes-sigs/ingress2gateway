@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	kongPluginGroup gatewayv1beta1.Group = "configuration.konghq.com/v1"
+	kongPluginGroup gatewayv1beta1.Group = "configuration.konghq.com"
 	kongPluginKind  gatewayv1beta1.Kind  = "KongPlugin"
 )
 
