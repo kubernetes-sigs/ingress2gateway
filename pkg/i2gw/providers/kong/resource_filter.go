@@ -34,9 +34,7 @@ var filteredObjects = []schema.GroupKind{
 }
 
 func init() {
-	i2gw.ProviderConfByName[Name] = i2gw.ProviderConf{
-		FilteredObjects: append(i2gw.DefaultFilteredObjects, filteredObjects...),
-	}
+	filteredObjects = append(filteredObjects, i2gw.DefaultFilteredObjects...)
 }
 
 // resourceReader implements the i2gw.resourceFilter interface.

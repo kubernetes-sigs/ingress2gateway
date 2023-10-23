@@ -6,7 +6,7 @@ converter that implements the `Provider` interface in the `i2gw` package.
 ## Overview
 
 Each provider implementation in the `i2gw/providers` package is responsible for
-converting a provider specific `Ingress` and related resources (e.g istio VirtualService)
+converting a provider-specific `Ingress` and related resources (e.g istio VirtualService)
 into `Gateway API` resources. A provider must be able to read its custom resources,
 and convert them.
 
@@ -87,9 +87,7 @@ provider.
     var filteredObjects = []schema.GroupKind{}
 
     func init() {
-        i2gw.ProviderConfByName[Name] = i2gw.ProviderConf{
-            FilteredObjects: append(i2gw.DefaultFilteredObjects, filteredObjects...),
-        }
+        filteredObjects = append(filteredObjects, i2gw.DefaultFilteredObjects...)
     }
 
     // resourceReader implements the i2gw.resourceFilter interface.
@@ -175,7 +173,10 @@ provider.
     }
 
     // NewProvider constructs and returns the ingress-nginx implementation of i2gw.Provider.
-    func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
+    func NewProvider() i2gw.Provider {
+        conf := &i2gw.ProviderConf{
+            FilteredObjects: filteredObjects,
+        }
         return &Provider{
             conf:           conf,
             resourceReader: newResourceReader(conf),
@@ -220,12 +221,12 @@ In case you want to add support for the conversion of a specific feature within
 a provider (see for example the canary feature of ingress-nginx) you'll want to
 implement a `FeatureParser` function.
 
-Different `FeatureParsers` within the same provider will run in undetermined order.
+Different `FeatureParsers` within the same provider will run in an undetermined order.
 This means that when building a `Gateway API` resource manifest, you cannot assume
 anything about previously initialized fields. The function must modify / create
 only the required fields of the resource manifest and nothing else.
 
-For example, lets say we are implementing the canary feature of some provider. When
+For example, let's say we are implementing the canary feature of some provider. When
 building the `HTTPRoute`, we cannot assume that the `BackendRefs` is already initialized
 with every `BackendRef` required. The canary `FeatureParser` function must add every
 missing `BackendRef` and update existing ones.

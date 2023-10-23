@@ -129,8 +129,7 @@ func constructProviders(providers []string) (map[ProviderName]Provider, error) {
 		if !ok {
 			return nil, fmt.Errorf("%s is not a supported provider", requestedProvider)
 		}
-		conf := ProviderConfByName[requestedProviderName]
-		providerByName[requestedProviderName] = newProviderFunc(&conf)
+		providerByName[requestedProviderName] = newProviderFunc()
 	}
 
 	return providerByName, nil

@@ -36,14 +36,14 @@ var ProviderConstructorByName = map[ProviderName]ProviderConstructor{}
 
 // ProviderConfByName ProviderConstructorByName is a map of ProviderConf by a
 // provider name. Different Provider implementations should add their conf at startup.
-var ProviderConfByName = map[ProviderName]ProviderConf{}
+// var ProviderConfByName = map[ProviderName]ProviderConf{}
 
 // ProviderName is a string alias that stores the concrete Provider name.
 type ProviderName string
 
 // ProviderConstructor is a construction function that constructs concrete
 // implementations of the Provider interface.
-type ProviderConstructor func(conf *ProviderConf) Provider
+type ProviderConstructor func() Provider
 
 // ProviderConf contains all the configuration required for every concrete
 // Provider implementation.
