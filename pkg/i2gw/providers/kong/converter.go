@@ -36,6 +36,7 @@ func newConverter(conf *i2gw.ProviderConf) *converter {
 		featureParsers: []i2gw.FeatureParser{
 			headerMatchingFeature,
 			methodMatchingFeature,
+			pluginsFeature,
 		},
 	}
 }

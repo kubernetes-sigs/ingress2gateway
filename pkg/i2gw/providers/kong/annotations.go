@@ -23,6 +23,7 @@ const (
 
 	headersKey = "headers"
 	methodsKey = "methods"
+	pluginsKey = "plugins"
 )
 
 func kongAnnotation(suffix string) string {
