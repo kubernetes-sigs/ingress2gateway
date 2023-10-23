@@ -76,7 +76,7 @@ func TestHeaderMatchingFeature(t *testing.T) {
 				},
 			},
 			expectedHTTPRouteMatches: map[string][][]gatewayv1beta1.HTTPRouteMatch{
-				"default/test-mydomain-com": {
+				"default/ored-headers-test-mydomain-com": {
 					{
 						gatewayv1beta1.HTTPRouteMatch{
 							Headers: []gatewayv1beta1.HTTPHeaderMatch{
@@ -139,7 +139,7 @@ func TestHeaderMatchingFeature(t *testing.T) {
 				},
 			},
 			expectedHTTPRouteMatches: map[string][][]gatewayv1beta1.HTTPRouteMatch{
-				"default/test-mydomain-com": {
+				"default/anded-ored-headers-test-mydomain-com": {
 					{
 						gatewayv1beta1.HTTPRouteMatch{
 							Headers: []gatewayv1beta1.HTTPHeaderMatch{

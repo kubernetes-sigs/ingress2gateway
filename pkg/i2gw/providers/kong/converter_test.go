@@ -94,8 +94,8 @@ func Test_ToGateway(t *testing.T) {
 					},
 				},
 				HTTPRoutes: map[types.NamespacedName]gatewayv1beta1.HTTPRoute{
-					{Namespace: "default", Name: "test-mydomain-com"}: {
-						ObjectMeta: metav1.ObjectMeta{Name: "test-mydomain-com", Namespace: "default"},
+					{Namespace: "default", Name: "multiple-matching-single-rule-test-mydomain-com"}: {
+						ObjectMeta: metav1.ObjectMeta{Name: "multiple-matching-single-rule-test-mydomain-com", Namespace: "default"},
 						Spec: gatewayv1beta1.HTTPRouteSpec{
 							CommonRouteSpec: gatewayv1beta1.CommonRouteSpec{
 								ParentRefs: []gatewayv1beta1.ParentReference{{
@@ -225,8 +225,8 @@ func Test_ToGateway(t *testing.T) {
 					},
 				},
 				HTTPRoutes: map[types.NamespacedName]gatewayv1beta1.HTTPRoute{
-					{Namespace: "default", Name: "test-mydomain-com"}: {
-						ObjectMeta: metav1.ObjectMeta{Name: "test-mydomain-com", Namespace: "default"},
+					{Namespace: "default", Name: "multiple-matching-multiple-rules-test-mydomain-com"}: {
+						ObjectMeta: metav1.ObjectMeta{Name: "multiple-matching-multiple-rules-test-mydomain-com", Namespace: "default"},
 						Spec: gatewayv1beta1.HTTPRouteSpec{
 							CommonRouteSpec: gatewayv1beta1.CommonRouteSpec{
 								ParentRefs: []gatewayv1beta1.ParentReference{{

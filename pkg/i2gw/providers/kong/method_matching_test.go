@@ -76,7 +76,7 @@ func TestMethodMatchingFeature(t *testing.T) {
 				},
 			},
 			expectedHTTPRouteMatches: map[string][][]gatewayv1beta1.HTTPRouteMatch{
-				"default/test-mydomain-com": {
+				"default/one-method-test-mydomain-com": {
 					{
 						gatewayv1beta1.HTTPRouteMatch{
 							Method: ptrTo(gatewayv1beta1.HTTPMethodGet),
@@ -124,7 +124,7 @@ func TestMethodMatchingFeature(t *testing.T) {
 				},
 			},
 			expectedHTTPRouteMatches: map[string][][]gatewayv1beta1.HTTPRouteMatch{
-				"default/test-mydomain-com": {
+				"default/many-methods-test-mydomain-com": {
 					{
 						gatewayv1beta1.HTTPRouteMatch{
 							Method: ptrTo(gatewayv1beta1.HTTPMethodGet),
@@ -179,7 +179,7 @@ func TestMethodMatchingFeature(t *testing.T) {
 			},
 			expectedErrors: field.ErrorList{
 				field.Invalid(
-					field.NewPath("default/wrong-method").Child("metadata").Child("annotations"),
+					field.NewPath("default/wrong-method-wrong-method").Child("metadata").Child("annotations"),
 					"WRONG",
 					"method not supported",
 				),

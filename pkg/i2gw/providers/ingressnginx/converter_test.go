@@ -119,8 +119,8 @@ func Test_ToGateway(t *testing.T) {
 					},
 				},
 				HTTPRoutes: map[types.NamespacedName]gatewayv1beta1.HTTPRoute{
-					{Namespace: "default", Name: "echo-prod-mydomain-com"}: {
-						ObjectMeta: metav1.ObjectMeta{Name: "echo-prod-mydomain-com", Namespace: "default"},
+					{Namespace: "default", Name: "production-echo-prod-mydomain-com"}: {
+						ObjectMeta: metav1.ObjectMeta{Name: "production-echo-prod-mydomain-com", Namespace: "default"},
 						Spec: gatewayv1beta1.HTTPRouteSpec{
 							CommonRouteSpec: gatewayv1beta1.CommonRouteSpec{
 								ParentRefs: []gatewayv1beta1.ParentReference{{
