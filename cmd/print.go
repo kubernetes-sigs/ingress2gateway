@@ -67,7 +67,7 @@ type PrintRunner struct {
 }
 
 // PrintResources performs necessary steps to digest and print
-// converted Gateways and HTTP Routes along with other resources.
+// converted Gateways and HTTPRoutes along with other resources.
 // The steps include reading from the source, construct ingresses,
 // convert them, then print them out.
 func (pr *PrintRunner) PrintResources(cmd *cobra.Command, _ []string) error {
@@ -98,18 +98,7 @@ func (pr *PrintRunner) PrintResources(cmd *cobra.Command, _ []string) error {
 }
 
 func (pr *PrintRunner) outputResult(httpRoutes []gatewayv1beta1.HTTPRoute, gateways []gatewayv1beta1.Gateway, additionalResources ...*unstructured.Unstructured) {
-	for i := range additionalResources {
-		err := pr.resourcePrinter.PrintObj(additionalResources[i], os.Stdout)
-		if err != nil {
-			fmt.Printf("# Error printing %s/%s %s with: %v\n",
-				additionalResources[i].GetNamespace(),
-				additionalResources[i].GetName(),
-				additionalResources[i].GetObjectKind().GroupVersionKind().Kind,
-				err)
-		}
-	}
-
-	if len(httpRoutes)+len(gateways) == 0 {
+	if len(httpRoutes)+len(gateways)+len(additionalResources) == 0 {
 		msg := "No resources found"
 		if pr.namespaceFilter != "" {
 			msg = fmt.Sprintf("%s in %s namespace", msg, pr.namespaceFilter)
@@ -129,6 +118,17 @@ func (pr *PrintRunner) outputResult(httpRoutes []gatewayv1beta1.HTTPRoute, gatew
 		err := pr.resourcePrinter.PrintObj(&httpRoutes[i], os.Stdout)
 		if err != nil {
 			fmt.Printf("# Error printing %s/%s HTTPRoute: %v\n", httpRoutes[i].Namespace, httpRoutes[i].Name, err)
+		}
+	}
+
+	for i := range additionalResources {
+		err := pr.resourcePrinter.PrintObj(additionalResources[i], os.Stdout)
+		if err != nil {
+			fmt.Printf("# Error printing %s/%s %s with: %v\n",
+				additionalResources[i].GetNamespace(),
+				additionalResources[i].GetName(),
+				additionalResources[i].GetObjectKind().GroupVersionKind().Kind,
+				err)
 		}
 	}
 }

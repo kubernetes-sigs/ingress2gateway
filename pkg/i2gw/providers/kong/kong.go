@@ -37,10 +37,8 @@ type Provider struct {
 }
 
 // NewProvider constructs and returns the kong implementation of i2gw.Provider.
-func NewProvider() i2gw.Provider {
-	conf := &i2gw.ProviderConf{
-		FilteredObjects: filteredObjects,
-	}
+func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
+	conf.FilteredObjects = filteredObjects
 	return &Provider{
 		conf:           conf,
 		resourceReader: newResourceReader(conf),

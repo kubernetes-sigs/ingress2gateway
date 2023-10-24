@@ -154,7 +154,7 @@ func Test_constructIngressesFromCluster(t *testing.T) {
 func Test_constructProviders(t *testing.T) {
 	supportProviders := []string{"ingress-nginx"}
 	for _, provider := range supportProviders {
-		ProviderConstructorByName[ProviderName(provider)] = func() Provider { return nil }
+		ProviderConstructorByName[ProviderName(provider)] = func(*ProviderConf) Provider { return nil }
 	}
 	testCases := []struct {
 		name              string
@@ -174,7 +174,7 @@ func Test_constructProviders(t *testing.T) {
 	}}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			providerByName, err := constructProviders(tc.providers)
+			providerByName, err := constructProviders(&ProviderConf{}, tc.providers)
 			if tc.expectedError != nil {
 				if err == nil {
 					t.Errorf("Expected error but got none")
@@ -201,7 +201,7 @@ func Test_constructProviders(t *testing.T) {
 func Test_GetSupportedProviders(t *testing.T) {
 	supportProviders := []string{"ingress-nginx"}
 	for _, provider := range supportProviders {
-		ProviderConstructorByName[ProviderName(provider)] = func() Provider { return nil }
+		ProviderConstructorByName[ProviderName(provider)] = func(*ProviderConf) Provider { return nil }
 	}
 	t.Run("Test GetSupportedProviders", func(t *testing.T) {
 		allProviders := GetSupportedProviders()

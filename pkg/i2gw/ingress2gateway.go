@@ -38,15 +38,15 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 	var ingresses networkingv1.IngressList
 	var gateways []gatewayv1beta1.Gateway
 	var httpRoutes []gatewayv1beta1.HTTPRoute
-
-	providerByName, err := constructProviders(providers)
-	if err != nil {
-		return nil, nil, err
-	}
+	var providerByName map[ProviderName]Provider
 
 	resources := InputResources{}
-
 	if inputFile != "" {
+		var err error
+		providerByName, err = constructProviders(&ProviderConf{}, providers)
+		if err != nil {
+			return nil, nil, err
+		}
 		if err = ConstructIngressesFromFile(&ingresses, inputFile, namespace); err != nil {
 			return nil, nil, fmt.Errorf("failed to read ingresses from file: %w", err)
 		}
@@ -65,6 +65,12 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 			return nil, nil, fmt.Errorf("failed to create client: %w", err)
 		}
 		cl = client.NewNamespacedClient(cl, namespace)
+		providerByName, err = constructProviders(&ProviderConf{
+			Client: cl,
+		}, providers)
+		if err != nil {
+			return nil, nil, err
+		}
 		if err = ConstructIngressesFromCluster(ctx, cl, &ingresses); err != nil {
 			return nil, nil, fmt.Errorf("failed to read ingresses from cluster: %w", err)
 		}
@@ -120,7 +126,7 @@ func ConstructIngressesFromCluster(ctx context.Context, cl client.Client, ingres
 
 // constructProviders constructs a map of concrete Provider implementations
 // by their ProviderName.
-func constructProviders(providers []string) (map[ProviderName]Provider, error) {
+func constructProviders(conf *ProviderConf, providers []string) (map[ProviderName]Provider, error) {
 	providerByName := make(map[ProviderName]Provider, len(ProviderConstructorByName))
 
 	for _, requestedProvider := range providers {
@@ -129,7 +135,8 @@ func constructProviders(providers []string) (map[ProviderName]Provider, error) {
 		if !ok {
 			return nil, fmt.Errorf("%s is not a supported provider", requestedProvider)
 		}
-		providerByName[requestedProviderName] = newProviderFunc()
+
+		providerByName[requestedProviderName] = newProviderFunc(conf)
 	}
 
 	return providerByName, nil
@@ -215,7 +222,7 @@ func ConstructIngressesFromFile(l *networkingv1.IngressList, inputFile string, n
 // ConstructOtherResourcesFromFile reads the inputFile in either json/yaml formats,
 // then deserialize the file into client.object resources.
 func ConstructOtherResourcesFromFile(namespace string, inputFile string, providers []string) ([]*unstructured.Unstructured, error) {
-	providerByName, err := constructProviders(providers)
+	providerByName, err := constructProviders(&ProviderConf{}, providers)
 	if err != nil {
 		return nil, err
 	}
