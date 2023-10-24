@@ -39,7 +39,7 @@ type ProviderName string
 
 // ProviderConstructor is a construction function that constructs concrete
 // implementations of the Provider interface.
-type ProviderConstructor func(conf *ProviderConf) Provider
+type ProviderConstructor func(conf ProviderConf) Provider
 
 // ProviderConf contains all the configuration required for every concrete
 // Provider implementation.

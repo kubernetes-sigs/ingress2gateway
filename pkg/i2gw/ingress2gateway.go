@@ -43,7 +43,7 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 	resources := InputResources{}
 	if inputFile != "" {
 		var err error
-		providerByName, err = constructProviders(&ProviderConf{}, providers)
+		providerByName, err = constructProviders(ProviderConf{}, providers)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -65,7 +65,7 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 			return nil, nil, fmt.Errorf("failed to create client: %w", err)
 		}
 		cl = client.NewNamespacedClient(cl, namespace)
-		providerByName, err = constructProviders(&ProviderConf{
+		providerByName, err = constructProviders(ProviderConf{
 			Client: cl,
 		}, providers)
 		if err != nil {
@@ -126,7 +126,7 @@ func ConstructIngressesFromCluster(ctx context.Context, cl client.Client, ingres
 
 // constructProviders constructs a map of concrete Provider implementations
 // by their ProviderName.
-func constructProviders(conf *ProviderConf, providers []string) (map[ProviderName]Provider, error) {
+func constructProviders(conf ProviderConf, providers []string) (map[ProviderName]Provider, error) {
 	providerByName := make(map[ProviderName]Provider, len(ProviderConstructorByName))
 
 	for _, requestedProvider := range providers {
@@ -222,7 +222,7 @@ func ConstructIngressesFromFile(l *networkingv1.IngressList, inputFile string, n
 // ConstructOtherResourcesFromFile reads the inputFile in either json/yaml formats,
 // then deserialize the file into client.object resources.
 func ConstructOtherResourcesFromFile(namespace string, inputFile string, providers []string) ([]*unstructured.Unstructured, error) {
-	providerByName, err := constructProviders(&ProviderConf{}, providers)
+	providerByName, err := constructProviders(ProviderConf{}, providers)
 	if err != nil {
 		return nil, err
 	}
