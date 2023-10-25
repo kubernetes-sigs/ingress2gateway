@@ -20,8 +20,10 @@ import (
 	"context"
 
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
@@ -32,17 +34,23 @@ import (
 // func at startup.
 var ProviderConstructorByName = map[ProviderName]ProviderConstructor{}
 
+var ProviderClientBuilderByName = map[ProviderName]ProviderClientBuilder{}
+
 // ProviderName is a string alias that stores the concrete Provider name.
 type ProviderName string
 
 // ProviderConstructor is a construction function that constructs concrete
 // implementations of the Provider interface.
-type ProviderConstructor func(conf *ProviderConf) Provider
+type ProviderConstructor func(conf ProviderConf) Provider
+
+type ProviderClientBuilder func(config *rest.Config, namespace string) (client.Client, error)
 
 // ProviderConf contains all the configuration required for every concrete
 // Provider implementation.
 type ProviderConf struct {
-	Client client.Client
+	Client       client.Client
+	ClientConfig *rest.Config
+	Namespace    string
 }
 
 // The Provider interface specifies the required functionality which needs to be
@@ -57,7 +65,7 @@ type CustomResourceReader interface {
 
 	// ReadResourcesFromCluster reads custom resources associated with
 	// the underlying Provider implementation from the kubernetes cluster.
-	ReadResourcesFromCluster(ctx context.Context, customResources interface{}) error
+	ReadResourcesFromCluster(ctx context.Context, customResources map[schema.GroupVersionKind]interface{}) error
 
 	// ReadResourcesFromFiles reads custom resources associated with
 	// the underlying Provider implementation from the files.
@@ -77,7 +85,7 @@ type ResourceConverter interface {
 // custom resources.
 type InputResources struct {
 	Ingresses       []networkingv1.Ingress
-	CustomResources interface{}
+	CustomResources map[schema.GroupVersionKind]interface{}
 }
 
 // GatewayResources contains all Gateway-API objects.

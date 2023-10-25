@@ -20,6 +20,9 @@ import (
 	"context"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	kongv1beta1 "github.com/kong/kubernetes-ingress-controller/v2/pkg/apis/configuration/v1beta1"
 )
 
 // converter implements the i2gw.CustomResourceReader interface.
@@ -34,7 +37,30 @@ func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
 	}
 }
 
-func (r *resourceReader) ReadResourcesFromCluster(ctx context.Context, customResources interface{}) error {
+func (r *resourceReader) ReadResourcesFromCluster(ctx context.Context, customResources map[schema.GroupVersionKind]interface{}) error {
+	tcpIngressList := &kongv1beta1.TCPIngressList{}
+	if err := r.conf.Client.List(ctx, tcpIngressList); err != nil {
+		return err
+	}
+	if len(tcpIngressList.Items) > 0 {
+		customResources[schema.GroupVersionKind{
+			Group:   string(kongResourcesGroup),
+			Kind:    string(kongTCPIngressKind),
+			Version: "v1beta1",
+		}] = tcpIngressList.Items
+	}
+
+	udpIngressList := &kongv1beta1.UDPIngressList{}
+	if err := r.conf.Client.List(ctx, tcpIngressList); err != nil {
+		return err
+	}
+	if len(udpIngressList.Items) > 0 {
+		customResources[schema.GroupVersionKind{
+			Group:   string(kongResourcesGroup),
+			Kind:    string(kongUDPIngressKind),
+			Version: "v1beta1",
+		}] = udpIngressList.Items
+	}
 	return nil
 }
 

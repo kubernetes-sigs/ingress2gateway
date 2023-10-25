@@ -27,6 +27,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	kubeyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -35,31 +36,19 @@ import (
 )
 
 func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string, providers []string) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, error) {
-	conf, err := config.GetConfig()
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get client config: %w", err)
-	}
-
-	cl, err := client.New(conf, client.Options{})
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create client: %w", err)
-	}
-	cl = client.NewNamespacedClient(cl, namespace)
-
 	var ingresses networkingv1.IngressList
 	var gateways []gatewayv1beta1.Gateway
 	var httpRoutes []gatewayv1beta1.HTTPRoute
-
-	providerByName, err := constructProviders(&ProviderConf{
-		Client: cl,
-	}, providers)
-	if err != nil {
-		return nil, nil, err
-	}
+	var providerByName map[ProviderName]Provider
 
 	resources := InputResources{}
 
 	if inputFile != "" {
+		var err error
+		providerByName, err = constructProviders(ProviderConf{}, providers)
+		if err != nil {
+			return nil, nil, err
+		}
 		if err = ConstructIngressesFromFile(&ingresses, inputFile, namespace); err != nil {
 			return nil, nil, fmt.Errorf("failed to read ingresses from file: %w", err)
 		}
@@ -68,6 +57,22 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 			return nil, nil, err
 		}
 	} else {
+		clientConfig, err := config.GetConfig()
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to get client config: %w", err)
+		}
+		providerByName, err = constructProviders(ProviderConf{
+			ClientConfig: clientConfig,
+			Namespace:    namespace,
+		}, providers)
+		if err != nil {
+			return nil, nil, err
+		}
+		cl, err := client.New(clientConfig, client.Options{})
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to create client: %w", err)
+		}
+		cl = client.NewNamespacedClient(cl, namespace)
 		if err = ConstructIngressesFromCluster(ctx, cl, &ingresses); err != nil {
 			return nil, nil, fmt.Errorf("failed to read ingresses from cluster: %w", err)
 		}
@@ -106,9 +111,11 @@ func readProviderResourcesFromFile(ctx context.Context, providerByName map[Provi
 
 func readProviderResourcesFromCluster(ctx context.Context, providerByName map[ProviderName]Provider, resources *InputResources) error {
 	for name, provider := range providerByName {
-		if err := provider.ReadResourcesFromCluster(ctx, resources.CustomResources); err != nil {
+		crdResources := map[schema.GroupVersionKind]interface{}{}
+		if err := provider.ReadResourcesFromCluster(ctx, crdResources); err != nil {
 			return fmt.Errorf("failed to read %s resources from the cluster: %w", name, err)
 		}
+		resources.CustomResources = crdResources
 	}
 	return nil
 }
@@ -123,7 +130,7 @@ func ConstructIngressesFromCluster(ctx context.Context, cl client.Client, ingres
 
 // constructProviders constructs a map of concrete Provider implementations
 // by their ProviderName.
-func constructProviders(conf *ProviderConf, providers []string) (map[ProviderName]Provider, error) {
+func constructProviders(conf ProviderConf, providers []string) (map[ProviderName]Provider, error) {
 	providerByName := make(map[ProviderName]Provider, len(ProviderConstructorByName))
 
 	for _, requestedProvider := range providers {
@@ -132,6 +139,19 @@ func constructProviders(conf *ProviderConf, providers []string) (map[ProviderNam
 		if !ok {
 			return nil, fmt.Errorf("%s is not a supported provider", requestedProvider)
 		}
+
+		if conf.ClientConfig != nil {
+			newClientFunc, ok := ProviderClientBuilderByName[requestedProviderName]
+			if !ok {
+				return nil, fmt.Errorf("%s provider does not provide a proper client", requestedProvider)
+			}
+			client, err := newClientFunc(conf.ClientConfig, conf.Namespace)
+			if err != nil {
+				return nil, err
+			}
+			conf.Client = client
+		}
+
 		providerByName[requestedProviderName] = newProviderFunc(conf)
 	}
 

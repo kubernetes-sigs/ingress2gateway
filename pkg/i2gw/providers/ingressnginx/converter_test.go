@@ -169,7 +169,7 @@ func Test_ToGateway(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			provider := NewProvider(&i2gw.ProviderConf{})
+			provider := NewProvider(i2gw.ProviderConf{})
 
 			resources := i2gw.InputResources{
 				Ingresses:       tc.ingresses,
