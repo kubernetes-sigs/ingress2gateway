@@ -32,6 +32,7 @@ checksum:
 snapshot:
   name_template: "{{ incpatch .Version }}-next"
 release:
+  draft: true
   name_template: "Release-v{{.Version}}"
   header: |
     ## Installation
