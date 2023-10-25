@@ -33,7 +33,6 @@ import (
 )
 
 func ReadIngressesFromCluster(ctx context.Context, client client.Client, ingressClass string) (map[types.NamespacedName]*networkingv1.Ingress, error) {
-
 	var ingressList networkingv1.IngressList
 	err := client.List(ctx, &ingressList)
 	if err != nil {

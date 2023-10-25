@@ -14,18 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kong
+package crds
 
-import "fmt"
+import (
+	"strings"
 
-const (
-	annotationPrefix = "konghq.com"
-
-	headersKey = "headers"
-	methodsKey = "methods"
-	pluginsKey = "plugins"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-func kongAnnotation(suffix string) string {
-	return fmt.Sprintf("%s/%s", annotationPrefix, suffix)
+func buildSectionName(parts ...string) *gatewayv1.SectionName {
+	builder := strings.Builder{}
+	for i, p := range parts {
+		if p == "" {
+			continue
+		}
+		if i != 0 {
+			builder.WriteString("-")
+		}
+		builder.WriteString(p)
+	}
+	return (*gatewayv1.SectionName)(common.PtrTo(builder.String()))
 }

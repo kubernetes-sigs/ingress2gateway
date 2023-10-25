@@ -18,10 +18,10 @@ package kong
 
 import (
 	"context"
-	"fmt"
+
+	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 // The Name of the provider.
@@ -34,15 +34,18 @@ func init() {
 
 // Provider implements the i2gw.Provider interface.
 type Provider struct {
-	storage        *storage
-	resourceReader *resourceReader
-	converter      *converter
+	conf    *i2gw.ProviderConf
+	storage storage
+
+	*resourceReader
+	*converter
 }
 
 // NewProvider constructs and returns the kong implementation of i2gw.Provider.
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 	return &Provider{
-		storage:        newResourcesStorage(),
+		conf: conf,
+
 		resourceReader: newResourceReader(conf),
 		converter:      newConverter(),
 	}
@@ -51,25 +54,23 @@ func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 // ToGatewayAPI converts the received i2gw.InputResources to i2gw.GatewayResources
 // including the kong specific features.
 func (p *Provider) ToGatewayAPI(_ i2gw.InputResources) (i2gw.GatewayResources, field.ErrorList) {
-	return p.converter.convert(p.storage)
+	return p.convert(p.storage)
 }
 
 func (p *Provider) ReadResourcesFromCluster(ctx context.Context) error {
-	storage, err := p.resourceReader.readResourcesFromCluster(ctx)
+	storage, err := p.readResourcesFromCluster(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to read resources from cluster: %w", err)
+		return err
 	}
-
-	p.storage = storage
+	p.storage = *storage
 	return nil
 }
 
-func (p *Provider) ReadResourcesFromFile(ctx context.Context, filename string) error {
-	storage, err := p.resourceReader.readResourcesFromFile(ctx, filename)
+func (p *Provider) ReadResourcesFromFile(_ context.Context, filename string) error {
+	storage, err := p.readResourcesFromFile(filename)
 	if err != nil {
-		return fmt.Errorf("failed to read resources from file: %w", err)
+		return err
 	}
-
-	p.storage = storage
+	p.storage = *storage
 	return nil
 }
