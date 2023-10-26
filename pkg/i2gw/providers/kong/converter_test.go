@@ -33,7 +33,9 @@ import (
 
 func Test_ToGateway(t *testing.T) {
 	iPrefix := networkingv1.PathTypePrefix
+	isPathType := networkingv1.PathTypeImplementationSpecific
 	gPathPrefix := gatewayv1beta1.PathMatchPathPrefix
+	gPathRegex := gatewayv1beta1.PathMatchRegularExpression
 
 	testCases := []struct {
 		name                     string
@@ -309,6 +311,91 @@ func Test_ToGateway(t *testing.T) {
 											BackendRef: gatewayv1beta1.BackendRef{
 												BackendObjectReference: gatewayv1beta1.BackendObjectReference{
 													Name: "test-second",
+													Port: ptrTo(gatewayv1beta1.PortNumber(80)),
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
+		{
+			name: "ImplementationSpecific HTTPRouteMatching",
+			ingresses: []networkingv1.Ingress{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "implementation-specific-regex",
+						Namespace: "default",
+					},
+					Spec: networkingv1.IngressSpec{
+						IngressClassName: ptrTo("ingress-kong"),
+						Rules: []networkingv1.IngressRule{{
+							Host: "test.mydomain.com",
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{{
+										Path:     "/~/echo/**/test",
+										PathType: &isPathType,
+										Backend: networkingv1.IngressBackend{
+											Service: &networkingv1.IngressServiceBackend{
+												Name: "test",
+												Port: networkingv1.ServiceBackendPort{
+													Number: 80,
+												},
+											},
+										},
+									}},
+								},
+							},
+						}},
+					},
+				},
+			},
+			expectedGatewayResources: i2gw.GatewayResources{
+				Gateways: map[types.NamespacedName]gatewayv1beta1.Gateway{
+					{Namespace: "default", Name: "ingress-kong"}: {
+						ObjectMeta: metav1.ObjectMeta{Name: "ingress-kong", Namespace: "default"},
+						Spec: gatewayv1beta1.GatewaySpec{
+							GatewayClassName: "ingress-kong",
+							Listeners: []gatewayv1beta1.Listener{{
+								Name:     "test-mydomain-com-http",
+								Port:     80,
+								Protocol: gatewayv1beta1.HTTPProtocolType,
+								Hostname: ptrTo(gatewayv1beta1.Hostname("test.mydomain.com")),
+							}},
+						},
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]gatewayv1beta1.HTTPRoute{
+					{Namespace: "default", Name: "test-mydomain-com"}: {
+						ObjectMeta: metav1.ObjectMeta{Name: "test-mydomain-com", Namespace: "default"},
+						Spec: gatewayv1beta1.HTTPRouteSpec{
+							CommonRouteSpec: gatewayv1beta1.CommonRouteSpec{
+								ParentRefs: []gatewayv1beta1.ParentReference{{
+									Name: "ingress-kong",
+								}},
+							},
+							Hostnames: []gatewayv1beta1.Hostname{"test.mydomain.com"},
+							Rules: []gatewayv1beta1.HTTPRouteRule{
+								{
+									Matches: []gatewayv1beta1.HTTPRouteMatch{
+										{
+											Path: &gatewayv1beta1.HTTPPathMatch{
+												Type:  &gPathRegex,
+												Value: ptrTo("/echo/**/test"),
+											},
+										},
+									},
+									BackendRefs: []gatewayv1beta1.HTTPBackendRef{
+										{
+											BackendRef: gatewayv1beta1.BackendRef{
+												BackendObjectReference: gatewayv1beta1.BackendObjectReference{
+													Name: "test",
 													Port: ptrTo(gatewayv1beta1.PortNumber(80)),
 												},
 											},
