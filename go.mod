@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/google/go-cmp v0.5.9
 	github.com/spf13/cobra v1.7.0
+	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
 	k8s.io/api v0.28.2
 	k8s.io/apimachinery v0.28.2
 	k8s.io/cli-runtime v0.28.2
@@ -15,20 +16,14 @@ require (
 )
 
 require (
-	github.com/Masterminds/goutils v1.1.1 // indirect
-	github.com/Masterminds/semver v1.5.0 // indirect
-	github.com/go-task/slim-sprig v2.20.0+incompatible // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
-	github.com/huandu/xstrings v1.4.0 // indirect
 	github.com/kong/go-kong v0.47.0 // indirect
 	github.com/kong/semver/v4 v4.0.1 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
-	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/tidwall/gjson v1.16.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
-	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 	golang.org/x/sync v0.3.0 // indirect
 	k8s.io/apiextensions-apiserver v0.28.2 // indirect
 )

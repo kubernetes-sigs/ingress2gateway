@@ -78,6 +78,12 @@ var (
 		Version: "v1beta1",
 		Kind:    "HTTPRoute",
 	}
+
+	TCPRouteGVK = schema.GroupVersionKind{
+		Group:   "gateway.networking.k8s.io",
+		Version: "v1alpha2",
+		Kind:    "TCPRoute",
+	}
 )
 
 type ruleGroupKey string

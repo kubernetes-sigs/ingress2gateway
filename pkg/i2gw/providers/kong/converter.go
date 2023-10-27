@@ -56,16 +56,17 @@ func (c *converter) ToGatewayAPI(resources i2gw.InputResources) (i2gw.GatewayRes
 		return i2gw.GatewayResources{}, errs
 	}
 
-	tcpIngresses := resources.CustomResources[schema.GroupVersionKind{
+	if tcpIngresses, ok := resources.CustomResources[schema.GroupVersionKind{
 		Group:   string(kongResourcesGroup),
 		Kind:    string(kongTCPIngressKind),
 		Version: "v1beta1",
-	}].([]configurationv1beta1.TCPIngress)
-	tcpGatewayResources, errs := crds.TcpIngressToGatewayAPI(tcpIngresses)
-	if errs != nil {
-		return i2gw.GatewayResources{}, errs
+	}].([]configurationv1beta1.TCPIngress); ok {
+		tcpGatewayResources, errs := crds.TcpIngressToGatewayAPI(tcpIngresses)
+		if errs != nil {
+			return i2gw.GatewayResources{}, errs
+		}
+		gatewayResources = i2gw.MergeGatewayResources(gatewayResources, tcpGatewayResources)
 	}
-	gatewayResources = common.MergeGatewayResources(gatewayResources, tcpGatewayResources)
 
 	for _, parseFeatureFunc := range c.featureParsers {
 		// Apply the feature parsing function to the gateway resources, one by one.

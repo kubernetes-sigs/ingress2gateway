@@ -26,7 +26,6 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/client-go/tools/clientcmd"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	// Call init function for the providers
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
@@ -73,18 +72,18 @@ func (pr *PrintRunner) PrintGatewaysAndHTTPRoutes(cmd *cobra.Command, _ []string
 		return fmt.Errorf("failed to initialize namespace filter: %w", err)
 	}
 
-	httpRoutes, gateways, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers)
+	gatewayResources, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers)
 	if err != nil {
 		return err
 	}
 
-	pr.outputResult(httpRoutes, gateways)
+	pr.outputResult(gatewayResources)
 
 	return nil
 }
 
-func (pr *PrintRunner) outputResult(httpRoutes []gatewayv1beta1.HTTPRoute, gateways []gatewayv1beta1.Gateway) {
-	if len(httpRoutes)+len(gateways) == 0 {
+func (pr *PrintRunner) outputResult(resources i2gw.GatewayResources) {
+	if len(resources.Gateways)+len(resources.HTTPRoutes)+len(resources.TCPRoutes) == 0 {
 		msg := "No resources found"
 		if pr.namespaceFilter != "" {
 			msg = fmt.Sprintf("%s in %s namespace", msg, pr.namespaceFilter)
@@ -93,17 +92,24 @@ func (pr *PrintRunner) outputResult(httpRoutes []gatewayv1beta1.HTTPRoute, gatew
 		return
 	}
 
-	for i := range gateways {
-		err := pr.resourcePrinter.PrintObj(&gateways[i], os.Stdout)
+	for _, g := range resources.Gateways {
+		err := pr.resourcePrinter.PrintObj(&g, os.Stdout)
 		if err != nil {
-			fmt.Printf("# Error printing %s HTTPRoute: %v\n", gateways[i].Name, err)
+			fmt.Printf("# Error printing %s Gateway: %v\n", g.Name, err)
 		}
 	}
 
-	for i := range httpRoutes {
-		err := pr.resourcePrinter.PrintObj(&httpRoutes[i], os.Stdout)
+	for _, r := range resources.HTTPRoutes {
+		err := pr.resourcePrinter.PrintObj(&r, os.Stdout)
 		if err != nil {
-			fmt.Printf("# Error printing %s HTTPRoute: %v\n", httpRoutes[i].Name, err)
+			fmt.Printf("# Error printing %s HTTPRoute: %v\n", r.Name, err)
+		}
+	}
+
+	for _, r := range resources.TCPRoutes {
+		err := pr.resourcePrinter.PrintObj(&r, os.Stdout)
+		if err != nil {
+			fmt.Printf("# Error printing %s TCPRoute: %v\n", r.Name, err)
 		}
 	}
 }

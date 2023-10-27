@@ -20,13 +20,9 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"golang.org/x/exp/maps"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
@@ -131,24 +127,6 @@ func ToBackendRef(ib networkingv1.IngressBackend, path *field.Path) (*gatewayv1b
 	}, nil
 }
 
-func MergeGatewayResources(gatewayResources ...i2gw.GatewayResources) i2gw.GatewayResources {
-	mergedGatewayResources := i2gw.GatewayResources{
-		Gateways:        make(map[types.NamespacedName]gatewayv1beta1.Gateway),
-		GatewayClasses:  make(map[types.NamespacedName]gatewayv1beta1.GatewayClass),
-		HTTPRoutes:      make(map[types.NamespacedName]gatewayv1beta1.HTTPRoute),
-		TLSRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
-		TCPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
-		UDPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.UDPRoute),
-		ReferenceGrants: make(map[types.NamespacedName]gatewayv1alpha2.ReferenceGrant),
-	}
-	for _, gr := range gatewayResources {
-		maps.Copy(mergedGatewayResources.GatewayClasses, gr.GatewayClasses)
-		maps.Copy(mergedGatewayResources.Gateways, gr.Gateways)
-		maps.Copy(mergedGatewayResources.HTTPRoutes, gr.HTTPRoutes)
-		maps.Copy(mergedGatewayResources.TLSRoutes, gr.TLSRoutes)
-		maps.Copy(mergedGatewayResources.TCPRoutes, gr.TCPRoutes)
-		maps.Copy(mergedGatewayResources.UDPRoutes, gr.UDPRoutes)
-		maps.Copy(mergedGatewayResources.ReferenceGrants, gr.ReferenceGrants)
-	}
-	return mergedGatewayResources
+func PtrTo[T any](a T) *T {
+	return &a
 }
