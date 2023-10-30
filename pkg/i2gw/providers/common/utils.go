@@ -101,7 +101,7 @@ func NameFromHost(host string) string {
 	return step2
 }
 
-func HTTPRouteName(ingressName, host string) string {
+func RouteName(ingressName, host string) string {
 	return fmt.Sprintf("%s-%s", ingressName, NameFromHost(host))
 }
 

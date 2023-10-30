@@ -283,7 +283,7 @@ func (rg *ingressRuleGroup) toHTTPRoute() (gatewayv1beta1.HTTPRoute, field.Error
 
 	httpRoute := gatewayv1beta1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      HTTPRouteName(rg.name, rg.host),
+			Name:      RouteName(rg.name, rg.host),
 			Namespace: rg.namespace,
 		},
 		Spec: gatewayv1beta1.HTTPRouteSpec{},
