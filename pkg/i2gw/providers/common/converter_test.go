@@ -52,7 +52,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 		{
 			name: "simple ingress",
 			ingresses: []networkingv1.Ingress{{
-				ObjectMeta: metav1.ObjectMeta{Name: "example", Namespace: "test"},
+				ObjectMeta: metav1.ObjectMeta{Name: "simple", Namespace: "test"},
 				Spec: networkingv1.IngressSpec{
 					Rules: []networkingv1.IngressRule{{
 						Host: "example.com",
@@ -77,10 +77,10 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 			}},
 			expectedGatewayResources: i2gw.GatewayResources{
 				Gateways: map[types.NamespacedName]gatewayv1beta1.Gateway{
-					{Namespace: "test", Name: "example"}: {
-						ObjectMeta: metav1.ObjectMeta{Name: "example", Namespace: "test"},
+					{Namespace: "test", Name: "simple"}: {
+						ObjectMeta: metav1.ObjectMeta{Name: "simple", Namespace: "test"},
 						Spec: gatewayv1beta1.GatewaySpec{
-							GatewayClassName: "example",
+							GatewayClassName: "simple",
 							Listeners: []gatewayv1beta1.Listener{{
 								Name:     "example-com-http",
 								Port:     80,
@@ -91,12 +91,12 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 					},
 				},
 				HTTPRoutes: map[types.NamespacedName]gatewayv1beta1.HTTPRoute{
-					{Namespace: "test", Name: "example-com"}: {
-						ObjectMeta: metav1.ObjectMeta{Name: "example-com", Namespace: "test"},
+					{Namespace: "test", Name: "simple-example-com"}: {
+						ObjectMeta: metav1.ObjectMeta{Name: "simple-example-com", Namespace: "test"},
 						Spec: gatewayv1beta1.HTTPRouteSpec{
 							CommonRouteSpec: gatewayv1beta1.CommonRouteSpec{
 								ParentRefs: []gatewayv1beta1.ParentReference{{
-									Name: "example",
+									Name: "simple",
 								}},
 							},
 							Hostnames: []gatewayv1beta1.Hostname{"example.com"},
@@ -125,7 +125,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 		{
 			name: "ingress with TLS",
 			ingresses: []networkingv1.Ingress{{
-				ObjectMeta: metav1.ObjectMeta{Name: "example", Namespace: "test"},
+				ObjectMeta: metav1.ObjectMeta{Name: "with-tls", Namespace: "test"},
 				Spec: networkingv1.IngressSpec{
 					TLS: []networkingv1.IngressTLS{{
 						Hosts:      []string{"example.com"},
@@ -154,10 +154,10 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 			}},
 			expectedGatewayResources: i2gw.GatewayResources{
 				Gateways: map[types.NamespacedName]gatewayv1beta1.Gateway{
-					{Namespace: "test", Name: "example"}: {
-						ObjectMeta: metav1.ObjectMeta{Name: "example", Namespace: "test"},
+					{Namespace: "test", Name: "with-tls"}: {
+						ObjectMeta: metav1.ObjectMeta{Name: "with-tls", Namespace: "test"},
 						Spec: gatewayv1beta1.GatewaySpec{
-							GatewayClassName: "example",
+							GatewayClassName: "with-tls",
 							Listeners: []gatewayv1beta1.Listener{{
 								Name:     "example-com-http",
 								Port:     80,
@@ -178,12 +178,12 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 					},
 				},
 				HTTPRoutes: map[types.NamespacedName]gatewayv1beta1.HTTPRoute{
-					{Namespace: "test", Name: "example-com"}: {
-						ObjectMeta: metav1.ObjectMeta{Name: "example-com", Namespace: "test"},
+					{Namespace: "test", Name: "with-tls-example-com"}: {
+						ObjectMeta: metav1.ObjectMeta{Name: "with-tls-example-com", Namespace: "test"},
 						Spec: gatewayv1beta1.HTTPRouteSpec{
 							CommonRouteSpec: gatewayv1beta1.CommonRouteSpec{
 								ParentRefs: []gatewayv1beta1.ParentReference{{
-									Name: "example",
+									Name: "with-tls",
 								}},
 							},
 							Hostnames: []gatewayv1beta1.Hostname{"example.com"},
@@ -259,8 +259,8 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 					},
 				},
 				HTTPRoutes: map[types.NamespacedName]gatewayv1beta1.HTTPRoute{
-					{Namespace: "different", Name: "example-net"}: {
-						ObjectMeta: metav1.ObjectMeta{Name: "example-net", Namespace: "different"},
+					{Namespace: "different", Name: "net-example-net"}: {
+						ObjectMeta: metav1.ObjectMeta{Name: "net-example-net", Namespace: "different"},
 						Spec: gatewayv1beta1.HTTPRouteSpec{
 							CommonRouteSpec: gatewayv1beta1.CommonRouteSpec{
 								ParentRefs: []gatewayv1beta1.ParentReference{{

@@ -91,6 +91,7 @@ type pathMatchKey string
 
 type ingressRuleGroup struct {
 	namespace    string
+	name         string
 	ingressClass string
 	host         string
 	tls          []networkingv1.IngressTLS
@@ -125,7 +126,7 @@ func (a *ingressAggregator) addIngress(ingress networkingv1.Ingress) field.Error
 		ingressClass = ingress.Name
 	}
 	for _, rule := range ingress.Spec.Rules {
-		a.addIngressRule(ingress.Namespace, ingressClass, rule, ingress.Spec)
+		a.addIngressRule(ingress.Namespace, ingress.Name, ingressClass, rule, ingress.Spec)
 	}
 	if ingress.Spec.DefaultBackend != nil {
 		a.defaultBackends = append(a.defaultBackends, ingressDefaultBackend{
@@ -138,12 +139,13 @@ func (a *ingressAggregator) addIngress(ingress networkingv1.Ingress) field.Error
 	return nil
 }
 
-func (a *ingressAggregator) addIngressRule(namespace, ingressClass string, rule networkingv1.IngressRule, iSpec networkingv1.IngressSpec) {
+func (a *ingressAggregator) addIngressRule(namespace, name, ingressClass string, rule networkingv1.IngressRule, iSpec networkingv1.IngressSpec) {
 	rgKey := ruleGroupKey(fmt.Sprintf("%s/%s/%s", namespace, ingressClass, rule.Host))
 	rg, ok := a.ruleGroups[rgKey]
 	if !ok {
 		rg = &ingressRuleGroup{
 			namespace:    namespace,
+			name:         name,
 			ingressClass: ingressClass,
 			host:         rule.Host,
 		}
@@ -281,7 +283,7 @@ func (rg *ingressRuleGroup) toHTTPRoute() (gatewayv1beta1.HTTPRoute, field.Error
 
 	httpRoute := gatewayv1beta1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      NameFromHost(rg.host),
+			Name:      RouteName(rg.name, rg.host),
 			Namespace: rg.namespace,
 		},
 		Spec: gatewayv1beta1.HTTPRouteSpec{},

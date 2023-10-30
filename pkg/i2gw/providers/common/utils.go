@@ -42,6 +42,7 @@ func GetIngressClass(ingress networkingv1.Ingress) string {
 
 type IngressRuleGroup struct {
 	Namespace    string
+	Name         string
 	IngressClass string
 	Host         string
 	TLS          []networkingv1.IngressTLS
@@ -66,6 +67,7 @@ func GetRuleGroups(ingresses []networkingv1.Ingress) map[string]IngressRuleGroup
 			if !ok {
 				rg = IngressRuleGroup{
 					Namespace:    ingress.Namespace,
+					Name:         ingress.Name,
 					IngressClass: ingressClass,
 					Host:         rule.Host,
 				}
@@ -97,6 +99,10 @@ func NameFromHost(host string) string {
 		return "all-hosts"
 	}
 	return step2
+}
+
+func RouteName(ingressName, host string) string {
+	return fmt.Sprintf("%s-%s", ingressName, NameFromHost(host))
 }
 
 func ToBackendRef(ib networkingv1.IngressBackend, path *field.Path) (*gatewayv1beta1.BackendRef, *field.Error) {
