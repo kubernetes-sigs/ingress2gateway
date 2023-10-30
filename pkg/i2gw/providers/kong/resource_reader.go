@@ -17,11 +17,15 @@ limitations under the License.
 package kong
 
 import (
+	"bytes"
 	"context"
+	"os"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
+	configurationv1beta1 "github.com/kong/kubernetes-ingress-controller/v2/pkg/apis/configuration/v1beta1"
 	kongv1beta1 "github.com/kong/kubernetes-ingress-controller/v2/pkg/apis/configuration/v1beta1"
 )
 
@@ -43,27 +47,41 @@ func (r *resourceReader) ReadResourcesFromCluster(ctx context.Context, customRes
 		return err
 	}
 	if len(tcpIngressList.Items) > 0 {
-		customResources[schema.GroupVersionKind{
-			Group:   string(kongResourcesGroup),
-			Kind:    string(kongTCPIngressKind),
-			Version: "v1beta1",
-		}] = tcpIngressList.Items
-	}
-
-	udpIngressList := &kongv1beta1.UDPIngressList{}
-	if err := r.conf.Client.List(ctx, tcpIngressList); err != nil {
-		return err
-	}
-	if len(udpIngressList.Items) > 0 {
-		customResources[schema.GroupVersionKind{
-			Group:   string(kongResourcesGroup),
-			Kind:    string(kongUDPIngressKind),
-			Version: "v1beta1",
-		}] = udpIngressList.Items
+		customResources[tcpIngressGVK] = tcpIngressList.Items
 	}
 	return nil
 }
 
-func (r *resourceReader) ReadResourcesFromFiles(ctx context.Context, customResources interface{}, filename string) error {
+func (r *resourceReader) ReadResourcesFromFiles(ctx context.Context, customResources map[schema.GroupVersionKind]interface{}, filename string, namespace string) error {
+	stream, err := os.ReadFile(filename)
+	if err != nil {
+		return err
+	}
+
+	reader := bytes.NewReader(stream)
+	objs, err := i2gw.ExtractObjectsFromReader(reader)
+	if err != nil {
+		return err
+	}
+
+	tcpIngresses := []configurationv1beta1.TCPIngress{}
+	for _, f := range objs {
+		if namespace != "" && f.GetNamespace() != namespace {
+			continue
+		}
+		if !f.GroupVersionKind().Empty() &&
+			f.GroupVersionKind().Group == string(kongResourcesGroup) &&
+			f.GroupVersionKind().Kind == string(kongTCPIngressKind) {
+			var tcpIngress configurationv1beta1.TCPIngress
+			err = runtime.DefaultUnstructuredConverter.
+				FromUnstructured(f.UnstructuredContent(), &tcpIngress)
+			if err != nil {
+				return err
+			}
+			tcpIngresses = append(tcpIngresses, tcpIngress)
+		}
+	}
+	customResources[tcpIngressGVK] = tcpIngresses
+
 	return nil
 }

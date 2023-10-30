@@ -40,7 +40,7 @@ func (r *resourceReader) ReadResourcesFromCluster(ctx context.Context, customRes
 	return nil
 }
 
-func (r *resourceReader) ReadResourcesFromFiles(ctx context.Context, customResources interface{}, filename string) error {
+func (r *resourceReader) ReadResourcesFromFiles(ctx context.Context, customResources map[schema.GroupVersionKind]interface{}, filename string, namespace string) error {
 	// ingress-nginx does not have any CRDs.
 	return nil
 }

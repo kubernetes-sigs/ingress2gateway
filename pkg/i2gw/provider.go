@@ -69,7 +69,7 @@ type CustomResourceReader interface {
 
 	// ReadResourcesFromFiles reads custom resources associated with
 	// the underlying Provider implementation from the files.
-	ReadResourcesFromFiles(ctx context.Context, customResources interface{}, filename string) error
+	ReadResourcesFromFiles(ctx context.Context, customResources map[schema.GroupVersionKind]interface{}, filename string, namespace string) error
 }
 
 // The ResourceConverter interface specifies all the implemented Gateway API resource

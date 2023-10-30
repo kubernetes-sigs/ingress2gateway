@@ -19,6 +19,7 @@ package kong
 import (
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
@@ -36,6 +37,14 @@ const (
 	kongPluginKind     gatewayv1beta1.Kind = "KongPlugin"
 	kongTCPIngressKind gatewayv1beta1.Kind = "TCPIngress"
 	kongUDPIngressKind gatewayv1beta1.Kind = "UDPIngress"
+)
+
+var (
+	tcpIngressGVK = schema.GroupVersionKind{
+		Group:   string(kongResourcesGroup),
+		Kind:    string(kongTCPIngressKind),
+		Version: "v1beta1",
+	}
 )
 
 func kongAnnotation(suffix string) string {
