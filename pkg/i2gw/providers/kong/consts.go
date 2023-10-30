@@ -36,7 +36,6 @@ const (
 
 	kongPluginKind     gatewayv1beta1.Kind = "KongPlugin"
 	kongTCPIngressKind gatewayv1beta1.Kind = "TCPIngress"
-	kongUDPIngressKind gatewayv1beta1.Kind = "UDPIngress"
 )
 
 var (

@@ -112,6 +112,13 @@ func (pr *PrintRunner) outputResult(resources i2gw.GatewayResources) {
 			fmt.Printf("# Error printing %s TCPRoute: %v\n", r.Name, err)
 		}
 	}
+
+	for _, r := range resources.TLSRoutes {
+		err := pr.resourcePrinter.PrintObj(&r, os.Stdout)
+		if err != nil {
+			fmt.Printf("# Error printing %s TLSRoute: %v\n", r.Name, err)
+		}
+	}
 }
 
 // initializeResourcePrinter assign a specific type of printers.ResourcePrinter
