@@ -83,7 +83,7 @@ func (pr *PrintRunner) PrintGatewaysAndHTTPRoutes(cmd *cobra.Command, _ []string
 }
 
 func (pr *PrintRunner) outputResult(resources i2gw.GatewayResources) {
-	if len(resources.Gateways)+len(resources.HTTPRoutes)+len(resources.TCPRoutes) == 0 {
+	if resources.ResourcesAmount() == 0 {
 		msg := "No resources found"
 		if pr.namespaceFilter != "" {
 			msg = fmt.Sprintf("%s in %s namespace", msg, pr.namespaceFilter)

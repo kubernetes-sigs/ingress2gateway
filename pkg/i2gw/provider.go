@@ -101,6 +101,17 @@ type GatewayResources struct {
 	ReferenceGrants map[types.NamespacedName]gatewayv1alpha2.ReferenceGrant
 }
 
+// ResourcesAmount returns the total amount of Gateway API resources to display.
+func (r GatewayResources) ResourcesAmount() int {
+	return len(r.Gateways) +
+		len(r.GatewayClasses) +
+		len(r.HTTPRoutes) +
+		len(r.TLSRoutes) +
+		len(r.TCPRoutes) +
+		len(r.UDPRoutes)
+
+}
+
 // FeatureParser is a function that reads the InputResources, and applies
 // the appropriate modifications to the GatewayResources.
 //
