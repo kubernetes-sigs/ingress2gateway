@@ -40,7 +40,7 @@ vet: ;$(info $(M)...Begin to run go vet against code.)  @ ## Run go vet against 
 # Run go test against code
 .PHONY: test
 test: vet;$(info $(M)...Begin to run tests.)  @ ## Run tests.
-	go test -race -cover ./pkg/... ./cmd/...
+	go test -v -race -cover ./pkg/... ./cmd/... --count=10
 
 # Build the binary
 .PHONY: build
