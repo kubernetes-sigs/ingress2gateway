@@ -20,9 +20,10 @@ import (
 	"context"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// converter implements the i2gw.CustomResourceReader interface.
+// resourceReader implements the i2gw.CustomResourceReader interface.
 type resourceReader struct {
 	conf *i2gw.ProviderConf
 }
@@ -34,7 +35,7 @@ func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
 	}
 }
 
-func (r *resourceReader) ReadResourcesFromCluster(ctx context.Context, customResources interface{}) error {
+func (r *resourceReader) ReadResourcesFromCluster(ctx context.Context, cl client.Client, customResources interface{}) error {
 	return nil
 }
 
