@@ -45,6 +45,11 @@ var (
 		Kind:    string(kongTCPIngressKind),
 		Version: "v1beta1",
 	}
+	udpIngressGVK = schema.GroupVersionKind{
+		Group:   string(kongResourcesGroup),
+		Kind:    string(kongUDPIngressKind),
+		Version: "v1beta1",
+	}
 )
 
 func kongAnnotation(suffix string) string {

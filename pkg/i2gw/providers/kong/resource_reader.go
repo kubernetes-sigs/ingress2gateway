@@ -25,7 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	configurationv1beta1 "github.com/kong/kubernetes-ingress-controller/v2/pkg/apis/configuration/v1beta1"
 	kongv1beta1 "github.com/kong/kubernetes-ingress-controller/v2/pkg/apis/configuration/v1beta1"
 )
 
@@ -49,6 +48,13 @@ func (r *resourceReader) ReadResourcesFromCluster(ctx context.Context, customRes
 	if len(tcpIngressList.Items) > 0 {
 		customResources[tcpIngressGVK] = tcpIngressList.Items
 	}
+	udpIngressList := &kongv1beta1.UDPIngressList{}
+	if err := r.conf.Client.List(ctx, udpIngressList); err != nil {
+		return err
+	}
+	if len(udpIngressList.Items) > 0 {
+		customResources[udpIngressGVK] = udpIngressList.Items
+	}
 	return nil
 }
 
@@ -64,24 +70,35 @@ func (r *resourceReader) ReadResourcesFromFiles(ctx context.Context, customResou
 		return err
 	}
 
-	tcpIngresses := []configurationv1beta1.TCPIngress{}
+	tcpIngresses := []kongv1beta1.TCPIngress{}
+	udpIngresses := []kongv1beta1.UDPIngress{}
 	for _, f := range objs {
 		if namespace != "" && f.GetNamespace() != namespace {
 			continue
 		}
-		if !f.GroupVersionKind().Empty() &&
-			f.GroupVersionKind().Group == string(kongResourcesGroup) &&
-			f.GroupVersionKind().Kind == string(kongTCPIngressKind) {
-			var tcpIngress configurationv1beta1.TCPIngress
-			err = runtime.DefaultUnstructuredConverter.
-				FromUnstructured(f.UnstructuredContent(), &tcpIngress)
-			if err != nil {
-				return err
+		if !f.GroupVersionKind().Empty() && f.GroupVersionKind().Group == string(kongResourcesGroup) {
+			if f.GroupVersionKind().Kind == string(kongTCPIngressKind) {
+				var tcpIngress kongv1beta1.TCPIngress
+				err = runtime.DefaultUnstructuredConverter.
+					FromUnstructured(f.UnstructuredContent(), &tcpIngress)
+				if err != nil {
+					return err
+				}
+				tcpIngresses = append(tcpIngresses, tcpIngress)
 			}
-			tcpIngresses = append(tcpIngresses, tcpIngress)
+			if f.GroupVersionKind().Kind == string(kongUDPIngressKind) {
+				var udpIngress kongv1beta1.UDPIngress
+				err = runtime.DefaultUnstructuredConverter.
+					FromUnstructured(f.UnstructuredContent(), &udpIngress)
+				if err != nil {
+					return err
+				}
+				udpIngresses = append(udpIngresses, udpIngress)
+			}
 		}
 	}
 	customResources[tcpIngressGVK] = tcpIngresses
+	customResources[udpIngressGVK] = udpIngresses
 
 	return nil
 }

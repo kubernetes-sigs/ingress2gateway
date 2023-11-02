@@ -22,12 +22,15 @@ import (
 
 type ruleGroupKey string
 
+// TCPIngress
+
 type tcpIngressAggregator struct {
 	ruleGroups map[ruleGroupKey]*tcpIngressRuleGroup
 }
 
 type tcpIngressRuleGroup struct {
 	namespace    string
+	name         string
 	ingressClass string
 	host         string
 	port         int
@@ -37,4 +40,22 @@ type tcpIngressRuleGroup struct {
 
 type ingressRule struct {
 	rule configurationv1beta1.IngressRule
+}
+
+// UDPIngress
+
+type udpIngressAggregator struct {
+	ruleGroups map[ruleGroupKey]*udpIngressRuleGroup
+}
+
+type udpIngressRuleGroup struct {
+	namespace    string
+	name         string
+	ingressClass string
+	port         int
+	rules        []udpIngressRule
+}
+
+type udpIngressRule struct {
+	rule configurationv1beta1.UDPIngressRule
 }

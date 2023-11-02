@@ -90,6 +90,12 @@ var (
 		Version: "v1alpha2",
 		Kind:    "TLSRoute",
 	}
+
+	UDPRouteGVK = schema.GroupVersionKind{
+		Group:   "gateway.networking.k8s.io",
+		Version: "v1alpha2",
+		Kind:    "UDPRoute",
+	}
 )
 
 type ruleGroupKey string

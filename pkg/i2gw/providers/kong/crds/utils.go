@@ -17,6 +17,8 @@ limitations under the License.
 package crds
 
 import (
+	"strings"
+
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
@@ -31,4 +33,15 @@ func ToBackendRef(ib configurationv1beta1.IngressBackend, path *field.Path) (*ga
 			Port: common.PtrTo(gatewayv1beta1.PortNumber(ib.ServicePort)),
 		},
 	}, nil
+}
+
+func buildSectionName(parts ...string) *gatewayv1beta1.SectionName {
+	builder := strings.Builder{}
+	for i, p := range parts {
+		if i != 0 {
+			builder.WriteString("-")
+		}
+		builder.WriteString(p)
+	}
+	return (*gatewayv1beta1.SectionName)(common.PtrTo(builder.String()))
 }

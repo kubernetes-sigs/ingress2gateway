@@ -83,17 +83,18 @@ func (a *tcpIngressAggregator) addIngress(tcpIngress configurationv1beta1.TCPIng
 		ingressClass = tcpIngress.Name
 	}
 	for _, rule := range tcpIngress.Spec.Rules {
-		a.addIngressRule(tcpIngress.Namespace, ingressClass, rule, tcpIngress.Spec)
+		a.addIngressRule(tcpIngress.Namespace, tcpIngress.Name, ingressClass, rule, tcpIngress.Spec)
 	}
 	return nil
 }
 
-func (a *tcpIngressAggregator) addIngressRule(namespace, ingressClass string, rule configurationv1beta1.IngressRule, iSpec configurationv1beta1.TCPIngressSpec) {
+func (a *tcpIngressAggregator) addIngressRule(namespace, ingressName, ingressClass string, rule configurationv1beta1.IngressRule, iSpec configurationv1beta1.TCPIngressSpec) {
 	rgKey := ruleGroupKey(fmt.Sprintf("%s/%s/%s", namespace, ingressClass, rule.Host))
 	rg, ok := a.ruleGroups[rgKey]
 	if !ok {
 		rg = &tcpIngressRuleGroup{
 			namespace:    namespace,
+			name:         ingressName,
 			ingressClass: ingressClass,
 			host:         rule.Host,
 			port:         rule.Port,
@@ -203,7 +204,7 @@ func (rg *tcpIngressRuleGroup) toTCPRoute() (gatewayv1alpha2.TCPRoute, field.Err
 
 	tcpRoute := gatewayv1alpha2.TCPRoute{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      common.NameFromHost(rg.host),
+			Name:      common.RouteName(rg.name, rg.host),
 			Namespace: rg.namespace,
 		},
 		Spec: gatewayv1alpha2.TCPRouteSpec{},
@@ -247,7 +248,7 @@ func (rg *tcpIngressRuleGroup) toTLSRoute() (gatewayv1alpha2.TLSRoute, field.Err
 
 	tlsRoute := gatewayv1alpha2.TLSRoute{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      common.NameFromHost(rg.host),
+			Name:      common.RouteName(rg.name, rg.host),
 			Namespace: rg.namespace,
 		},
 		Spec: gatewayv1alpha2.TLSRouteSpec{},
@@ -284,15 +285,4 @@ func (rg *tcpIngressRuleGroup) toTLSRoute() (gatewayv1alpha2.TLSRoute, field.Err
 	}
 
 	return tlsRoute, errors
-}
-
-func buildSectionName(parts ...string) *gatewayv1beta1.SectionName {
-	builder := strings.Builder{}
-	for i, p := range parts {
-		if i != 0 {
-			builder.WriteString("-")
-		}
-		builder.WriteString(p)
-	}
-	return (*gatewayv1beta1.SectionName)(common.PtrTo(builder.String()))
 }
