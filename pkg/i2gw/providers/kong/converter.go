@@ -68,6 +68,18 @@ func (c *converter) ToGatewayAPI(resources i2gw.InputResources) (i2gw.GatewayRes
 		gatewayResources = i2gw.MergeGatewayResources(gatewayResources, tcpGatewayResources)
 	}
 
+	if udpIngresses, ok := resources.CustomResources[schema.GroupVersionKind{
+		Group:   string(kongResourcesGroup),
+		Kind:    string(kongUDPIngressKind),
+		Version: "v1beta1",
+	}].([]configurationv1beta1.UDPIngress); ok {
+		udpGatewayResources, errs := crds.UDPIngressToGatewayAPI(udpIngresses)
+		if errs != nil {
+			return i2gw.GatewayResources{}, errs
+		}
+		gatewayResources = i2gw.MergeGatewayResources(gatewayResources, udpGatewayResources)
+	}
+
 	for _, parseFeatureFunc := range c.featureParsers {
 		// Apply the feature parsing function to the gateway resources, one by one.
 		parseErrs := parseFeatureFunc(resources, &gatewayResources)
