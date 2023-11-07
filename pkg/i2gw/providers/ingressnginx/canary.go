@@ -26,7 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/ptr"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 func canaryFeature(ingressResources i2gw.InputResources, gatewayResources *i2gw.GatewayResources) field.ErrorList {
@@ -83,7 +83,7 @@ func getPathsByMatchGroups(rg common.IngressRuleGroup) (map[pathMatchKey][]ingre
 	return ingressPathsByMatchKey, nil
 }
 
-func patchHTTPRouteWithBackendRefs(httpRoute *gatewayv1beta1.HTTPRoute, backendRefs []gatewayv1beta1.HTTPBackendRef) {
+func patchHTTPRouteWithBackendRefs(httpRoute *gatewayv1.HTTPRoute, backendRefs []gatewayv1.HTTPBackendRef) {
 	for _, backendRef := range backendRefs {
 
 		ruleExists := false
@@ -105,16 +105,16 @@ func patchHTTPRouteWithBackendRefs(httpRoute *gatewayv1beta1.HTTPRoute, backendR
 		}
 
 		if !ruleExists {
-			httpRoute.Spec.Rules = append(httpRoute.Spec.Rules, gatewayv1beta1.HTTPRouteRule{
-				BackendRefs: []gatewayv1beta1.HTTPBackendRef{backendRef},
+			httpRoute.Spec.Rules = append(httpRoute.Spec.Rules, gatewayv1.HTTPRouteRule{
+				BackendRefs: []gatewayv1.HTTPBackendRef{backendRef},
 			})
 		}
 	}
 }
 
-func calculateBackendRefWeight(paths []ingressPath) ([]gatewayv1beta1.HTTPBackendRef, field.ErrorList) {
+func calculateBackendRefWeight(paths []ingressPath) ([]gatewayv1.HTTPBackendRef, field.ErrorList) {
 	var errors field.ErrorList
-	var backendRefs []gatewayv1beta1.HTTPBackendRef
+	var backendRefs []gatewayv1.HTTPBackendRef
 
 	var numWeightedBackends, totalWeightSet int32
 
@@ -136,7 +136,7 @@ func calculateBackendRefWeight(paths []ingressPath) ([]gatewayv1beta1.HTTPBacken
 				weightTotal = path.extra.canary.weightTotal
 			}
 		}
-		backendRefs = append(backendRefs, gatewayv1beta1.HTTPBackendRef{BackendRef: *backendRef})
+		backendRefs = append(backendRefs, gatewayv1.HTTPBackendRef{BackendRef: *backendRef})
 	}
 	if numWeightedBackends > 0 && numWeightedBackends < int32(len(backendRefs)) {
 		weightToSet := (int32(weightTotal) - totalWeightSet) / (int32(len(backendRefs)) - numWeightedBackends)

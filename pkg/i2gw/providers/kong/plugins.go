@@ -23,12 +23,12 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 const (
-	kongPluginGroup gatewayv1beta1.Group = "configuration.konghq.com"
-	kongPluginKind  gatewayv1beta1.Kind  = "KongPlugin"
+	kongPluginGroup gatewayv1.Group = "configuration.konghq.com"
+	kongPluginKind  gatewayv1.Kind  = "KongPlugin"
 )
 
 // pluginsFeature parses the Kong Ingress Controller plugins annotation and converts it
@@ -53,8 +53,8 @@ func pluginsFeature(ingressResources i2gw.InputResources, gatewayResources *i2gw
 	return nil
 }
 
-func parsePluginsAnnotation(annotations map[string]string) []gatewayv1beta1.HTTPRouteFilter {
-	filters := make([]gatewayv1beta1.HTTPRouteFilter, 0)
+func parsePluginsAnnotation(annotations map[string]string) []gatewayv1.HTTPRouteFilter {
+	filters := make([]gatewayv1.HTTPRouteFilter, 0)
 	mkey := kongAnnotation(pluginsKey)
 	for key, val := range annotations {
 		if key == mkey {
@@ -63,12 +63,12 @@ func parsePluginsAnnotation(annotations map[string]string) []gatewayv1beta1.HTTP
 				if v == "" {
 					continue
 				}
-				filters = append(filters, gatewayv1beta1.HTTPRouteFilter{
-					Type: gatewayv1beta1.HTTPRouteFilterExtensionRef,
-					ExtensionRef: &gatewayv1beta1.LocalObjectReference{
+				filters = append(filters, gatewayv1.HTTPRouteFilter{
+					Type: gatewayv1.HTTPRouteFilterExtensionRef,
+					ExtensionRef: &gatewayv1.LocalObjectReference{
 						Group: kongPluginGroup,
 						Kind:  kongPluginKind,
-						Name:  gatewayv1beta1.ObjectName(v),
+						Name:  gatewayv1.ObjectName(v),
 					},
 				})
 			}
@@ -77,10 +77,10 @@ func parsePluginsAnnotation(annotations map[string]string) []gatewayv1beta1.HTTP
 	return filters
 }
 
-func patchHTTPRoutePlugins(httpRoute *gatewayv1beta1.HTTPRoute, extensionRefs []gatewayv1beta1.HTTPRouteFilter) {
+func patchHTTPRoutePlugins(httpRoute *gatewayv1.HTTPRoute, extensionRefs []gatewayv1.HTTPRouteFilter) {
 	for i := range httpRoute.Spec.Rules {
 		if httpRoute.Spec.Rules[i].Filters == nil {
-			httpRoute.Spec.Rules[i].Filters = make([]gatewayv1beta1.HTTPRouteFilter, 0)
+			httpRoute.Spec.Rules[i].Filters = make([]gatewayv1.HTTPRouteFilter, 0)
 		}
 		httpRoute.Spec.Rules[i].Filters = append(httpRoute.Spec.Rules[i].Filters, extensionRefs...)
 	}

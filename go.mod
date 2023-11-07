@@ -1,6 +1,6 @@
 module github.com/kubernetes-sigs/ingress2gateway
 
-go 1.20
+go 1.21
 
 require (
 	github.com/google/go-cmp v0.6.0
@@ -12,10 +12,11 @@ require (
 	k8s.io/client-go v0.28.4
 	k8s.io/utils v0.0.0-20231121161247-cf03d44ff3cf
 	sigs.k8s.io/controller-runtime v0.16.3
-	sigs.k8s.io/gateway-api v0.5.0
+	sigs.k8s.io/gateway-api v1.0.0
 )
 
 require (
+	github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	istio.io/api v1.20.0 // indirect
 )

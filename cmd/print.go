@@ -26,7 +26,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/client-go/tools/clientcmd"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	// Call init function for the providers
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
@@ -83,7 +83,7 @@ func (pr *PrintRunner) PrintGatewaysAndHTTPRoutes(cmd *cobra.Command, _ []string
 	return nil
 }
 
-func (pr *PrintRunner) outputResult(httpRoutes []gatewayv1beta1.HTTPRoute, gateways []gatewayv1beta1.Gateway) {
+func (pr *PrintRunner) outputResult(httpRoutes []gatewayv1.HTTPRoute, gateways []gatewayv1.Gateway) {
 	if len(httpRoutes)+len(gateways) == 0 {
 		msg := "No resources found"
 		if pr.namespaceFilter != "" {

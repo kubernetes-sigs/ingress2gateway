@@ -24,7 +24,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // headerMatchingFeature parses the Kong Ingress Controller headers annotations and convert them
@@ -54,9 +54,9 @@ func headerMatchingFeature(ingressResources i2gw.InputResources, gatewayResource
 	return nil
 }
 
-func patchHTTPRouteHeaderMatching(httpRoute *gatewayv1beta1.HTTPRoute, headerNames []string, headerValues [][]string) {
+func patchHTTPRouteHeaderMatching(httpRoute *gatewayv1.HTTPRoute, headerNames []string, headerValues [][]string) {
 	for i := range httpRoute.Spec.Rules {
-		newMatches := []gatewayv1beta1.HTTPRouteMatch{}
+		newMatches := []gatewayv1.HTTPRouteMatch{}
 		for _, match := range httpRoute.Spec.Rules[i].Matches {
 			headersIndexes := make([]int, len(headerNames))
 			// the current match is duplicated, as each ORed header value requires a new match.
@@ -65,9 +65,9 @@ func patchHTTPRouteHeaderMatching(httpRoute *gatewayv1beta1.HTTPRoute, headerNam
 			}
 			// iterate over the matches and populate them with the proper headers.
 			for j := range newMatches {
-				newMatches[j].Headers = make([]gatewayv1beta1.HTTPHeaderMatch, len(headerNames))
+				newMatches[j].Headers = make([]gatewayv1.HTTPHeaderMatch, len(headerNames))
 				for k, name := range headerNames {
-					newMatches[j].Headers[k].Name = gatewayv1beta1.HTTPHeaderName(name)
+					newMatches[j].Headers[k].Name = gatewayv1.HTTPHeaderName(name)
 					index := headersIndexes[k]
 					value := headerValues[k][index]
 					newMatches[j].Headers[k].Value = value

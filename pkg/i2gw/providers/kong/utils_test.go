@@ -16,9 +16,9 @@ limitations under the License.
 
 package kong
 
-import gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+import gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
-func containsMatches(matches []gatewayv1beta1.HTTPRouteMatch, matchesToCheck []gatewayv1beta1.HTTPRouteMatch) bool {
+func containsMatches(matches []gatewayv1.HTTPRouteMatch, matchesToCheck []gatewayv1.HTTPRouteMatch) bool {
 	if len(matches) != len(matchesToCheck) {
 		return false
 	}
@@ -45,7 +45,7 @@ func containsMatches(matches []gatewayv1beta1.HTTPRouteMatch, matchesToCheck []g
 	return true
 }
 
-func containsHeaderSet(matchHeaders []gatewayv1beta1.HTTPHeaderMatch, headerSet []gatewayv1beta1.HTTPHeaderMatch) bool {
+func containsHeaderSet(matchHeaders []gatewayv1.HTTPHeaderMatch, headerSet []gatewayv1.HTTPHeaderMatch) bool {
 	if len(matchHeaders) != len(headerSet) {
 		return false
 	}

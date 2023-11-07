@@ -20,12 +20,12 @@ import (
 	"strings"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-func implementationSpecificHTTPPathTypeMatch(path *gatewayv1beta1.HTTPPathMatch) {
-	pmPrefix := gatewayv1beta1.PathMatchPathPrefix
-	pmRegex := gatewayv1beta1.PathMatchRegularExpression
+func implementationSpecificHTTPPathTypeMatch(path *gatewayv1.HTTPPathMatch) {
+	pmPrefix := gatewayv1.PathMatchPathPrefix
+	pmRegex := gatewayv1.PathMatchRegularExpression
 	if strings.HasPrefix(*path.Value, "/~") {
 		path.Type = &pmRegex
 		path.Value = common.PtrTo(strings.TrimPrefix(*path.Value, "/~"))

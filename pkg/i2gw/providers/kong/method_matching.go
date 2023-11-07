@@ -25,7 +25,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // methodMatchingFeature parses the Kong Ingress Controller methods annotations and convert them
@@ -54,9 +54,9 @@ func methodMatchingFeature(ingressResources i2gw.InputResources, gatewayResource
 	return nil
 }
 
-func patchHTTPRouteMethodMatching(httpRoute *gatewayv1beta1.HTTPRoute, methods []gatewayv1beta1.HTTPMethod) {
+func patchHTTPRouteMethodMatching(httpRoute *gatewayv1.HTTPRoute, methods []gatewayv1.HTTPMethod) {
 	for i, rule := range httpRoute.Spec.Rules {
-		matches := []gatewayv1beta1.HTTPRouteMatch{}
+		matches := []gatewayv1.HTTPRouteMatch{}
 		for _, match := range rule.Matches {
 			for _, method := range methods {
 				method := method
@@ -71,36 +71,36 @@ func patchHTTPRouteMethodMatching(httpRoute *gatewayv1beta1.HTTPRoute, methods [
 	}
 }
 
-func parseMethodsAnnotation(ingressNamespace, ingressName string, annotations map[string]string) ([]gatewayv1beta1.HTTPMethod, field.ErrorList) {
+func parseMethodsAnnotation(ingressNamespace, ingressName string, annotations map[string]string) ([]gatewayv1.HTTPMethod, field.ErrorList) {
 	fieldPath := field.NewPath(fmt.Sprintf("%s/%s", ingressNamespace, ingressName)).Child("metadata").Child("annotations").Child("konghq.com/methods")
 	errs := field.ErrorList{}
-	methods := make([]gatewayv1beta1.HTTPMethod, 0)
+	methods := make([]gatewayv1.HTTPMethod, 0)
 	mkey := kongAnnotation(methodsKey)
 	for key, val := range annotations {
 		if key == mkey {
 			methodsValues := strings.Split(val, ",")
 			for _, v := range methodsValues {
-				if err := validateHTTPMethod(gatewayv1beta1.HTTPMethod(v)); err != nil {
+				if err := validateHTTPMethod(gatewayv1.HTTPMethod(v)); err != nil {
 					errs = append(errs, field.Invalid(fieldPath, v, err.Error()))
 					continue
 				}
-				methods = append(methods, gatewayv1beta1.HTTPMethod(v))
+				methods = append(methods, gatewayv1.HTTPMethod(v))
 			}
 		}
 	}
 	return methods, errs
 }
 
-func validateHTTPMethod(method gatewayv1beta1.HTTPMethod) error {
-	if method == gatewayv1beta1.HTTPMethodGet ||
-		method == gatewayv1beta1.HTTPMethodHead ||
-		method == gatewayv1beta1.HTTPMethodPost ||
-		method == gatewayv1beta1.HTTPMethodPut ||
-		method == gatewayv1beta1.HTTPMethodDelete ||
-		method == gatewayv1beta1.HTTPMethodConnect ||
-		method == gatewayv1beta1.HTTPMethodOptions ||
-		method == gatewayv1beta1.HTTPMethodTrace ||
-		method == gatewayv1beta1.HTTPMethodPatch {
+func validateHTTPMethod(method gatewayv1.HTTPMethod) error {
+	if method == gatewayv1.HTTPMethodGet ||
+		method == gatewayv1.HTTPMethodHead ||
+		method == gatewayv1.HTTPMethodPost ||
+		method == gatewayv1.HTTPMethodPut ||
+		method == gatewayv1.HTTPMethodDelete ||
+		method == gatewayv1.HTTPMethodConnect ||
+		method == gatewayv1.HTTPMethodOptions ||
+		method == gatewayv1.HTTPMethodTrace ||
+		method == gatewayv1.HTTPMethodPatch {
 		return nil
 	}
 	return errors.New("method not supported")

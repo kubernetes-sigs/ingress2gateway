@@ -31,10 +31,10 @@ import (
 	kubeyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string, providers []string) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, error) {
+func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string, providers []string) ([]gatewayv1.HTTPRoute, []gatewayv1.Gateway, error) {
 	conf, err := config.GetConfig()
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get client config: %w", err)
@@ -47,8 +47,8 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 	cl = client.NewNamespacedClient(cl, namespace)
 
 	var ingresses networkingv1.IngressList
-	var gateways []gatewayv1beta1.Gateway
-	var httpRoutes []gatewayv1beta1.HTTPRoute
+	var gateways []gatewayv1.Gateway
+	var httpRoutes []gatewayv1.HTTPRoute
 
 	providerByName, err := constructProviders(&ProviderConf{
 		Client: cl,

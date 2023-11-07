@@ -26,7 +26,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 func TestHeaderMatchingFeature(t *testing.T) {
@@ -35,7 +35,7 @@ func TestHeaderMatchingFeature(t *testing.T) {
 	testCases := []struct {
 		name                     string
 		inputResources           i2gw.InputResources
-		expectedHTTPRouteMatches map[string][][]gatewayv1beta1.HTTPRouteMatch
+		expectedHTTPRouteMatches map[string][][]gatewayv1.HTTPRouteMatch
 		expectedErrors           field.ErrorList
 	}{
 		{
@@ -75,19 +75,19 @@ func TestHeaderMatchingFeature(t *testing.T) {
 					},
 				},
 			},
-			expectedHTTPRouteMatches: map[string][][]gatewayv1beta1.HTTPRouteMatch{
+			expectedHTTPRouteMatches: map[string][][]gatewayv1.HTTPRouteMatch{
 				"default/ored-headers-test-mydomain-com": {
 					{
-						gatewayv1beta1.HTTPRouteMatch{
-							Headers: []gatewayv1beta1.HTTPHeaderMatch{
+						gatewayv1.HTTPRouteMatch{
+							Headers: []gatewayv1.HTTPHeaderMatch{
 								{
 									Name:  "key",
 									Value: "val1",
 								},
 							},
 						},
-						gatewayv1beta1.HTTPRouteMatch{
-							Headers: []gatewayv1beta1.HTTPHeaderMatch{
+						gatewayv1.HTTPRouteMatch{
+							Headers: []gatewayv1.HTTPHeaderMatch{
 								{
 									Name:  "key",
 									Value: "val2",
@@ -138,11 +138,11 @@ func TestHeaderMatchingFeature(t *testing.T) {
 					},
 				},
 			},
-			expectedHTTPRouteMatches: map[string][][]gatewayv1beta1.HTTPRouteMatch{
+			expectedHTTPRouteMatches: map[string][][]gatewayv1.HTTPRouteMatch{
 				"default/anded-ored-headers-test-mydomain-com": {
 					{
-						gatewayv1beta1.HTTPRouteMatch{
-							Headers: []gatewayv1beta1.HTTPHeaderMatch{
+						gatewayv1.HTTPRouteMatch{
+							Headers: []gatewayv1.HTTPHeaderMatch{
 								{
 									Name:  "keyA",
 									Value: "val1",
@@ -157,8 +157,8 @@ func TestHeaderMatchingFeature(t *testing.T) {
 								},
 							},
 						},
-						gatewayv1beta1.HTTPRouteMatch{
-							Headers: []gatewayv1beta1.HTTPHeaderMatch{
+						gatewayv1.HTTPRouteMatch{
+							Headers: []gatewayv1.HTTPHeaderMatch{
 								{
 									Name:  "keyA",
 									Value: "val1",
@@ -173,8 +173,8 @@ func TestHeaderMatchingFeature(t *testing.T) {
 								},
 							},
 						},
-						gatewayv1beta1.HTTPRouteMatch{
-							Headers: []gatewayv1beta1.HTTPHeaderMatch{
+						gatewayv1.HTTPRouteMatch{
+							Headers: []gatewayv1.HTTPHeaderMatch{
 								{
 									Name:  "keyA",
 									Value: "val1",
@@ -189,8 +189,8 @@ func TestHeaderMatchingFeature(t *testing.T) {
 								},
 							},
 						},
-						gatewayv1beta1.HTTPRouteMatch{
-							Headers: []gatewayv1beta1.HTTPHeaderMatch{
+						gatewayv1.HTTPRouteMatch{
+							Headers: []gatewayv1.HTTPHeaderMatch{
 								{
 									Name:  "keyA",
 									Value: "val2",
@@ -205,8 +205,8 @@ func TestHeaderMatchingFeature(t *testing.T) {
 								},
 							},
 						},
-						gatewayv1beta1.HTTPRouteMatch{
-							Headers: []gatewayv1beta1.HTTPHeaderMatch{
+						gatewayv1.HTTPRouteMatch{
+							Headers: []gatewayv1.HTTPHeaderMatch{
 								{
 									Name:  "keyA",
 									Value: "val2",
@@ -221,8 +221,8 @@ func TestHeaderMatchingFeature(t *testing.T) {
 								},
 							},
 						},
-						gatewayv1beta1.HTTPRouteMatch{
-							Headers: []gatewayv1beta1.HTTPHeaderMatch{
+						gatewayv1.HTTPRouteMatch{
+							Headers: []gatewayv1.HTTPHeaderMatch{
 								{
 									Name:  "keyA",
 									Value: "val2",
