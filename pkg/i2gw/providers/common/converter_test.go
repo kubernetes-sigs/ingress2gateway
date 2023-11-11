@@ -316,7 +316,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			gatewayResources, errs := ToGateway(tc.ingresses, nil)
+			gatewayResources, errs := ToGateway(tc.ingresses, i2gw.ImplementationSpecificOptions{})
 
 			if len(gatewayResources.HTTPRoutes) != len(tc.expectedGatewayResources.HTTPRoutes) {
 				t.Errorf("Expected %d HTTPRoutes, got %d: %+v",

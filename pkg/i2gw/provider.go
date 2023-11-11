@@ -73,6 +73,16 @@ type ResourceConverter interface {
 	ToGatewayAPI(resources InputResources) (GatewayResources, field.ErrorList)
 }
 
+// HTTPPathMatchOption is an option to customize the ingress implementationSpecific
+// match type conversion.
+type HTTPPathMatchOption func(*gatewayv1beta1.HTTPPathMatch)
+
+// ImplementationSpecificOptions contains all the pointers to implementation-specific
+// customization functions.
+type ImplementationSpecificOptions struct {
+	HTTPPathmatch HTTPPathMatchOption
+}
+
 // InputResources contains all Ingress objects, and Provider specific
 // custom resources.
 type InputResources struct {

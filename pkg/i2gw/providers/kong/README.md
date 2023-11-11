@@ -1,6 +1,8 @@
 # Ingress Kong Provider
 
-The project supports translating kong specific annotations.
+## Annotations supported
+
+The project supports translating Kong-specific annotations.
 
 Current supported annotations:
 
@@ -17,3 +19,11 @@ Current supported annotations:
   by separating values with commas. Example: `konghq.com/plugins: "plugin1,plugin2"`.
 
 If you are reliant on any annotations not listed above, please open an issue.
+
+## Implementation-specific features
+
+The following implementation-specific features are supported:
+
+- The ingress `ImplementationSpecific` match type is properly converted to
+  - `RegularExpression` HTTPRoute match type when the path has the prefix `/~`.
+  - `PathPrefix` HTTPRoute match type when there is no prefix `/~`.
