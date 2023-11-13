@@ -1,4 +1,4 @@
-# Ingress Kong Provider
+# Kong Provider
 
 ## Annotations supported
 
@@ -11,7 +11,7 @@ Current supported annotations:
   be specified by separating values with commas. Example: `konghq.com/methods: "POST,GET"`.
 - `konghq.com/headers.*`: If specified, the values of this annotation are used to
   perform header matching on the associated ingress rules. The header name is specified
-  in the annotation key after `.`, and the annotations value can contain multiple
+  in the annotation key after `.`, and the annotation value can contain multiple
   header values separated by commas. All the header values for a specific header
   name are intended to be ORed. Example: `konghq.com/headers.x-routing: "alpha,bravo"`.
 - `konghq.com/plugins`: If specified, the values of this annotation are used to
@@ -26,4 +26,4 @@ The following implementation-specific features are supported:
 
 - The ingress `ImplementationSpecific` match type is properly converted to
   - `RegularExpression` HTTPRoute match type when the path has the prefix `/~`.
-  - `PathPrefix` HTTPRoute match type when there is no prefix `/~`.
+  - `PathPrefix` HTTPRoute match type when there is no `/~` prefix.

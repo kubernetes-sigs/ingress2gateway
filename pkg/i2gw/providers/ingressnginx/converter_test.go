@@ -175,7 +175,7 @@ func Test_ToGateway(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: networkingv1.IngressSpec{
-						IngressClassName: ptrTo("ingress-kong"),
+						IngressClassName: ptrTo("ingress-nginx"),
 						Rules: []networkingv1.IngressRule{{
 							Host: "test.mydomain.com",
 							IngressRuleValue: networkingv1.IngressRuleValue{

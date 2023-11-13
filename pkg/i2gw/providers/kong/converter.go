@@ -47,8 +47,8 @@ func (c *converter) ToGatewayAPI(resources i2gw.InputResources) (i2gw.GatewayRes
 
 	// Convert plain ingress resources to gateway resources, ignoring all
 	// provider-specific features.
-	gatewayResources, errs := common.ToGateway(resources.Ingresses, i2gw.ImplementationSpecificOptions{
-		HTTPPathmatch: httpPathMatch,
+	gatewayResources, errs := common.ToGateway(resources.Ingresses, i2gw.ProviderImplementationSpecificOptions{
+		ToImplementationSpecificHTTPPathMatch: implementationSpecificHTTPPathMatch,
 	})
 	if len(errs) > 0 {
 		return i2gw.GatewayResources{}, errs

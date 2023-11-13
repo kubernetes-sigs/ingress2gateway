@@ -32,7 +32,7 @@ import (
 
 // ToGateway converts the received ingresses to i2gw.GatewayResources,
 // without taking into consideration any provider specific logic.
-func ToGateway(ingresses []networkingv1.Ingress, options i2gw.ImplementationSpecificOptions) (i2gw.GatewayResources, field.ErrorList) {
+func ToGateway(ingresses []networkingv1.Ingress, options i2gw.ProviderImplementationSpecificOptions) (i2gw.GatewayResources, field.ErrorList) {
 	aggregator := ingressAggregator{ruleGroups: map[ruleGroupKey]*ingressRuleGroup{}}
 
 	var errs field.ErrorList
@@ -157,7 +157,7 @@ func (a *ingressAggregator) addIngressRule(namespace, name, ingressClass string,
 	rg.rules = append(rg.rules, ingressRule{rule: rule})
 }
 
-func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ImplementationSpecificOptions) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, field.ErrorList) {
+func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImplementationSpecificOptions) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, field.ErrorList) {
 	var httpRoutes []gatewayv1beta1.HTTPRoute
 	var errors field.ErrorList
 	listenersByNamespacedGateway := map[string][]gatewayv1beta1.Listener{}
@@ -269,7 +269,7 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ImplementationS
 	return httpRoutes, gateways, errors
 }
 
-func (rg *ingressRuleGroup) toHTTPRoute(options i2gw.ImplementationSpecificOptions) (gatewayv1beta1.HTTPRoute, field.ErrorList) {
+func (rg *ingressRuleGroup) toHTTPRoute(options i2gw.ProviderImplementationSpecificOptions) (gatewayv1beta1.HTTPRoute, field.ErrorList) {
 	pathsByMatchGroup := map[pathMatchKey][]ingressPath{}
 	var errors field.ErrorList
 
@@ -305,9 +305,7 @@ func (rg *ingressRuleGroup) toHTTPRoute(options i2gw.ImplementationSpecificOptio
 	for _, paths := range pathsByMatchGroup {
 		path := paths[0]
 		fieldPath := field.NewPath("spec", "rules").Index(path.ruleIdx).Child(path.ruleType).Child("paths").Index(path.pathIdx)
-		var match *gatewayv1beta1.HTTPRouteMatch
-		var err *field.Error
-		match, err = toHTTPRouteMatch(path.path, fieldPath, options.HTTPPathmatch)
+		match, err := toHTTPRouteMatch(path.path, fieldPath, options.ToImplementationSpecificHTTPPathMatch)
 		if err != nil {
 			errors = append(errors, err)
 			continue
@@ -350,7 +348,7 @@ func getPathMatchKey(ip ingressPath) pathMatchKey {
 	return pathMatchKey(fmt.Sprintf("%s/%s", pathType, ip.path.Path))
 }
 
-func toHTTPRouteMatch(routePath networkingv1.HTTPIngressPath, path *field.Path, implementationSpecificPath i2gw.HTTPPathMatchOption) (*gatewayv1beta1.HTTPRouteMatch, *field.Error) {
+func toHTTPRouteMatch(routePath networkingv1.HTTPIngressPath, path *field.Path, toImplementationSpecificPathMatch i2gw.ImplementationSpecificHTTPPathMatchOption) (*gatewayv1beta1.HTTPRouteMatch, *field.Error) {
 	pmPrefix := gatewayv1beta1.PathMatchPathPrefix
 	pmExact := gatewayv1beta1.PathMatchExact
 
@@ -360,9 +358,12 @@ func toHTTPRouteMatch(routePath networkingv1.HTTPIngressPath, path *field.Path, 
 		match.Path.Type = &pmPrefix
 	case networkingv1.PathTypeExact:
 		match.Path.Type = &pmExact
+	// In case the path type is ImplementationSpecific, the path value and type
+	// will be set by the provider-specific customization function. If such function
+	// is not given by the provider, an error is returned.
 	case networkingv1.PathTypeImplementationSpecific:
-		if implementationSpecificPath != nil {
-			implementationSpecificPath(match.Path)
+		if toImplementationSpecificPathMatch != nil {
+			toImplementationSpecificPathMatch(match.Path)
 		} else {
 			return nil, field.Invalid(path.Child("pathType"), routePath.PathType, fmt.Sprintf("unsupported path match type: %s", *routePath.PathType))
 		}
