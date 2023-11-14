@@ -204,7 +204,7 @@ func Test_ToGateway(t *testing.T) {
 					Type:     field.ErrorTypeInvalid,
 					Field:    "spec.rules[0].http.paths[0].pathType",
 					BadValue: pointer.String("ImplementationSpecific"),
-					Detail:   "unsupported path match type: ImplementationSpecific",
+					Detail:   "implementationSpecific path type is not supported in generic translation, and your provider does not provide custom support to translate it",
 				},
 			},
 		},

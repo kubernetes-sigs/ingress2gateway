@@ -365,7 +365,7 @@ func toHTTPRouteMatch(routePath networkingv1.HTTPIngressPath, path *field.Path, 
 		if toImplementationSpecificPathMatch != nil {
 			toImplementationSpecificPathMatch(match.Path)
 		} else {
-			return nil, field.Invalid(path.Child("pathType"), routePath.PathType, fmt.Sprintf("unsupported path match type: %s", *routePath.PathType))
+			return nil, field.Invalid(path.Child("pathType"), routePath.PathType, "implementationSpecific path type is not supported in generic translation, and your provider does not provide custom support to translate it")
 		}
 	}
 
