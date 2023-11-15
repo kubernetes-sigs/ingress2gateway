@@ -190,7 +190,7 @@ func TestMethodMatchingFeature(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			gatewayResources, errs := common.ToGateway(tc.inputResources.Ingresses, i2gw.ProviderImplementationSpecificOptions{
-				ToImplementationSpecificHTTPPathMatch: implementationSpecificHTTPPathMatch,
+				ToImplementationSpecificHTTPPathTypeMatch: implementationSpecificHTTPPathTypeMatch,
 			})
 			if len(errs) != 0 {
 				t.Errorf("Expected no errors, got %d: %+v", len(errs), errs)

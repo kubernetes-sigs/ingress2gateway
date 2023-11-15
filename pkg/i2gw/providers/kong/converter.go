@@ -27,7 +27,7 @@ type converter struct {
 	conf *i2gw.ProviderConf
 
 	featureParsers                []i2gw.FeatureParser
-	ImplementationSpecificOptions i2gw.ProviderImplementationSpecificOptions
+	implementationSpecificOptions i2gw.ProviderImplementationSpecificOptions
 }
 
 // newConverter returns an kong converter instance.
@@ -39,8 +39,8 @@ func newConverter(conf *i2gw.ProviderConf) *converter {
 			methodMatchingFeature,
 			pluginsFeature,
 		},
-		ImplementationSpecificOptions: i2gw.ProviderImplementationSpecificOptions{
-			ToImplementationSpecificHTTPPathMatch: implementationSpecificHTTPPathMatch,
+		implementationSpecificOptions: i2gw.ProviderImplementationSpecificOptions{
+			ToImplementationSpecificHTTPPathTypeMatch: implementationSpecificHTTPPathTypeMatch,
 		},
 	}
 }
@@ -51,7 +51,7 @@ func (c *converter) ToGatewayAPI(resources i2gw.InputResources) (i2gw.GatewayRes
 
 	// Convert plain ingress resources to gateway resources, ignoring all
 	// provider-specific features.
-	gatewayResources, errs := common.ToGateway(resources.Ingresses, c.ImplementationSpecificOptions)
+	gatewayResources, errs := common.ToGateway(resources.Ingresses, c.implementationSpecificOptions)
 	if len(errs) > 0 {
 		return i2gw.GatewayResources{}, errs
 	}

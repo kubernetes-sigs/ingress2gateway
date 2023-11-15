@@ -33,7 +33,7 @@ import (
 
 func Test_ToGateway(t *testing.T) {
 	iPrefix := networkingv1.PathTypePrefix
-	ImplSpecPathType := networkingv1.PathTypeImplementationSpecific
+	ImplSpecificPathType := networkingv1.PathTypeImplementationSpecific
 	gPathPrefix := gatewayv1beta1.PathMatchPathPrefix
 	gPathRegex := gatewayv1beta1.PathMatchRegularExpression
 
@@ -340,7 +340,7 @@ func Test_ToGateway(t *testing.T) {
 								HTTP: &networkingv1.HTTPIngressRuleValue{
 									Paths: []networkingv1.HTTPIngressPath{{
 										Path:     "/~/echo/**/test",
-										PathType: &ImplSpecPathType,
+										PathType: &ImplSpecificPathType,
 										Backend: networkingv1.IngressBackend{
 											Service: &networkingv1.IngressServiceBackend{
 												Name: "test",
@@ -425,7 +425,7 @@ func Test_ToGateway(t *testing.T) {
 								HTTP: &networkingv1.HTTPIngressRuleValue{
 									Paths: []networkingv1.HTTPIngressPath{{
 										Path:     "/echo",
-										PathType: &ImplSpecPathType,
+										PathType: &ImplSpecificPathType,
 										Backend: networkingv1.IngressBackend{
 											Service: &networkingv1.IngressServiceBackend{
 												Name: "test",

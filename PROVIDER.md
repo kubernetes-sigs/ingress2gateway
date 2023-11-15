@@ -61,7 +61,10 @@ func (r *resourceReader) ReadResourcesFromFiles(ctx context.Context, customResou
 ```
 3. Create a struct named `converter` which implements the `ResourceConverter` interface in a file named `converter.go`.
 The implemented `ToGatewayAPI` function should simply call every registered `featureParser` function, one by one.
-Take a look at `ingressnginx/converter.go` for example.
+Take a look at `ingressnginx/converter.go` for an example.
+The `ImplementationSpecificOptions` struct contains the handlers to customize native ingress implementation-specific fields.
+Take a look at `kong/converter.go` for an example.
+
 ```go
 package examplegateway
 
@@ -74,6 +77,7 @@ type converter struct {
 	conf *i2gw.ProviderConf
 
 	featureParsers []i2gw.FeatureParser
+	implementationSpecificOptions i2gw.ProviderImplementationSpecificOptions
 }
 
 // newConverter returns an ingress-nginx converter instance.
@@ -82,6 +86,9 @@ func newConverter(conf *i2gw.ProviderConf) *converter {
 		conf: conf,
 		featureParsers: []i2gw.FeatureParser{
 			// The list of feature parsers comes here.
+		},
+		implementationSpecificOptions: i2gw.ProviderImplementationSpecificOptions{
+			// The list of the implementationSpecific ingress fields options comes here.
 		},
 	}
 }
