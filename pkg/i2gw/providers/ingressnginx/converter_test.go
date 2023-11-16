@@ -29,6 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/pointer"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
@@ -36,6 +37,7 @@ func Test_ToGateway(t *testing.T) {
 	iPrefix := networkingv1.PathTypePrefix
 	//iExact := networkingv1.PathTypeExact
 	gPathPrefix := gatewayv1beta1.PathMatchPathPrefix
+	isPathType := networkingv1.PathTypeImplementationSpecific
 	//gExact := gatewayv1beta1.PathMatchExact
 
 	testCases := []struct {
@@ -163,6 +165,48 @@ func Test_ToGateway(t *testing.T) {
 				},
 			},
 			expectedErrors: field.ErrorList{},
+		},
+		{
+			name: "ImplementationSpecific HTTPRouteMatching",
+			ingresses: []networkingv1.Ingress{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "implementation-specific-regex",
+						Namespace: "default",
+					},
+					Spec: networkingv1.IngressSpec{
+						IngressClassName: ptrTo("ingress-nginx"),
+						Rules: []networkingv1.IngressRule{{
+							Host: "test.mydomain.com",
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{{
+										Path:     "/~/echo/**/test",
+										PathType: &isPathType,
+										Backend: networkingv1.IngressBackend{
+											Service: &networkingv1.IngressServiceBackend{
+												Name: "test",
+												Port: networkingv1.ServiceBackendPort{
+													Number: 80,
+												},
+											},
+										},
+									}},
+								},
+							},
+						}},
+					},
+				},
+			},
+			expectedGatewayResources: i2gw.GatewayResources{},
+			expectedErrors: field.ErrorList{
+				{
+					Type:     field.ErrorTypeInvalid,
+					Field:    "spec.rules[0].http.paths[0].pathType",
+					BadValue: pointer.String("ImplementationSpecific"),
+					Detail:   "implementationSpecific path type is not supported in generic translation, and your provider does not provide custom support to translate it",
+				},
+			},
 		},
 	}
 

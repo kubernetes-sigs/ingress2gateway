@@ -126,3 +126,7 @@ func ToBackendRef(ib networkingv1.IngressBackend, path *field.Path) (*gatewayv1b
 		},
 	}, nil
 }
+
+func PtrTo[T any](a T) *T {
+	return &a
+}
