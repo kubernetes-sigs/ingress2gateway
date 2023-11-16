@@ -24,91 +24,98 @@ import (
 	"io"
 	"os"
 
+	"golang.org/x/exp/maps"
+
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	kubeyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string, providers []string) ([]gatewayv1beta1.HTTPRoute, []gatewayv1beta1.Gateway, error) {
-	conf, err := config.GetConfig()
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get client config: %w", err)
-	}
-
-	cl, err := client.New(conf, client.Options{})
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create client: %w", err)
-	}
-	cl = client.NewNamespacedClient(cl, namespace)
-
+func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string, providers []string) (GatewayResources, error) {
 	var ingresses networkingv1.IngressList
-	var gateways []gatewayv1beta1.Gateway
-	var httpRoutes []gatewayv1beta1.HTTPRoute
-
-	providerByName, err := constructProviders(&ProviderConf{
-		Client: cl,
-	}, providers)
-	if err != nil {
-		return nil, nil, err
-	}
+	var providerByName map[ProviderName]Provider
 
 	resources := InputResources{}
+	gatewayResources := GatewayResources{}
 
 	if inputFile != "" {
+		var err error
+		providerByName, err = constructProviders(ProviderConf{}, providers)
+		if err != nil {
+			return gatewayResources, err
+		}
 		if err = ConstructIngressesFromFile(&ingresses, inputFile, namespace); err != nil {
-			return nil, nil, fmt.Errorf("failed to read ingresses from file: %w", err)
+			return gatewayResources, fmt.Errorf("failed to read ingresses from file: %w", err)
 		}
 		resources.Ingresses = ingresses.Items
-		if err = readProviderResourcesFromFile(ctx, providerByName, &resources, inputFile); err != nil {
-			return nil, nil, err
+		if err = readProviderResourcesFromFile(ctx, providerByName, &resources, inputFile, namespace); err != nil {
+			return gatewayResources, err
 		}
 	} else {
+		clientConfig, err := config.GetConfig()
+		if err != nil {
+			return gatewayResources, fmt.Errorf("failed to get client config: %w", err)
+		}
+		providerByName, err = constructProviders(ProviderConf{
+			ClientConfig: clientConfig,
+			Namespace:    namespace,
+		}, providers)
+		if err != nil {
+			return gatewayResources, err
+		}
+		cl, err := client.New(clientConfig, client.Options{})
+		if err != nil {
+			return gatewayResources, fmt.Errorf("failed to create client: %w", err)
+		}
+		cl = client.NewNamespacedClient(cl, namespace)
 		if err = ConstructIngressesFromCluster(ctx, cl, &ingresses); err != nil {
-			return nil, nil, fmt.Errorf("failed to read ingresses from cluster: %w", err)
+			return gatewayResources, fmt.Errorf("failed to read ingresses from cluster: %w", err)
 		}
 		resources.Ingresses = ingresses.Items
 		if err = readProviderResourcesFromCluster(ctx, providerByName, &resources); err != nil {
-			return nil, nil, err
+			return gatewayResources, err
 		}
 	}
 
 	var errs field.ErrorList
 	for _, provider := range providerByName {
-		gatewayResources, conversionErrs := provider.ToGatewayAPI(resources)
+		additionalGatewayResources, conversionErrs := provider.ToGatewayAPI(resources)
 		errs = append(errs, conversionErrs...)
-		for _, gateway := range gatewayResources.Gateways {
-			gateways = append(gateways, gateway)
-		}
-		for _, route := range gatewayResources.HTTPRoutes {
-			httpRoutes = append(httpRoutes, route)
-		}
+		gatewayResources = MergeGatewayResources(gatewayResources, additionalGatewayResources)
 	}
 	if len(errs) > 0 {
-		return nil, nil, aggregatedErrs(errs)
+		return GatewayResources{}, aggregatedErrs(errs)
 	}
 
-	return httpRoutes, gateways, nil
+	return gatewayResources, nil
 }
 
-func readProviderResourcesFromFile(ctx context.Context, providerByName map[ProviderName]Provider, resources *InputResources, inputFile string) error {
+func readProviderResourcesFromFile(ctx context.Context, providerByName map[ProviderName]Provider, resources *InputResources, inputFile string, namespace string) error {
 	for name, provider := range providerByName {
-		if err := provider.ReadResourcesFromFiles(ctx, resources.CustomResources, inputFile); err != nil {
+		crdResources := map[schema.GroupVersionKind]interface{}{}
+		if err := provider.ReadResourcesFromFiles(ctx, crdResources, inputFile, namespace); err != nil {
 			return fmt.Errorf("failed to read %s resources from file: %w", name, err)
 		}
+		resources.CustomResources = crdResources
 	}
 	return nil
 }
 
 func readProviderResourcesFromCluster(ctx context.Context, providerByName map[ProviderName]Provider, resources *InputResources) error {
 	for name, provider := range providerByName {
-		if err := provider.ReadResourcesFromCluster(ctx, resources.CustomResources); err != nil {
+		crdResources := map[schema.GroupVersionKind]interface{}{}
+		if err := provider.ReadResourcesFromCluster(ctx, crdResources); err != nil {
 			return fmt.Errorf("failed to read %s resources from the cluster: %w", name, err)
 		}
+		resources.CustomResources = crdResources
 	}
 	return nil
 }
@@ -123,7 +130,7 @@ func ConstructIngressesFromCluster(ctx context.Context, cl client.Client, ingres
 
 // constructProviders constructs a map of concrete Provider implementations
 // by their ProviderName.
-func constructProviders(conf *ProviderConf, providers []string) (map[ProviderName]Provider, error) {
+func constructProviders(conf ProviderConf, providers []string) (map[ProviderName]Provider, error) {
 	providerByName := make(map[ProviderName]Provider, len(ProviderConstructorByName))
 
 	for _, requestedProvider := range providers {
@@ -132,16 +139,29 @@ func constructProviders(conf *ProviderConf, providers []string) (map[ProviderNam
 		if !ok {
 			return nil, fmt.Errorf("%s is not a supported provider", requestedProvider)
 		}
+
+		if conf.ClientConfig != nil {
+			newClientFunc, ok := ProviderClientBuilderByName[requestedProviderName]
+			if !ok {
+				return nil, fmt.Errorf("%s provider does not provide a proper client", requestedProvider)
+			}
+			client, err := newClientFunc(conf.ClientConfig, conf.Namespace)
+			if err != nil {
+				return nil, err
+			}
+			conf.Client = client
+		}
+
 		providerByName[requestedProviderName] = newProviderFunc(conf)
 	}
 
 	return providerByName, nil
 }
 
-// extractObjectsFromReader extracts all objects from a reader,
+// ExtractObjectsFromReader extracts all objects from a reader,
 // which is created from YAML or JSON input files.
 // It retrieves all objects, including nested ones if they are contained within a list.
-func extractObjectsFromReader(reader io.Reader) ([]*unstructured.Unstructured, error) {
+func ExtractObjectsFromReader(reader io.Reader) ([]*unstructured.Unstructured, error) {
 	d := kubeyaml.NewYAMLOrJSONDecoder(reader, 4096)
 	var objs []*unstructured.Unstructured
 	for {
@@ -192,7 +212,7 @@ func ConstructIngressesFromFile(l *networkingv1.IngressList, inputFile string, n
 	}
 
 	reader := bytes.NewReader(stream)
-	objs, err := extractObjectsFromReader(reader)
+	objs, err := ExtractObjectsFromReader(reader)
 	if err != nil {
 		return err
 	}
@@ -230,4 +250,26 @@ func GetSupportedProviders() []string {
 		supportedProviders = append(supportedProviders, string(key))
 	}
 	return supportedProviders
+}
+
+func MergeGatewayResources(gatewayResources ...GatewayResources) GatewayResources {
+	mergedGatewayResources := GatewayResources{
+		Gateways:        make(map[types.NamespacedName]gatewayv1beta1.Gateway),
+		GatewayClasses:  make(map[types.NamespacedName]gatewayv1beta1.GatewayClass),
+		HTTPRoutes:      make(map[types.NamespacedName]gatewayv1beta1.HTTPRoute),
+		TLSRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
+		TCPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
+		UDPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.UDPRoute),
+		ReferenceGrants: make(map[types.NamespacedName]gatewayv1alpha2.ReferenceGrant),
+	}
+	for _, gr := range gatewayResources {
+		maps.Copy(mergedGatewayResources.GatewayClasses, gr.GatewayClasses)
+		maps.Copy(mergedGatewayResources.Gateways, gr.Gateways)
+		maps.Copy(mergedGatewayResources.HTTPRoutes, gr.HTTPRoutes)
+		maps.Copy(mergedGatewayResources.TLSRoutes, gr.TLSRoutes)
+		maps.Copy(mergedGatewayResources.TCPRoutes, gr.TCPRoutes)
+		maps.Copy(mergedGatewayResources.UDPRoutes, gr.UDPRoutes)
+		maps.Copy(mergedGatewayResources.ReferenceGrants, gr.ReferenceGrants)
+	}
+	return mergedGatewayResources
 }

@@ -18,6 +18,8 @@ package ingressnginx
 
 import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // The Name of the provider.
@@ -25,6 +27,7 @@ const Name = "ingress-nginx"
 
 func init() {
 	i2gw.ProviderConstructorByName[Name] = NewProvider
+	i2gw.ProviderClientBuilderByName[Name] = NewClient
 }
 
 // Provider implements the i2gw.Provider interface.
@@ -36,10 +39,14 @@ type Provider struct {
 }
 
 // NewProvider constructs and returns the ingress-nginx implementation of i2gw.Provider.
-func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
+func NewProvider(conf i2gw.ProviderConf) i2gw.Provider {
 	return &Provider{
-		conf:           conf,
-		resourceReader: newResourceReader(conf),
-		converter:      newConverter(conf),
+		conf:           &conf,
+		resourceReader: newResourceReader(&conf),
+		converter:      newConverter(&conf),
 	}
+}
+
+func NewClient(restConfig *rest.Config, namespace string) (client.Client, error) {
+	return nil, nil
 }

@@ -19,7 +19,11 @@ package kong
 import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong/crds"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+
+	configurationv1beta1 "github.com/kong/kubernetes-ingress-controller/v2/pkg/apis/configuration/v1beta1"
 )
 
 // converter implements the ToGatewayAPI function of i2gw.ResourceConverter interface.
@@ -54,6 +58,26 @@ func (c *converter) ToGatewayAPI(resources i2gw.InputResources) (i2gw.GatewayRes
 	gatewayResources, errs := common.ToGateway(resources.Ingresses, c.implementationSpecificOptions)
 	if len(errs) > 0 {
 		return i2gw.GatewayResources{}, errs
+	}
+
+	if tcpIngresses, ok := resources.CustomResources[schema.GroupVersionKind{
+		Group:   string(kongResourcesGroup),
+		Kind:    string(kongTCPIngressKind),
+		Version: "v1beta1",
+	}].([]configurationv1beta1.TCPIngress); ok {
+		tcpGatewayResources, errs := crds.TcpIngressToGatewayAPI(tcpIngresses)
+		if errs != nil {
+			return i2gw.GatewayResources{}, errs
+		}
+		gatewayResources = i2gw.MergeGatewayResources(gatewayResources, tcpGatewayResources)
+	}
+
+	if udpIngresses, ok := resources.CustomResources[udpIngressGVK].([]configurationv1beta1.UDPIngress); ok {
+		udpGatewayResources, errs := crds.UDPIngressToGatewayAPI(udpIngresses)
+		if errs != nil {
+			return i2gw.GatewayResources{}, errs
+		}
+		gatewayResources = i2gw.MergeGatewayResources(gatewayResources, udpGatewayResources)
 	}
 
 	for _, parseFeatureFunc := range c.featureParsers {
