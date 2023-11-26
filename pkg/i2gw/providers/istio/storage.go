@@ -14,30 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kong
+package istio
 
 import (
-	"context"
-
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"k8s.io/apimachinery/pkg/types"
 )
 
-// converter implements the i2gw.CustomResourceFetcher interface.
-type resourceReader struct {
-	conf *i2gw.ProviderConf
+type storage struct {
+	Gateways        map[types.NamespacedName]*gateway
+	VirtualServices map[types.NamespacedName]*virtualService
 }
 
-// newResourceReader returns a resourceReader instance.
-func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
-	return &resourceReader{
-		conf: conf,
+func newResourcesStorage() storage {
+	return storage{
+		Gateways:        map[types.NamespacedName]*gateway{},
+		VirtualServices: map[types.NamespacedName]*virtualService{},
 	}
-}
-
-func (r *resourceReader) FetchResourcesFromCluster(_ context.Context) error {
-	return nil
-}
-
-func (r *resourceReader) FetchResourcesFromFile(_ context.Context, _ string) error {
-	return nil
 }

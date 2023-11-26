@@ -37,7 +37,7 @@ func ToGateway(ingresses []networkingv1.Ingress, options i2gw.ProviderImplementa
 
 	var errs field.ErrorList
 	for _, ingress := range ingresses {
-		errs = append(errs, aggregator.addIngress(ingress)...)
+		aggregator.addIngress(ingress)
 	}
 	if len(errs) > 0 {
 		return i2gw.GatewayResources{}, errs
@@ -116,7 +116,7 @@ type ingressPath struct {
 	path     networkingv1.HTTPIngressPath
 }
 
-func (a *ingressAggregator) addIngress(ingress networkingv1.Ingress) field.ErrorList {
+func (a *ingressAggregator) addIngress(ingress networkingv1.Ingress) {
 	var ingressClass string
 	if ingress.Spec.IngressClassName != nil && *ingress.Spec.IngressClassName != "" {
 		ingressClass = *ingress.Spec.IngressClassName
@@ -136,7 +136,6 @@ func (a *ingressAggregator) addIngress(ingress networkingv1.Ingress) field.Error
 			backend:      *ingress.Spec.DefaultBackend,
 		})
 	}
-	return nil
 }
 
 func (a *ingressAggregator) addIngressRule(namespace, name, ingressClass string, rule networkingv1.IngressRule, iSpec networkingv1.IngressSpec) {

@@ -22,7 +22,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 )
 
-// converter implements the i2gw.CustomResourceReader interface.
+// converter implements the i2gw.CustomResourceFetcher interface.
 type resourceReader struct {
 	conf *i2gw.ProviderConf
 }
@@ -34,12 +34,12 @@ func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
 	}
 }
 
-func (r *resourceReader) ReadResourcesFromCluster(ctx context.Context, customResources interface{}) error {
+func (r *resourceReader) FetchResourcesFromCluster(_ context.Context) error {
 	// ingress-nginx does not have any CRDs.
 	return nil
 }
 
-func (r *resourceReader) ReadResourcesFromFiles(ctx context.Context, customResources interface{}, filename string) error {
+func (r *resourceReader) FetchResourcesFromFile(_ context.Context, _ string) error {
 	// ingress-nginx does not have any CRDs.
 	return nil
 }

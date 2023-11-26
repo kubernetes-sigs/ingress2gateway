@@ -14,30 +14,29 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kong
+package istio
 
 import (
-	"context"
-
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	istioapi "istio.io/api/networking/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// converter implements the i2gw.CustomResourceFetcher interface.
-type resourceReader struct {
-	conf *i2gw.ProviderConf
+const (
+	APIVersion         = "networking.istio.io/v1beta1"
+	GatewayKind        = "Gateway"
+	VirtualServiceKind = "VirtualService"
+)
+
+type gateway struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec istioapi.Gateway `json:"spec,omitempty"`
 }
 
-// newResourceReader returns a resourceReader instance.
-func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
-	return &resourceReader{
-		conf: conf,
-	}
-}
+type virtualService struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-func (r *resourceReader) FetchResourcesFromCluster(_ context.Context) error {
-	return nil
-}
-
-func (r *resourceReader) FetchResourcesFromFile(_ context.Context, _ string) error {
-	return nil
+	Spec istioapi.VirtualService `json:"spec,omitempty"`
 }
