@@ -26,7 +26,7 @@ In this section, we will walk through a demo of how to add support for the `exam
     ├── examplegateway
     └── ingressnginx
 ```
-2. Create a struct named `resourceReader` which implements the `CustomResourceReader` interface in a file named
+2. Create a struct named `resourceFetcher` which implements the `CustomResourceFetcher` interface in a file named
 `resource_converter.go`.
 ```go
 package examplegateway
@@ -37,24 +37,24 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 )
 
-// converter implements the i2gw.CustomResourceReader interface.
-type resourceReader struct {
+// converter implements the i2gw.CustomResourceFetcher interface.
+type resourceFetcher struct {
 	conf *i2gw.ProviderConf
 }
 
-// newResourceReader returns a resourceReader instance.
-func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
-	return &resourceReader{
+// newResourceFetcher returns a resourceFetcherinstance.
+func newResourceFetcher(conf *i2gw.ProviderConf) *resourceFetcher {
+	return &resourceFetcher{
 		conf: conf,
 	}
 }
 
-func (r *resourceReader) FetchResourcesFromCluster(ctx context.Context) error {
+func (r *resourceFetcher) FetchResourcesFromCluster(ctx context.Context) error {
 	// read example-gateway related resources from the cluster.
 	return nil
 }
 
-func (r *resourceReader) FetchResourcesFromFiles(ctx context.Context, filename string) error {
+func (r *resourceFetcher) FetchResourcesFromFiles(ctx context.Context, filename string) error {
 	// read example-gateway related resources from the file.
 	return nil
 }
@@ -109,7 +109,7 @@ import (
 type Provider struct {
 	conf *i2gw.ProviderConf
 
-	*resourceReader
+	*resourceFetcher
 	*converter
 }
 
@@ -117,7 +117,7 @@ type Provider struct {
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 	return &Provider{
 		conf:           conf,
-		resourceReader: newResourceReader(conf),
+		resourceFetcher: newResourceFetcher(conf),
 		converter:      newConverter(conf),
 	}
 }

@@ -27,17 +27,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type reader struct {
+type fetcher struct {
 	k8sClient client.Client
 }
 
-func newResourceReader(k8sClient client.Client) reader {
-	return reader{
+func newResourceFetcher(k8sClient client.Client) fetcher {
+	return fetcher{
 		k8sClient: k8sClient,
 	}
 }
 
-func (r *reader) fetchResourcesFromCluster(ctx context.Context) (*storage, error) {
+func (r *fetcher) fetchResourcesFromCluster(ctx context.Context) (*storage, error) {
 	res := newResourcesStorage()
 
 	gateways, err := r.readGatewaysFromCluster(ctx)
@@ -57,7 +57,7 @@ func (r *reader) fetchResourcesFromCluster(ctx context.Context) (*storage, error
 	return &res, nil
 }
 
-func (r *reader) readUnstructuredObjects(objects []*unstructured.Unstructured) (*storage, error) {
+func (r *fetcher) readUnstructuredObjects(objects []*unstructured.Unstructured) (*storage, error) {
 	res := newResourcesStorage()
 
 	for _, obj := range objects {
@@ -96,7 +96,7 @@ func (r *reader) readUnstructuredObjects(objects []*unstructured.Unstructured) (
 	return &res, nil
 }
 
-func (r *reader) readGatewaysFromCluster(ctx context.Context) (map[types.NamespacedName]*gateway, error) {
+func (r *fetcher) readGatewaysFromCluster(ctx context.Context) (map[types.NamespacedName]*gateway, error) {
 	gatewayList := &unstructured.UnstructuredList{}
 	gatewayList.SetAPIVersion(APIVersion)
 	gatewayList.SetKind(GatewayKind)
@@ -122,7 +122,7 @@ func (r *reader) readGatewaysFromCluster(ctx context.Context) (map[types.Namespa
 	return res, nil
 }
 
-func (r *reader) readVirtualServicesFromCluster(ctx context.Context) (map[types.NamespacedName]*virtualService, error) {
+func (r *fetcher) readVirtualServicesFromCluster(ctx context.Context) (map[types.NamespacedName]*virtualService, error) {
 	virtualServicesList := &unstructured.UnstructuredList{}
 	virtualServicesList.SetAPIVersion(APIVersion)
 	virtualServicesList.SetKind(VirtualServiceKind)

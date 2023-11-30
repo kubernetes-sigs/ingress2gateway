@@ -23,23 +23,23 @@ import (
 )
 
 // converter implements the i2gw.CustomResourceFetcher interface.
-type resourceReader struct {
+type resourceFetcher struct {
 	conf *i2gw.ProviderConf
 }
 
-// newResourceReader returns a resourceReader instance.
-func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
-	return &resourceReader{
+// newResourceFetcher returns a resourceFetcher instance.
+func newResourceFetcher(conf *i2gw.ProviderConf) *resourceFetcher {
+	return &resourceFetcher{
 		conf: conf,
 	}
 }
 
-func (r *resourceReader) FetchResourcesFromCluster(_ context.Context) error {
+func (r *resourceFetcher) FetchResourcesFromCluster(_ context.Context) error {
 	// ingress-nginx does not have any CRDs.
 	return nil
 }
 
-func (r *resourceReader) FetchResourcesFromFile(_ context.Context, _ string) error {
+func (r *resourceFetcher) FetchResourcesFromFile(_ context.Context, _ string) error {
 	// ingress-nginx does not have any CRDs.
 	return nil
 }

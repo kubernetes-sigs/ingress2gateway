@@ -35,7 +35,7 @@ func init() {
 
 type Provider struct {
 	storage   storage
-	reader    reader
+	reader    fetcher
 	converter converter
 }
 
@@ -43,7 +43,7 @@ type Provider struct {
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 	return &Provider{
 		storage:   newResourcesStorage(),
-		reader:    newResourceReader(conf.Client),
+		reader:    newResourceFetcher(conf.Client),
 		converter: newConverter(),
 	}
 }
