@@ -16,27 +16,8 @@ limitations under the License.
 
 package istio
 
-import (
-	istioapi "istio.io/api/networking/v1beta1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
 const (
 	APIVersion         = "networking.istio.io/v1beta1"
 	GatewayKind        = "Gateway"
 	VirtualServiceKind = "VirtualService"
 )
-
-type gateway struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec istioapi.Gateway `json:"spec,omitempty"`
-}
-
-type virtualService struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec istioapi.VirtualService `json:"spec,omitempty"`
-}

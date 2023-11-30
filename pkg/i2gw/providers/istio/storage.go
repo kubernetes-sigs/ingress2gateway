@@ -17,17 +17,18 @@ limitations under the License.
 package istio
 
 import (
+	istiov1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 type storage struct {
-	Gateways        map[types.NamespacedName]*gateway
-	VirtualServices map[types.NamespacedName]*virtualService
+	Gateways        map[types.NamespacedName]*istiov1beta1.Gateway
+	VirtualServices map[types.NamespacedName]*istiov1beta1.VirtualService
 }
 
 func newResourcesStorage() storage {
 	return storage{
-		Gateways:        map[types.NamespacedName]*gateway{},
-		VirtualServices: map[types.NamespacedName]*virtualService{},
+		Gateways:        map[types.NamespacedName]*istiov1beta1.Gateway{},
+		VirtualServices: map[types.NamespacedName]*istiov1beta1.VirtualService{},
 	}
 }

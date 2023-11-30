@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log"
 
+	istiov1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -68,7 +69,7 @@ func (r *fetcher) readUnstructuredObjects(objects []*unstructured.Unstructured) 
 
 		switch objKind := obj.GetKind(); objKind {
 		case GatewayKind:
-			var gw gateway
+			var gw istiov1beta1.Gateway
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), &gw); err != nil {
 				return nil, fmt.Errorf("failed to parse istio gateway object: %w", err)
 			}
@@ -78,7 +79,7 @@ func (r *fetcher) readUnstructuredObjects(objects []*unstructured.Unstructured) 
 			}] = &gw
 
 		case VirtualServiceKind:
-			var vs virtualService
+			var vs istiov1beta1.VirtualService
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), &vs); err != nil {
 				return nil, fmt.Errorf("failed to parse istio virtual service object: %w", err)
 			}
@@ -96,7 +97,7 @@ func (r *fetcher) readUnstructuredObjects(objects []*unstructured.Unstructured) 
 	return &res, nil
 }
 
-func (r *fetcher) readGatewaysFromCluster(ctx context.Context) (map[types.NamespacedName]*gateway, error) {
+func (r *fetcher) readGatewaysFromCluster(ctx context.Context) (map[types.NamespacedName]*istiov1beta1.Gateway, error) {
 	gatewayList := &unstructured.UnstructuredList{}
 	gatewayList.SetAPIVersion(APIVersion)
 	gatewayList.SetKind(GatewayKind)
@@ -106,9 +107,9 @@ func (r *fetcher) readGatewaysFromCluster(ctx context.Context) (map[types.Namesp
 		return nil, fmt.Errorf("failed to list istio gateways: %w", err)
 	}
 
-	res := map[types.NamespacedName]*gateway{}
+	res := map[types.NamespacedName]*istiov1beta1.Gateway{}
 	for _, obj := range gatewayList.Items {
-		var gw gateway
+		var gw istiov1beta1.Gateway
 		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), &gw); err != nil {
 			return nil, fmt.Errorf("failed to parse istio gateway object: %w", err)
 		}
@@ -122,7 +123,7 @@ func (r *fetcher) readGatewaysFromCluster(ctx context.Context) (map[types.Namesp
 	return res, nil
 }
 
-func (r *fetcher) readVirtualServicesFromCluster(ctx context.Context) (map[types.NamespacedName]*virtualService, error) {
+func (r *fetcher) readVirtualServicesFromCluster(ctx context.Context) (map[types.NamespacedName]*istiov1beta1.VirtualService, error) {
 	virtualServicesList := &unstructured.UnstructuredList{}
 	virtualServicesList.SetAPIVersion(APIVersion)
 	virtualServicesList.SetKind(VirtualServiceKind)
@@ -132,10 +133,10 @@ func (r *fetcher) readVirtualServicesFromCluster(ctx context.Context) (map[types
 		return nil, fmt.Errorf("failed to list istio virtual services: %w", err)
 	}
 
-	res := map[types.NamespacedName]*virtualService{}
+	res := map[types.NamespacedName]*istiov1beta1.VirtualService{}
 
 	for _, obj := range virtualServicesList.Items {
-		var vs virtualService
+		var vs istiov1beta1.VirtualService
 		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), &vs); err != nil {
 			return nil, fmt.Errorf("failed to parse istio virtual service object: %w", err)
 		}
