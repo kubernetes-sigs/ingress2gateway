@@ -26,7 +26,7 @@ In this section, we will walk through a demo of how to add support for the `exam
     ├── examplegateway
     └── ingressnginx
 ```
-2. Create a struct named `resourceFetcher` which implements the `CustomResourceFetcher` interface in a file named
+2. Create a struct named `resourceReader` which implements the `CustomResourceReader` interface in a file named
 `resource_converter.go`.
 ```go
 package examplegateway
@@ -37,30 +37,30 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 )
 
-// converter implements the i2gw.CustomResourceFetcher interface.
-type resourceFetcher struct {
+// converter implements the i2gw.CustomResourceReader interface.
+type resourceReader struct {
 	conf *i2gw.ProviderConf
 }
 
-// newResourceFetcher returns a resourceFetcherinstance.
-func newResourceFetcher(conf *i2gw.ProviderConf) *resourceFetcher {
-	return &resourceFetcher{
+// newResourceReader returns a resourceReader instance.
+func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
+	return &resourceReader{
 		conf: conf,
 	}
 }
 
-func (r *resourceFetcher) FetchResourcesFromCluster(ctx context.Context) error {
+func (r *resourceReader) ReadResourcesFromCluster(ctx context.Context) error {
 	// read example-gateway related resources from the cluster.
 	return nil
 }
 
-func (r *resourceFetcher) FetchResourcesFromFiles(ctx context.Context, filename string) error {
+func (r *resourceReader) ReadResourcesFromFiles(ctx context.Context, filename string) error {
 	// read example-gateway related resources from the file.
 	return nil
 }
 ```
 
-These methods are used by providers to fetch and store additional resources they may need during conversion.
+These methods are used by providers to read and store additional resources they may need during conversion.
 
 3. Create a struct named `converter` which implements the `ResourceConverter` interface in a file named `converter.go`.
 The implemented `ToGatewayAPI` function should simply call every registered `featureParser` function, one by one.
@@ -109,7 +109,7 @@ import (
 type Provider struct {
 	conf *i2gw.ProviderConf
 
-	*resourceFetcher
+	*resourceRead
 	*converter
 }
 
@@ -117,7 +117,7 @@ type Provider struct {
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 	return &Provider{
 		conf:           conf,
-		resourceFetcher: newResourceFetcher(conf),
+		resourceReader: newResourceReader(conf),
 		converter:      newConverter(conf),
 	}
 }

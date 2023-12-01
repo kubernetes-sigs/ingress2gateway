@@ -49,19 +49,19 @@ type ProviderConf struct {
 // implemented by every concrete Ingress/Gateway-API provider, in order for it to
 // be used.
 type Provider interface {
-	CustomResourceFetcher
+	CustomResourceReader
 	ResourceConverter
 }
 
-type CustomResourceFetcher interface {
+type CustomResourceReader interface {
 
-	// FetchResourcesFromCluster fetches custom resources associated with
+	// ReadResourcesFromCluster reads custom resources associated with
 	// the underlying Provider implementation from the kubernetes cluster.
-	FetchResourcesFromCluster(ctx context.Context) error
+	ReadResourcesFromCluster(ctx context.Context) error
 
-	// FetchResourcesFromFile reads custom resources associated with
+	// ReadResourcesFromFile reads custom resources associated with
 	// the underlying Provider implementation from the file.
-	FetchResourcesFromFile(ctx context.Context, filename string) error
+	ReadResourcesFromFile(ctx context.Context, filename string) error
 }
 
 // The ResourceConverter interface specifies all the implemented Gateway API resource

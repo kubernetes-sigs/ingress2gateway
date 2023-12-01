@@ -64,7 +64,7 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 			return nil, nil, fmt.Errorf("failed to read ingresses from file: %w", err)
 		}
 		resources.Ingresses = ingresses.Items
-		if err = fetchProviderResourcesFromFile(ctx, providerByName, inputFile); err != nil {
+		if err = readProviderResourcesFromFile(ctx, providerByName, inputFile); err != nil {
 			return nil, nil, err
 		}
 	} else {
@@ -72,7 +72,7 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 			return nil, nil, fmt.Errorf("failed to read ingresses from cluster: %w", err)
 		}
 		resources.Ingresses = ingresses.Items
-		if err = fetchProviderResourcesFromCluster(ctx, providerByName); err != nil {
+		if err = readProviderResourcesFromCluster(ctx, providerByName); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -95,18 +95,18 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 	return httpRoutes, gateways, nil
 }
 
-func fetchProviderResourcesFromFile(ctx context.Context, providerByName map[ProviderName]Provider, inputFile string) error {
+func readProviderResourcesFromFile(ctx context.Context, providerByName map[ProviderName]Provider, inputFile string) error {
 	for name, provider := range providerByName {
-		if err := provider.FetchResourcesFromFile(ctx, inputFile); err != nil {
+		if err := provider.ReadResourcesFromFile(ctx, inputFile); err != nil {
 			return fmt.Errorf("failed to read %s resources from file: %w", name, err)
 		}
 	}
 	return nil
 }
 
-func fetchProviderResourcesFromCluster(ctx context.Context, providerByName map[ProviderName]Provider) error {
+func readProviderResourcesFromCluster(ctx context.Context, providerByName map[ProviderName]Provider) error {
 	for name, provider := range providerByName {
-		if err := provider.FetchResourcesFromCluster(ctx); err != nil {
+		if err := provider.ReadResourcesFromCluster(ctx); err != nil {
 			return fmt.Errorf("failed to read %s resources from the cluster: %w", name, err)
 		}
 	}

@@ -22,22 +22,22 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 )
 
-// converter implements the i2gw.CustomResourceFetcher interface.
-type resourceFetcher struct {
+// converter implements the i2gw.CustomResourceReader interface.
+type resourceReader struct {
 	conf *i2gw.ProviderConf
 }
 
-// newResourceFetcher returns a resourceFetcher instance.
-func newResourceFetcher(conf *i2gw.ProviderConf) *resourceFetcher {
-	return &resourceFetcher{
+// newResourceReader returns a resourceReader instance.
+func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
+	return &resourceReader{
 		conf: conf,
 	}
 }
 
-func (r *resourceFetcher) FetchResourcesFromCluster(_ context.Context) error {
+func (r *resourceReader) ReadResourcesFromCluster(_ context.Context) error {
 	return nil
 }
 
-func (r *resourceFetcher) FetchResourcesFromFile(_ context.Context, _ string) error {
+func (r *resourceReader) ReadResourcesFromFile(_ context.Context, _ string) error {
 	return nil
 }

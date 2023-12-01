@@ -35,7 +35,7 @@ func init() {
 
 type Provider struct {
 	storage   storage
-	reader    fetcher
+	reader    reader
 	converter converter
 }
 
@@ -43,7 +43,7 @@ type Provider struct {
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 	return &Provider{
 		storage:   newResourcesStorage(),
-		reader:    newResourceFetcher(conf.Client),
+		reader:    newResourceReader(conf.Client),
 		converter: newConverter(),
 	}
 }
@@ -56,8 +56,8 @@ func (p *Provider) ToGatewayAPI(_ i2gw.InputResources) (i2gw.GatewayResources, f
 	return i2gw.GatewayResources{}, field.ErrorList{field.Forbidden(field.NewPath(""), "conversion is WIP")}
 }
 
-func (p *Provider) FetchResourcesFromCluster(ctx context.Context) error {
-	storage, err := p.reader.fetchResourcesFromCluster(ctx)
+func (p *Provider) ReadResourcesFromCluster(ctx context.Context) error {
+	storage, err := p.reader.readResourcesFromCluster(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to read resources from cluster: %w", err)
 	}
@@ -66,14 +66,13 @@ func (p *Provider) FetchResourcesFromCluster(ctx context.Context) error {
 	return nil
 }
 
-func (p *Provider) FetchResourcesFromFile(_ context.Context, filename string) error {
+func (p *Provider) ReadResourcesFromFile(_ context.Context, filename string) error {
 	stream, err := os.ReadFile(filename)
 	if err != nil {
 		return fmt.Errorf("failed to read file %v: %w", filename, err)
 	}
 
-	reader := bytes.NewReader(stream)
-	unstructuredObjects, err := i2gw.ExtractObjectsFromReader(reader)
+	unstructuredObjects, err := i2gw.ExtractObjectsFromReader(bytes.NewReader(stream))
 	if err != nil {
 		return fmt.Errorf("failed to extract objects: %w", err)
 	}
