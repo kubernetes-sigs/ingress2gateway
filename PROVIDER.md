@@ -109,7 +109,7 @@ import (
 type Provider struct {
 	conf *i2gw.ProviderConf
 
-	*resourceRead
+	*resourceReader
 	*converter
 }
 
