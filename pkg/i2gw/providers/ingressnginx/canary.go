@@ -25,7 +25,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
@@ -148,8 +148,7 @@ func calculateBackendRefWeight(paths []ingressPath) ([]gatewayv1beta1.HTTPBacken
 				backendRefs[i].Weight = &weightToSet
 			}
 			if *backendRefs[i].Weight > int32(weightTotal) {
-				backendRefs[i].Weight = pointer.Int32(int32(weightTotal))
-
+				backendRefs[i].Weight = ptr.To(int32(weightTotal))
 			}
 		}
 	}

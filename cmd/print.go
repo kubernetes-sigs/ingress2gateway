@@ -96,7 +96,7 @@ func (pr *PrintRunner) outputResult(httpRoutes []gatewayv1beta1.HTTPRoute, gatew
 	for i := range gateways {
 		err := pr.resourcePrinter.PrintObj(&gateways[i], os.Stdout)
 		if err != nil {
-			fmt.Printf("# Error printing %s HTTPRoute: %v\n", gateways[i].Name, err)
+			fmt.Printf("# Error printing %s Gateway: %v\n", gateways[i].Name, err)
 		}
 	}
 

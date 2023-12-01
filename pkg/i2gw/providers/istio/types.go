@@ -14,30 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kong
+package istio
 
-import (
-	"context"
-
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+const (
+	APIVersion         = "networking.istio.io/v1beta1"
+	GatewayKind        = "Gateway"
+	VirtualServiceKind = "VirtualService"
 )
-
-// converter implements the i2gw.CustomResourceReader interface.
-type resourceReader struct {
-	conf *i2gw.ProviderConf
-}
-
-// newResourceReader returns a resourceReader instance.
-func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
-	return &resourceReader{
-		conf: conf,
-	}
-}
-
-func (r *resourceReader) ReadResourcesFromCluster(_ context.Context) error {
-	return nil
-}
-
-func (r *resourceReader) ReadResourcesFromFile(_ context.Context, _ string) error {
-	return nil
-}

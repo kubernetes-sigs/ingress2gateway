@@ -64,7 +64,7 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 			return nil, nil, fmt.Errorf("failed to read ingresses from file: %w", err)
 		}
 		resources.Ingresses = ingresses.Items
-		if err = readProviderResourcesFromFile(ctx, providerByName, &resources, inputFile); err != nil {
+		if err = readProviderResourcesFromFile(ctx, providerByName, inputFile); err != nil {
 			return nil, nil, err
 		}
 	} else {
@@ -72,7 +72,7 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 			return nil, nil, fmt.Errorf("failed to read ingresses from cluster: %w", err)
 		}
 		resources.Ingresses = ingresses.Items
-		if err = readProviderResourcesFromCluster(ctx, providerByName, &resources); err != nil {
+		if err = readProviderResourcesFromCluster(ctx, providerByName); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -95,18 +95,18 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 	return httpRoutes, gateways, nil
 }
 
-func readProviderResourcesFromFile(ctx context.Context, providerByName map[ProviderName]Provider, resources *InputResources, inputFile string) error {
+func readProviderResourcesFromFile(ctx context.Context, providerByName map[ProviderName]Provider, inputFile string) error {
 	for name, provider := range providerByName {
-		if err := provider.ReadResourcesFromFiles(ctx, resources.CustomResources, inputFile); err != nil {
+		if err := provider.ReadResourcesFromFile(ctx, inputFile); err != nil {
 			return fmt.Errorf("failed to read %s resources from file: %w", name, err)
 		}
 	}
 	return nil
 }
 
-func readProviderResourcesFromCluster(ctx context.Context, providerByName map[ProviderName]Provider, resources *InputResources) error {
+func readProviderResourcesFromCluster(ctx context.Context, providerByName map[ProviderName]Provider) error {
 	for name, provider := range providerByName {
-		if err := provider.ReadResourcesFromCluster(ctx, resources.CustomResources); err != nil {
+		if err := provider.ReadResourcesFromCluster(ctx); err != nil {
 			return fmt.Errorf("failed to read %s resources from the cluster: %w", name, err)
 		}
 	}
@@ -138,10 +138,10 @@ func constructProviders(conf *ProviderConf, providers []string) (map[ProviderNam
 	return providerByName, nil
 }
 
-// extractObjectsFromReader extracts all objects from a reader,
+// ExtractObjectsFromReader extracts all objects from a reader,
 // which is created from YAML or JSON input files.
 // It retrieves all objects, including nested ones if they are contained within a list.
-func extractObjectsFromReader(reader io.Reader) ([]*unstructured.Unstructured, error) {
+func ExtractObjectsFromReader(reader io.Reader) ([]*unstructured.Unstructured, error) {
 	d := kubeyaml.NewYAMLOrJSONDecoder(reader, 4096)
 	var objs []*unstructured.Unstructured
 	for {
@@ -192,7 +192,7 @@ func ConstructIngressesFromFile(l *networkingv1.IngressList, inputFile string, n
 	}
 
 	reader := bytes.NewReader(stream)
-	objs, err := extractObjectsFromReader(reader)
+	objs, err := ExtractObjectsFromReader(reader)
 	if err != nil {
 		return err
 	}
@@ -218,7 +218,7 @@ func ConstructIngressesFromFile(l *networkingv1.IngressList, inputFile string, n
 func aggregatedErrs(errs field.ErrorList) error {
 	errMsg := fmt.Errorf("\n# Encountered %d errors", len(errs))
 	for _, err := range errs {
-		errMsg = fmt.Errorf("\n%w # %s", errMsg, err)
+		errMsg = fmt.Errorf("\n%w # %s", errMsg, err.Error())
 	}
 	return errMsg
 }

@@ -502,8 +502,7 @@ func Test_ToGateway(t *testing.T) {
 			provider := NewProvider(&i2gw.ProviderConf{})
 
 			resources := i2gw.InputResources{
-				Ingresses:       tc.ingresses,
-				CustomResources: nil,
+				Ingresses: tc.ingresses,
 			}
 
 			gatewayResources, errs := provider.ToGatewayAPI(resources)

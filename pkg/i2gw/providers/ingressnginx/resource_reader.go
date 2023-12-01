@@ -34,12 +34,12 @@ func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
 	}
 }
 
-func (r *resourceReader) ReadResourcesFromCluster(ctx context.Context, customResources interface{}) error {
+func (r *resourceReader) ReadResourcesFromCluster(_ context.Context) error {
 	// ingress-nginx does not have any CRDs.
 	return nil
 }
 
-func (r *resourceReader) ReadResourcesFromFiles(ctx context.Context, customResources interface{}, filename string) error {
+func (r *resourceReader) ReadResourcesFromFile(_ context.Context, _ string) error {
 	// ingress-nginx does not have any CRDs.
 	return nil
 }

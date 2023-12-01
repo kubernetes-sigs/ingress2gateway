@@ -49,16 +49,19 @@ func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
 	}
 }
 
-func (r *resourceReader) ReadResourcesFromCluster(ctx context.Context, customResources interface{}) error {
+func (r *resourceReader) ReadResourcesFromCluster(ctx context.Context) error {
 	// read example-gateway related resources from the cluster.
 	return nil
 }
 
-func (r *resourceReader) ReadResourcesFromFiles(ctx context.Context, customResources interface{}, filename string) error {
+func (r *resourceReader) ReadResourcesFromFiles(ctx context.Context, filename string) error {
 	// read example-gateway related resources from the file.
 	return nil
 }
 ```
+
+These methods are used by providers to read and store additional resources they may need during conversion.
+
 3. Create a struct named `converter` which implements the `ResourceConverter` interface in a file named `converter.go`.
 The implemented `ToGatewayAPI` function should simply call every registered `featureParser` function, one by one.
 Take a look at `ingressnginx/converter.go` for an example.

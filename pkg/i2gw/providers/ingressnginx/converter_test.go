@@ -29,7 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
@@ -203,7 +203,7 @@ func Test_ToGateway(t *testing.T) {
 				{
 					Type:     field.ErrorTypeInvalid,
 					Field:    "spec.rules[0].http.paths[0].pathType",
-					BadValue: pointer.String("ImplementationSpecific"),
+					BadValue: ptr.To("ImplementationSpecific"),
 					Detail:   "implementationSpecific path type is not supported in generic translation, and your provider does not provide custom support to translate it",
 				},
 			},
@@ -216,8 +216,7 @@ func Test_ToGateway(t *testing.T) {
 			provider := NewProvider(&i2gw.ProviderConf{})
 
 			resources := i2gw.InputResources{
-				Ingresses:       tc.ingresses,
-				CustomResources: nil,
+				Ingresses: tc.ingresses,
 			}
 
 			gatewayResources, errs := provider.ToGatewayAPI(resources)

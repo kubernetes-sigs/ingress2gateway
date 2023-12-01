@@ -46,14 +46,14 @@ func pluginsFeature(ingressResources i2gw.InputResources, gatewayResources *i2gw
 			if !ok {
 				panic("HTTPRoute does not exist - this should never happen")
 			}
-			filters := parsePluginsAnnotation(rule.Ingress.ObjectMeta.Namespace, rule.Ingress.ObjectMeta.Name, rule.Ingress.Annotations)
+			filters := parsePluginsAnnotation(rule.Ingress.Annotations)
 			patchHTTPRoutePlugins(&httpRoute, filters)
 		}
 	}
 	return nil
 }
 
-func parsePluginsAnnotation(ingressNamespace, ingressName string, annotations map[string]string) []gatewayv1beta1.HTTPRouteFilter {
+func parsePluginsAnnotation(annotations map[string]string) []gatewayv1beta1.HTTPRouteFilter {
 	filters := make([]gatewayv1beta1.HTTPRouteFilter, 0)
 	mkey := kongAnnotation(pluginsKey)
 	for key, val := range annotations {

@@ -57,11 +57,11 @@ type CustomResourceReader interface {
 
 	// ReadResourcesFromCluster reads custom resources associated with
 	// the underlying Provider implementation from the kubernetes cluster.
-	ReadResourcesFromCluster(ctx context.Context, customResources interface{}) error
+	ReadResourcesFromCluster(ctx context.Context) error
 
-	// ReadResourcesFromFiles reads custom resources associated with
-	// the underlying Provider implementation from the files.
-	ReadResourcesFromFiles(ctx context.Context, customResources interface{}, filename string) error
+	// ReadResourcesFromFile reads custom resources associated with
+	// the underlying Provider implementation from the file.
+	ReadResourcesFromFile(ctx context.Context, filename string) error
 }
 
 // The ResourceConverter interface specifies all the implemented Gateway API resource
@@ -84,11 +84,9 @@ type ProviderImplementationSpecificOptions struct {
 	ToImplementationSpecificHTTPPathTypeMatch ImplementationSpecificHTTPPathTypeMatchConverter
 }
 
-// InputResources contains all Ingress objects, and Provider specific
-// custom resources.
+// InputResources contains all Ingress objects.
 type InputResources struct {
-	Ingresses       []networkingv1.Ingress
-	CustomResources interface{}
+	Ingresses []networkingv1.Ingress
 }
 
 // GatewayResources contains all Gateway-API objects.
