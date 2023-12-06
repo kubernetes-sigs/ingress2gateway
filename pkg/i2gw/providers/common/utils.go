@@ -127,6 +127,34 @@ func ToBackendRef(ib networkingv1.IngressBackend, path *field.Path) (*gatewayv1b
 	}, nil
 }
 
+func groupPaths(rules []ingressRule) []pathsByMatchGroupType {
+	// we use a slice instead of a map to preserve rules order
+	pathsByMatchGroup := []pathsByMatchGroupType{}
+
+	for i, ir := range rules {
+		for j, path := range ir.rule.HTTP.Paths {
+			ip := ingressPath{ruleIdx: i, pathIdx: j, ruleType: "http", path: path}
+			pmKey := getPathMatchKey(ip)
+			var found bool
+			for k, paths := range pathsByMatchGroup {
+				if pmKey == pathMatchKey(paths.key) {
+					paths.paths = append(paths.paths, ip)
+					pathsByMatchGroup[k] = paths
+					found = true
+					break
+				}
+			}
+			if !found {
+				pathsByMatchGroup = append(pathsByMatchGroup, pathsByMatchGroupType{
+					key:   string(pmKey),
+					paths: []ingressPath{ip},
+				})
+			}
+		}
+	}
+	return pathsByMatchGroup
+}
+
 func PtrTo[T any](a T) *T {
 	return &a
 }
