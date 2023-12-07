@@ -23,7 +23,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
-func TestGroupPaths(t *testing.T) {
+func TestGroupIngressPathsByMatchKey(t *testing.T) {
 	iPrefix := networkingv1.PathTypePrefix
 
 	testCases := []struct {
