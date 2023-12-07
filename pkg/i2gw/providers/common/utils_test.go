@@ -29,12 +29,12 @@ func TestGroupPaths(t *testing.T) {
 	testCases := []struct {
 		name     string
 		rules    []ingressRule
-		expected orderedPathsByMatchGroup
+		expected orderedIngressPathsByMatchKey
 	}{
 		{
 			name:     "no rules",
 			rules:    []ingressRule{},
-			expected: orderedPathsByMatchGroup{},
+			expected: orderedIngressPathsByMatchKey{},
 		},
 		{
 			name: "1 rule with 1 match",
@@ -62,7 +62,7 @@ func TestGroupPaths(t *testing.T) {
 					},
 				},
 			},
-			expected: orderedPathsByMatchGroup{
+			expected: orderedIngressPathsByMatchKey{
 				keys: []pathMatchKey{
 					"Prefix//test",
 				},
@@ -127,7 +127,7 @@ func TestGroupPaths(t *testing.T) {
 					},
 				},
 			},
-			expected: orderedPathsByMatchGroup{
+			expected: orderedIngressPathsByMatchKey{
 				keys: []pathMatchKey{
 					"Prefix//test1",
 					"Prefix//test2",
@@ -222,7 +222,7 @@ func TestGroupPaths(t *testing.T) {
 					},
 				},
 			},
-			expected: orderedPathsByMatchGroup{
+			expected: orderedIngressPathsByMatchKey{
 				keys: []pathMatchKey{
 					"Prefix//test",
 				},
@@ -314,7 +314,7 @@ func TestGroupPaths(t *testing.T) {
 					},
 				},
 			},
-			expected: orderedPathsByMatchGroup{
+			expected: orderedIngressPathsByMatchKey{
 				keys: []pathMatchKey{
 					"Prefix//test",
 					"Prefix//test2",
@@ -433,7 +433,7 @@ func TestGroupPaths(t *testing.T) {
 					},
 				},
 			},
-			expected: orderedPathsByMatchGroup{
+			expected: orderedIngressPathsByMatchKey{
 				keys: []pathMatchKey{
 					"Prefix//test11",
 					"Prefix//test12",
@@ -522,7 +522,7 @@ func TestGroupPaths(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			want := groupPaths(tc.rules)
+			want := groupIngressPathsByMatchKey(tc.rules)
 			require.Equal(t, want, tc.expected)
 		})
 	}
