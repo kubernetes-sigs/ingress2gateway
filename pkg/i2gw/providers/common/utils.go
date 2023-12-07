@@ -127,6 +127,11 @@ func ToBackendRef(ib networkingv1.IngressBackend, path *field.Path) (*gatewayv1b
 	}, nil
 }
 
+type pathsByMatchGroupType struct {
+	key   string
+	paths []ingressPath
+}
+
 func groupPaths(rules []ingressRule) []pathsByMatchGroupType {
 	// we use a slice instead of a map to preserve rules order
 	pathsByMatchGroup := []pathsByMatchGroupType{}

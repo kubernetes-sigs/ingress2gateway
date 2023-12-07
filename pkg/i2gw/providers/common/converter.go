@@ -268,11 +268,6 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImpleme
 	return httpRoutes, gateways, errors
 }
 
-type pathsByMatchGroupType struct {
-	key   string
-	paths []ingressPath
-}
-
 func (rg *ingressRuleGroup) toHTTPRoute(options i2gw.ProviderImplementationSpecificOptions) (gatewayv1beta1.HTTPRoute, field.ErrorList) {
 	pathsByMatchGroup := groupPaths(rg.rules)
 	httpRoute := gatewayv1beta1.HTTPRoute{
