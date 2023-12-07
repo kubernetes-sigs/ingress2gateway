@@ -133,7 +133,7 @@ type orderedIngressPathsByMatchKey struct {
 }
 
 func groupIngressPathsByMatchKey(rules []ingressRule) orderedIngressPathsByMatchKey {
-	// we use a slice instead of a map to preserve rules order
+	// we track the keys in an additional slice in order to preserve the rules order
 	pathsByMatchGroup := orderedIngressPathsByMatchKey{
 		keys: []pathMatchKey{},
 		data: map[pathMatchKey][]ingressPath{},

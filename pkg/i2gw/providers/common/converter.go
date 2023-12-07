@@ -269,7 +269,7 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImpleme
 }
 
 func (rg *ingressRuleGroup) toHTTPRoute(options i2gw.ProviderImplementationSpecificOptions) (gatewayv1beta1.HTTPRoute, field.ErrorList) {
-	pathsByMatchGroup := groupIngressPathsByMatchKey(rg.rules)
+	ingressPathsByMatchKey := groupIngressPathsByMatchKey(rg.rules)
 	httpRoute := gatewayv1beta1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      RouteName(rg.name, rg.host),
@@ -292,8 +292,8 @@ func (rg *ingressRuleGroup) toHTTPRoute(options i2gw.ProviderImplementationSpeci
 	}
 
 	var errors field.ErrorList
-	for _, key := range pathsByMatchGroup.keys {
-		paths := pathsByMatchGroup.data[key]
+	for _, key := range ingressPathsByMatchKey.keys {
+		paths := ingressPathsByMatchKey.data[key]
 		path := paths[0]
 		fieldPath := field.NewPath("spec", "rules").Index(path.ruleIdx).Child(path.ruleType).Child("paths").Index(path.pathIdx)
 		match, err := toHTTPRouteMatch(path.path, fieldPath, options.ToImplementationSpecificHTTPPathTypeMatch)
