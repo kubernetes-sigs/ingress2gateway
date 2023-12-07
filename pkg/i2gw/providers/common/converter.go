@@ -292,8 +292,9 @@ func (rg *ingressRuleGroup) toHTTPRoute(options i2gw.ProviderImplementationSpeci
 	}
 
 	var errors field.ErrorList
-	for _, paths := range pathsByMatchGroup {
-		path := paths.paths[0]
+	for _, key := range pathsByMatchGroup.keys {
+		paths := pathsByMatchGroup.data[key]
+		path := paths[0]
 		fieldPath := field.NewPath("spec", "rules").Index(path.ruleIdx).Child(path.ruleType).Child("paths").Index(path.pathIdx)
 		match, err := toHTTPRouteMatch(path.path, fieldPath, options.ToImplementationSpecificHTTPPathTypeMatch)
 		if err != nil {
@@ -304,7 +305,7 @@ func (rg *ingressRuleGroup) toHTTPRoute(options i2gw.ProviderImplementationSpeci
 			Matches: []gatewayv1beta1.HTTPRouteMatch{*match},
 		}
 
-		backendRefs, errs := rg.configureBackendRef(paths.paths)
+		backendRefs, errs := rg.configureBackendRef(paths)
 		errors = append(errors, errs...)
 		hrRule.BackendRefs = backendRefs
 

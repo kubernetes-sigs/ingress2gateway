@@ -29,12 +29,12 @@ func TestGroupPaths(t *testing.T) {
 	testCases := []struct {
 		name     string
 		rules    []ingressRule
-		expected []pathsByMatchGroupType
+		expected orderedPathsByMatchGroup
 	}{
 		{
 			name:     "no rules",
 			rules:    []ingressRule{},
-			expected: []pathsByMatchGroupType{},
+			expected: orderedPathsByMatchGroup{},
 		},
 		{
 			name: "1 rule with 1 match",
@@ -62,10 +62,12 @@ func TestGroupPaths(t *testing.T) {
 					},
 				},
 			},
-			expected: []pathsByMatchGroupType{
-				{
-					key: "Prefix//test",
-					paths: []ingressPath{
+			expected: orderedPathsByMatchGroup{
+				keys: []pathMatchKey{
+					"Prefix//test",
+				},
+				data: map[pathMatchKey][]ingressPath{
+					"Prefix//test": {
 						{
 							ruleIdx:  0,
 							pathIdx:  0,
@@ -125,10 +127,13 @@ func TestGroupPaths(t *testing.T) {
 					},
 				},
 			},
-			expected: []pathsByMatchGroupType{
-				{
-					key: "Prefix//test1",
-					paths: []ingressPath{
+			expected: orderedPathsByMatchGroup{
+				keys: []pathMatchKey{
+					"Prefix//test1",
+					"Prefix//test2",
+				},
+				data: map[pathMatchKey][]ingressPath{
+					"Prefix//test1": {
 						{
 							ruleIdx:  0,
 							pathIdx:  0,
@@ -147,10 +152,7 @@ func TestGroupPaths(t *testing.T) {
 							},
 						},
 					},
-				},
-				{
-					key: "Prefix//test2",
-					paths: []ingressPath{
+					"Prefix//test2": {
 						{
 							ruleIdx:  0,
 							pathIdx:  1,
@@ -220,10 +222,12 @@ func TestGroupPaths(t *testing.T) {
 					},
 				},
 			},
-			expected: []pathsByMatchGroupType{
-				{
-					key: "Prefix//test",
-					paths: []ingressPath{
+			expected: orderedPathsByMatchGroup{
+				keys: []pathMatchKey{
+					"Prefix//test",
+				},
+				data: map[pathMatchKey][]ingressPath{
+					"Prefix//test": {
 						{
 							ruleIdx:  0,
 							pathIdx:  0,
@@ -310,10 +314,13 @@ func TestGroupPaths(t *testing.T) {
 					},
 				},
 			},
-			expected: []pathsByMatchGroupType{
-				{
-					key: "Prefix//test",
-					paths: []ingressPath{
+			expected: orderedPathsByMatchGroup{
+				keys: []pathMatchKey{
+					"Prefix//test",
+					"Prefix//test2",
+				},
+				data: map[pathMatchKey][]ingressPath{
+					"Prefix//test": {
 						{
 							ruleIdx:  0,
 							pathIdx:  0,
@@ -332,10 +339,7 @@ func TestGroupPaths(t *testing.T) {
 							},
 						},
 					},
-				},
-				{
-					key: "Prefix//test2",
-					paths: []ingressPath{
+					"Prefix//test2": {
 						{
 							ruleIdx:  1,
 							pathIdx:  0,
@@ -429,10 +433,14 @@ func TestGroupPaths(t *testing.T) {
 					},
 				},
 			},
-			expected: []pathsByMatchGroupType{
-				{
-					key: "Prefix//test11",
-					paths: []ingressPath{
+			expected: orderedPathsByMatchGroup{
+				keys: []pathMatchKey{
+					"Prefix//test11",
+					"Prefix//test12",
+					"Prefix//test21",
+				},
+				data: map[pathMatchKey][]ingressPath{
+					"Prefix//test11": {
 						{
 							ruleIdx:  0,
 							pathIdx:  0,
@@ -468,10 +476,7 @@ func TestGroupPaths(t *testing.T) {
 							},
 						},
 					},
-				},
-				{
-					key: "Prefix//test12",
-					paths: []ingressPath{
+					"Prefix//test12": {
 						{
 							ruleIdx:  0,
 							pathIdx:  1,
@@ -490,10 +495,7 @@ func TestGroupPaths(t *testing.T) {
 							},
 						},
 					},
-				},
-				{
-					key: "Prefix//test21",
-					paths: []ingressPath{
+					"Prefix//test21": {
 						{
 							ruleIdx:  1,
 							pathIdx:  0,

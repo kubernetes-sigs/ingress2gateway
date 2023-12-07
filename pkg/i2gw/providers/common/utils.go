@@ -127,34 +127,29 @@ func ToBackendRef(ib networkingv1.IngressBackend, path *field.Path) (*gatewayv1b
 	}, nil
 }
 
-type pathsByMatchGroupType struct {
-	key   string
-	paths []ingressPath
+type orderedPathsByMatchGroup struct {
+	keys []pathMatchKey
+	data map[pathMatchKey][]ingressPath
 }
 
-func groupPaths(rules []ingressRule) []pathsByMatchGroupType {
+func groupPaths(rules []ingressRule) orderedPathsByMatchGroup {
 	// we use a slice instead of a map to preserve rules order
-	pathsByMatchGroup := []pathsByMatchGroupType{}
+	pathsByMatchGroup := orderedPathsByMatchGroup{}
 
 	for i, ir := range rules {
 		for j, path := range ir.rule.HTTP.Paths {
+			if len(pathsByMatchGroup.keys) == 0 {
+				pathsByMatchGroup.keys = []pathMatchKey{}
+			}
+			if len(pathsByMatchGroup.data) == 0 {
+				pathsByMatchGroup.data = map[pathMatchKey][]ingressPath{}
+			}
 			ip := ingressPath{ruleIdx: i, pathIdx: j, ruleType: "http", path: path}
 			pmKey := getPathMatchKey(ip)
-			var found bool
-			for k, paths := range pathsByMatchGroup {
-				if pmKey == pathMatchKey(paths.key) {
-					paths.paths = append(paths.paths, ip)
-					pathsByMatchGroup[k] = paths
-					found = true
-					break
-				}
+			if _, ok := pathsByMatchGroup.data[pmKey]; !ok {
+				pathsByMatchGroup.keys = append(pathsByMatchGroup.keys, pmKey)
 			}
-			if !found {
-				pathsByMatchGroup = append(pathsByMatchGroup, pathsByMatchGroupType{
-					key:   string(pmKey),
-					paths: []ingressPath{ip},
-				})
-			}
+			pathsByMatchGroup.data[pmKey] = append(pathsByMatchGroup.data[pmKey], ip)
 		}
 	}
 	return pathsByMatchGroup
