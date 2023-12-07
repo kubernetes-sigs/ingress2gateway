@@ -33,12 +33,12 @@ func canaryFeature(ingressResources i2gw.InputResources, gatewayResources *i2gw.
 	ruleGroups := common.GetRuleGroups(ingressResources.Ingresses)
 
 	for _, rg := range ruleGroups {
-		pathsByMatchGroup, errs := getPathsByMatchGroups(rg)
+		ingressPathsByMatchKey, errs := getPathsByMatchGroups(rg)
 		if len(errs) > 0 {
 			return errs
 		}
 
-		for _, paths := range pathsByMatchGroup {
+		for _, paths := range ingressPathsByMatchKey {
 			path := paths[0]
 
 			backendRefs, calculationErrs := calculateBackendRefWeight(paths)
@@ -61,7 +61,7 @@ func canaryFeature(ingressResources i2gw.InputResources, gatewayResources *i2gw.
 }
 
 func getPathsByMatchGroups(rg common.IngressRuleGroup) (map[pathMatchKey][]ingressPath, field.ErrorList) {
-	pathsByMatchGroup := map[pathMatchKey][]ingressPath{}
+	ingressPathsByMatchKey := map[pathMatchKey][]ingressPath{}
 
 	for _, ir := range rg.Rules {
 
@@ -76,11 +76,11 @@ func getPathsByMatchGroups(rg common.IngressRuleGroup) (map[pathMatchKey][]ingre
 		for _, path := range ir.IngressRule.HTTP.Paths {
 			ip := ingressPath{ingress: ingress, ruleType: "http", path: path, extra: &extraFeatures}
 			pmKey := getPathMatchKey(ip)
-			pathsByMatchGroup[pmKey] = append(pathsByMatchGroup[pmKey], ip)
+			ingressPathsByMatchKey[pmKey] = append(ingressPathsByMatchKey[pmKey], ip)
 		}
 	}
 
-	return pathsByMatchGroup, nil
+	return ingressPathsByMatchKey, nil
 }
 
 func patchHTTPRouteWithBackendRefs(httpRoute *gatewayv1beta1.HTTPRoute, backendRefs []gatewayv1beta1.HTTPBackendRef) {

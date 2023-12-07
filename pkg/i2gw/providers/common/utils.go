@@ -127,6 +127,31 @@ func ToBackendRef(ib networkingv1.IngressBackend, path *field.Path) (*gatewayv1b
 	}, nil
 }
 
+type orderedIngressPathsByMatchKey struct {
+	keys []pathMatchKey
+	data map[pathMatchKey][]ingressPath
+}
+
+func groupIngressPathsByMatchKey(rules []ingressRule) orderedIngressPathsByMatchKey {
+	// we track the keys in an additional slice in order to preserve the rules order
+	ingressPathsByMatchKey := orderedIngressPathsByMatchKey{
+		keys: []pathMatchKey{},
+		data: map[pathMatchKey][]ingressPath{},
+	}
+
+	for i, ir := range rules {
+		for j, path := range ir.rule.HTTP.Paths {
+			ip := ingressPath{ruleIdx: i, pathIdx: j, ruleType: "http", path: path}
+			pmKey := getPathMatchKey(ip)
+			if _, ok := ingressPathsByMatchKey.data[pmKey]; !ok {
+				ingressPathsByMatchKey.keys = append(ingressPathsByMatchKey.keys, pmKey)
+			}
+			ingressPathsByMatchKey.data[pmKey] = append(ingressPathsByMatchKey.data[pmKey], ip)
+		}
+	}
+	return ingressPathsByMatchKey
+}
+
 func PtrTo[T any](a T) *T {
 	return &a
 }

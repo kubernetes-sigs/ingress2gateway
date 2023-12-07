@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/google/go-cmp v0.6.0
 	github.com/spf13/cobra v1.8.0
-	istio.io/api v1.20.0
+	github.com/stretchr/testify v1.8.4
 	k8s.io/api v0.28.4
 	k8s.io/apimachinery v0.28.4
 	k8s.io/cli-runtime v0.28.4
@@ -13,6 +13,11 @@ require (
 	k8s.io/utils v0.0.0-20231121161247-cf03d44ff3cf
 	sigs.k8s.io/controller-runtime v0.16.3
 	sigs.k8s.io/gateway-api v0.5.0
+)
+
+require (
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	istio.io/api v1.20.0 // indirect
 )
 
 require (
@@ -63,7 +68,7 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	istio.io/client-go v1.19.0-alpha.1.0.20231130185426-9f1859c8ff42 // indirect
+	istio.io/client-go v1.19.0-alpha.1.0.20231130185426-9f1859c8ff42
 	k8s.io/klog/v2 v2.110.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20231113174909-778a5567bc1e // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
