@@ -134,16 +134,13 @@ type orderedIngressPathsByMatchKey struct {
 
 func groupIngressPathsByMatchKey(rules []ingressRule) orderedIngressPathsByMatchKey {
 	// we use a slice instead of a map to preserve rules order
-	pathsByMatchGroup := orderedIngressPathsByMatchKey{}
+	pathsByMatchGroup := orderedIngressPathsByMatchKey{
+		keys: []pathMatchKey{},
+		data: map[pathMatchKey][]ingressPath{},
+	}
 
 	for i, ir := range rules {
 		for j, path := range ir.rule.HTTP.Paths {
-			if len(pathsByMatchGroup.keys) == 0 {
-				pathsByMatchGroup.keys = []pathMatchKey{}
-			}
-			if len(pathsByMatchGroup.data) == 0 {
-				pathsByMatchGroup.data = map[pathMatchKey][]ingressPath{}
-			}
 			ip := ingressPath{ruleIdx: i, pathIdx: j, ruleType: "http", path: path}
 			pmKey := getPathMatchKey(ip)
 			if _, ok := pathsByMatchGroup.data[pmKey]; !ok {

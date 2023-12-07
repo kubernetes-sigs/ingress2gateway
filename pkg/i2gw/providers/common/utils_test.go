@@ -32,9 +32,12 @@ func TestGroupPaths(t *testing.T) {
 		expected orderedIngressPathsByMatchKey
 	}{
 		{
-			name:     "no rules",
-			rules:    []ingressRule{},
-			expected: orderedIngressPathsByMatchKey{},
+			name:  "no rules",
+			rules: []ingressRule{},
+			expected: orderedIngressPathsByMatchKey{
+				keys: []pathMatchKey{},
+				data: map[pathMatchKey][]ingressPath{},
+			},
 		},
 		{
 			name: "1 rule with 1 match",
