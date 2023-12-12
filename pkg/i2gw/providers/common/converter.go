@@ -325,7 +325,7 @@ func (rg *ingressRuleGroup) configureBackendRef(paths []ingressPath) ([]gatewayv
 	for i, path := range paths {
 		if path.path.Backend.Service != nil {
 
-			backend := fmt.Sprintf("%s/%v", path.path.Backend.Service.Name, path.path.Backend.Service.Port.Number)
+			backend := fmt.Sprintf("%s/%d", path.path.Backend.Service.Name, path.path.Backend.Service.Port.Number)
 
 			// skip duplicates
 			if _, exists := uniqueBackends[backend]; exists {
