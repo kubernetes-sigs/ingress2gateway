@@ -320,7 +320,7 @@ func (rg *ingressRuleGroup) configureBackendRef(paths []ingressPath) ([]gatewayv
 	var backendRefs []gatewayv1beta1.HTTPBackendRef
 
 	// track unique backends to avoid duplicates
-	uniqueBackends := make(map[string]bool)
+	uniqueBackends := make(map[string]interface{})
 
 	for i, path := range paths {
 		if path.path.Backend.Service != nil {
@@ -333,7 +333,7 @@ func (rg *ingressRuleGroup) configureBackendRef(paths []ingressPath) ([]gatewayv
 			}
 
 			// add new unique backend and create a BackendRef for it
-			uniqueBackends[backend] = true
+			uniqueBackends[backend] = nil
 		}
 
 		backendRef, err := toBackendRef(path.path.Backend, field.NewPath("paths", "backends").Index(i))
