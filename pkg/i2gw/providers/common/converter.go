@@ -323,24 +323,24 @@ func (rg *ingressRuleGroup) configureBackendRef(paths []ingressPath) ([]gatewayv
 	uniqueBackends := make(map[string]interface{})
 
 	for i, path := range paths {
-		if path.path.Backend.Service != nil {
+		backendRef, err := toBackendRef(path.path.Backend, field.NewPath("paths", "backends").Index(i))
+		if err != nil {
+			errors = append(errors, err)
+			continue
+		}
 
-			backend := fmt.Sprintf("%s/%d", path.path.Backend.Service.Name, path.path.Backend.Service.Port.Number)
+		if path.path.Backend.Service != nil && backendRef.BackendObjectReference.Port != nil {
+			backend := fmt.Sprintf("%s/%d", backendRef.BackendObjectReference.Name, *backendRef.BackendObjectReference.Port)
 
 			// skip duplicates
 			if _, exists := uniqueBackends[backend]; exists {
 				continue
 			}
 
-			// add new unique backend and create a BackendRef for it
+			// add new unique backend
 			uniqueBackends[backend] = nil
 		}
 
-		backendRef, err := toBackendRef(path.path.Backend, field.NewPath("paths", "backends").Index(i))
-		if err != nil {
-			errors = append(errors, err)
-			continue
-		}
 		backendRefs = append(backendRefs, gatewayv1beta1.HTTPBackendRef{BackendRef: *backendRef})
 	}
 
