@@ -26,7 +26,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 func TestMethodMatchingFeature(t *testing.T) {
@@ -35,7 +35,7 @@ func TestMethodMatchingFeature(t *testing.T) {
 	testCases := []struct {
 		name                     string
 		inputResources           i2gw.InputResources
-		expectedHTTPRouteMatches map[string][][]gatewayv1beta1.HTTPRouteMatch
+		expectedHTTPRouteMatches map[string][][]gatewayv1.HTTPRouteMatch
 		expectedErrors           field.ErrorList
 	}{
 		{
@@ -75,11 +75,11 @@ func TestMethodMatchingFeature(t *testing.T) {
 					},
 				},
 			},
-			expectedHTTPRouteMatches: map[string][][]gatewayv1beta1.HTTPRouteMatch{
+			expectedHTTPRouteMatches: map[string][][]gatewayv1.HTTPRouteMatch{
 				"default/one-method-test-mydomain-com": {
 					{
-						gatewayv1beta1.HTTPRouteMatch{
-							Method: ptrTo(gatewayv1beta1.HTTPMethodGet),
+						gatewayv1.HTTPRouteMatch{
+							Method: ptrTo(gatewayv1.HTTPMethodGet),
 						},
 					},
 				},
@@ -123,17 +123,17 @@ func TestMethodMatchingFeature(t *testing.T) {
 					},
 				},
 			},
-			expectedHTTPRouteMatches: map[string][][]gatewayv1beta1.HTTPRouteMatch{
+			expectedHTTPRouteMatches: map[string][][]gatewayv1.HTTPRouteMatch{
 				"default/many-methods-test-mydomain-com": {
 					{
-						gatewayv1beta1.HTTPRouteMatch{
-							Method: ptrTo(gatewayv1beta1.HTTPMethodGet),
+						gatewayv1.HTTPRouteMatch{
+							Method: ptrTo(gatewayv1.HTTPMethodGet),
 						},
-						gatewayv1beta1.HTTPRouteMatch{
-							Method: ptrTo(gatewayv1beta1.HTTPMethodPost),
+						gatewayv1.HTTPRouteMatch{
+							Method: ptrTo(gatewayv1.HTTPMethodPost),
 						},
-						gatewayv1beta1.HTTPRouteMatch{
-							Method: ptrTo(gatewayv1beta1.HTTPMethodDelete),
+						gatewayv1.HTTPRouteMatch{
+							Method: ptrTo(gatewayv1.HTTPMethodDelete),
 						},
 					},
 				},
