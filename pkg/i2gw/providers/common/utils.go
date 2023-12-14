@@ -157,16 +157,16 @@ func PtrTo[T any](a T) *T {
 }
 
 type uniqueBackendRefsKey struct {
-	Name      gatewayv1beta1.ObjectName
-	Namespace gatewayv1beta1.Namespace
-	Port      gatewayv1beta1.PortNumber
-	Group     gatewayv1beta1.Group
-	Kind      gatewayv1beta1.Kind
+	Name      gatewayv1.ObjectName
+	Namespace gatewayv1.Namespace
+	Port      gatewayv1.PortNumber
+	Group     gatewayv1.Group
+	Kind      gatewayv1.Kind
 }
 
 // DeDuplicateBackendRefs removes duplicate backendRefs from a list of backendRefs.
-func DeDuplicateBackendRefs(backendRefs []gatewayv1beta1.HTTPBackendRef) []gatewayv1beta1.HTTPBackendRef {
-	var deDuplicatedBackendRefs []gatewayv1beta1.HTTPBackendRef
+func DeDuplicateBackendRefs(backendRefs []gatewayv1.HTTPBackendRef) []gatewayv1.HTTPBackendRef {
+	var deDuplicatedBackendRefs []gatewayv1.HTTPBackendRef
 	uniqueBackendRefs := map[uniqueBackendRefsKey]struct{}{}
 
 	for _, backendRef := range backendRefs {
