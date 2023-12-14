@@ -319,9 +319,6 @@ func (rg *ingressRuleGroup) configureBackendRef(paths []ingressPath) ([]gatewayv
 	var errors field.ErrorList
 	var backendRefs []gatewayv1beta1.HTTPBackendRef
 
-	// track unique backends to avoid duplicates
-	uniqueBackends := make(map[string]interface{})
-
 	for i, path := range paths {
 		backendRef, err := toBackendRef(path.path.Backend, field.NewPath("paths", "backends").Index(i))
 		if err != nil {
@@ -329,22 +326,12 @@ func (rg *ingressRuleGroup) configureBackendRef(paths []ingressPath) ([]gatewayv
 			continue
 		}
 
-		if path.path.Backend.Service != nil && backendRef.BackendObjectReference.Port != nil {
-			backend := fmt.Sprintf("%s/%d", backendRef.BackendObjectReference.Name, *backendRef.BackendObjectReference.Port)
-
-			// skip duplicates
-			if _, exists := uniqueBackends[backend]; exists {
-				continue
-			}
-
-			// add new unique backend
-			uniqueBackends[backend] = nil
-		}
-
 		backendRefs = append(backendRefs, gatewayv1beta1.HTTPBackendRef{BackendRef: *backendRef})
 	}
 
-	return backendRefs, errors
+	DeDuplicatedBackendRefs := DeDuplicateBackendRefs(backendRefs)
+
+	return DeDuplicatedBackendRefs, errors
 }
 
 func getPathMatchKey(ip ingressPath) pathMatchKey {

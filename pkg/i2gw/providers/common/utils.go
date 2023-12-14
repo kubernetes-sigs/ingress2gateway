@@ -155,3 +155,38 @@ func groupIngressPathsByMatchKey(rules []ingressRule) orderedIngressPathsByMatch
 func PtrTo[T any](a T) *T {
 	return &a
 }
+
+type uniqueBackendRefsKey struct {
+	Name      gatewayv1beta1.ObjectName
+	Namespace gatewayv1beta1.Namespace
+	Port      gatewayv1beta1.PortNumber
+	Group     gatewayv1beta1.Group
+	Kind      gatewayv1beta1.Kind
+}
+
+// DeDuplicateBackendRefs removes duplicate backendRefs from a list of backendRefs.
+func DeDuplicateBackendRefs(backendRefs []gatewayv1beta1.HTTPBackendRef) []gatewayv1beta1.HTTPBackendRef {
+	var deDuplicatedBackendRefs []gatewayv1beta1.HTTPBackendRef
+	uniqueBackendRefs := map[uniqueBackendRefsKey]struct{}{}
+
+	for _, backendRef := range backendRefs {
+		var k uniqueBackendRefsKey
+
+		if backendRef.Port != nil {
+			k.Name = backendRef.Name
+			k.Port = *backendRef.Port
+		} else {
+			k.Name = backendRef.Name
+			k.Group = *backendRef.Group
+			k.Kind = *backendRef.Kind
+		}
+
+		if _, exists := uniqueBackendRefs[k]; exists {
+			continue
+		}
+
+		uniqueBackendRefs[k] = struct{}{}
+		deDuplicatedBackendRefs = append(deDuplicatedBackendRefs, backendRef)
+	}
+	return deDuplicatedBackendRefs
+}
