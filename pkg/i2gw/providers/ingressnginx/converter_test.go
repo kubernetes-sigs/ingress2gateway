@@ -30,15 +30,15 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/ptr"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 func Test_ToGateway(t *testing.T) {
 	iPrefix := networkingv1.PathTypePrefix
 	//iExact := networkingv1.PathTypeExact
-	gPathPrefix := gatewayv1beta1.PathMatchPathPrefix
 	isPathType := networkingv1.PathTypeImplementationSpecific
-	//gExact := gatewayv1beta1.PathMatchExact
+	gPathPrefix := gatewayv1.PathMatchPathPrefix
+	//gExact := gatewayv1.PathMatchExact
 
 	testCases := []struct {
 		name                     string
@@ -106,54 +106,54 @@ func Test_ToGateway(t *testing.T) {
 				},
 			},
 			expectedGatewayResources: i2gw.GatewayResources{
-				Gateways: map[types.NamespacedName]gatewayv1beta1.Gateway{
+				Gateways: map[types.NamespacedName]gatewayv1.Gateway{
 					{Namespace: "default", Name: "ingress-nginx"}: {
 						ObjectMeta: metav1.ObjectMeta{Name: "ingress-nginx", Namespace: "default"},
-						Spec: gatewayv1beta1.GatewaySpec{
+						Spec: gatewayv1.GatewaySpec{
 							GatewayClassName: "ingress-nginx",
-							Listeners: []gatewayv1beta1.Listener{{
+							Listeners: []gatewayv1.Listener{{
 								Name:     "echo-prod-mydomain-com-http",
 								Port:     80,
-								Protocol: gatewayv1beta1.HTTPProtocolType,
-								Hostname: ptrTo(gatewayv1beta1.Hostname("echo.prod.mydomain.com")),
+								Protocol: gatewayv1.HTTPProtocolType,
+								Hostname: ptrTo(gatewayv1.Hostname("echo.prod.mydomain.com")),
 							}},
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]gatewayv1beta1.HTTPRoute{
+				HTTPRoutes: map[types.NamespacedName]gatewayv1.HTTPRoute{
 					{Namespace: "default", Name: "production-echo-prod-mydomain-com"}: {
 						ObjectMeta: metav1.ObjectMeta{Name: "production-echo-prod-mydomain-com", Namespace: "default"},
-						Spec: gatewayv1beta1.HTTPRouteSpec{
-							CommonRouteSpec: gatewayv1beta1.CommonRouteSpec{
-								ParentRefs: []gatewayv1beta1.ParentReference{{
+						Spec: gatewayv1.HTTPRouteSpec{
+							CommonRouteSpec: gatewayv1.CommonRouteSpec{
+								ParentRefs: []gatewayv1.ParentReference{{
 									Name: "ingress-nginx",
 								}},
 							},
-							Hostnames: []gatewayv1beta1.Hostname{"echo.prod.mydomain.com"},
-							Rules: []gatewayv1beta1.HTTPRouteRule{{
-								Matches: []gatewayv1beta1.HTTPRouteMatch{{
-									Path: &gatewayv1beta1.HTTPPathMatch{
+							Hostnames: []gatewayv1.Hostname{"echo.prod.mydomain.com"},
+							Rules: []gatewayv1.HTTPRouteRule{{
+								Matches: []gatewayv1.HTTPRouteMatch{{
+									Path: &gatewayv1.HTTPPathMatch{
 										Type:  &gPathPrefix,
 										Value: ptrTo("/"),
 									},
 								}},
-								BackendRefs: []gatewayv1beta1.HTTPBackendRef{
+								BackendRefs: []gatewayv1.HTTPBackendRef{
 									{
-										BackendRef: gatewayv1beta1.BackendRef{
-											BackendObjectReference: gatewayv1beta1.BackendObjectReference{
+										BackendRef: gatewayv1.BackendRef{
+											BackendObjectReference: gatewayv1.BackendObjectReference{
 												Name:  "production",
-												Group: ptrTo(gatewayv1beta1.Group("vendor.example.com")),
-												Kind:  ptrTo(gatewayv1beta1.Kind("StorageBucket")),
+												Group: ptrTo(gatewayv1.Group("vendor.example.com")),
+												Kind:  ptrTo(gatewayv1.Kind("StorageBucket")),
 											},
 											Weight: ptrTo(int32(80)),
 										},
 									},
 									{
-										BackendRef: gatewayv1beta1.BackendRef{
-											BackendObjectReference: gatewayv1beta1.BackendObjectReference{
+										BackendRef: gatewayv1.BackendRef{
+											BackendObjectReference: gatewayv1.BackendObjectReference{
 												Name:  "canary",
-												Group: ptrTo(gatewayv1beta1.Group("vendor.example.com")),
-												Kind:  ptrTo(gatewayv1beta1.Kind("StorageBucket")),
+												Group: ptrTo(gatewayv1.Group("vendor.example.com")),
+												Kind:  ptrTo(gatewayv1.Kind("StorageBucket")),
 											},
 											Weight: ptrTo(int32(20)),
 										},

@@ -22,7 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 type converter struct{}
@@ -34,13 +34,13 @@ func newConverter() converter {
 func (c *converter) convert(storage storage) (i2gw.GatewayResources, field.ErrorList) {
 	// TODO(#100): This logic only do a simple metadata conversion. Need to implement istio conversion logic.
 	gatewayResources := i2gw.GatewayResources{
-		Gateways: make(map[types.NamespacedName]gatewayv1beta1.Gateway),
+		Gateways: make(map[types.NamespacedName]gatewayv1.Gateway),
 	}
 
 	for namespacedName, gw := range storage.Gateways {
 		apiVersion, kind := common.GatewayGVK.ToAPIVersionAndKind()
 
-		gatewayResources.Gateways[namespacedName] = gatewayv1beta1.Gateway{
+		gatewayResources.Gateways[namespacedName] = gatewayv1.Gateway{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: apiVersion,
 				Kind:       kind,

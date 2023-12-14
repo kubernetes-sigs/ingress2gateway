@@ -24,14 +24,14 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 	testCases := []struct {
 		name                string
 		paths               []ingressPath
-		expectedBackendRefs []gatewayv1beta1.HTTPBackendRef
+		expectedBackendRefs []gatewayv1.HTTPBackendRef
 		expectedErrors      field.ErrorList
 	}{
 		{
@@ -63,9 +63,9 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 					},
 				},
 			},
-			expectedBackendRefs: []gatewayv1beta1.HTTPBackendRef{
-				{BackendRef: gatewayv1beta1.BackendRef{Weight: ptrTo(int32(100))}},
-				{BackendRef: gatewayv1beta1.BackendRef{Weight: ptrTo(int32(0))}},
+			expectedBackendRefs: []gatewayv1.HTTPBackendRef{
+				{BackendRef: gatewayv1.BackendRef{Weight: ptrTo(int32(100))}},
+				{BackendRef: gatewayv1.BackendRef{Weight: ptrTo(int32(0))}},
 			},
 		},
 		{
@@ -97,9 +97,9 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 					},
 				},
 			},
-			expectedBackendRefs: []gatewayv1beta1.HTTPBackendRef{
-				{BackendRef: gatewayv1beta1.BackendRef{Weight: ptrTo(int32(30))}},
-				{BackendRef: gatewayv1beta1.BackendRef{Weight: ptrTo(int32(70))}},
+			expectedBackendRefs: []gatewayv1.HTTPBackendRef{
+				{BackendRef: gatewayv1.BackendRef{Weight: ptrTo(int32(30))}},
+				{BackendRef: gatewayv1.BackendRef{Weight: ptrTo(int32(70))}},
 			},
 		},
 		{
@@ -132,9 +132,9 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 					},
 				},
 			},
-			expectedBackendRefs: []gatewayv1beta1.HTTPBackendRef{
-				{BackendRef: gatewayv1beta1.BackendRef{Weight: ptrTo(int32(50))}},
-				{BackendRef: gatewayv1beta1.BackendRef{Weight: ptrTo(int32(150))}},
+			expectedBackendRefs: []gatewayv1.HTTPBackendRef{
+				{BackendRef: gatewayv1.BackendRef{Weight: ptrTo(int32(50))}},
+				{BackendRef: gatewayv1.BackendRef{Weight: ptrTo(int32(150))}},
 			},
 		},
 	}

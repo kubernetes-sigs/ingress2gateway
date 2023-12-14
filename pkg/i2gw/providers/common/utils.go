@@ -23,7 +23,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 func GetIngressClass(ingress networkingv1.Ingress) string {
@@ -105,24 +105,24 @@ func RouteName(ingressName, host string) string {
 	return fmt.Sprintf("%s-%s", ingressName, NameFromHost(host))
 }
 
-func ToBackendRef(ib networkingv1.IngressBackend, path *field.Path) (*gatewayv1beta1.BackendRef, *field.Error) {
+func ToBackendRef(ib networkingv1.IngressBackend, path *field.Path) (*gatewayv1.BackendRef, *field.Error) {
 	if ib.Service != nil {
 		if ib.Service.Port.Name != "" {
 			fieldPath := path.Child("service", "port")
 			return nil, field.Invalid(fieldPath, "name", fmt.Sprintf("named ports not supported: %s", ib.Service.Port.Name))
 		}
-		return &gatewayv1beta1.BackendRef{
-			BackendObjectReference: gatewayv1beta1.BackendObjectReference{
-				Name: gatewayv1beta1.ObjectName(ib.Service.Name),
-				Port: (*gatewayv1beta1.PortNumber)(&ib.Service.Port.Number),
+		return &gatewayv1.BackendRef{
+			BackendObjectReference: gatewayv1.BackendObjectReference{
+				Name: gatewayv1.ObjectName(ib.Service.Name),
+				Port: (*gatewayv1.PortNumber)(&ib.Service.Port.Number),
 			},
 		}, nil
 	}
-	return &gatewayv1beta1.BackendRef{
-		BackendObjectReference: gatewayv1beta1.BackendObjectReference{
-			Group: (*gatewayv1beta1.Group)(ib.Resource.APIGroup),
-			Kind:  (*gatewayv1beta1.Kind)(&ib.Resource.Kind),
-			Name:  gatewayv1beta1.ObjectName(ib.Resource.Name),
+	return &gatewayv1.BackendRef{
+		BackendObjectReference: gatewayv1.BackendObjectReference{
+			Group: (*gatewayv1.Group)(ib.Resource.APIGroup),
+			Kind:  (*gatewayv1.Kind)(&ib.Resource.Kind),
+			Name:  gatewayv1.ObjectName(ib.Resource.Name),
 		},
 	}, nil
 }
