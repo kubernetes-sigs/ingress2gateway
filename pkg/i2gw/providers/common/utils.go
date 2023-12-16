@@ -164,10 +164,10 @@ type uniqueBackendRefsKey struct {
 	Kind      gatewayv1.Kind
 }
 
-// DeDuplicateBackendRefs removes duplicate backendRefs from a list of backendRefs.
-func DeDuplicateBackendRefs(backendRefs []gatewayv1.HTTPBackendRef) []gatewayv1.HTTPBackendRef {
-	var deDuplicatedBackendRefs []gatewayv1.HTTPBackendRef
-	uniqueBackendRefs := map[uniqueBackendRefsKey]struct{}{}
+// removeBackendRefsDuplicates removes duplicate backendRefs from a list of backendRefs.
+func removeBackendRefsDuplicates(backendRefs []gatewayv1.HTTPBackendRef) []gatewayv1.HTTPBackendRef {
+	var uniqueBackendRefs []gatewayv1.HTTPBackendRef
+	uniqueKeys := map[uniqueBackendRefsKey]struct{}{}
 
 	for _, backendRef := range backendRefs {
 		var k uniqueBackendRefsKey
@@ -181,12 +181,12 @@ func DeDuplicateBackendRefs(backendRefs []gatewayv1.HTTPBackendRef) []gatewayv1.
 			k.Kind = *backendRef.Kind
 		}
 
-		if _, exists := uniqueBackendRefs[k]; exists {
+		if _, exists := uniqueKeys[k]; exists {
 			continue
 		}
 
-		uniqueBackendRefs[k] = struct{}{}
-		deDuplicatedBackendRefs = append(deDuplicatedBackendRefs, backendRef)
+		uniqueKeys[k] = struct{}{}
+		uniqueBackendRefs = append(uniqueBackendRefs, backendRef)
 	}
-	return deDuplicatedBackendRefs
+	return uniqueBackendRefs
 }
