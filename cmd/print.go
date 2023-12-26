@@ -26,7 +26,6 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/client-go/tools/clientcmd"
-	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	// Call init function for the providers
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
@@ -73,38 +72,102 @@ func (pr *PrintRunner) PrintGatewaysAndHTTPRoutes(cmd *cobra.Command, _ []string
 		return fmt.Errorf("failed to initialize namespace filter: %w", err)
 	}
 
-	httpRoutes, gateways, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers)
+	gatewayResources, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers)
 	if err != nil {
 		return err
 	}
 
-	pr.outputResult(httpRoutes, gateways)
+	pr.outputResult(gatewayResources)
 
 	return nil
 }
 
-func (pr *PrintRunner) outputResult(httpRoutes []gatewayv1.HTTPRoute, gateways []gatewayv1.Gateway) {
-	if len(httpRoutes)+len(gateways) == 0 {
+func (pr *PrintRunner) outputResult(gatewayResources []i2gw.GatewayResources) {
+	resourceCount := 0
+
+	for _, r := range gatewayResources {
+		resourceCount += len(r.GatewayClasses)
+		for _, gatewayClass := range r.GatewayClasses {
+			gatewayClass := gatewayClass
+			err := pr.resourcePrinter.PrintObj(&gatewayClass, os.Stdout)
+			if err != nil {
+				fmt.Printf("# Error printing %s GatewayClass: %v\n", gatewayClass.Name, err)
+			}
+		}
+	}
+
+	for _, r := range gatewayResources {
+		resourceCount += len(r.Gateways)
+		for _, gateway := range r.Gateways {
+			gateway := gateway
+			err := pr.resourcePrinter.PrintObj(&gateway, os.Stdout)
+			if err != nil {
+				fmt.Printf("# Error printing %s Gateway: %v\n", gateway.Name, err)
+			}
+		}
+	}
+
+	for _, r := range gatewayResources {
+		resourceCount += len(r.HTTPRoutes)
+		for _, httpRoute := range r.HTTPRoutes {
+			httpRoute := httpRoute
+			err := pr.resourcePrinter.PrintObj(&httpRoute, os.Stdout)
+			if err != nil {
+				fmt.Printf("# Error printing %s HTTPRoute: %v\n", httpRoute.Name, err)
+			}
+		}
+	}
+
+	for _, r := range gatewayResources {
+		resourceCount += len(r.TLSRoutes)
+		for _, tlsRoute := range r.TLSRoutes {
+			tlsRoute := tlsRoute
+			err := pr.resourcePrinter.PrintObj(&tlsRoute, os.Stdout)
+			if err != nil {
+				fmt.Printf("# Error printing %s TLSRoute: %v\n", tlsRoute.Name, err)
+			}
+		}
+	}
+
+	for _, r := range gatewayResources {
+		resourceCount += len(r.TCPRoutes)
+		for _, tcpRoute := range r.TCPRoutes {
+			tcpRoute := tcpRoute
+			err := pr.resourcePrinter.PrintObj(&tcpRoute, os.Stdout)
+			if err != nil {
+				fmt.Printf("# Error printing %s TCPRoute: %v\n", tcpRoute.Name, err)
+			}
+		}
+	}
+
+	for _, r := range gatewayResources {
+		resourceCount += len(r.UDPRoutes)
+		for _, udpRoute := range r.UDPRoutes {
+			udpRoute := udpRoute
+			err := pr.resourcePrinter.PrintObj(&udpRoute, os.Stdout)
+			if err != nil {
+				fmt.Printf("# Error printing %s UDPRoute: %v\n", udpRoute.Name, err)
+			}
+		}
+	}
+
+	for _, r := range gatewayResources {
+		resourceCount += len(r.ReferenceGrants)
+		for _, referenceGrant := range r.ReferenceGrants {
+			referenceGrant := referenceGrant
+			err := pr.resourcePrinter.PrintObj(&referenceGrant, os.Stdout)
+			if err != nil {
+				fmt.Printf("# Error printing %s ReferenceGrant: %v\n", referenceGrant.Name, err)
+			}
+		}
+	}
+
+	if resourceCount == 0 {
 		msg := "No resources found"
 		if pr.namespaceFilter != "" {
 			msg = fmt.Sprintf("%s in %s namespace", msg, pr.namespaceFilter)
 		}
 		fmt.Println(msg)
-		return
-	}
-
-	for i := range gateways {
-		err := pr.resourcePrinter.PrintObj(&gateways[i], os.Stdout)
-		if err != nil {
-			fmt.Printf("# Error printing %s Gateway: %v\n", gateways[i].Name, err)
-		}
-	}
-
-	for i := range httpRoutes {
-		err := pr.resourcePrinter.PrintObj(&httpRoutes[i], os.Stdout)
-		if err != nil {
-			fmt.Printf("# Error printing %s HTTPRoute: %v\n", httpRoutes[i].Name, err)
-		}
 	}
 }
 

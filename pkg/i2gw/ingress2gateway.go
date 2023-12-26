@@ -31,68 +31,63 @@ import (
 	kubeyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
-	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string, providers []string) ([]gatewayv1.HTTPRoute, []gatewayv1.Gateway, error) {
+func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string, providers []string) ([]GatewayResources, error) {
 	conf, err := config.GetConfig()
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get client config: %w", err)
+		return nil, fmt.Errorf("failed to get client config: %w", err)
 	}
 
 	cl, err := client.New(conf, client.Options{})
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create client: %w", err)
+		return nil, fmt.Errorf("failed to create client: %w", err)
 	}
 	cl = client.NewNamespacedClient(cl, namespace)
 
 	var ingresses networkingv1.IngressList
-	var gateways []gatewayv1.Gateway
-	var httpRoutes []gatewayv1.HTTPRoute
 
 	providerByName, err := constructProviders(&ProviderConf{
 		Client: cl,
 	}, providers)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	resources := InputResources{}
 
 	if inputFile != "" {
 		if err = ConstructIngressesFromFile(&ingresses, inputFile, namespace); err != nil {
-			return nil, nil, fmt.Errorf("failed to read ingresses from file: %w", err)
+			return nil, fmt.Errorf("failed to read ingresses from file: %w", err)
 		}
 		resources.Ingresses = ingresses.Items
 		if err = readProviderResourcesFromFile(ctx, providerByName, inputFile); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	} else {
 		if err = ConstructIngressesFromCluster(ctx, cl, &ingresses); err != nil {
-			return nil, nil, fmt.Errorf("failed to read ingresses from cluster: %w", err)
+			return nil, fmt.Errorf("failed to read ingresses from cluster: %w", err)
 		}
 		resources.Ingresses = ingresses.Items
 		if err = readProviderResourcesFromCluster(ctx, providerByName); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
-	var errs field.ErrorList
+	var (
+		gatewayResources []GatewayResources
+		errs             field.ErrorList
+	)
 	for _, provider := range providerByName {
-		gatewayResources, conversionErrs := provider.ToGatewayAPI(resources)
+		providerGatewayResources, conversionErrs := provider.ToGatewayAPI(resources)
 		errs = append(errs, conversionErrs...)
-		for _, gateway := range gatewayResources.Gateways {
-			gateways = append(gateways, gateway)
-		}
-		for _, route := range gatewayResources.HTTPRoutes {
-			httpRoutes = append(httpRoutes, route)
-		}
+		gatewayResources = append(gatewayResources, providerGatewayResources)
 	}
 	if len(errs) > 0 {
-		return nil, nil, aggregatedErrs(errs)
+		return nil, aggregatedErrs(errs)
 	}
 
-	return httpRoutes, gateways, nil
+	return gatewayResources, nil
 }
 
 func readProviderResourcesFromFile(ctx context.Context, providerByName map[ProviderName]Provider, inputFile string) error {
