@@ -39,14 +39,14 @@ func Test_ToGateway(t *testing.T) {
 
 	testCases := []struct {
 		name                     string
-		ingresses                []networkingv1.Ingress
+		ingresses                map[types.NamespacedName]*networkingv1.Ingress
 		expectedGatewayResources i2gw.GatewayResources
 		expectedErrors           field.ErrorList
 	}{
 		{
 			name: "header matching, method matching, plugin, single ingress rule",
-			ingresses: []networkingv1.Ingress{
-				{
+			ingresses: map[types.NamespacedName]*networkingv1.Ingress{
+				{Namespace: "default", Name: "multiple-matching-single-rule"}: {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "multiple-matching-single-rule",
 						Namespace: "default",
@@ -163,8 +163,8 @@ func Test_ToGateway(t *testing.T) {
 		},
 		{
 			name: "header matching, method matching, multiple ingress rules",
-			ingresses: []networkingv1.Ingress{
-				{
+			ingresses: map[types.NamespacedName]*networkingv1.Ingress{
+				{Namespace: "default", Name: "multiple-matching-multiple-rules"}: {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "multiple-matching-multiple-rules",
 						Namespace: "default",
@@ -326,8 +326,8 @@ func Test_ToGateway(t *testing.T) {
 		},
 		{
 			name: "ImplementationSpecific HTTPRouteMatching with regex",
-			ingresses: []networkingv1.Ingress{
-				{
+			ingresses: map[types.NamespacedName]*networkingv1.Ingress{
+				{Namespace: "default", Name: "implementation-specific-regex"}: {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "implementation-specific-regex",
 						Namespace: "default",
@@ -411,8 +411,8 @@ func Test_ToGateway(t *testing.T) {
 		},
 		{
 			name: "ImplementationSpecific HTTPRouteMatching without regex",
-			ingresses: []networkingv1.Ingress{
-				{
+			ingresses: map[types.NamespacedName]*networkingv1.Ingress{
+				{Namespace: "default", Name: "implementation-no-regex"}: {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "implementation-specific-no-regex",
 						Namespace: "default",
@@ -500,12 +500,11 @@ func Test_ToGateway(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			provider := NewProvider(&i2gw.ProviderConf{})
+			kongProvider := provider.(*Provider)
+			kongProvider.storage.Ingresses = tc.ingresses
 
-			resources := i2gw.InputResources{
-				Ingresses: tc.ingresses,
-			}
-
-			gatewayResources, errs := provider.ToGatewayAPI(resources)
+			// TODO(liorlieberman) we pass an empty i2gw.InputResources temporarily until we decide to change ToGatewayAPI interface
+			gatewayResources, errs := provider.ToGatewayAPI(i2gw.InputResources{})
 
 			if len(gatewayResources.HTTPRoutes) != len(tc.expectedGatewayResources.HTTPRoutes) {
 				t.Errorf("Expected %d HTTPRoutes, got %d: %+v",
