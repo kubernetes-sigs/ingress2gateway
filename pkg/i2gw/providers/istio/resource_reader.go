@@ -17,24 +17,26 @@ limitations under the License.
 package istio
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log"
+	"os"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	istiov1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type reader struct {
-	k8sClient client.Client
+	conf *i2gw.ProviderConf
 }
 
-func newResourceReader(k8sClient client.Client) reader {
+func newResourceReader(conf *i2gw.ProviderConf) reader {
 	return reader{
-		k8sClient: k8sClient,
+		conf: conf,
 	}
 }
 
@@ -56,6 +58,25 @@ func (r *reader) readResourcesFromCluster(ctx context.Context) (*storage, error)
 	res.VirtualServices = virtualServices
 
 	return &res, nil
+}
+
+func (r *reader) readResourcesFromFile(_ context.Context, filename string) (*storage, error) {
+	stream, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file %v: %w", filename, err)
+	}
+
+	unstructuredObjects, err := i2gw.ExtractObjectsFromReader(bytes.NewReader(stream), r.conf.Namespace)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract objects: %w", err)
+	}
+
+	storage, err := r.readUnstructuredObjects(unstructuredObjects)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read unstructured objects: %w", err)
+	}
+
+	return storage, nil
 }
 
 func (r *reader) readUnstructuredObjects(objects []*unstructured.Unstructured) (*storage, error) {
@@ -102,7 +123,7 @@ func (r *reader) readGatewaysFromCluster(ctx context.Context) (map[types.Namespa
 	gatewayList.SetAPIVersion(APIVersion)
 	gatewayList.SetKind(GatewayKind)
 
-	err := r.k8sClient.List(ctx, gatewayList)
+	err := r.conf.Client.List(ctx, gatewayList)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list istio gateways: %w", err)
 	}
@@ -128,7 +149,7 @@ func (r *reader) readVirtualServicesFromCluster(ctx context.Context) (map[types.
 	virtualServicesList.SetAPIVersion(APIVersion)
 	virtualServicesList.SetKind(VirtualServiceKind)
 
-	err := r.k8sClient.List(ctx, virtualServicesList)
+	err := r.conf.Client.List(ctx, virtualServicesList)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list istio virtual services: %w", err)
 	}

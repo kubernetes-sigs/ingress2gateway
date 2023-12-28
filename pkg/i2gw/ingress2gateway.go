@@ -48,7 +48,8 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 	var ingresses networkingv1.IngressList
 
 	providerByName, err := constructProviders(&ProviderConf{
-		Client: cl,
+		Client:    cl,
+		Namespace: namespace,
 	}, providers)
 	if err != nil {
 		return nil, err
@@ -136,7 +137,8 @@ func constructProviders(conf *ProviderConf, providers []string) (map[ProviderNam
 // ExtractObjectsFromReader extracts all objects from a reader,
 // which is created from YAML or JSON input files.
 // It retrieves all objects, including nested ones if they are contained within a list.
-func ExtractObjectsFromReader(reader io.Reader) ([]*unstructured.Unstructured, error) {
+// The function takes a namespace parameter to optionally return only namespaced resources.
+func ExtractObjectsFromReader(reader io.Reader, namespace string) ([]*unstructured.Unstructured, error) {
 	d := kubeyaml.NewYAMLOrJSONDecoder(reader, 4096)
 	var objs []*unstructured.Unstructured
 	for {
@@ -148,6 +150,9 @@ func ExtractObjectsFromReader(reader io.Reader) ([]*unstructured.Unstructured, e
 			return objs, fmt.Errorf("failed to unmarshal manifest: %w", err)
 		}
 		if u == nil {
+			continue
+		}
+		if namespace != "" && u.GetNamespace() != namespace {
 			continue
 		}
 		objs = append(objs, u)
@@ -187,15 +192,12 @@ func ConstructIngressesFromFile(l *networkingv1.IngressList, inputFile string, n
 	}
 
 	reader := bytes.NewReader(stream)
-	objs, err := ExtractObjectsFromReader(reader)
+	objs, err := ExtractObjectsFromReader(reader, namespace)
 	if err != nil {
 		return err
 	}
 
 	for _, f := range objs {
-		if namespace != "" && f.GetNamespace() != namespace {
-			continue
-		}
 		if !f.GroupVersionKind().Empty() && f.GroupVersionKind().Kind == "Ingress" {
 			var i networkingv1.Ingress
 			err = runtime.DefaultUnstructuredConverter.

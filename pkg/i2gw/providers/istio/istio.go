@@ -17,10 +17,8 @@ limitations under the License.
 package istio
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -43,7 +41,7 @@ type Provider struct {
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 	return &Provider{
 		storage:   newResourcesStorage(),
-		reader:    newResourceReader(conf.Client),
+		reader:    newResourceReader(conf),
 		converter: newConverter(),
 	}
 }
@@ -66,22 +64,11 @@ func (p *Provider) ReadResourcesFromCluster(ctx context.Context) error {
 	return nil
 }
 
-func (p *Provider) ReadResourcesFromFile(_ context.Context, filename string) error {
-	stream, err := os.ReadFile(filename)
+func (p *Provider) ReadResourcesFromFile(ctx context.Context, filename string) error {
+	storage, err := p.reader.readResourcesFromFile(ctx, filename)
 	if err != nil {
-		return fmt.Errorf("failed to read file %v: %w", filename, err)
+		return fmt.Errorf("failed to read resources from file: %w", err)
 	}
-
-	unstructuredObjects, err := i2gw.ExtractObjectsFromReader(bytes.NewReader(stream))
-	if err != nil {
-		return fmt.Errorf("failed to extract objects: %w", err)
-	}
-
-	storage, err := p.reader.readUnstructuredObjects(unstructuredObjects)
-	if err != nil {
-		return fmt.Errorf("failed to read unstructured objects: %w", err)
-	}
-
 	p.storage = *storage
 	return nil
 }
