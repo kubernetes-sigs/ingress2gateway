@@ -45,30 +45,19 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 	}
 	cl = client.NewNamespacedClient(cl, namespace)
 
-	var ingresses networkingv1.IngressList
-
 	providerByName, err := constructProviders(&ProviderConf{
-		Client: cl,
+		Client:    cl,
+		Namespace: namespace,
 	}, providers)
 	if err != nil {
 		return nil, err
 	}
 
-	resources := InputResources{}
-
 	if inputFile != "" {
-		if err = ConstructIngressesFromFile(&ingresses, inputFile, namespace); err != nil {
-			return nil, fmt.Errorf("failed to read ingresses from file: %w", err)
-		}
-		resources.Ingresses = ingresses.Items
 		if err = readProviderResourcesFromFile(ctx, providerByName, inputFile); err != nil {
 			return nil, err
 		}
 	} else {
-		if err = ConstructIngressesFromCluster(ctx, cl, &ingresses); err != nil {
-			return nil, fmt.Errorf("failed to read ingresses from cluster: %w", err)
-		}
-		resources.Ingresses = ingresses.Items
 		if err = readProviderResourcesFromCluster(ctx, providerByName); err != nil {
 			return nil, err
 		}
@@ -79,7 +68,8 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 		errs             field.ErrorList
 	)
 	for _, provider := range providerByName {
-		providerGatewayResources, conversionErrs := provider.ToGatewayAPI(resources)
+		// TODO(#113) Remove input resources from ToGatewayAPI function
+		providerGatewayResources, conversionErrs := provider.ToGatewayAPI(InputResources{})
 		errs = append(errs, conversionErrs...)
 		gatewayResources = append(gatewayResources, providerGatewayResources)
 	}
@@ -136,7 +126,8 @@ func constructProviders(conf *ProviderConf, providers []string) (map[ProviderNam
 // ExtractObjectsFromReader extracts all objects from a reader,
 // which is created from YAML or JSON input files.
 // It retrieves all objects, including nested ones if they are contained within a list.
-func ExtractObjectsFromReader(reader io.Reader) ([]*unstructured.Unstructured, error) {
+// The function takes a namespace parameter to optionally return only namespaced resources.
+func ExtractObjectsFromReader(reader io.Reader, namespace string) ([]*unstructured.Unstructured, error) {
 	d := kubeyaml.NewYAMLOrJSONDecoder(reader, 4096)
 	var objs []*unstructured.Unstructured
 	for {
@@ -148,6 +139,9 @@ func ExtractObjectsFromReader(reader io.Reader) ([]*unstructured.Unstructured, e
 			return objs, fmt.Errorf("failed to unmarshal manifest: %w", err)
 		}
 		if u == nil {
+			continue
+		}
+		if namespace != "" && u.GetNamespace() != namespace {
 			continue
 		}
 		objs = append(objs, u)
@@ -187,15 +181,12 @@ func ConstructIngressesFromFile(l *networkingv1.IngressList, inputFile string, n
 	}
 
 	reader := bytes.NewReader(stream)
-	objs, err := ExtractObjectsFromReader(reader)
+	objs, err := ExtractObjectsFromReader(reader, namespace)
 	if err != nil {
 		return err
 	}
 
 	for _, f := range objs {
-		if namespace != "" && f.GetNamespace() != namespace {
-			continue
-		}
 		if !f.GroupVersionKind().Empty() && f.GroupVersionKind().Kind == "Ingress" {
 			var i networkingv1.Ingress
 			err = runtime.DefaultUnstructuredConverter.
