@@ -45,8 +45,6 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 	}
 	cl = client.NewNamespacedClient(cl, namespace)
 
-	var ingresses networkingv1.IngressList
-
 	providerByName, err := constructProviders(&ProviderConf{
 		Client:    cl,
 		Namespace: namespace,
@@ -55,21 +53,11 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 		return nil, err
 	}
 
-	resources := InputResources{}
-
 	if inputFile != "" {
-		if err = ConstructIngressesFromFile(&ingresses, inputFile, namespace); err != nil {
-			return nil, fmt.Errorf("failed to read ingresses from file: %w", err)
-		}
-		resources.Ingresses = ingresses.Items
 		if err = readProviderResourcesFromFile(ctx, providerByName, inputFile); err != nil {
 			return nil, err
 		}
 	} else {
-		if err = ConstructIngressesFromCluster(ctx, cl, &ingresses); err != nil {
-			return nil, fmt.Errorf("failed to read ingresses from cluster: %w", err)
-		}
-		resources.Ingresses = ingresses.Items
 		if err = readProviderResourcesFromCluster(ctx, providerByName); err != nil {
 			return nil, err
 		}
@@ -80,7 +68,8 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 		errs             field.ErrorList
 	)
 	for _, provider := range providerByName {
-		providerGatewayResources, conversionErrs := provider.ToGatewayAPI(resources)
+		// TODO(#113) Remove input resources from ToGatewayAPI function
+		providerGatewayResources, conversionErrs := provider.ToGatewayAPI(InputResources{})
 		errs = append(errs, conversionErrs...)
 		gatewayResources = append(gatewayResources, providerGatewayResources)
 	}
