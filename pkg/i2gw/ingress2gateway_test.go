@@ -17,21 +17,19 @@ limitations under the License.
 package i2gw
 
 import (
-	"bytes"
+	"context"
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	networkingv1 "k8s.io/api/networking/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func Test_ExtractObjectsFromReader(t *testing.T) {
+func Test_constructIngressesFromFile(t *testing.T) {
 	ingress1 := ingress(443, "ingress1", "namespace1")
 	ingress2 := ingress(80, "ingress2", "namespace2")
 	ingressNoNamespace := ingress(80, "ingress-no-namespace", "")
@@ -62,17 +60,10 @@ func Test_ExtractObjectsFromReader(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			stream, err := os.ReadFile(tc.filePath)
+			gotIngressList := &networkingv1.IngressList{}
+			err := ConstructIngressesFromFile(gotIngressList, tc.filePath, tc.namespace)
 			if err != nil {
-				t.Errorf("failed to read file %s: %v", tc.filePath, err)
-			}
-			unstructuredObjects, err := ExtractObjectsFromReader(bytes.NewReader(stream), tc.namespace)
-			if err != nil {
-				t.Errorf("failed to extract objects: %s", err)
-			}
-			gotIngressList, err := ingressListFromUnstructured(unstructuredObjects)
-			if err != nil {
-				t.Errorf("got unexpected error: %v", err)
+				t.Errorf("Failed to open test file: %v", err)
 			}
 			compareIngressLists(t, gotIngressList, tc.wantIngressList)
 		})
@@ -120,27 +111,43 @@ func ingress(port int32, name, namespace string) networkingv1.Ingress {
 	return ing
 }
 
-func ingressListFromUnstructured(unstructuredObjects []*unstructured.Unstructured) (*networkingv1.IngressList, error) {
-	ingressList := &networkingv1.IngressList{}
-	for _, f := range unstructuredObjects {
-		if !f.GroupVersionKind().Empty() && f.GroupVersionKind().Kind == "Ingress" {
-			var i networkingv1.Ingress
-			err := runtime.DefaultUnstructuredConverter.
-				FromUnstructured(f.UnstructuredContent(), &i)
-			if err != nil {
-				return nil, err
-			}
-			ingressList.Items = append(ingressList.Items, i)
-		}
-	}
-	return ingressList, nil
-}
 func compareIngressLists(t *testing.T, gotIngressList *networkingv1.IngressList, wantIngressList []networkingv1.Ingress) {
 	for i, got := range gotIngressList.Items {
 		want := wantIngressList[i]
 		if !apiequality.Semantic.DeepEqual(got, want) {
 			t.Errorf("Expected Ingress %d to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))
 		}
+	}
+}
+
+func Test_constructIngressesFromCluster(t *testing.T) {
+	ingress1 := ingress(443, "ingress1", "namespace1")
+	ingress2 := ingress(80, "ingress2", "namespace2")
+	testCases := []struct {
+		name          string
+		runtimeObjs   []runtime.Object
+		wantIngresses []networkingv1.Ingress
+	}{{
+		name:          "Test cluster client with 2 resources",
+		runtimeObjs:   []runtime.Object{&ingress1, &ingress2},
+		wantIngresses: []networkingv1.Ingress{ingress1, ingress2},
+	}, {
+		name:          "Test cluster client without resources",
+		runtimeObjs:   []runtime.Object{},
+		wantIngresses: []networkingv1.Ingress{},
+	},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			gotIngresses := &networkingv1.IngressList{}
+			cl := fake.NewClientBuilder().WithRuntimeObjects(tc.runtimeObjs...).Build()
+			err := ConstructIngressesFromCluster(context.Background(), cl, gotIngresses)
+			if err != nil {
+				t.Errorf("test failed unexpectedly: %v", err)
+			}
+			compareIngressLists(t, gotIngresses, tc.wantIngresses)
+		})
 	}
 }
 
