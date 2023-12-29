@@ -42,14 +42,14 @@ func Test_ToGateway(t *testing.T) {
 
 	testCases := []struct {
 		name                     string
-		ingresses                []networkingv1.Ingress
+		ingresses                map[types.NamespacedName]*networkingv1.Ingress
 		expectedGatewayResources i2gw.GatewayResources
 		expectedErrors           field.ErrorList
 	}{
 		{
 			name: "canary deployment",
-			ingresses: []networkingv1.Ingress{
-				{
+			ingresses: map[types.NamespacedName]*networkingv1.Ingress{
+				{Namespace: "default", Name: "production"}: {
 					ObjectMeta: metav1.ObjectMeta{Name: "production", Namespace: "default"},
 					Spec: networkingv1.IngressSpec{
 						IngressClassName: ptrTo("ingress-nginx"),
@@ -73,7 +73,7 @@ func Test_ToGateway(t *testing.T) {
 						}},
 					},
 				},
-				{
+				{Namespace: "default", Name: "canary"}: {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "canary",
 						Namespace: "default",
@@ -168,8 +168,8 @@ func Test_ToGateway(t *testing.T) {
 		},
 		{
 			name: "ImplementationSpecific HTTPRouteMatching",
-			ingresses: []networkingv1.Ingress{
-				{
+			ingresses: map[types.NamespacedName]*networkingv1.Ingress{
+				{Namespace: "default", Name: "implementation-specific-regex"}: {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "implementation-specific-regex",
 						Namespace: "default",
@@ -215,11 +215,21 @@ func Test_ToGateway(t *testing.T) {
 
 			provider := NewProvider(&i2gw.ProviderConf{})
 
-			resources := i2gw.InputResources{
-				Ingresses: tc.ingresses,
-			}
+			nginxProvider := provider.(*Provider)
+			nginxProvider.storage.Ingresses = tc.ingresses
 
-			gatewayResources, errs := provider.ToGatewayAPI(resources)
+			// TODO(#113) we pass an empty i2gw.InputResources temporarily until we change ToGatewayAPI function on the interface
+			gatewayResources, errs := provider.ToGatewayAPI(i2gw.InputResources{})
+
+			if len(errs) != len(tc.expectedErrors) {
+				t.Errorf("Expected %d errors, got %d: %+v", len(tc.expectedErrors), len(errs), errs)
+			} else {
+				for i, e := range errs {
+					if errors.Is(e, tc.expectedErrors[i]) {
+						t.Errorf("Unexpected error message at %d index. Got %s, want: %s", i, e, tc.expectedErrors[i])
+					}
+				}
+			}
 
 			if len(gatewayResources.HTTPRoutes) != len(tc.expectedGatewayResources.HTTPRoutes) {
 				t.Errorf("Expected %d HTTPRoutes, got %d: %+v",
@@ -245,16 +255,6 @@ func Test_ToGateway(t *testing.T) {
 					want.SetGroupVersionKind(common.GatewayGVK)
 					if !apiequality.Semantic.DeepEqual(got, want) {
 						t.Errorf("Expected Gateway %s to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))
-					}
-				}
-			}
-
-			if len(errs) != len(tc.expectedErrors) {
-				t.Errorf("Expected %d errors, got %d: %+v", len(tc.expectedErrors), len(errs), errs)
-			} else {
-				for i, e := range errs {
-					if errors.Is(e, tc.expectedErrors[i]) {
-						t.Errorf("Unexpected error message at %d index. Got %s, want: %s", i, e, tc.expectedErrors[i])
 					}
 				}
 			}
