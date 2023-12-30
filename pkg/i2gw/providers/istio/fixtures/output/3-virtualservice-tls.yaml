@@ -1,0 +1,28 @@
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TLSRoute
+metadata:
+  name: reviews-route-idx-0
+  namespace: test
+spec:
+  hostnames:
+  - login.bookinfo.com
+  rules:
+    - backendRefs:
+      - name: login
+        namespace: prod
+        weight: 0
+---
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TLSRoute
+metadata:
+  name: reviews-route-idx-1
+  namespace: test
+spec:
+  hostnames:
+  - reviews.bookinfo.com
+  rules:
+    - backendRefs:
+      - name: reviews
+        namespace: test
+        weight: 0
+

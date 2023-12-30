@@ -1,0 +1,14 @@
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TCPRoute
+metadata:
+  name: bookinfo-mongo-idx-0
+  namespace: prod
+spec:
+  hostnames:
+  - login.bookinfo.com
+  rules:
+    - backendRefs:
+      - name: mongo
+        namespace: backup
+        weight: 0
+        port: 5555

@@ -1,0 +1,44 @@
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: my-gateway
+  namespace: prod # different ns from the virtualservice, both referenceGrant + parentRef needed
+spec:
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - test.com
+---
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: same-ns-gateway
+  namespace: custom-ns # same ns, no referenceGrant but a parentRef only
+spec:
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - test.com
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  namespace: custom-ns
+  name: reviews-route
+spec:
+  gateways:
+  - "prod/my-gateway"
+  - "same-ns-gateway"
+  hosts:
+  - test.com
+  http:
+  - route:
+    - destination:
+        host: test.prod.svc.cluster.local
+      weight: 1

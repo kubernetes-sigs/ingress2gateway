@@ -1,0 +1,85 @@
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: my-gateway
+  namespace: test
+spec:
+  selector:
+    app: istio-ingressgateway
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - test.com
+  - port:
+      number: 443
+      protocol: HTTPS
+    hosts:
+    - "bookinfo/*.bookinfo.com"
+    -  "*"
+    - "bookinfo" # short service-name inferred hosts are ignored; in future converter may expand this to the fqdn required by k8s api gateway
+    tls:
+      httpsRedirect: true
+      mode: SIMPLE
+      # all following tls related fields are ignored as there's no direct mapping to the k8s gateway api
+      serverCertificate: /etc/certs/servercert.pem
+      privateKey: /etc/certs/privatekey.pem
+      credentialName: bookinfo-secret
+      caCertificates: /etc/certs/caCertificates
+      subjectAltNames: ["v1"]
+      verifyCertificateSpki: ["v1"]
+      verifyCertificateHash: ["v1"]
+      minProtocolVersion: TLSV1_0
+      maxProtocolVersion: TLSV1_3
+      cipherSuites: ["v1"]
+    bind: 1.2.3.4 # is ignored
+  - port:
+      number: 8080
+      protocol: TCP
+    hosts:
+    - "*/foo.example.com"
+    - "./foo.example.com"
+  - port:
+      number: 8443
+      protocol: TLS
+    hosts:
+    - "prod/*.tls.com"
+    - "*.tls.com"
+  - port: # converted to HTTP protocol  as there's no TLS section
+      number: 8143
+      protocol: HTTP2
+    hosts:
+    - "http2.dev"
+  - port: # converted to HTTPS protocol as there's TLS section
+      number: 8144
+      protocol: HTTP2
+    hosts:
+    - "http2.dev"
+    tls:
+      mode: SIMPLE
+  - port: # converted to HTTP protocol as there's no TLS section
+      number: 8180
+      protocol: GRPC
+    hosts:
+    - "*"
+  - port: # converted to HTTPS protocol as there's TLS section
+      number: 8181
+      protocol: GRPC
+    hosts:
+    - "*"
+    tls:
+      mode: SIMPLE
+  - port: # converted to TCP protocol
+      number: 2379
+      protocol: MONGO
+    hosts:
+    - "*"
+  - port: # this server is ignored because of the unknown protocol
+      number: 8000
+      name: unknown-protocol
+      protocol: TEST
+    hosts:
+    - "*"

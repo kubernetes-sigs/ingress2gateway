@@ -1,0 +1,60 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: my-gateway
+  namespace: test
+spec:
+  gatewayClassName: istio
+  listeners:
+  - name: http-protocol-wildcard-ns-test.com
+    hostname: test.com
+    port: 80
+    protocol: HTTP
+  - name: https-protocol-bookinfo-ns-wildcard.bookinfo.com
+    hostname: "*.bookinfo.com"
+    port: 443
+    protocol: HTTPS
+    tls:
+      mode: Terminate
+  - name: https-protocol-wildcard-ns-wildcard
+    port: 443
+    protocol: HTTPS
+    tls:
+      mode: Terminate
+  - name: tcp-protocol-wildcard-ns-foo.example.com
+    hostname: foo.example.com
+    port: 8080
+    protocol: TCP
+  - name: tcp-protocol-dot-ns-foo.example.com
+    hostname: foo.example.com
+    port: 8080
+    protocol: TCP
+  - name: tls-protocol-prod-ns-wildcard.tls.com
+    hostname: "*.tls.com"
+    port: 8443
+    protocol: TLS
+  - name: tls-protocol-wildcard-ns-wildcard.tls.com
+    hostname: "*.tls.com"
+    port: 8443
+    protocol: TLS
+  - name: http-protocol-wildcard-ns-http2.dev # converted from istio HTTP2 protocol without TLS section
+    hostname: "http2.dev"
+    port: 8143
+    protocol: HTTP
+  - name: https-protocol-wildcard-ns-http2.dev # converted from istio HTTP2 protocol with TLS section
+    hostname: "http2.dev"
+    port: 8144
+    protocol: HTTPS
+    tls:
+      mode: Terminate
+  - name: http-protocol-wildcard-ns-wildcard # converted from istio GRPC protocol without TLS section
+    port: 8180
+    protocol: HTTP
+  - name: https-protocol-wildcard-ns-wildcard # converted from istio GRPC protocol with TLS section
+    port: 8181
+    protocol: HTTPS
+    tls:
+      mode: Terminate
+  - name: tcp-protocol-wildcard-ns-wildcard # converted from istio MONGO protocol
+    port: 2379
+    protocol: TCP
