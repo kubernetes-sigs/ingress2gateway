@@ -70,7 +70,10 @@ func (c *converter) convert(storage storage) (i2gw.GatewayResources, field.Error
 			Name:      vs.Name,
 		}.String())
 
+		parentRefs, referenceGrants := c.generateReferences(vs, vsFieldPath)
+
 		for _, httpRoute := range c.convertHTTPRoutes(vs.ObjectMeta, vs.Spec.GetHttp(), vs.Spec.GetHosts(), vsFieldPath) {
+			httpRoute.Spec.ParentRefs = parentRefs
 			gatewayResources.HTTPRoutes[types.NamespacedName{
 				Namespace: httpRoute.Namespace,
 				Name:      httpRoute.Name,
@@ -78,6 +81,7 @@ func (c *converter) convert(storage storage) (i2gw.GatewayResources, field.Error
 		}
 
 		for _, tlsRoute := range c.convertTLSRoutes(vs.ObjectMeta, vs.Spec.GetTls(), vsFieldPath) {
+			tlsRoute.Spec.ParentRefs = parentRefs
 			gatewayResources.TLSRoutes[types.NamespacedName{
 				Namespace: tlsRoute.Namespace,
 				Name:      tlsRoute.Name,
@@ -85,10 +89,18 @@ func (c *converter) convert(storage storage) (i2gw.GatewayResources, field.Error
 		}
 
 		for _, tcpRoute := range c.convertTCPRoutes(vs.ObjectMeta, vs.Spec.GetTcp(), vsFieldPath) {
+			tcpRoute.Spec.ParentRefs = parentRefs
 			gatewayResources.TCPRoutes[types.NamespacedName{
 				Namespace: tcpRoute.Namespace,
 				Name:      tcpRoute.Name,
 			}] = *tcpRoute
+		}
+
+		for _, rg := range referenceGrants {
+			gatewayResources.ReferenceGrants[types.NamespacedName{
+				Namespace: rg.Namespace,
+				Name:      rg.Name,
+			}] = *rg
 		}
 	}
 
@@ -757,6 +769,159 @@ func (c *converter) convertTCPRoutes(virtualService metav1.ObjectMeta, istioTCPR
 	return resTCPRoutes
 }
 
+func (c *converter) isVirtualServiceAllowedForGateway(gateway types.NamespacedName, vs *istioclientv1beta1.VirtualService, fieldPath *field.Path) bool {
+	// by default, if ExportTo is empty it allowes export of the VirtualService to all namespaces
+	vsAllowedNamespaces := sets.New("*")
+	if len(vs.Spec.GetExportTo()) > 0 {
+		vsAllowedNamespaces = sets.New(vs.Spec.GetExportTo()...)
+	}
+
+	if gateway.Name == "mesh" {
+		klog.Infof("ignoring mesh gateway during ingress api conversion: %v", fieldPath)
+		return false
+	}
+
+	isAllowedNamespace := vsAllowedNamespaces.HasAny(gateway.Namespace, "*") || (vsAllowedNamespaces.Has(".") && vs.Namespace == gateway.Namespace)
+	if !isAllowedNamespace {
+		klog.Warningf("gateway from vs.Spec.Gateways %q is not visible in vs.ExportTo %v, parentRefs are not generated for this host, path: %v", gateway.String(), vs.Spec.GetExportTo(), fieldPath)
+		return false
+	}
+
+	allowedHosts, ok := c.gwAllowedHosts[gateway]
+	if !ok {
+		klog.Warningf("no info about gateway %v allowed hosts, parentRefs won't be generated to it, path: %v", gateway.String(), fieldPath)
+		return false
+	}
+
+	for _, host := range vs.Spec.GetHosts() {
+		hosts, ok := allowedHosts[vs.Namespace]
+		if ok && matchAny(hosts.UnsortedList(), host) {
+			return true
+		}
+
+		hosts, ok = allowedHosts["."]
+		if ok && vs.Namespace == gateway.Namespace && matchAny(hosts.UnsortedList(), host) {
+			return true
+		}
+
+		hosts, ok = allowedHosts["*"]
+		if ok && matchAny(hosts.UnsortedList(), host) {
+			return true
+		}
+	}
+
+	klog.Warningf("no host in vs.Spec.Hosts matched any gateway.allowedHosts, parentRefs are not generated for this VirtualService, path: %v", fieldPath)
+	return false
+}
+
+// Generate parentRefs and optionally ReferenceGrants for the given VirtualService and all required Gateways
+// We consider fields: vs.Spec.Gateways; gateway.Server[i].Hosts
+func (c *converter) generateReferences(vs *istioclientv1beta1.VirtualService, fieldPath *field.Path) ([]gatewayv1.ParentReference, []*gatewayv1alpha2.ReferenceGrant) {
+	var (
+		parentRefs      []gatewayv1.ParentReference
+		referenceGrants []*gatewayv1alpha2.ReferenceGrant
+	)
+
+	for _, allowedGateway := range vs.Spec.GetGateways() {
+		gwNamespace, gwName, ok := strings.Cut(allowedGateway, "/")
+		if !ok {
+			gwNamespace, gwName = vs.Namespace, allowedGateway
+		}
+
+		gateway := types.NamespacedName{
+			Namespace: gwNamespace,
+			Name:      gwName,
+		}
+
+		if !c.isVirtualServiceAllowedForGateway(gateway, vs, fieldPath.Child("Spec", "Gateways").Key(allowedGateway)) {
+			continue
+		}
+
+		g := gatewayv1.Group(common.GatewayGVK.Group)
+		k := gatewayv1.Kind(common.GatewayGVK.Kind)
+		ns := gatewayv1.Namespace(gateway.Namespace)
+
+		parentRef := gatewayv1.ParentReference{
+			Group: &g,
+			Kind:  &k,
+			Name:  gatewayv1.ObjectName(gateway.Name),
+		}
+
+		if gateway.Namespace != vs.Namespace {
+			parentRef.Namespace = &ns
+
+			referenceGrants = append(referenceGrants, c.generateReferenceGrant(generateReferenceGrantsParams{
+				gateway:       gateway,
+				fromNamespace: vs.Namespace,
+				forHTTPRoute:  vs.Spec.GetHttp() != nil,
+				forTLSRoute:   vs.Spec.GetTls() != nil,
+				forTCPRoute:   vs.Spec.GetTcp() != nil,
+			}))
+		}
+
+		parentRefs = append(parentRefs, parentRef)
+	}
+
+	return parentRefs, referenceGrants
+}
+
+type generateReferenceGrantsParams struct {
+	gateway                                types.NamespacedName
+	fromNamespace                          string
+	forHTTPRoute, forTLSRoute, forTCPRoute bool
+}
+
+func (c *converter) generateReferenceGrant(params generateReferenceGrantsParams) *gatewayv1alpha2.ReferenceGrant {
+	var fromGrants []gatewayv1alpha2.ReferenceGrantFrom
+
+	if params.forHTTPRoute {
+		fromGrants = append(fromGrants, gatewayv1alpha2.ReferenceGrantFrom{
+			Group:     gatewayv1.Group(common.HTTPRouteGVK.Group),
+			Kind:      gatewayv1.Kind(common.HTTPRouteGVK.Kind),
+			Namespace: gatewayv1.Namespace(params.fromNamespace),
+		})
+	}
+
+	if params.forTLSRoute {
+		fromGrants = append(fromGrants, gatewayv1alpha2.ReferenceGrantFrom{
+			Group:     gatewayv1.Group(common.TLSRouteGVK.Group),
+			Kind:      gatewayv1.Kind(common.TLSRouteGVK.Kind),
+			Namespace: gatewayv1.Namespace(params.fromNamespace),
+		})
+	}
+
+	if params.forTCPRoute {
+		fromGrants = append(fromGrants, gatewayv1alpha2.ReferenceGrantFrom{
+			Group:     gatewayv1.Group(common.TCPRouteGVK.Group),
+			Kind:      gatewayv1.Kind(common.TCPRouteGVK.Kind),
+			Namespace: gatewayv1.Namespace(params.fromNamespace),
+		})
+	}
+
+	gwName := gatewayv1.ObjectName(params.gateway.Name)
+
+	return &gatewayv1alpha2.ReferenceGrant{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: common.ReferenceGrantGVK.GroupVersion().String(),
+			Kind:       common.ReferenceGrantGVK.Kind,
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: params.gateway.Namespace,
+			Name:      fmt.Sprintf("generated-reference-grant-from-%v-to-%v", params.fromNamespace, params.gateway.Namespace),
+		},
+		Spec: gatewayv1alpha2.ReferenceGrantSpec{
+			From: fromGrants,
+			To: []gatewayv1alpha2.ReferenceGrantTo{
+				{
+					Group: gatewayv1.Group(common.GatewayGVK.Group),
+					Kind:  gatewayv1.Kind(common.GatewayGVK.Kind),
+					Name:  &gwName,
+				},
+			},
+		},
+	}
+}
+
 func parseK8SServiceFromDomain(domain string, fallbackNamespace string) (string, string) {
 	ns := "default"
 	if fallbackNamespace != "" {
@@ -818,4 +983,56 @@ func makeHeaderFilter(headers map[string]string) []gatewayv1.HTTPHeader {
 	}
 
 	return res
+}
+
+// checks if host overlaps with any of the hosts
+func matchAny(hosts []string, host string) bool {
+	for _, h := range hosts {
+		if matches(host, h) {
+			return true
+		}
+	}
+	return false
+}
+
+// Matches returns true if this hostname overlaps with the other hostname. Names overlap if:
+// - they're fully resolved (i.e. not wildcarded) and match exactly (i.e. an exact string match)
+// - one or both are wildcarded (e.g. "*.foo.com"), in which case we use wildcard resolution rules
+// to determine if n is covered by o or o is covered by n.
+// e.g.:
+//
+// matches("foo.com", "foo.com")   = true
+// matches("foo.com", "bar.com")   = false
+// matches("*.com", "foo.com")     = true
+// matches("bar.com", "*.com")     = true
+// matches("*.foo.com", "foo.com") = false
+// matches("*", "foo.com")         = true
+// matches("*", "*.com")           = true
+// taken from: https://github.com/istio/istio/blob/2fd7c2719bd3c5c9bb4aaf34b8f4565229c3035b/pkg/config/host/name.go#L37
+func matches(h1, h2 string) bool {
+	h1Wildcard, h2Wildcard := isWildCarded(h1), isWildCarded(h2)
+
+	if h1Wildcard {
+		if h2Wildcard {
+			// both h1 and h2 are wildcards
+			if len(h1) < len(h2) {
+				return strings.HasSuffix(h2[1:], h1[1:])
+			}
+			return strings.HasSuffix(h1[1:], h2[1:])
+		}
+		// only h1 is wildcard
+		return strings.HasSuffix(h2, h1[1:])
+	}
+
+	if h2Wildcard {
+		// only h2 is wildcard
+		return strings.HasSuffix(h1, h2[1:])
+	}
+
+	// both are non-wildcards, so do normal string comparison
+	return h1 == h2
+}
+
+func isWildCarded(hostname string) bool {
+	return len(hostname) > 0 && hostname[0] == '*'
 }

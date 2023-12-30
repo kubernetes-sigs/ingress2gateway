@@ -90,6 +90,12 @@ var (
 		Version: "v1alpha2",
 		Kind:    "TCPRoute",
 	}
+
+	ReferenceGrantGVK = schema.GroupVersionKind{
+		Group:   "gateway.networking.k8s.io",
+		Version: "v1alpha2",
+		Kind:    "ReferenceGrant",
+	}
 )
 
 type ruleGroupKey string

@@ -17,6 +17,7 @@ limitations under the License.
 package istio
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -1290,6 +1291,467 @@ func Test_converter_convertTCPRoutes(t *testing.T) {
 			c := &converter{}
 			if got := c.convertTCPRoutes(tt.args.virtualService, tt.args.istioTCPRoutes, field.NewPath("")); !apiequality.Semantic.DeepEqual(got, tt.want) {
 				t.Errorf("converter.convertTCPRoutes() = %+v, want %+v, diff (-want +got): %s", got, tt.want, cmp.Diff(tt.want, got))
+			}
+		})
+	}
+}
+
+func TestNameMatches(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b string
+		out  bool
+	}{
+		{"empty", "", "", true},
+		{"first empty", "", "foo.com", false},
+		{"second empty", "foo.com", "", false},
+
+		{
+			"non-wildcard domain",
+			"foo.com", "foo.com", true,
+		},
+		{
+			"non-wildcard domain",
+			"bar.com", "foo.com", false,
+		},
+		{
+			"non-wildcard domain - order doesn't matter",
+			"foo.com", "bar.com", false,
+		},
+
+		{
+			"domain does not match subdomain",
+			"bar.foo.com", "foo.com", false,
+		},
+		{
+			"domain does not match subdomain - order doesn't matter",
+			"foo.com", "bar.foo.com", false,
+		},
+
+		{
+			"wildcard matches subdomains",
+			"*.com", "foo.com", true,
+		},
+		{
+			"wildcard matches subdomains",
+			"*.com", "bar.com", true,
+		},
+		{
+			"wildcard matches subdomains",
+			"*.foo.com", "bar.foo.com", true,
+		},
+
+		{"wildcard matches anything", "*", "foo.com", true},
+		{"wildcard matches anything", "*", "*.com", true},
+		{"wildcard matches anything", "*", "com", true},
+		{"wildcard matches anything", "*", "*", true},
+		{"wildcard matches anything", "*", "", true},
+
+		{"wildcarded domain matches wildcarded subdomain", "*.com", "*.foo.com", true},
+		{"wildcarded sub-domain does not match domain", "foo.com", "*.foo.com", false},
+		{"wildcarded sub-domain does not match domain - order doesn't matter", "*.foo.com", "foo.com", false},
+
+		{"long wildcard does not match short host", "*.foo.bar.baz", "baz", false},
+		{"long wildcard does not match short host - order doesn't matter", "baz", "*.foo.bar.baz", false},
+		{"long wildcard matches short wildcard", "*.foo.bar.baz", "*.baz", true},
+		{"long name matches short wildcard", "foo.bar.baz", "*.baz", true},
+	}
+
+	for idx, tt := range tests {
+		t.Run(fmt.Sprintf("[%d] %s", idx, tt.name), func(t *testing.T) {
+			if tt.out != matches(tt.a, tt.b) {
+				t.Errorf("matches(%q, %q) = %t wanted %t", tt.a, tt.b, !tt.out, tt.out)
+			}
+
+			if tt.out != matches(tt.b, tt.a) {
+				t.Errorf("symmetrical: matches(%q, %q) = %t wanted %t", tt.b, tt.a, !tt.out, tt.out)
+			}
+		})
+	}
+}
+
+func Test_converter_generateReferenceGrants(t *testing.T) {
+	type args struct {
+		params generateReferenceGrantsParams
+	}
+	tests := []struct {
+		name string
+		args args
+		want *gatewayv1alpha2.ReferenceGrant
+	}{
+		{
+			name: "generate reference grant for HTTPRoute,TLSRoute,TCPRoute",
+			args: args{
+				params: generateReferenceGrantsParams{
+					gateway: types.NamespacedName{
+						Namespace: "test",
+						Name:      "gwname",
+					},
+					fromNamespace: "ns1",
+					forHTTPRoute:  true,
+					forTLSRoute:   true,
+					forTCPRoute:   true,
+				},
+			},
+			want: &gatewayv1alpha2.ReferenceGrant{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: common.ReferenceGrantGVK.GroupVersion().String(),
+					Kind:       common.ReferenceGrantGVK.Kind,
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "test",
+					Name:      "generated-reference-grant-from-ns1-to-test",
+				},
+				Spec: gatewayv1alpha2.ReferenceGrantSpec{
+					From: []gatewayv1alpha2.ReferenceGrantFrom{
+						{
+							Group:     gatewayv1.Group(common.HTTPRouteGVK.Group),
+							Kind:      gatewayv1.Kind(common.HTTPRouteGVK.Kind),
+							Namespace: gatewayv1.Namespace("ns1"),
+						},
+						{
+							Group:     gatewayv1.Group(common.TLSRouteGVK.Group),
+							Kind:      gatewayv1.Kind(common.TLSRouteGVK.Kind),
+							Namespace: gatewayv1.Namespace("ns1"),
+						},
+						{
+							Group:     gatewayv1.Group(common.TCPRouteGVK.Group),
+							Kind:      gatewayv1.Kind(common.TCPRouteGVK.Kind),
+							Namespace: gatewayv1.Namespace("ns1"),
+						},
+					},
+					To: []gatewayv1alpha2.ReferenceGrantTo{
+						{
+							Group: gatewayv1.Group(common.GatewayGVK.Group),
+							Kind:  gatewayv1.Kind(common.GatewayGVK.Kind),
+							Name:  common.PtrTo[gatewayv1.ObjectName]("gwname"),
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &converter{}
+			if got := c.generateReferenceGrant(tt.args.params); !apiequality.Semantic.DeepEqual(got, tt.want) {
+				t.Errorf("converter.generateReferenceGrant() = %+v, want %+v, diff (-want +got): %s", got, tt.want, cmp.Diff(tt.want, got))
+			}
+		})
+	}
+}
+
+func Test_converter_isGatewayAllowedForVirtualService(t *testing.T) {
+	type fields struct {
+		gwAllowedHosts map[types.NamespacedName]map[string]sets.Set[string]
+	}
+	type args struct {
+		gateway types.NamespacedName
+		vs      *istioclientv1beta1.VirtualService
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   bool
+	}{
+		{
+			name: "ignore mesh gateway",
+			args: args{
+				gateway: types.NamespacedName{
+					Name: "mesh",
+				},
+				vs: &istioclientv1beta1.VirtualService{Spec: istiov1beta1.VirtualService{}},
+			},
+			want: false,
+		},
+		{
+			name: "gateway is not allowed -- different namespace",
+			args: args{
+				gateway: types.NamespacedName{
+					Namespace: "test",
+				},
+				vs: &istioclientv1beta1.VirtualService{Spec: istiov1beta1.VirtualService{
+					ExportTo: []string{"prod", "."},
+				}},
+			},
+			want: false,
+		},
+		{
+			name: "unknown gateway is not allowed",
+			fields: fields{
+				gwAllowedHosts: map[types.NamespacedName]map[string]sets.Set[string]{
+					{
+						Namespace: "prod",
+						Name:      "gateway",
+					}: {
+						"prodv1": sets.New[string]("prod.com", "*.v1.prod.com"),
+					},
+				},
+			},
+			args: args{
+				gateway: types.NamespacedName{
+					Namespace: "prod",
+					Name:      "gateway1",
+				},
+				vs: &istioclientv1beta1.VirtualService{Spec: istiov1beta1.VirtualService{
+					ExportTo: []string{"*"},
+				}},
+			},
+			want: false,
+		},
+		{
+			name: "gateway is allowed -- namespace match and match by host",
+			fields: fields{
+				gwAllowedHosts: map[types.NamespacedName]map[string]sets.Set[string]{
+					{
+						Namespace: "prod",
+						Name:      "gateway",
+					}: {
+						"prod": sets.New[string]("prod.com", "*.v1.prod.com"),
+					},
+				},
+			},
+			args: args{
+				gateway: types.NamespacedName{
+					Namespace: "prod",
+					Name:      "gateway",
+				},
+				vs: &istioclientv1beta1.VirtualService{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "prod",
+					},
+					Spec: istiov1beta1.VirtualService{
+						ExportTo: []string{"*"},
+						Hosts:    []string{"prod.com"},
+					}},
+			},
+			want: true,
+		},
+		{
+			name: "gateway is allowed -- . namespace for the host and namespaces are equal",
+			fields: fields{
+				gwAllowedHosts: map[types.NamespacedName]map[string]sets.Set[string]{
+					{
+						Namespace: "prod",
+						Name:      "gateway",
+					}: {
+						".": sets.New[string]("prod.com", "*.v1.prod.com"),
+					},
+				},
+			},
+			args: args{
+				gateway: types.NamespacedName{
+					Namespace: "prod",
+					Name:      "gateway",
+				},
+				vs: &istioclientv1beta1.VirtualService{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "prod",
+					},
+					Spec: istiov1beta1.VirtualService{
+						ExportTo: []string{"*"},
+						Hosts:    []string{"prod.com"},
+					}},
+			},
+			want: true,
+		},
+		{
+			name: "gateway is allowed -- * namespace for the host and namespaces are equal",
+			fields: fields{
+				gwAllowedHosts: map[types.NamespacedName]map[string]sets.Set[string]{
+					{
+						Namespace: "prod",
+						Name:      "gateway",
+					}: {
+						"*": sets.New[string]("prod.com", "*.v1.prod.com"),
+					},
+				},
+			},
+			args: args{
+				gateway: types.NamespacedName{
+					Namespace: "prod",
+					Name:      "gateway",
+				},
+				vs: &istioclientv1beta1.VirtualService{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "test",
+					},
+					Spec: istiov1beta1.VirtualService{
+						ExportTo: []string{"*"},
+						Hosts:    []string{"prod.com"},
+					}},
+			},
+			want: true,
+		},
+		{
+			name: "gateway is not allowed -- . namespace is allowed but the virtualService has another ns",
+			fields: fields{
+				gwAllowedHosts: map[types.NamespacedName]map[string]sets.Set[string]{
+					{
+						Namespace: "prod",
+						Name:      "gateway",
+					}: {
+						".": sets.New[string]("prod.com", "*.v1.prod.com"),
+					},
+				},
+			},
+			args: args{
+				gateway: types.NamespacedName{
+					Namespace: "prod",
+					Name:      "gateway",
+				},
+				vs: &istioclientv1beta1.VirtualService{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "test",
+					},
+					Spec: istiov1beta1.VirtualService{
+						ExportTo: []string{"*"},
+						Hosts:    []string{"prod.com"},
+					}},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &converter{
+				gwAllowedHosts: tt.fields.gwAllowedHosts,
+			}
+			if got := c.isVirtualServiceAllowedForGateway(tt.args.gateway, tt.args.vs, field.NewPath("")); got != tt.want {
+				t.Errorf("converter.isVirtualServiceAllowedForGateway() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_converter_generateReferences(t *testing.T) {
+	type fields struct {
+		gwAllowedHosts map[types.NamespacedName]map[string]sets.Set[string]
+	}
+	type args struct {
+		vs *istioclientv1beta1.VirtualService
+	}
+	tests := []struct {
+		name                 string
+		fields               fields
+		args                 args
+		wantParentReferences []gatewayv1.ParentReference
+		wantReferenceGrants  []*gatewayv1alpha2.ReferenceGrant
+	}{
+		{
+			name: "nothing is generated if Gateway is not listed in the VirtualService",
+			fields: fields{
+				gwAllowedHosts: map[types.NamespacedName]map[string]sets.Set[string]{
+					{
+						Namespace: "prod",
+						Name:      "gateway",
+					}: {
+						"*": sets.New[string]("prod.com", "*.v1.prod.com"),
+					},
+				},
+			},
+			args: args{
+				vs: &istioclientv1beta1.VirtualService{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "test",
+					},
+					Spec: istiov1beta1.VirtualService{
+						ExportTo: []string{"*"},
+						Hosts:    []string{"prod.com"},
+						Gateways: []string{"gateway", "prodv1/gateway"},
+					}},
+			},
+		},
+		{
+			name: "generate referenceGrant for the allowed VirtualService",
+			fields: fields{
+				gwAllowedHosts: map[types.NamespacedName]map[string]sets.Set[string]{
+					{
+						Namespace: "prod",
+						Name:      "gateway",
+					}: {
+						"*": sets.New[string]("prod.com", "*.v1.prod.com"),
+					},
+				},
+			},
+			args: args{
+				vs: &istioclientv1beta1.VirtualService{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "test",
+					},
+					Spec: istiov1beta1.VirtualService{
+						ExportTo: []string{"*"},
+						Hosts:    []string{"prod.com"},
+						Gateways: []string{"prod/gateway"},
+					}},
+			},
+			wantParentReferences: []gatewayv1.ParentReference{
+				{
+					Group:     common.PtrTo[gatewayv1.Group]("gateway.networking.k8s.io"),
+					Kind:      common.PtrTo[gatewayv1.Kind]("Gateway"),
+					Namespace: common.PtrTo[gatewayv1.Namespace]("prod"),
+					Name:      "gateway",
+				},
+			},
+			wantReferenceGrants: []*gatewayv1alpha2.ReferenceGrant{
+				{
+					TypeMeta:   metav1.TypeMeta{Kind: "ReferenceGrant", APIVersion: "gateway.networking.k8s.io/v1alpha2"},
+					ObjectMeta: metav1.ObjectMeta{Name: "generated-reference-grant-from-test-to-prod", Namespace: "prod"},
+					Spec: gatewayv1alpha2.ReferenceGrantSpec{
+						To: []gatewayv1alpha2.ReferenceGrantTo{
+							{
+								Group: "gateway.networking.k8s.io", Kind: "Gateway", Name: common.PtrTo[gatewayv1.ObjectName]("gateway"),
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "generate only parentRef for the allowed VirtualService same ns as the Gateway",
+			fields: fields{
+				gwAllowedHosts: map[types.NamespacedName]map[string]sets.Set[string]{
+					{
+						Namespace: "prod",
+						Name:      "gateway",
+					}: {
+						"*": sets.New[string]("prod.com", "*.v1.prod.com"),
+					},
+				},
+			},
+			args: args{
+				vs: &istioclientv1beta1.VirtualService{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "prod",
+					},
+					Spec: istiov1beta1.VirtualService{
+						ExportTo: []string{"*"},
+						Hosts:    []string{"prod.com"},
+						Gateways: []string{"prod/gateway"},
+					}},
+			},
+			wantParentReferences: []gatewayv1.ParentReference{
+				{
+					Group: common.PtrTo[gatewayv1.Group]("gateway.networking.k8s.io"),
+					Kind:  common.PtrTo[gatewayv1.Kind]("Gateway"),
+					Name:  "gateway",
+				},
+			},
+			wantReferenceGrants: []*gatewayv1alpha2.ReferenceGrant{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &converter{
+				gwAllowedHosts: tt.fields.gwAllowedHosts,
+			}
+			gotParentReferences, gotReferenceGrants := c.generateReferences(tt.args.vs, field.NewPath(""))
+			if !apiequality.Semantic.DeepEqual(gotParentReferences, tt.wantParentReferences) {
+				t.Errorf("converter.generateReferences() gotParentReferences = %v, want %v, diff (-want +got): %s", gotParentReferences, tt.wantParentReferences, cmp.Diff(tt.wantParentReferences, gotParentReferences))
+			}
+			if !apiequality.Semantic.DeepEqual(gotReferenceGrants, tt.wantReferenceGrants) {
+				t.Errorf("converter.generateReferences() gotReferenceGrants = %v, want %v, diff (-want +got): %s", gotReferenceGrants, tt.wantReferenceGrants, cmp.Diff(tt.wantReferenceGrants, gotReferenceGrants))
 			}
 		})
 	}
