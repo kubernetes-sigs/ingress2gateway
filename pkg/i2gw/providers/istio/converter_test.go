@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 func Test_converter_convertGateway(t *testing.T) {
@@ -1064,6 +1065,231 @@ func Test_converter_convertHTTPRoutes(t *testing.T) {
 			c := &converter{}
 			if got := c.convertHTTPRoutes(tt.args.virtualService, tt.args.istioHTTPRoutes, tt.args.allowedHostnames, field.NewPath("")); !apiequality.Semantic.DeepEqual(got, tt.want) {
 				t.Errorf("converter.convertHTTPRoutes() = %v, want %v, diff (-want +got): %s", got, tt.want, cmp.Diff(tt.want, got))
+			}
+		})
+	}
+}
+
+func Test_converter_convertTLSRoutes(t *testing.T) {
+	type args struct {
+		virtualService metav1.ObjectMeta
+		istioTLSRoutes []*istiov1beta1.TLSRoute
+	}
+	tests := []struct {
+		name string
+		args args
+		want []*gatewayv1alpha2.TLSRoute
+	}{
+		{
+			name: "supported spec",
+			args: args{
+				virtualService: metav1.ObjectMeta{
+					Name:        "test",
+					Namespace:   "ns",
+					Labels:      map[string]string{"k": "v"},
+					Annotations: map[string]string{"k1": "v1"},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							Name: "object",
+						},
+					},
+					Finalizers: []string{"finalizer1"},
+				},
+				istioTLSRoutes: []*istiov1beta1.TLSRoute{
+					{
+						Match: []*istiov1beta1.TLSMatchAttributes{
+							{
+								SniHosts: []string{"*.com", "test.net"},
+							},
+							{
+								SniHosts: []string{"*.wk.org"},
+							},
+						},
+						Route: []*istiov1beta1.RouteDestination{
+							{
+								Destination: &istiov1beta1.Destination{
+									Host: "mongo.backup.svc.cluster.local",
+									Port: &istiov1beta1.PortSelector{
+										Number: 5555,
+									},
+								},
+								Weight: 50,
+							},
+							{
+								Destination: &istiov1beta1.Destination{
+									Host: "mongo-ab.backup.svc.cluster.local",
+									Port: &istiov1beta1.PortSelector{
+										Number: 6555,
+									},
+								},
+								Weight: 50,
+							},
+						},
+					},
+				},
+			},
+			want: []*gatewayv1alpha2.TLSRoute{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "TLSRoute",
+						APIVersion: "gateway.networking.k8s.io/v1alpha2",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "test-idx-0",
+						Namespace:   "ns",
+						Labels:      map[string]string{"k": "v"},
+						Annotations: map[string]string{"k1": "v1"},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								Name: "object",
+							},
+						},
+						Finalizers: []string{"finalizer1"},
+					},
+					Spec: gatewayv1alpha2.TLSRouteSpec{
+						Hostnames: []gatewayv1alpha2.Hostname{
+							gatewayv1alpha2.Hostname("*.com"),
+							gatewayv1alpha2.Hostname("*.wk.org"),
+							gatewayv1alpha2.Hostname("test.net"),
+						},
+						Rules: []gatewayv1alpha2.TLSRouteRule{
+							{
+								BackendRefs: []gatewayv1.BackendRef{
+									{
+										BackendObjectReference: gatewayv1.BackendObjectReference{
+											Name:      "mongo",
+											Namespace: common.PtrTo[gatewayv1.Namespace]("backup"),
+											Port:      common.PtrTo[gatewayv1.PortNumber](5555),
+										},
+										Weight: common.PtrTo[int32](50),
+									},
+									{
+										BackendObjectReference: gatewayv1.BackendObjectReference{
+											Name:      "mongo-ab",
+											Namespace: common.PtrTo[gatewayv1.Namespace]("backup"),
+											Port:      common.PtrTo[gatewayv1.PortNumber](6555),
+										},
+										Weight: common.PtrTo[int32](50),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &converter{}
+			if got := c.convertTLSRoutes(tt.args.virtualService, tt.args.istioTLSRoutes, field.NewPath("")); !apiequality.Semantic.DeepEqual(got, tt.want) {
+				t.Errorf("converter.convertTLSRoutes() = %+v, want %+v, diff (-want +got): %s", got, tt.want, cmp.Diff(tt.want, got))
+			}
+		})
+	}
+}
+
+func Test_converter_convertTCPRoutes(t *testing.T) {
+	type args struct {
+		virtualService metav1.ObjectMeta
+		istioTCPRoutes []*istiov1beta1.TCPRoute
+	}
+	tests := []struct {
+		name string
+		args args
+		want []*gatewayv1alpha2.TCPRoute
+	}{
+		{
+			name: "supported spec",
+			args: args{
+				virtualService: metav1.ObjectMeta{
+					Name:        "test",
+					Namespace:   "ns",
+					Labels:      map[string]string{"k": "v"},
+					Annotations: map[string]string{"k1": "v1"},
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							Name: "object",
+						},
+					},
+					Finalizers: []string{"finalizer1"},
+				},
+				istioTCPRoutes: []*istiov1beta1.TCPRoute{
+					{
+						Route: []*istiov1beta1.RouteDestination{
+							{
+								Destination: &istiov1beta1.Destination{
+									Host: "mongo.backup.svc.cluster.local",
+									Port: &istiov1beta1.PortSelector{
+										Number: 5555,
+									},
+								},
+								Weight: 50,
+							},
+							{
+								Destination: &istiov1beta1.Destination{
+									Host: "mongo-ab.backup.svc.cluster.local",
+									Port: &istiov1beta1.PortSelector{
+										Number: 6555,
+									},
+								},
+								Weight: 50,
+							},
+						},
+					},
+				},
+			},
+			want: []*gatewayv1alpha2.TCPRoute{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "TCPRoute",
+						APIVersion: "gateway.networking.k8s.io/v1alpha2",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "test-idx-0",
+						Namespace:   "ns",
+						Labels:      map[string]string{"k": "v"},
+						Annotations: map[string]string{"k1": "v1"},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								Name: "object",
+							},
+						},
+						Finalizers: []string{"finalizer1"},
+					},
+					Spec: gatewayv1alpha2.TCPRouteSpec{
+						Rules: []gatewayv1alpha2.TCPRouteRule{
+							{
+								BackendRefs: []gatewayv1.BackendRef{
+									{
+										BackendObjectReference: gatewayv1.BackendObjectReference{
+											Name:      "mongo",
+											Namespace: common.PtrTo[gatewayv1.Namespace]("backup"),
+											Port:      common.PtrTo[gatewayv1.PortNumber](5555),
+										},
+										Weight: common.PtrTo[int32](50),
+									},
+									{
+										BackendObjectReference: gatewayv1.BackendObjectReference{
+											Name:      "mongo-ab",
+											Namespace: common.PtrTo[gatewayv1.Namespace]("backup"),
+											Port:      common.PtrTo[gatewayv1.PortNumber](6555),
+										},
+										Weight: common.PtrTo[int32](50),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &converter{}
+			if got := c.convertTCPRoutes(tt.args.virtualService, tt.args.istioTCPRoutes, field.NewPath("")); !apiequality.Semantic.DeepEqual(got, tt.want) {
+				t.Errorf("converter.convertTCPRoutes() = %+v, want %+v, diff (-want +got): %s", got, tt.want, cmp.Diff(tt.want, got))
 			}
 		})
 	}

@@ -76,6 +76,20 @@ func (c *converter) convert(storage storage) (i2gw.GatewayResources, field.Error
 				Name:      httpRoute.Name,
 			}] = *httpRoute
 		}
+
+		for _, tlsRoute := range c.convertTLSRoutes(vs.ObjectMeta, vs.Spec.GetTls(), vsFieldPath) {
+			gatewayResources.TLSRoutes[types.NamespacedName{
+				Namespace: tlsRoute.Namespace,
+				Name:      tlsRoute.Name,
+			}] = *tlsRoute
+		}
+
+		for _, tcpRoute := range c.convertTCPRoutes(vs.ObjectMeta, vs.Spec.GetTcp(), vsFieldPath) {
+			gatewayResources.TCPRoutes[types.NamespacedName{
+				Namespace: tcpRoute.Namespace,
+				Name:      tcpRoute.Name,
+			}] = *tcpRoute
+		}
 	}
 
 	return gatewayResources, nil
@@ -597,6 +611,150 @@ func (c *converter) convertHTTPRoutes(virtualService metav1.ObjectMeta, istioHTT
 	}
 
 	return resHTTPRoutes
+}
+
+func (c *converter) convertTLSRoutes(virtualService metav1.ObjectMeta, istioTLSRoutes []*istiov1beta1.TLSRoute, fieldPath *field.Path) []*gatewayv1alpha2.TLSRoute {
+	var resTLSRoutes []*gatewayv1alpha2.TLSRoute
+
+	for i, route := range istioTLSRoutes {
+		tlsRouteFieldPath := fieldPath.Child("Tls").Index(i)
+
+		var backendRefs []gatewayv1.BackendRef
+		for _, destination := range route.GetRoute() {
+			backendObjRef := destination2backendObjRef(destination.GetDestination(), virtualService.Namespace, tlsRouteFieldPath)
+			if backendObjRef != nil {
+				backendRefs = append(backendRefs, gatewayv1.BackendRef{
+					BackendObjectReference: *backendObjRef,
+					Weight:                 &destination.Weight,
+				})
+			}
+		}
+
+		sniHosts := sets.New[gatewayv1.Hostname]()
+
+		for j, match := range route.GetMatch() {
+			for _, sniHost := range match.GetSniHosts() {
+				sniHosts.Insert(gatewayv1.Hostname(sniHost))
+			}
+
+			tlsMatchFieldPath := tlsRouteFieldPath.Child("TLSMatchAttributes").Index(j)
+
+			if len(match.GetDestinationSubnets()) > 0 {
+				klog.Infof("ignoring field: %v", tlsMatchFieldPath.Child("DestinationSubnets"))
+			}
+			if match.GetPort() != 0 {
+				klog.Infof("ignoring field: %v", tlsMatchFieldPath.Child("Port"))
+			}
+			if len(match.GetSourceLabels()) > 0 {
+				klog.Infof("ignoring field: %v", tlsMatchFieldPath.Child("SourceLabels"))
+			}
+			if len(match.GetGateways()) > 0 {
+				klog.Infof("ignoring field: %v", tlsMatchFieldPath.Child("Gateways"))
+			}
+			if match.GetSourceNamespace() != "" {
+				klog.Infof("ignoring field: %v", tlsMatchFieldPath.Child("SourceNamespace"))
+			}
+		}
+
+		apiVersion, kind := common.TLSRouteGVK.ToAPIVersionAndKind()
+
+		routeName := fmt.Sprintf("%v-idx-%v", virtualService.Name, i)
+
+		resTLSRoutes = append(resTLSRoutes, &gatewayv1alpha2.TLSRoute{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: apiVersion,
+				Kind:       kind,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace:       virtualService.Namespace,
+				Name:            routeName,
+				Labels:          virtualService.Labels,
+				Annotations:     virtualService.Annotations,
+				OwnerReferences: virtualService.OwnerReferences,
+				Finalizers:      virtualService.Finalizers,
+			},
+			Spec: gatewayv1alpha2.TLSRouteSpec{
+				Hostnames: sets.List[gatewayv1.Hostname](sniHosts),
+				Rules: []gatewayv1alpha2.TLSRouteRule{
+					{
+						BackendRefs: backendRefs,
+					},
+				},
+			},
+		})
+	}
+
+	return resTLSRoutes
+}
+
+func (c *converter) convertTCPRoutes(virtualService metav1.ObjectMeta, istioTCPRoutes []*istiov1beta1.TCPRoute, fieldPath *field.Path) []*gatewayv1alpha2.TCPRoute {
+	var resTCPRoutes []*gatewayv1alpha2.TCPRoute
+
+	for i, route := range istioTCPRoutes {
+		tcpRouteFieldPath := fieldPath.Child("Tcp").Index(i)
+
+		var backendRefs []gatewayv1.BackendRef
+		for _, destination := range route.GetRoute() {
+			backendObjRef := destination2backendObjRef(destination.GetDestination(), virtualService.Namespace, tcpRouteFieldPath)
+			if backendObjRef != nil {
+				backendRefs = append(backendRefs, gatewayv1.BackendRef{
+					BackendObjectReference: *backendObjRef,
+					Weight:                 &destination.Weight,
+				})
+			}
+		}
+
+		for j, match := range route.GetMatch() {
+			tcpMatchFieldPath := tcpRouteFieldPath.Child("L4MatchAttributes").Index(j)
+
+			if len(match.GetDestinationSubnets()) > 0 {
+				klog.Infof("ignoring field: %v", tcpMatchFieldPath.Child("DestinationSubnets"))
+			}
+			if match.GetPort() != 0 {
+				klog.Infof("ignoring field: %v", tcpMatchFieldPath.Child("Port"))
+			}
+			if match.GetSourceSubnet() != "" {
+				klog.Infof("ignoring field: %v", tcpMatchFieldPath.Child("SourceSubnet"))
+			}
+			if len(match.GetSourceLabels()) > 0 {
+				klog.Infof("ignoring field: %v", tcpMatchFieldPath.Child("SourceLabels"))
+			}
+			if match.GetSourceNamespace() != "" {
+				klog.Infof("ignoring field: %v", tcpMatchFieldPath.Child("SourceNamespace"))
+			}
+			if len(match.GetGateways()) > 0 {
+				klog.Infof("ignoring field: %v", tcpMatchFieldPath.Child("Gateways"))
+			}
+		}
+
+		apiVersion, kind := common.TCPRouteGVK.ToAPIVersionAndKind()
+
+		routeName := fmt.Sprintf("%v-idx-%v", virtualService.Name, i)
+
+		resTCPRoutes = append(resTCPRoutes, &gatewayv1alpha2.TCPRoute{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: apiVersion,
+				Kind:       kind,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace:       virtualService.Namespace,
+				Name:            routeName,
+				Labels:          virtualService.Labels,
+				Annotations:     virtualService.Annotations,
+				OwnerReferences: virtualService.OwnerReferences,
+				Finalizers:      virtualService.Finalizers,
+			},
+			Spec: gatewayv1alpha2.TCPRouteSpec{
+				Rules: []gatewayv1alpha2.TCPRouteRule{
+					{
+						BackendRefs: backendRefs,
+					},
+				},
+			},
+		})
+	}
+
+	return resTCPRoutes
 }
 
 func parseK8SServiceFromDomain(domain string, fallbackNamespace string) (string, string) {
