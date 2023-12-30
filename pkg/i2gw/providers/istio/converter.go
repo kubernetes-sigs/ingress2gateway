@@ -64,6 +64,20 @@ func (c *converter) convert(storage storage) (i2gw.GatewayResources, field.Error
 		}] = *gw
 	}
 
+	for _, vs := range storage.VirtualServices {
+		vsFieldPath := rootPath.Child("VirtualService").Key(types.NamespacedName{
+			Namespace: vs.Namespace,
+			Name:      vs.Name,
+		}.String())
+
+		for _, httpRoute := range c.convertHTTPRoutes(vs.ObjectMeta, vs.Spec.GetHttp(), vs.Spec.GetHosts(), vsFieldPath) {
+			gatewayResources.HTTPRoutes[types.NamespacedName{
+				Namespace: httpRoute.Namespace,
+				Name:      httpRoute.Name,
+			}] = *httpRoute
+		}
+	}
+
 	return gatewayResources, nil
 }
 
@@ -234,4 +248,416 @@ func (c *converter) convertGateway(gw *istioclientv1beta1.Gateway, fieldPath *fi
 			Listeners:        listeners,
 		},
 	}
+}
+
+func (c *converter) convertHTTPRoutes(virtualService metav1.ObjectMeta, istioHTTPRoutes []*istiov1beta1.HTTPRoute, allowedHostnames []string, fieldPath *field.Path) []*gatewayv1.HTTPRoute {
+	var resHTTPRoutes []*gatewayv1.HTTPRoute
+
+	for i, httpRoute := range istioHTTPRoutes {
+		httpRouteFieldName := fmt.Sprintf("%v", i)
+		if httpRoute.GetName() != "" {
+			httpRouteFieldName = httpRoute.GetName()
+		}
+		httpRouteFieldPath := fieldPath.Child("Http").Key(httpRouteFieldName)
+
+		var gwHTTPRouteMatches []gatewayv1.HTTPRouteMatch
+		var gwHTTPRouteFilters []gatewayv1.HTTPRouteFilter
+
+		for j, match := range httpRoute.GetMatch() {
+			httpMatchFieldName := fmt.Sprintf("%v", j)
+			if match.GetName() != "" {
+				httpMatchFieldName = match.GetName()
+			}
+			httpMatchFieldPath := httpRouteFieldPath.Child("HTTPMatchRequest").Key(httpMatchFieldName)
+
+			if match.GetScheme() != nil {
+				klog.Infof("ignoring field: %v", httpMatchFieldPath.Child("Scheme").Key(match.GetScheme().String()))
+			}
+			if match.GetAuthority() != nil {
+				klog.Infof("ignoring field: %v", httpMatchFieldPath.Child("Authority").Key(match.GetAuthority().String()))
+			}
+			if match.GetPort() != 0 {
+				klog.Infof("ignoring field: %v", httpMatchFieldPath.Child("Port").Key(fmt.Sprintf("%v", match.GetPort())))
+			}
+			if len(match.GetSourceLabels()) > 0 {
+				klog.Infof("ignoring field: %v", httpMatchFieldPath.Child("SourceLabels"))
+			}
+			if match.GetIgnoreUriCase() {
+				klog.Infof("ignoring field: %v", httpMatchFieldPath.Child("IgnoreUriCase"))
+			}
+			if len(match.GetWithoutHeaders()) > 0 {
+				klog.Infof("ignoring field: %v", httpMatchFieldPath.Child("WithoutHeaders"))
+			}
+			if match.GetSourceNamespace() != "" {
+				klog.Infof("ignoring field: %v", httpMatchFieldPath.Child("SourceNamespace"))
+			}
+			if match.GetStatPrefix() != "" {
+				klog.Infof("ignoring field: %v", httpMatchFieldPath.Child("StatPrefix"))
+			}
+			if len(match.GetGateways()) > 0 {
+				klog.Infof("ignoring field: %v", httpMatchFieldPath.Child("Gateways"))
+			}
+
+			gwHTTPRouteMatch := gatewayv1.HTTPRouteMatch{}
+
+			if matchURI := match.GetUri(); matchURI != nil {
+				var (
+					matchType gatewayv1.PathMatchType
+					value     string
+				)
+
+				switch matchURI.GetMatchType().(type) {
+				case *istiov1beta1.StringMatch_Exact:
+					matchType = gatewayv1.PathMatchExact
+					value = matchURI.GetExact()
+				case *istiov1beta1.StringMatch_Prefix:
+					matchType = gatewayv1.PathMatchPathPrefix
+					value = matchURI.GetPrefix()
+				case *istiov1beta1.StringMatch_Regex:
+					matchType = gatewayv1.PathMatchRegularExpression
+					value = matchURI.GetRegex()
+				default:
+					klog.Error(field.Invalid(httpMatchFieldPath.Child("Uri"), matchURI, "unsupported Uri match type %v"))
+				}
+
+				if matchType != "" {
+					gwHTTPRouteMatch.Path = &gatewayv1.HTTPPathMatch{
+						Type:  &matchType,
+						Value: &value,
+					}
+				}
+			}
+
+			for header, headerMatch := range match.GetHeaders() {
+				var (
+					matchType gatewayv1.HeaderMatchType
+					value     string
+				)
+
+				switch headerMatch.GetMatchType().(type) {
+				case *istiov1beta1.StringMatch_Exact:
+					matchType = gatewayv1.HeaderMatchExact
+					value = headerMatch.GetExact()
+				case *istiov1beta1.StringMatch_Regex:
+					matchType = gatewayv1.HeaderMatchRegularExpression
+					value = headerMatch.GetRegex()
+				default:
+					klog.Error(field.Invalid(httpMatchFieldPath.Child("Headers"), headerMatch, "unsupported Headers match type"))
+				}
+
+				if matchType != "" {
+					gwHTTPRouteMatch.Headers = append(gwHTTPRouteMatch.Headers, gatewayv1.HTTPHeaderMatch{
+						Type:  &matchType,
+						Name:  gatewayv1.HTTPHeaderName(header),
+						Value: value,
+					})
+				}
+			}
+
+			for query, queryMatch := range match.GetQueryParams() {
+				var (
+					matchType gatewayv1.QueryParamMatchType
+					value     string
+				)
+
+				switch queryMatch.GetMatchType().(type) {
+				case *istiov1beta1.StringMatch_Exact:
+					matchType = gatewayv1.QueryParamMatchExact
+					value = queryMatch.GetExact()
+				case *istiov1beta1.StringMatch_Regex:
+					matchType = gatewayv1.QueryParamMatchRegularExpression
+					value = queryMatch.GetRegex()
+				default:
+					klog.Error(field.Invalid(httpMatchFieldPath.Child("QueryParams"), queryMatch, "unsupported QueryParams match type"))
+				}
+
+				if matchType != "" {
+					gwHTTPRouteMatch.QueryParams = append(gwHTTPRouteMatch.QueryParams, gatewayv1.HTTPQueryParamMatch{
+						Type:  &matchType,
+						Name:  gatewayv1.HTTPHeaderName(query),
+						Value: value,
+					})
+				}
+			}
+
+			if matchMethod := match.GetMethod(); matchMethod != nil {
+				switch matchMethod.GetMatchType().(type) {
+				case *istiov1beta1.StringMatch_Exact:
+					gwHTTPRouteMatch.Method = common.PtrTo[gatewayv1.HTTPMethod](gatewayv1.HTTPMethod(matchMethod.GetExact()))
+				default:
+					klog.Error(field.Invalid(httpMatchFieldPath.Child("Method"), matchMethod, "unsupported Method match type"))
+				}
+			}
+
+			gwHTTPRouteMatches = append(gwHTTPRouteMatches, gwHTTPRouteMatch)
+		}
+
+		var backendRefs []gatewayv1.HTTPBackendRef
+		for j, routeDestination := range httpRoute.GetRoute() {
+			routeDestinationFieldPath := httpRouteFieldPath.Child("HTTPRouteDestination").Index(j)
+
+			if routeDestination.GetHeaders() != nil {
+				klog.Infof("ignoring field: %v", routeDestinationFieldPath.Child("Headers"))
+			}
+
+			backendObjRef := destination2backendObjRef(routeDestination.GetDestination(), virtualService.Namespace, routeDestinationFieldPath)
+			if backendObjRef != nil {
+				backendRefs = append(backendRefs, gatewayv1.HTTPBackendRef{
+					BackendRef: gatewayv1.BackendRef{
+						BackendObjectReference: *backendObjRef,
+						Weight:                 &routeDestination.Weight,
+					},
+				})
+			}
+		}
+
+		if routeRedirect := httpRoute.GetRedirect(); routeRedirect != nil {
+			redirectFieldPath := httpRouteFieldPath.Child("HTTPRedirect")
+
+			if routeRedirect.GetAuthority() != "" {
+				klog.Infof("ignoring field: %v", redirectFieldPath.Child("Authority"))
+			}
+			if _, ok := routeRedirect.GetRedirectPort().(*istiov1beta1.HTTPRedirect_DerivePort); ok {
+				klog.Infof("ignoring field: %v", redirectFieldPath.Child("DerivePort"))
+			}
+
+			redirectCode := 301
+			if routeRedirect.GetRedirectCode() > 0 {
+				redirectCode = int(routeRedirect.GetRedirectCode())
+			}
+
+			var redirectPath *gatewayv1.HTTPPathModifier
+
+			if routeRedirectURI := routeRedirect.GetUri(); routeRedirectURI != "" {
+				redirectPath = &gatewayv1.HTTPPathModifier{
+					Type:            gatewayv1.FullPathHTTPPathModifier,
+					ReplaceFullPath: &routeRedirectURI,
+				}
+			}
+
+			redirectFilter := gatewayv1.HTTPRequestRedirectFilter{
+				StatusCode: &redirectCode,
+				Path:       redirectPath,
+			}
+
+			if routeRedirectScheme := routeRedirect.GetScheme(); routeRedirectScheme != "" {
+				redirectFilter.Scheme = &routeRedirectScheme
+			}
+
+			if routeRedirect.GetPort() > 0 {
+				redirectPort := gatewayv1.PortNumber(routeRedirect.GetPort())
+				redirectFilter.Port = &redirectPort
+			}
+
+			gwHTTPRouteFilters = append(gwHTTPRouteFilters, gatewayv1.HTTPRouteFilter{
+				Type:            gatewayv1.HTTPRouteFilterRequestRedirect,
+				RequestRedirect: &redirectFilter,
+			})
+		}
+
+		if httpRoute.GetDirectResponse() != nil {
+			klog.Infof("ignoring field: %v", httpRouteFieldPath.Child("DirectResponse"))
+		}
+		if httpRoute.GetDelegate() != nil {
+			klog.Infof("ignoring field: %v", httpRouteFieldPath.Child("Delegate"))
+		}
+		if httpRoute.GetRetries() != nil {
+			klog.Infof("ignoring field: %v", httpRouteFieldPath.Child("Retries"))
+		}
+		if httpRoute.GetFault() != nil {
+			klog.Infof("ignoring field: %v", httpRouteFieldPath.Child("Fault"))
+		}
+		if httpRoute.GetCorsPolicy() != nil {
+			klog.Infof("ignoring field: %v", httpRouteFieldPath.Child("CorsPolicy"))
+		}
+
+		if rewrite := httpRoute.GetRewrite(); rewrite != nil {
+			rewriteFieldPath := httpRouteFieldPath.Child("HTTPRewrite")
+
+			if rewrite.GetAuthority() != "" {
+				klog.Infof("ignoring field: %v", rewriteFieldPath.Child("Authority"))
+			}
+			if rewrite.GetUriRegexRewrite() != nil {
+				klog.Infof("ignoring field: %v", rewriteFieldPath.Child("UriRegexRewrite"))
+			}
+
+			gwHTTPRouteFilters = append(gwHTTPRouteFilters, gatewayv1.HTTPRouteFilter{
+				Type: gatewayv1.HTTPRouteFilterURLRewrite,
+				URLRewrite: &gatewayv1.HTTPURLRewriteFilter{
+					Path: &gatewayv1.HTTPPathModifier{
+						Type:               gatewayv1.PrefixMatchHTTPPathModifier,
+						ReplacePrefixMatch: &httpRoute.Rewrite.Uri,
+					},
+				},
+			})
+		}
+
+		if mirror := httpRoute.GetMirror(); mirror != nil {
+			routeDestinationFieldPath := httpRouteFieldPath.Child("Mirror")
+
+			backendObjRef := destination2backendObjRef(mirror, virtualService.Namespace, routeDestinationFieldPath)
+			if backendObjRef != nil {
+				gwHTTPRouteFilters = append(gwHTTPRouteFilters, gatewayv1.HTTPRouteFilter{
+					Type: gatewayv1.HTTPRouteFilterRequestMirror,
+					RequestMirror: &gatewayv1.HTTPRequestMirrorFilter{
+						BackendRef: *backendObjRef,
+					},
+				})
+			}
+		}
+
+		for j, mirror := range httpRoute.GetMirrors() {
+			routeDestinationFieldPath := httpRouteFieldPath.Child("Mirrors").Index(j)
+
+			if mirror.GetPercentage() != nil {
+				klog.Infof("ignoring field: %v", routeDestinationFieldPath.Child("Percentage"))
+			}
+
+			backendObjRef := destination2backendObjRef(mirror.GetDestination(), virtualService.Namespace, routeDestinationFieldPath)
+			if backendObjRef != nil {
+				gwHTTPRouteFilters = append(gwHTTPRouteFilters, gatewayv1.HTTPRouteFilter{
+					Type: gatewayv1.HTTPRouteFilterRequestMirror,
+					RequestMirror: &gatewayv1.HTTPRequestMirrorFilter{
+						BackendRef: *backendObjRef,
+					},
+				})
+			}
+		}
+
+		var httpRouteTimeouts *gatewayv1.HTTPRouteTimeouts
+		if routeTimeout := httpRoute.GetTimeout(); routeTimeout != nil {
+			d := gatewayv1.Duration(routeTimeout.AsDuration().String())
+			httpRouteTimeouts = &gatewayv1.HTTPRouteTimeouts{
+				Request: &d,
+			}
+		}
+
+		if headers := httpRoute.GetHeaders(); headers != nil {
+			if requestHeaders := headers.GetRequest(); requestHeaders != nil {
+				gwHTTPRouteFilters = append(gwHTTPRouteFilters, gatewayv1.HTTPRouteFilter{
+					Type: gatewayv1.HTTPRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &gatewayv1.HTTPHeaderFilter{
+						Set:    makeHeaderFilter(requestHeaders.GetSet()),
+						Add:    makeHeaderFilter(requestHeaders.GetAdd()),
+						Remove: requestHeaders.GetRemove(),
+					},
+				})
+			}
+
+			if responseHeaders := headers.GetResponse(); responseHeaders != nil {
+				gwHTTPRouteFilters = append(gwHTTPRouteFilters, gatewayv1.HTTPRouteFilter{
+					Type: gatewayv1.HTTPRouteFilterResponseHeaderModifier,
+					ResponseHeaderModifier: &gatewayv1.HTTPHeaderFilter{
+						Set:    makeHeaderFilter(responseHeaders.GetSet()),
+						Add:    makeHeaderFilter(responseHeaders.GetAdd()),
+						Remove: responseHeaders.GetRemove(),
+					},
+				})
+			}
+		}
+
+		// set istio hostnames as is, without extra filters. If it's not a fqdn, it would be rejected by K8S API implementation
+		hostnames := make([]gatewayv1.Hostname, 0, len(allowedHostnames))
+		for _, host := range allowedHostnames {
+			hostnames = append(hostnames, gatewayv1.Hostname(host))
+		}
+
+		apiVersion, kind := common.HTTPRouteGVK.ToAPIVersionAndKind()
+
+		routeName := fmt.Sprintf("%v-idx-%v", virtualService.Name, i)
+		if httpRoute.GetName() != "" {
+			routeName = fmt.Sprintf("%v-%v", virtualService.Name, httpRoute.GetName())
+		}
+
+		resHTTPRoutes = append(resHTTPRoutes, &gatewayv1.HTTPRoute{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: apiVersion,
+				Kind:       kind,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace:       virtualService.Namespace,
+				Name:            routeName,
+				Labels:          virtualService.Labels,
+				Annotations:     virtualService.Annotations,
+				OwnerReferences: virtualService.OwnerReferences,
+				Finalizers:      virtualService.Finalizers,
+			},
+			Spec: gatewayv1.HTTPRouteSpec{
+				Hostnames: hostnames,
+				Rules: []gatewayv1.HTTPRouteRule{
+					{
+						Matches:     gwHTTPRouteMatches,
+						Filters:     gwHTTPRouteFilters,
+						BackendRefs: backendRefs,
+						Timeouts:    httpRouteTimeouts,
+					},
+				},
+			},
+		})
+	}
+
+	return resHTTPRoutes
+}
+
+func parseK8SServiceFromDomain(domain string, fallbackNamespace string) (string, string) {
+	ns := "default"
+	if fallbackNamespace != "" {
+		ns = fallbackNamespace
+	}
+
+	idx := strings.Index(domain, ".svc")
+	if idx == -1 {
+		return domain, ns
+	}
+
+	name, namespace, ok := strings.Cut(domain[:idx], ".")
+	if !ok {
+		return domain[:idx], ns
+	}
+	return name, namespace
+}
+
+func destination2backendObjRef(destination *istiov1beta1.Destination, vsNamespace string, fieldPath *field.Path) *gatewayv1.BackendObjectReference {
+	if destination == nil {
+		klog.Infof("destination is nil: %v", fieldPath)
+		return nil
+	}
+
+	if destination.GetSubset() != "" {
+		klog.Infof("ignoring field: %v", fieldPath.Child("Destination", "Subset"))
+	}
+
+	serviceName, serviceNamespace := parseK8SServiceFromDomain(destination.GetHost(), vsNamespace)
+
+	namespace := gatewayv1.Namespace(serviceNamespace)
+
+	var port *gatewayv1.PortNumber
+	if destinationPort := destination.GetPort(); destinationPort != nil {
+		p := gatewayv1.PortNumber(destinationPort.GetNumber())
+		port = &p
+	}
+
+	// empty group&kind mean core/Service
+	return &gatewayv1.BackendObjectReference{
+		Name:      gatewayv1.ObjectName(serviceName),
+		Namespace: &namespace,
+		Port:      port,
+	}
+}
+
+func makeHeaderFilter(headers map[string]string) []gatewayv1.HTTPHeader {
+	if headers == nil {
+		return nil
+	}
+
+	res := make([]gatewayv1.HTTPHeader, 0, len(headers))
+
+	for header, value := range headers {
+		res = append(res, gatewayv1.HTTPHeader{
+			Name:  gatewayv1.HTTPHeaderName(header),
+			Value: value,
+		})
+	}
+
+	return res
 }
