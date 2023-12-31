@@ -172,13 +172,23 @@ func removeBackendRefsDuplicates(backendRefs []gatewayv1.HTTPBackendRef) []gatew
 	for _, backendRef := range backendRefs {
 		var k uniqueBackendRefsKey
 
+		group := gatewayv1.Group("")
+		kind := gatewayv1.Kind("Service")
+
+		if backendRef.Group != nil && *backendRef.Group != "core" {
+			group = *backendRef.Group
+		}
+
+		if backendRef.Kind != nil {
+			kind = *backendRef.Kind
+		}
+
+		k.Name = backendRef.Name
+		k.Group = group
+		k.Kind = kind
+
 		if backendRef.Port != nil {
-			k.Name = backendRef.Name
 			k.Port = *backendRef.Port
-		} else {
-			k.Name = backendRef.Name
-			k.Group = *backendRef.Group
-			k.Kind = *backendRef.Kind
 		}
 
 		if _, exists := uniqueKeys[k]; exists {
