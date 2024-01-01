@@ -381,10 +381,22 @@ func toBackendRef(ib networkingv1.IngressBackend, path *field.Path) (*gatewayv1.
 			},
 		}, nil
 	}
+
+	group := gatewayv1.Group("")
+	kind := gatewayv1.Kind("Service")
+
+	if ib.Resource.APIGroup != nil && *ib.Resource.APIGroup != "core" {
+		group = gatewayv1.Group(*ib.Resource.APIGroup)
+	}
+
+	if ib.Resource.Kind != "" {
+		kind = gatewayv1.Kind(ib.Resource.Kind)
+	}
+
 	return &gatewayv1.BackendRef{
 		BackendObjectReference: gatewayv1.BackendObjectReference{
-			Group: (*gatewayv1.Group)(ib.Resource.APIGroup),
-			Kind:  (*gatewayv1.Kind)(&ib.Resource.Kind),
+			Group: &group,
+			Kind:  &kind,
 			Name:  gatewayv1.ObjectName(ib.Resource.Name),
 		},
 	}, nil
