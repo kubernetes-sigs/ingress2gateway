@@ -64,8 +64,8 @@ func (p *Provider) ReadResourcesFromCluster(ctx context.Context) error {
 	return nil
 }
 
-func (p *Provider) ReadResourcesFromFile(ctx context.Context, filename string) error {
-	storage, err := p.resourceReader.readResourcesFromFile(ctx, filename)
+func (p *Provider) ReadResourcesFromFile(_ context.Context, filename string) error {
+	storage, err := p.resourceReader.readResourcesFromFile(filename)
 	if err != nil {
 		return fmt.Errorf("failed to read resources from file: %w", err)
 	}
