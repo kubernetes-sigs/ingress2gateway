@@ -328,7 +328,7 @@ func (rg *ingressRuleGroup) configureBackendRef(paths []ingressPath) ([]gatewayv
 		backendRefs = append(backendRefs, gatewayv1.HTTPBackendRef{BackendRef: *backendRef})
 	}
 
-	return backendRefs, errors
+	return removeBackendRefsDuplicates(backendRefs), errors
 }
 
 func getPathMatchKey(ip ingressPath) pathMatchKey {
