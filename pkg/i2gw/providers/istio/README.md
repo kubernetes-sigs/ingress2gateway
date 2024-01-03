@@ -68,6 +68,20 @@ The list of fields showing how istio.VirtualService.Http fields are converted to
 * headers.request -> requestHeaderModifier gw.HTTPHeaderFilter
 * headers.response -> responseHeaderModifier gw.HTTPHeaderFilter
 
+##### rewrite HTTPRewrite translation
+
+In istio, the rewrite logic depends on the match URI parameters:
+ * for prefix match, istio rewrites matched prefix to the given value.
+ * for exact match and for regex match, istio rewrites full URI path to the given value.
+
+Also, in K8S Gateway API only 1 HTTPRouteFilterURLRewrite is allowed per HTTPRouteRule
+https://github.com/kubernetes-sigs/gateway-api/blob/0ad0daffe8d47f97a293b2a947bb3b2ee658e967/apis/v1/httproute_types.go#L228
+
+To take this all into consideration, translator aggregates prefix matches vs non-prefix matches for the istio virtualservice.HTTPRoute.
+And generates max 2 HTTPRoutes (one with prefix matches and ReplacePrefixMatch filter and the other if non-prefix matches and ReplaceFullPath filter).
+If any of the match group is empty, the corresponding HTTPRoute won't be generated.
+If all URI matches are empty, there would be HTTPRoute with HTTPRouteFilterURLRewrite of ReplaceFullPath type.
+
 #### TLS
 
 The list of fields showing how istio.VirtualService.Tls fields are converted to the TLSRoute equivalents

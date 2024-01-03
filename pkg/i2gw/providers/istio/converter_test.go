@@ -859,8 +859,8 @@ func Test_converter_convertVsHTTPRoutes(t *testing.T) {
 										Type: gatewayv1.HTTPRouteFilterURLRewrite,
 										URLRewrite: &gatewayv1.HTTPURLRewriteFilter{
 											Path: &gatewayv1.HTTPPathModifier{
-												Type:               gatewayv1.PrefixMatchHTTPPathModifier,
-												ReplacePrefixMatch: common.PtrTo[string]("redirect-uri"),
+												Type:            gatewayv1.FullPathHTTPPathModifier,
+												ReplaceFullPath: common.PtrTo[string]("redirect-uri"),
 											},
 										},
 									},

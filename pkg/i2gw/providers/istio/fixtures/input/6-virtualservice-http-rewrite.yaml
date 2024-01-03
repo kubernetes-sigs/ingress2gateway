@@ -1,0 +1,58 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  namespace: test
+  name: virtualservice
+spec:
+  gateways:
+  - "my-gateway"
+  hosts:
+  - reviews.prod.svc.cluster.local
+  http:
+  - name: "test"
+    match:
+    - uri:
+        prefix: "/wpcatalog"
+    - uri:
+        exact: "/consumercatalog"
+    - uri:
+        regex: "/catalog[0-9]+"
+    rewrite:
+      uri: "/newcatalog"
+      # authority & uriRegexRewrite are ignored
+      authority: test
+      uriRegexRewrite:
+        match: pattern
+        rewrite: new-pattern
+    route:
+    - destination:
+        host: reviews.prod.svc.cluster.local
+        subset: v2
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  namespace: test
+  name: no-uri-matches
+spec:
+  gateways:
+  - "my-gateway"
+  hosts:
+  - reviews.test.svc.cluster.local
+  http:
+  - name: "route"
+    match:
+    - headers:
+        h1:
+          exact: v1
+    rewrite:
+      uri: "/newcatalog"
+      # authority & uriRegexRewrite are ignored
+      authority: test
+      uriRegexRewrite:
+        match: pattern
+        rewrite: new-pattern
+    route:
+    - destination:
+        host: reviews.test.svc.cluster.local
+        subset: v2

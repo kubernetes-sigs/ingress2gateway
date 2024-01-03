@@ -48,11 +48,6 @@ spec:
           replaceFullPath: /v1/bookRatings
         statusCode: 302
         port: 8080
-    - type: URLRewrite
-      urlRewrite:
-        path:
-          replacePrefixMatch: /newcatalog
-          type: ReplacePrefixMatch
     - type: RequestMirror
       requestMirror:
         backendRef:

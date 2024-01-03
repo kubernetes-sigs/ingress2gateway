@@ -510,27 +510,6 @@ func (c *converter) convertVsHTTPRoutes(virtualService metav1.ObjectMeta, istioH
 			klog.Infof("ignoring field: %v", httpRouteFieldPath.Child("CorsPolicy"))
 		}
 
-		if rewrite := httpRoute.GetRewrite(); rewrite != nil {
-			rewriteFieldPath := httpRouteFieldPath.Child("HTTPRewrite")
-
-			if rewrite.GetAuthority() != "" {
-				klog.Infof("ignoring field: %v", rewriteFieldPath.Child("Authority"))
-			}
-			if rewrite.GetUriRegexRewrite() != nil {
-				klog.Infof("ignoring field: %v", rewriteFieldPath.Child("UriRegexRewrite"))
-			}
-
-			gwHTTPRouteFilters = append(gwHTTPRouteFilters, gatewayv1.HTTPRouteFilter{
-				Type: gatewayv1.HTTPRouteFilterURLRewrite,
-				URLRewrite: &gatewayv1.HTTPURLRewriteFilter{
-					Path: &gatewayv1.HTTPPathModifier{
-						Type:               gatewayv1.PrefixMatchHTTPPathModifier,
-						ReplacePrefixMatch: &httpRoute.Rewrite.Uri,
-					},
-				},
-			})
-		}
-
 		if httpRoute.GetMirror() != nil && len(httpRoute.GetMirrors()) > 0 {
 			errList = append(errList, field.Invalid(httpRouteFieldPath, httpRoute, "HTTP route cannot contain both mirror and mirrors"))
 			continue
@@ -606,19 +585,13 @@ func (c *converter) convertVsHTTPRoutes(virtualService metav1.ObjectMeta, istioH
 			hostnames = append(hostnames, gatewayv1.Hostname(host))
 		}
 
-		apiVersion, kind := common.HTTPRouteGVK.ToAPIVersionAndKind()
-
 		routeName := fmt.Sprintf("%v-idx-%v", virtualService.Name, i)
 		if httpRoute.GetName() != "" {
 			routeName = fmt.Sprintf("%v-%v", virtualService.Name, httpRoute.GetName())
 		}
 
-		resHTTPRoutes = append(resHTTPRoutes, &gatewayv1.HTTPRoute{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: apiVersion,
-				Kind:       kind,
-			},
-			ObjectMeta: metav1.ObjectMeta{
+		createHTTPRouteParams := createHTTPRouteParams{
+			objectMeta: metav1.ObjectMeta{
 				Namespace:       virtualService.Namespace,
 				Name:            routeName,
 				Labels:          virtualService.Labels,
@@ -626,18 +599,19 @@ func (c *converter) convertVsHTTPRoutes(virtualService metav1.ObjectMeta, istioH
 				OwnerReferences: virtualService.OwnerReferences,
 				Finalizers:      virtualService.Finalizers,
 			},
-			Spec: gatewayv1.HTTPRouteSpec{
-				Hostnames: hostnames,
-				Rules: []gatewayv1.HTTPRouteRule{
-					{
-						Matches:     gwHTTPRouteMatches,
-						Filters:     gwHTTPRouteFilters,
-						BackendRefs: backendRefs,
-						Timeouts:    httpRouteTimeouts,
-					},
-				},
-			},
-		})
+			hostnames:   hostnames,
+			matches:     gwHTTPRouteMatches,
+			filters:     gwHTTPRouteFilters,
+			backendRefs: backendRefs,
+			timeouts:    httpRouteTimeouts,
+		}
+
+		if httpRoute.GetRewrite() != nil {
+			resHTTPRoutes = append(resHTTPRoutes, c.createHTTPRoutesWithRewrite(createHTTPRouteParams, httpRoute.GetRewrite(), httpRouteFieldPath.Child("HTTPRewrite"))...)
+			continue
+		}
+
+		resHTTPRoutes = append(resHTTPRoutes, c.createHTTPRoute(createHTTPRouteParams))
 	}
 
 	if len(errList) > 0 {
@@ -645,6 +619,118 @@ func (c *converter) convertVsHTTPRoutes(virtualService metav1.ObjectMeta, istioH
 	}
 
 	return resHTTPRoutes, nil
+}
+
+type createHTTPRouteParams struct {
+	objectMeta  metav1.ObjectMeta
+	hostnames   []gatewayv1.Hostname
+	matches     []gatewayv1.HTTPRouteMatch
+	filters     []gatewayv1.HTTPRouteFilter
+	backendRefs []gatewayv1.HTTPBackendRef
+	timeouts    *gatewayv1.HTTPRouteTimeouts
+}
+
+func (c *converter) createHTTPRoute(params createHTTPRouteParams) *gatewayv1.HTTPRoute {
+	apiVersion, kind := common.HTTPRouteGVK.ToAPIVersionAndKind()
+
+	return &gatewayv1.HTTPRoute{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: apiVersion,
+			Kind:       kind,
+		},
+		ObjectMeta: params.objectMeta,
+		Spec: gatewayv1.HTTPRouteSpec{
+			Hostnames: params.hostnames,
+			Rules: []gatewayv1.HTTPRouteRule{
+				{
+					Matches:     params.matches,
+					Filters:     params.filters,
+					BackendRefs: params.backendRefs,
+					Timeouts:    params.timeouts,
+				},
+			},
+		},
+	}
+}
+
+// createHTTPRoutesWithRewrite generates k8sgw.HTTRoutes taking into consideration "rewrite" option in istio.HTTPRewrite
+// In istio, the rewrite logic depends on the match URI parameters:
+// 1. for prefix match, istio rewrites matched prefix to the given value.
+// 2. for exact match and for regex match, istio rewrites full URI path to the given value.
+//
+// Also, in K8S Gateway API only 1 HTTPRouteFilterURLRewrite is allowed per HTTPRouteRule
+// https://github.com/kubernetes-sigs/gateway-api/blob/0ad0daffe8d47f97a293b2a947bb3b2ee658e967/apis/v1/httproute_types.go#L228
+//
+// To take this all into consideration, translator aggregates prefix matches vs non-prefix matches
+// And generates max 2 HTTPRoutes (one with prefix matches and ReplacePrefixMatch filter and the other if non-prefix matches and ReplaceFullPath filter).
+// If any of the match group is empty, the corresponding HTTPRoute won't be generated.
+// If all URI matches are empty, there would be HTTPRoute with HTTPRouteFilterURLRewrite of ReplaceFullPath type.
+func (c *converter) createHTTPRoutesWithRewrite(params createHTTPRouteParams, rewrite *istiov1beta1.HTTPRewrite, fieldPath *field.Path) []*gatewayv1.HTTPRoute {
+	if rewrite == nil {
+		return nil
+	}
+
+	if rewrite.GetAuthority() != "" {
+		klog.Infof("ignoring field: %v", fieldPath.Child("Authority"))
+	}
+	if rewrite.GetUriRegexRewrite() != nil {
+		klog.Infof("ignoring field: %v", fieldPath.Child("UriRegexRewrite"))
+	}
+
+	origFilters := params.filters
+
+	var prefixRouteMatches, nonPrefixRouteMatches []gatewayv1.HTTPRouteMatch
+	for _, match := range params.matches {
+		// if it's a non-path match, then prefixMatch rewrite is generated
+		if match.Path == nil {
+			prefixRouteMatches = append(prefixRouteMatches, match)
+			continue
+		}
+
+		// if type == nil, prefixMatch is the default
+		if match.Path.Type == nil || *match.Path.Type == gatewayv1.PathMatchPathPrefix {
+			prefixRouteMatches = append(prefixRouteMatches, match)
+		} else {
+			nonPrefixRouteMatches = append(nonPrefixRouteMatches, match)
+		}
+	}
+
+	var resHTTPRoutes []*gatewayv1.HTTPRoute
+
+	// these matches contain Exact and Regex matches, istio does FullPath rewrite for both
+	// if there are no matches at all -- use FullPath rewrite as well
+	if len(params.matches) == 0 || len(nonPrefixRouteMatches) > 0 {
+		params.filters = append(origFilters, gatewayv1.HTTPRouteFilter{
+			Type: gatewayv1.HTTPRouteFilterURLRewrite,
+			URLRewrite: &gatewayv1.HTTPURLRewriteFilter{
+				Path: &gatewayv1.HTTPPathModifier{
+					Type:            gatewayv1.FullPathHTTPPathModifier,
+					ReplaceFullPath: &rewrite.Uri,
+				},
+			},
+		})
+		params.matches = nonPrefixRouteMatches
+
+		resHTTPRoutes = append(resHTTPRoutes, c.createHTTPRoute(params))
+	}
+
+	if len(prefixRouteMatches) > 0 {
+		params.filters = append(origFilters, gatewayv1.HTTPRouteFilter{
+			Type: gatewayv1.HTTPRouteFilterURLRewrite,
+			URLRewrite: &gatewayv1.HTTPURLRewriteFilter{
+				Path: &gatewayv1.HTTPPathModifier{
+					Type:               gatewayv1.PrefixMatchHTTPPathModifier,
+					ReplacePrefixMatch: &rewrite.Uri,
+				},
+			},
+		})
+		params.matches = prefixRouteMatches
+		params.objectMeta.Name += "-prefix-match"
+
+		resHTTPRoutes = append(resHTTPRoutes, c.createHTTPRoute(params))
+	}
+
+	return resHTTPRoutes
 }
 
 func (c *converter) convertVsTLSRoutes(virtualService metav1.ObjectMeta, istioTLSRoutes []*istiov1beta1.TLSRoute, fieldPath *field.Path) []*gatewayv1alpha2.TLSRoute {

@@ -54,13 +54,6 @@ spec:
       port: 8080
       # authority & derivePort are ignored
       authority: newratings.default.svc.cluster.local
-    rewrite:
-      uri: "/newcatalog"
-      # authority & uriRegexRewrite are ignored
-      authority: test
-      uriRegexRewrite:
-        match: pattern
-        rewrite: new-pattern
     mirror:
       host: reviews # interpreted as reviews.test.svc.cluster.local
       subset: v1
