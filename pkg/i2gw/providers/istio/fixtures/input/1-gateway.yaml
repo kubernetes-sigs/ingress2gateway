@@ -20,7 +20,6 @@ spec:
     hosts:
     - "bookinfo/*.bookinfo.com"
     -  "*"
-    - "bookinfo" # short service-name inferred hosts are ignored; in future converter may expand this to the fqdn required by k8s api gateway
     tls:
       httpsRedirect: true
       mode: SIMPLE
@@ -75,11 +74,5 @@ spec:
   - port: # converted to TCP protocol
       number: 2379
       protocol: MONGO
-    hosts:
-    - "*"
-  - port: # this server is ignored because of the unknown protocol
-      number: 8000
-      name: unknown-protocol
-      protocol: TEST
     hosts:
     - "*"

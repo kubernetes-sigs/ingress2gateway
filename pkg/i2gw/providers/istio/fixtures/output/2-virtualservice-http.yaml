@@ -58,16 +58,6 @@ spec:
         backendRef:
           name: reviews
           namespace: test
-    - type: RequestMirror
-      requestMirror:
-        backendRef:
-          name: reviewsA
-          namespace: test
-    - type: RequestMirror
-      requestMirror:
-        backendRef:
-          name: reviewsB
-          namespace: prod
     - type: RequestHeaderModifier
       requestHeaderModifier:
         add:
@@ -90,3 +80,29 @@ spec:
         - h6
     timeouts:
       request: 5s
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: reviews-route-mirrors-match
+  namespace: test
+spec:
+  hostnames:
+  - reviews.prod.svc.cluster.local
+  - reviews.test.svc.cluster.local
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /wpcatalog
+    filters:
+    - type: RequestMirror
+      requestMirror:
+        backendRef:
+          name: reviewsA
+          namespace: test
+    - type: RequestMirror
+      requestMirror:
+        backendRef:
+          name: reviewsB
+          namespace: prod

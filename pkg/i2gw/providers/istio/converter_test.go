@@ -44,6 +44,7 @@ func Test_converter_convertGateway(t *testing.T) {
 		args             args
 		wantGateway      *gatewayv1.Gateway
 		wantAllowedHosts map[types.NamespacedName]map[string]sets.Set[string]
+		wantError        bool
 	}{
 		{
 			name: "gateway with TLS and hosts",
@@ -278,12 +279,47 @@ func Test_converter_convertGateway(t *testing.T) {
 				}: {},
 			},
 		},
+		{
+			name: "unknown istio server protocol returns an error",
+			args: args{
+				gw: &istioclientv1beta1.Gateway{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "name",
+						Namespace: "test",
+					},
+					Spec: istiov1beta1.Gateway{
+						Servers: []*istiov1beta1.Server{
+							{
+								Name: "http",
+								Port: &istiov1beta1.Port{
+									Number:   80,
+									Protocol: "HTTP-TEST",
+								},
+								Hosts: []string{
+									"http/*.example.com",
+									"http/*",
+									"*/foo.example.com",
+									"./foo.example.com",
+									"*.example.com",
+								},
+							},
+						},
+					},
+				},
+			},
+			wantError: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := newConverter()
-			if got := c.convertGateway(tt.args.gw, field.NewPath("")); !apiequality.Semantic.DeepEqual(got, tt.wantGateway) {
-				t.Errorf("converter.convertGateway() = %+v, want %+v, diff (-want +got): %s", got, tt.wantGateway, cmp.Diff(tt.wantGateway, got))
+			got, errList := c.convertGateway(tt.args.gw, field.NewPath(""))
+			if tt.wantError && len(errList) == 0 {
+				t.Errorf("converter.convertGateway().errList = %+v, wantError %+v", errList, tt.wantError)
+			}
+
+			if !apiequality.Semantic.DeepEqual(got, tt.wantGateway) {
+				t.Errorf("converter.convertGateway().gateway = %+v, want %+v, diff (-want +got): %s", got, tt.wantGateway, cmp.Diff(tt.wantGateway, got))
 			}
 
 			if got := c.gwAllowedHosts; !apiequality.Semantic.DeepEqual(got, tt.wantAllowedHosts) {
@@ -293,16 +329,17 @@ func Test_converter_convertGateway(t *testing.T) {
 	}
 }
 
-func Test_converter_convertHTTPRoutes(t *testing.T) {
+func Test_converter_convertVsHTTPRoutes(t *testing.T) {
 	type args struct {
 		virtualService   metav1.ObjectMeta
 		istioHTTPRoutes  []*istiov1beta1.HTTPRoute
 		allowedHostnames []string
 	}
 	tests := []struct {
-		name string
-		args args
-		want []*gatewayv1.HTTPRoute
+		name      string
+		args      args
+		want      []*gatewayv1.HTTPRoute
+		wantError bool
 	}{
 		{
 			name: "objectMeta field is converted and hosts are set",
@@ -1064,14 +1101,18 @@ func Test_converter_convertHTTPRoutes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &converter{}
-			if got := c.convertHTTPRoutes(tt.args.virtualService, tt.args.istioHTTPRoutes, tt.args.allowedHostnames, field.NewPath("")); !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("converter.convertHTTPRoutes() = %v, want %v, diff (-want +got): %s", got, tt.want, cmp.Diff(tt.want, got))
+			httpRoutes, errList := c.convertVsHTTPRoutes(tt.args.virtualService, tt.args.istioHTTPRoutes, tt.args.allowedHostnames, field.NewPath(""))
+			if tt.wantError && len(errList) == 0 {
+				t.Errorf("converter.convertVsHTTPRoutes().errList = %+v, wantError %+v", errList, tt.wantError)
+			}
+			if !apiequality.Semantic.DeepEqual(httpRoutes, tt.want) {
+				t.Errorf("converter.convertVsHTTPRoutes().httpRoutes = %v, want %v, diff (-want +got): %s", httpRoutes, tt.want, cmp.Diff(tt.want, httpRoutes))
 			}
 		})
 	}
 }
 
-func Test_converter_convertTLSRoutes(t *testing.T) {
+func Test_converter_convertVsTLSRoutes(t *testing.T) {
 	type args struct {
 		virtualService metav1.ObjectMeta
 		istioTLSRoutes []*istiov1beta1.TLSRoute
@@ -1183,14 +1224,14 @@ func Test_converter_convertTLSRoutes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &converter{}
-			if got := c.convertTLSRoutes(tt.args.virtualService, tt.args.istioTLSRoutes, field.NewPath("")); !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("converter.convertTLSRoutes() = %+v, want %+v, diff (-want +got): %s", got, tt.want, cmp.Diff(tt.want, got))
+			if got := c.convertVsTLSRoutes(tt.args.virtualService, tt.args.istioTLSRoutes, field.NewPath("")); !apiequality.Semantic.DeepEqual(got, tt.want) {
+				t.Errorf("converter.convertVsTLSRoutes() = %+v, want %+v, diff (-want +got): %s", got, tt.want, cmp.Diff(tt.want, got))
 			}
 		})
 	}
 }
 
-func Test_converter_convertTCPRoutes(t *testing.T) {
+func Test_converter_convertVsTCPRoutes(t *testing.T) {
 	type args struct {
 		virtualService metav1.ObjectMeta
 		istioTCPRoutes []*istiov1beta1.TCPRoute
@@ -1289,8 +1330,8 @@ func Test_converter_convertTCPRoutes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &converter{}
-			if got := c.convertTCPRoutes(tt.args.virtualService, tt.args.istioTCPRoutes, field.NewPath("")); !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("converter.convertTCPRoutes() = %+v, want %+v, diff (-want +got): %s", got, tt.want, cmp.Diff(tt.want, got))
+			if got := c.convertVsTCPRoutes(tt.args.virtualService, tt.args.istioTCPRoutes, field.NewPath("")); !apiequality.Semantic.DeepEqual(got, tt.want) {
+				t.Errorf("converter.convertVsTCPRoutes() = %+v, want %+v, diff (-want +got): %s", got, tt.want, cmp.Diff(tt.want, got))
 			}
 		})
 	}

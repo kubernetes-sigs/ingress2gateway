@@ -2,7 +2,7 @@
 
 The provider translates Istio API entities: [Gateway](https://istio.io/latest/docs/reference/config/networking/gateway/) and [VirtualService](https://istio.io/latest/docs/reference/config/networking/virtual-service) to the K8S Gateway API: Gateway, HTTPRoute, TLSRoute, TCPRoute and ReferenceGrants.
 
-If certain field of the Istio API entity lacks a direct equivalent in K8S Gateway API, this field is logged and ignored during the translation.
+The API translator converts the API fields that have a direct equivalent in the K8S Gateway API. If a certain field of the Istio API cannot be translated directly, this field would be logged and ignored during the translation. It's up to the user to handle such cases accordingly to their needs.
 
 ## Examples
 

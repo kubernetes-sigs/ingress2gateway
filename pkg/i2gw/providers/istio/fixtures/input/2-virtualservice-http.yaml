@@ -64,15 +64,6 @@ spec:
     mirror:
       host: reviews # interpreted as reviews.test.svc.cluster.local
       subset: v1
-    mirrors:
-    - destination:
-        host: reviewsA # interpreted as reviews.test.svc.cluster.local
-      percentage:
-        value: 50
-    - destination:
-        host: reviewsB.prod.svc.cluster.local # interpreted as reviews.test.svc.cluster.local
-      percentage:
-        value: 50
     route:
     - destination:
         host: reviews.prod.svc.cluster.local
@@ -108,3 +99,16 @@ spec:
     corsPolicy:
     allowOrigins:
       - exact: https://example.com
+  - name: "mirrors-match"
+    match:
+    - uri:
+        prefix: "/wpcatalog"
+    mirrors:
+    - destination:
+        host: reviewsA # interpreted as reviews.test.svc.cluster.local
+      percentage:
+        value: 50
+    - destination:
+        host: reviewsB.prod.svc.cluster.local # interpreted as reviews.test.svc.cluster.local
+      percentage:
+        value: 50

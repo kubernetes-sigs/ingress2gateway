@@ -45,6 +45,8 @@ func newConverter() converter {
 }
 
 func (c *converter) convert(storage storage) (i2gw.GatewayResources, field.ErrorList) {
+	var errList field.ErrorList
+
 	gatewayResources := i2gw.GatewayResources{
 		Gateways:        make(map[types.NamespacedName]gatewayv1.Gateway),
 		HTTPRoutes:      make(map[types.NamespacedName]gatewayv1.HTTPRoute),
@@ -56,7 +58,11 @@ func (c *converter) convert(storage storage) (i2gw.GatewayResources, field.Error
 	rootPath := field.NewPath(ProviderName)
 
 	for _, istioGateway := range storage.Gateways {
-		gw := c.convertGateway(istioGateway, rootPath)
+		gw, errors := c.convertGateway(istioGateway, rootPath)
+		if len(errors) > 0 {
+			errList = append(errList, errors...)
+			continue
+		}
 
 		gatewayResources.Gateways[types.NamespacedName{
 			Namespace: gw.Namespace,
@@ -72,15 +78,20 @@ func (c *converter) convert(storage storage) (i2gw.GatewayResources, field.Error
 
 		parentRefs, referenceGrants := c.generateReferences(vs, vsFieldPath)
 
-		for _, httpRoute := range c.convertHTTPRoutes(vs.ObjectMeta, vs.Spec.GetHttp(), vs.Spec.GetHosts(), vsFieldPath) {
-			httpRoute.Spec.ParentRefs = parentRefs
-			gatewayResources.HTTPRoutes[types.NamespacedName{
-				Namespace: httpRoute.Namespace,
-				Name:      httpRoute.Name,
-			}] = *httpRoute
+		httpRoutes, errors := c.convertVsHTTPRoutes(vs.ObjectMeta, vs.Spec.GetHttp(), vs.Spec.GetHosts(), vsFieldPath)
+		if len(errors) > 0 {
+			errList = append(errList, errors...)
+		} else {
+			for _, httpRoute := range httpRoutes {
+				httpRoute.Spec.ParentRefs = parentRefs
+				gatewayResources.HTTPRoutes[types.NamespacedName{
+					Namespace: httpRoute.Namespace,
+					Name:      httpRoute.Name,
+				}] = *httpRoute
+			}
 		}
 
-		for _, tlsRoute := range c.convertTLSRoutes(vs.ObjectMeta, vs.Spec.GetTls(), vsFieldPath) {
+		for _, tlsRoute := range c.convertVsTLSRoutes(vs.ObjectMeta, vs.Spec.GetTls(), vsFieldPath) {
 			tlsRoute.Spec.ParentRefs = parentRefs
 			gatewayResources.TLSRoutes[types.NamespacedName{
 				Namespace: tlsRoute.Namespace,
@@ -88,7 +99,7 @@ func (c *converter) convert(storage storage) (i2gw.GatewayResources, field.Error
 			}] = *tlsRoute
 		}
 
-		for _, tcpRoute := range c.convertTCPRoutes(vs.ObjectMeta, vs.Spec.GetTcp(), vsFieldPath) {
+		for _, tcpRoute := range c.convertVsTCPRoutes(vs.ObjectMeta, vs.Spec.GetTcp(), vsFieldPath) {
 			tcpRoute.Spec.ParentRefs = parentRefs
 			gatewayResources.TCPRoutes[types.NamespacedName{
 				Namespace: tcpRoute.Namespace,
@@ -107,7 +118,8 @@ func (c *converter) convert(storage storage) (i2gw.GatewayResources, field.Error
 	return gatewayResources, nil
 }
 
-func (c *converter) convertGateway(gw *istioclientv1beta1.Gateway, fieldPath *field.Path) *gatewayv1.Gateway {
+func (c *converter) convertGateway(gw *istioclientv1beta1.Gateway, fieldPath *field.Path) (*gatewayv1.Gateway, field.ErrorList) {
+	var errList field.ErrorList
 	apiVersion, kind := common.GatewayGVK.ToAPIVersionAndKind()
 	gwPath := fieldPath.Child("Gateway").Key(gw.Name)
 
@@ -148,7 +160,7 @@ func (c *converter) convertGateway(gw *istioclientv1beta1.Gateway, fieldPath *fi
 		case "MONGO":
 			protocol = gatewayv1.TCPProtocolType
 		default:
-			klog.Infof("unknown field value, ignoring: %v", portFieldPath.Child("Protocol").Key(serverPortProtocol))
+			errList = append(errList, field.Invalid(portFieldPath.Child("Protocol"), serverPortProtocol, "unknown istio server protocol"))
 			continue
 		}
 
@@ -162,9 +174,10 @@ func (c *converter) convertGateway(gw *istioclientv1beta1.Gateway, fieldPath *fi
 			case istiov1beta1.ServerTLSSettings_SIMPLE, istiov1beta1.ServerTLSSettings_MUTUAL:
 				tlsMode = gatewayv1.TLSModeTerminate
 			case istiov1beta1.ServerTLSSettings_ISTIO_MUTUAL, istiov1beta1.ServerTLSSettings_OPTIONAL_MUTUAL:
-				klog.Infof("unsupported field value, ignoring: %v", tlsFieldPath.Child("Mode").Key(serverTLSMode.String()))
+				klog.Warningf("the istio server is ignored as there's no direct translation for this TLS istio protocol: %v", tlsFieldPath.Child("Mode").Key(serverTLSMode.String()))
+				continue
 			default:
-				klog.Infof("unknown field value, ignoring: %v", tlsFieldPath.Child("Mode").Key(serverTLSMode.String()))
+				errList = append(errList, field.Invalid(tlsFieldPath.Child("Mode"), serverTLSMode, "unknown istio server tls mode"))
 			}
 
 			if serverTLS.GetHttpsRedirect() {
@@ -223,11 +236,6 @@ func (c *converter) convertGateway(gw *istioclientv1beta1.Gateway, fieldPath *fi
 				namespace, dnsName = "*", host
 			}
 
-			if dnsName != "*" && !strings.Contains(dnsName, ".") {
-				klog.Warningf("ignoring non-FQDN formatted host: %v", serverFieldPath.Child("Hosts").Key(dnsName))
-				continue
-			}
-
 			// if dnsName == "*", then gwListener is empty which matches all hostnames for the listener
 			if dnsName != "*" {
 				gwListener.Hostname = common.PtrTo[gatewayv1.Hostname](gatewayv1.Hostname(dnsName))
@@ -249,6 +257,10 @@ func (c *converter) convertGateway(gw *istioclientv1beta1.Gateway, fieldPath *fi
 
 			listeners = append(listeners, gwListener)
 		}
+	}
+
+	if len(errList) > 0 {
+		return nil, errList
 	}
 
 	c.gwAllowedHosts[types.NamespacedName{
@@ -273,10 +285,11 @@ func (c *converter) convertGateway(gw *istioclientv1beta1.Gateway, fieldPath *fi
 			GatewayClassName: K8SGatewayClassName,
 			Listeners:        listeners,
 		},
-	}
+	}, nil
 }
 
-func (c *converter) convertHTTPRoutes(virtualService metav1.ObjectMeta, istioHTTPRoutes []*istiov1beta1.HTTPRoute, allowedHostnames []string, fieldPath *field.Path) []*gatewayv1.HTTPRoute {
+func (c *converter) convertVsHTTPRoutes(virtualService metav1.ObjectMeta, istioHTTPRoutes []*istiov1beta1.HTTPRoute, allowedHostnames []string, fieldPath *field.Path) ([]*gatewayv1.HTTPRoute, field.ErrorList) {
+	var errList field.ErrorList
 	var resHTTPRoutes []*gatewayv1.HTTPRoute
 
 	for i, httpRoute := range istioHTTPRoutes {
@@ -518,6 +531,11 @@ func (c *converter) convertHTTPRoutes(virtualService metav1.ObjectMeta, istioHTT
 			})
 		}
 
+		if httpRoute.GetMirror() != nil && len(httpRoute.GetMirrors()) > 0 {
+			errList = append(errList, field.Invalid(httpRouteFieldPath, httpRoute, "HTTP route cannot contain both mirror and mirrors"))
+			continue
+		}
+
 		if mirror := httpRoute.GetMirror(); mirror != nil {
 			routeDestinationFieldPath := httpRouteFieldPath.Child("Mirror")
 
@@ -622,10 +640,14 @@ func (c *converter) convertHTTPRoutes(virtualService metav1.ObjectMeta, istioHTT
 		})
 	}
 
-	return resHTTPRoutes
+	if len(errList) > 0 {
+		return nil, errList
+	}
+
+	return resHTTPRoutes, nil
 }
 
-func (c *converter) convertTLSRoutes(virtualService metav1.ObjectMeta, istioTLSRoutes []*istiov1beta1.TLSRoute, fieldPath *field.Path) []*gatewayv1alpha2.TLSRoute {
+func (c *converter) convertVsTLSRoutes(virtualService metav1.ObjectMeta, istioTLSRoutes []*istiov1beta1.TLSRoute, fieldPath *field.Path) []*gatewayv1alpha2.TLSRoute {
 	var resTLSRoutes []*gatewayv1alpha2.TLSRoute
 
 	for i, route := range istioTLSRoutes {
@@ -699,7 +721,7 @@ func (c *converter) convertTLSRoutes(virtualService metav1.ObjectMeta, istioTLSR
 	return resTLSRoutes
 }
 
-func (c *converter) convertTCPRoutes(virtualService metav1.ObjectMeta, istioTCPRoutes []*istiov1beta1.TCPRoute, fieldPath *field.Path) []*gatewayv1alpha2.TCPRoute {
+func (c *converter) convertVsTCPRoutes(virtualService metav1.ObjectMeta, istioTCPRoutes []*istiov1beta1.TCPRoute, fieldPath *field.Path) []*gatewayv1alpha2.TCPRoute {
 	var resTCPRoutes []*gatewayv1alpha2.TCPRoute
 
 	for i, route := range istioTCPRoutes {
@@ -774,11 +796,6 @@ func (c *converter) isVirtualServiceAllowedForGateway(gateway types.NamespacedNa
 	vsAllowedNamespaces := sets.New("*")
 	if len(vs.Spec.GetExportTo()) > 0 {
 		vsAllowedNamespaces = sets.New(vs.Spec.GetExportTo()...)
-	}
-
-	if gateway.Name == "mesh" {
-		klog.Infof("ignoring mesh gateway during ingress api conversion: %v", fieldPath)
-		return false
 	}
 
 	isAllowedNamespace := vsAllowedNamespaces.HasAny(gateway.Namespace, "*") || (vsAllowedNamespaces.Has(".") && vs.Namespace == gateway.Namespace)
