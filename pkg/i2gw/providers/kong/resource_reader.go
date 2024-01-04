@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
 // converter implements the i2gw.CustomResourceReader interface.
@@ -34,10 +35,24 @@ func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
 	}
 }
 
-func (r *resourceReader) ReadResourcesFromCluster(_ context.Context) error {
-	return nil
+func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage, error) {
+	storage := newResourcesStorage()
+
+	ingresses, err := common.ReadIngressesFromCluster(ctx, r.conf.Client, KongIngressClass)
+	if err != nil {
+		return nil, err
+	}
+	storage.Ingresses = ingresses
+	return storage, nil
 }
 
-func (r *resourceReader) ReadResourcesFromFile(_ context.Context, _ string) error {
-	return nil
+func (r *resourceReader) readResourcesFromFile(_ context.Context, filename string) (*storage, error) {
+	storage := newResourcesStorage()
+
+	ingresses, err := common.ReadIngressesFromFile(filename, r.conf.Namespace, KongIngressClass)
+	if err != nil {
+		return nil, err
+	}
+	storage.Ingresses = ingresses
+	return storage, nil
 }

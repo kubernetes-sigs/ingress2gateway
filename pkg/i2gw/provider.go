@@ -42,7 +42,8 @@ type ProviderConstructor func(conf *ProviderConf) Provider
 // ProviderConf contains all the configuration required for every concrete
 // Provider implementation.
 type ProviderConf struct {
-	Client client.Client
+	Client    client.Client
+	Namespace string
 }
 
 // The Provider interface specifies the required functionality which needs to be

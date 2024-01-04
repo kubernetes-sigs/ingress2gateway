@@ -17,18 +17,10 @@ limitations under the License.
 package i2gw
 
 import (
-	"bytes"
 	"context"
-	"errors"
 	"fmt"
-	"io"
-	"os"
 
-	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	kubeyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
@@ -45,30 +37,19 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 	}
 	cl = client.NewNamespacedClient(cl, namespace)
 
-	var ingresses networkingv1.IngressList
-
 	providerByName, err := constructProviders(&ProviderConf{
-		Client: cl,
+		Client:    cl,
+		Namespace: namespace,
 	}, providers)
 	if err != nil {
 		return nil, err
 	}
 
-	resources := InputResources{}
-
 	if inputFile != "" {
-		if err = ConstructIngressesFromFile(&ingresses, inputFile, namespace); err != nil {
-			return nil, fmt.Errorf("failed to read ingresses from file: %w", err)
-		}
-		resources.Ingresses = ingresses.Items
 		if err = readProviderResourcesFromFile(ctx, providerByName, inputFile); err != nil {
 			return nil, err
 		}
 	} else {
-		if err = ConstructIngressesFromCluster(ctx, cl, &ingresses); err != nil {
-			return nil, fmt.Errorf("failed to read ingresses from cluster: %w", err)
-		}
-		resources.Ingresses = ingresses.Items
 		if err = readProviderResourcesFromCluster(ctx, providerByName); err != nil {
 			return nil, err
 		}
@@ -79,7 +60,8 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 		errs             field.ErrorList
 	)
 	for _, provider := range providerByName {
-		providerGatewayResources, conversionErrs := provider.ToGatewayAPI(resources)
+		// TODO(#113) Remove input resources from ToGatewayAPI function
+		providerGatewayResources, conversionErrs := provider.ToGatewayAPI(InputResources{})
 		errs = append(errs, conversionErrs...)
 		gatewayResources = append(gatewayResources, providerGatewayResources)
 	}
@@ -108,14 +90,6 @@ func readProviderResourcesFromCluster(ctx context.Context, providerByName map[Pr
 	return nil
 }
 
-func ConstructIngressesFromCluster(ctx context.Context, cl client.Client, ingressList *networkingv1.IngressList) error {
-	err := cl.List(ctx, ingressList)
-	if err != nil {
-		return fmt.Errorf("failed to get ingresses from the cluster: %w", err)
-	}
-	return nil
-}
-
 // constructProviders constructs a map of concrete Provider implementations
 // by their ProviderName.
 func constructProviders(conf *ProviderConf, providers []string) (map[ProviderName]Provider, error) {
@@ -131,83 +105,6 @@ func constructProviders(conf *ProviderConf, providers []string) (map[ProviderNam
 	}
 
 	return providerByName, nil
-}
-
-// ExtractObjectsFromReader extracts all objects from a reader,
-// which is created from YAML or JSON input files.
-// It retrieves all objects, including nested ones if they are contained within a list.
-func ExtractObjectsFromReader(reader io.Reader) ([]*unstructured.Unstructured, error) {
-	d := kubeyaml.NewYAMLOrJSONDecoder(reader, 4096)
-	var objs []*unstructured.Unstructured
-	for {
-		u := &unstructured.Unstructured{}
-		if err := d.Decode(&u); err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			return objs, fmt.Errorf("failed to unmarshal manifest: %w", err)
-		}
-		if u == nil {
-			continue
-		}
-		objs = append(objs, u)
-	}
-
-	finalObjs := []*unstructured.Unstructured{}
-	for _, obj := range objs {
-		tmpObjs := []*unstructured.Unstructured{}
-		if obj.IsList() {
-			err := obj.EachListItem(func(object runtime.Object) error {
-				unstructuredObj, ok := object.(*unstructured.Unstructured)
-				if ok {
-					tmpObjs = append(tmpObjs, unstructuredObj)
-					return nil
-				}
-				return fmt.Errorf("resource list item has unexpected type")
-			})
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			tmpObjs = append(tmpObjs, obj)
-		}
-		finalObjs = append(finalObjs, tmpObjs...)
-	}
-
-	return finalObjs, nil
-}
-
-// ConstructIngressesFromFile reads the inputFile in either json/yaml formats,
-// then deserialize the file into Ingresses resources.
-// All ingresses will be pushed into the supplied IngressList for return.
-func ConstructIngressesFromFile(l *networkingv1.IngressList, inputFile string, namespace string) error {
-	stream, err := os.ReadFile(inputFile)
-	if err != nil {
-		return err
-	}
-
-	reader := bytes.NewReader(stream)
-	objs, err := ExtractObjectsFromReader(reader)
-	if err != nil {
-		return err
-	}
-
-	for _, f := range objs {
-		if namespace != "" && f.GetNamespace() != namespace {
-			continue
-		}
-		if !f.GroupVersionKind().Empty() && f.GroupVersionKind().Kind == "Ingress" {
-			var i networkingv1.Ingress
-			err = runtime.DefaultUnstructuredConverter.
-				FromUnstructured(f.UnstructuredContent(), &i)
-			if err != nil {
-				return err
-			}
-			l.Items = append(l.Items, i)
-		}
-
-	}
-	return nil
 }
 
 func aggregatedErrs(errs field.ErrorList) error {
