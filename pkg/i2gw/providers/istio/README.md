@@ -80,7 +80,7 @@ https://github.com/kubernetes-sigs/gateway-api/blob/0ad0daffe8d47f97a293b2a947bb
 To take this all into consideration, translator aggregates prefix matches vs non-prefix matches for the istio virtualservice.HTTPRoute.
 And generates max 2 HTTPRoutes (one with prefix matches and ReplacePrefixMatch filter and the other if non-prefix matches and ReplaceFullPath filter).
 If any of the match group is empty, the corresponding HTTPRoute won't be generated.
-If all URI matches are empty, there would be HTTPRoute with HTTPRouteFilterURLRewrite of ReplaceFullPath type.
+If all URI matches are empty, there would be HTTPRoute with HTTPRouteFilterURLRewrite of ReplacePrefixMatch type.
 
 #### TLS
 

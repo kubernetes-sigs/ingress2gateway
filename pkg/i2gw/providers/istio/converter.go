@@ -698,8 +698,7 @@ func (c *converter) createHTTPRoutesWithRewrite(params createHTTPRouteParams, re
 	var resHTTPRoutes []*gatewayv1.HTTPRoute
 
 	// these matches contain Exact and Regex matches, istio does FullPath rewrite for both
-	// if there are no matches at all -- use FullPath rewrite as well
-	if len(params.matches) == 0 || len(nonPrefixRouteMatches) > 0 {
+	if len(nonPrefixRouteMatches) > 0 {
 		params.filters = append(origFilters, gatewayv1.HTTPRouteFilter{
 			Type: gatewayv1.HTTPRouteFilterURLRewrite,
 			URLRewrite: &gatewayv1.HTTPURLRewriteFilter{
@@ -714,7 +713,8 @@ func (c *converter) createHTTPRoutesWithRewrite(params createHTTPRouteParams, re
 		resHTTPRoutes = append(resHTTPRoutes, c.createHTTPRoute(params))
 	}
 
-	if len(prefixRouteMatches) > 0 {
+	// if there are no matches at all istio treats this as a "/" prefix match, same as k8s gateway api expects
+	if len(params.matches) == 0 || len(prefixRouteMatches) > 0 {
 		params.filters = append(origFilters, gatewayv1.HTTPRouteFilter{
 			Type: gatewayv1.HTTPRouteFilterURLRewrite,
 			URLRewrite: &gatewayv1.HTTPURLRewriteFilter{

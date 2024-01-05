@@ -836,7 +836,49 @@ func Test_converter_convertVsHTTPRoutes(t *testing.T) {
 				istioHTTPRoutes: []*istiov1beta1.HTTPRoute{
 					{
 						Rewrite: &istiov1beta1.HTTPRewrite{
-							Uri: "redirect-uri",
+							Uri: "redirect1",
+						},
+					},
+					{
+						Match: []*istiov1beta1.HTTPMatchRequest{
+							{
+								Uri: &istiov1beta1.StringMatch{
+									MatchType: &istiov1beta1.StringMatch_Exact{
+										Exact: "exact",
+									},
+								},
+							},
+						},
+						Rewrite: &istiov1beta1.HTTPRewrite{
+							Uri: "redirect2",
+						},
+					},
+					{
+						Match: []*istiov1beta1.HTTPMatchRequest{
+							{
+								Uri: &istiov1beta1.StringMatch{
+									MatchType: &istiov1beta1.StringMatch_Regex{
+										Regex: "regex",
+									},
+								},
+							},
+						},
+						Rewrite: &istiov1beta1.HTTPRewrite{
+							Uri: "redirect3",
+						},
+					},
+					{
+						Match: []*istiov1beta1.HTTPMatchRequest{
+							{
+								Uri: &istiov1beta1.StringMatch{
+									MatchType: &istiov1beta1.StringMatch_Prefix{
+										Prefix: "prefix",
+									},
+								},
+							},
+						},
+						Rewrite: &istiov1beta1.HTTPRewrite{
+							Uri: "redirect4",
 						},
 					},
 				},
@@ -848,7 +890,7 @@ func Test_converter_convertVsHTTPRoutes(t *testing.T) {
 						APIVersion: "gateway.networking.k8s.io/v1",
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-idx-0",
+						Name:      "test-idx-0-prefix-match",
 						Namespace: "ns",
 					},
 					Spec: gatewayv1.HTTPRouteSpec{
@@ -859,8 +901,113 @@ func Test_converter_convertVsHTTPRoutes(t *testing.T) {
 										Type: gatewayv1.HTTPRouteFilterURLRewrite,
 										URLRewrite: &gatewayv1.HTTPURLRewriteFilter{
 											Path: &gatewayv1.HTTPPathModifier{
+												Type:               gatewayv1.PrefixMatchHTTPPathModifier,
+												ReplacePrefixMatch: common.PtrTo[string]("redirect1"),
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "HTTPRoute",
+						APIVersion: "gateway.networking.k8s.io/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-idx-1",
+						Namespace: "ns",
+					},
+					Spec: gatewayv1.HTTPRouteSpec{
+						Rules: []gatewayv1.HTTPRouteRule{
+							{
+								Matches: []gatewayv1.HTTPRouteMatch{
+									{
+										Path: &gatewayv1.HTTPPathMatch{
+											Type:  common.PtrTo[gatewayv1.PathMatchType](gatewayv1.PathMatchExact),
+											Value: common.PtrTo[string]("exact"),
+										},
+									},
+								},
+								Filters: []gatewayv1.HTTPRouteFilter{
+									{
+										Type: gatewayv1.HTTPRouteFilterURLRewrite,
+										URLRewrite: &gatewayv1.HTTPURLRewriteFilter{
+											Path: &gatewayv1.HTTPPathModifier{
 												Type:            gatewayv1.FullPathHTTPPathModifier,
-												ReplaceFullPath: common.PtrTo[string]("redirect-uri"),
+												ReplaceFullPath: common.PtrTo[string]("redirect2"),
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "HTTPRoute",
+						APIVersion: "gateway.networking.k8s.io/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-idx-2",
+						Namespace: "ns",
+					},
+					Spec: gatewayv1.HTTPRouteSpec{
+						Rules: []gatewayv1.HTTPRouteRule{
+							{
+								Matches: []gatewayv1.HTTPRouteMatch{
+									{
+										Path: &gatewayv1.HTTPPathMatch{
+											Type:  common.PtrTo[gatewayv1.PathMatchType](gatewayv1.PathMatchRegularExpression),
+											Value: common.PtrTo[string]("regex"),
+										},
+									},
+								},
+								Filters: []gatewayv1.HTTPRouteFilter{
+									{
+										Type: gatewayv1.HTTPRouteFilterURLRewrite,
+										URLRewrite: &gatewayv1.HTTPURLRewriteFilter{
+											Path: &gatewayv1.HTTPPathModifier{
+												Type:            gatewayv1.FullPathHTTPPathModifier,
+												ReplaceFullPath: common.PtrTo[string]("redirect3"),
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "HTTPRoute",
+						APIVersion: "gateway.networking.k8s.io/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-idx-3-prefix-match",
+						Namespace: "ns",
+					},
+					Spec: gatewayv1.HTTPRouteSpec{
+						Rules: []gatewayv1.HTTPRouteRule{
+							{
+								Matches: []gatewayv1.HTTPRouteMatch{
+									{
+										Path: &gatewayv1.HTTPPathMatch{
+											Type:  common.PtrTo[gatewayv1.PathMatchType](gatewayv1.PathMatchPathPrefix),
+											Value: common.PtrTo[string]("prefix"),
+										},
+									},
+								},
+								Filters: []gatewayv1.HTTPRouteFilter{
+									{
+										Type: gatewayv1.HTTPRouteFilterURLRewrite,
+										URLRewrite: &gatewayv1.HTTPURLRewriteFilter{
+											Path: &gatewayv1.HTTPPathModifier{
+												Type:               gatewayv1.PrefixMatchHTTPPathModifier,
+												ReplacePrefixMatch: common.PtrTo[string]("redirect4"),
 											},
 										},
 									},
