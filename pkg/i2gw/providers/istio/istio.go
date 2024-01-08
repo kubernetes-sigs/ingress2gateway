@@ -48,10 +48,8 @@ func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 
 // ToGatewayAPI converts stored Istio API entities to i2gw.GatewayResources
 // K8S Ingress resources are not needed, only Istio-based are converted
-// TODO(#100) - add istio conversion logic
 func (p *Provider) ToGatewayAPI(_ i2gw.InputResources) (i2gw.GatewayResources, field.ErrorList) {
-	p.converter.convert(p.storage)
-	return i2gw.GatewayResources{}, field.ErrorList{field.Forbidden(field.NewPath(""), "conversion is WIP")}
+	return p.converter.convert(p.storage)
 }
 
 func (p *Provider) ReadResourcesFromCluster(ctx context.Context) error {

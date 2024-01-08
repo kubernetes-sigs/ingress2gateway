@@ -20,4 +20,6 @@ const (
 	APIVersion         = "networking.istio.io/v1beta1"
 	GatewayKind        = "Gateway"
 	VirtualServiceKind = "VirtualService"
+
+	K8SGatewayClassName = "istio"
 )

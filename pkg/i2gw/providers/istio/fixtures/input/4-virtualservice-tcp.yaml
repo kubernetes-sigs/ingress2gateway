@@ -1,0 +1,16 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: bookinfo-mongo
+  namespace: prod
+spec:
+  hosts:
+  - mongo.prod.svc.cluster.local
+  tcp:
+  - match:
+    - port: 27017
+    route:
+    - destination:
+        host: mongo.backup.svc.cluster.local
+        port:
+          number: 5555

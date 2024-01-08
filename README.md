@@ -16,6 +16,10 @@ translated to [Gateway API](https://gateway-api.sigs.k8s.io/) directly.
 
 Note: Ingress2gateway is not intended to copy annotations from Ingress to Gateway API.
 
+### Istio
+
+With the introduction of the new [Istio](pkg/i2gw/providers/istio/README.md) provider, you can convert Istio API entities like Gateway and VirtualService to corresponding resources of the Gateway API, such as Gateway, HTTP/TLS/TCPRoutes, and ReferenceGrants.
+
 ## Installation
 
 If you have a Go development environment locally, you can install ingress2gateway with `go install github.com/kubernetes-sigs/ingress2gateway@v0.1.0`
@@ -106,6 +110,7 @@ Ingress2gateway also supports translating provider-specific resources and ingres
 
 - [ingress-nginx](pkg/i2gw/providers/ingressnginx/README.md)
 - [kong](pkg/i2gw/providers/kong/README.md)
+- [istio](pkg/i2gw/providers/istio/README.md)
 
 If your provider, or a specific feature, is not currently supported, please open an issue and describe your use case.
 
