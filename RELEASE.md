@@ -14,7 +14,7 @@ notes generator](https://github.com/kubernetes/release/blob/master/cmd/release-n
 ```
 go install k8s.io/release/cmd/release-notes@latest
 export GITHUB_TOKEN=your_token_here
-release-notes --start-sha EXAMPLE_COMMIT --end-sha EXAMPLE_COMMIT --branch main --repo ingress2gateway --org kubernetes-sigs
+release-notes --start-sha EXAMPLE_COMMIT --end-sha EXAMPLE_COMMIT --branch main --repo ingress2gateway --org kubernetes-sigs --required-author=""
 ```
 
 This output will likely need to be reorganized and cleaned up a bit, but it
