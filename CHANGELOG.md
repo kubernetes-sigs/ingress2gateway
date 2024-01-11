@@ -9,10 +9,13 @@
 ## v0.2.0-rc1
 
 ### Notable changes since v0.1.0
+#### Providers storage
 Providers now fetch resources and store them in their local storage.
-This is also true for ingress fetching. It is no longer happening on i2gw package and moved to be fetched at the provider level.
+This expands to ingress fetching. It is no longer happening on i2gw package and moved to be fetched at the provider level.
 
-We onboarded two more providers; Istio and APISIX.
+#### New Providers
+Istio and APISIX support has been added. 
+To check what features are currently supported please visit [Istio](https://github.com/kubernetes-sigs/ingress2gateway/blob/v0.2.0-rc1/pkg/i2gw/providers/istio/README.md) and [APIXIS](https://github.com/kubernetes-sigs/ingress2gateway/blob/v0.2.0-rc1/pkg/i2gw/providers/apisix/README.md).
 
 ### Feature
 
