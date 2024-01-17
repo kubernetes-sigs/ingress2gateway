@@ -1,3 +1,7 @@
+<!-- If this is your first PR, welcome! Please make sure you read the [contributing guidelines](https://github.com/kubernetes-sigs/ingress2gateway/blob/main/CONTRIBUTING.md). -->
+
+<!-- The release notes and the kind will be used to generate the Changelog for the release. To make sure your contribution is recognized, please label this pull request according to what type of issue you are addressing and add the release notes when necessary (see ../CONTRIBUTING.md) -->
+
 **What type of PR is this?**
 <!--
 Add one of the following kinds:
