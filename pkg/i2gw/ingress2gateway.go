@@ -26,19 +26,23 @@ import (
 )
 
 func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string, providers []string) ([]GatewayResources, error) {
-	conf, err := config.GetConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get client config: %w", err)
-	}
+	var clusterClient client.Client
 
-	cl, err := client.New(conf, client.Options{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create client: %w", err)
+	if inputFile == "" {
+		conf, err := config.GetConfig()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get client config: %w", err)
+		}
+
+		cl, err := client.New(conf, client.Options{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create client: %w", err)
+		}
+		clusterClient = client.NewNamespacedClient(cl, namespace)
 	}
-	cl = client.NewNamespacedClient(cl, namespace)
 
 	providerByName, err := constructProviders(&ProviderConf{
-		Client:    cl,
+		Client:    clusterClient,
 		Namespace: namespace,
 	}, providers)
 	if err != nil {
