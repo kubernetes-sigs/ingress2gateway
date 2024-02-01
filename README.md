@@ -22,7 +22,7 @@ With the introduction of the new [Istio](pkg/i2gw/providers/istio/README.md) pro
 
 ## Installation
 
-If you have a Go development environment locally, you can install ingress2gateway with `go install github.com/kubernetes-sigs/ingress2gateway@v0.1.0`
+If you have a Go development environment locally, you can install ingress2gateway with `go install github.com/kubernetes-sigs/ingress2gateway@v0.2.0`
 
 This will put `ingress2gateway` binary in `$(go env GOPATH)/bin`
 
