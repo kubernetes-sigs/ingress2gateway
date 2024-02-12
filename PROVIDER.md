@@ -54,12 +54,12 @@ func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
 
 func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage, error) {
 	// read example-gateway related resources from the cluster.
-	return nil
+	return nil, nil
 }
 
 func (r *resourceReader) readResourcesFromFile(ctx context.Context, filename string) (*storage, error) {
 	// read example-gateway related resources from the file.
-	return nil
+	return nil, nil
 }
 ```
 
@@ -114,7 +114,7 @@ func newConverter() *converter {
 }
 ```
 
-5. Create a new struct named after the provider you are implementing. This struct should embed the previous 2 structs you created.
+5. Create a new struct named after the provider you are implementing. This struct should embed the previous 3 structs you created.
 
 ```go
 package examplegateway
@@ -175,7 +175,7 @@ In case you want to add support for the conversion of a specific feature within 
 
 Different `FeatureParsers` within the same provider will run in undetermined order. This means that when building a `Gateway API` resource manifest, you cannot assume anything about previously initialized fields. The function must modify / create only the required fields of the resource manifest and nothing else.
 
-For example, lets say we are implementing the canary feature of some provider. When building the `HTTPRoute`, we cannot assume that the `BackendRefs` is already initialized with every `BackendRef` required. The canary `FeatureParser` function must add every missing `BackendRef` and update existing ones.
+For example, let's say we are implementing the canary feature of a provider. When building the `HTTPRoute`, we cannot assume that the `BackendRefs` is already initialized with every `BackendRef` required. The canary `FeatureParser` function must add every missing `BackendRef` and update existing ones.
 
 ### Testing the feature parser
 
