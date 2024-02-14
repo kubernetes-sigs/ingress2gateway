@@ -17,24 +17,50 @@ limitations under the License.
 package common
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/client-go/kubernetes"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
+var k8sClientset *kubernetes.Clientset
+
+func GetDefaultIngressClass() (string, error) {
+	ingressClasses, err := k8sClientset.NetworkingV1().IngressClasses().List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	for _, ic := range ingressClasses.Items {
+		if ic.Spec.Parameters != nil && ic.Spec.Parameters.APIGroup != nil {
+			if *ic.Spec.Parameters.APIGroup == "networking.k8s.io" && ic.Annotations["ingressclass.kubernetes.io/is-default-class"] == "true" {
+				return ic.Name, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("no default IngressClass found")
+}
+
 func GetIngressClass(ingress networkingv1.Ingress) string {
-	var ingressClass string
+	ingressClass := ""
 
 	if ingress.Spec.IngressClassName != nil && *ingress.Spec.IngressClassName != "" {
 		ingressClass = *ingress.Spec.IngressClassName
 	} else if _, ok := ingress.Annotations[networkingv1beta1.AnnotationIngressClass]; ok {
 		ingressClass = ingress.Annotations[networkingv1beta1.AnnotationIngressClass]
 	} else {
-		ingressClass = ingress.Name
+		defaultIngressClass, err := GetDefaultIngressClass()
+		if err != nil {
+			return ""
+		}
+		ingressClass = defaultIngressClass
 	}
 
 	return ingressClass
@@ -81,7 +107,6 @@ func GetRuleGroups(ingresses []networkingv1.Ingress) map[string]IngressRuleGroup
 
 			ruleGroups[rgKey] = rg
 		}
-
 	}
 
 	return ruleGroups
