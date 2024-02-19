@@ -17,6 +17,7 @@ limitations under the License.
 package kong
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
@@ -29,6 +30,7 @@ import (
 const (
 	kongPluginGroup gatewayv1.Group = "configuration.konghq.com"
 	kongPluginKind  gatewayv1.Kind  = "KongPlugin"
+	MaxPlugins                      = 16
 )
 
 // pluginsFeature parses the Kong Ingress Controller plugins annotation and converts it
@@ -59,6 +61,9 @@ func parsePluginsAnnotation(annotations map[string]string) []gatewayv1.HTTPRoute
 	for key, val := range annotations {
 		if key == mkey {
 			filtersValues := strings.Split(val, ",")
+			if len(filtersValues) > MaxPlugins {
+				panic(fmt.Sprintf("maximum number of plugins (%d) exceeded", MaxPlugins))
+			}
 			for _, v := range filtersValues {
 				if v == "" {
 					continue
@@ -81,6 +86,9 @@ func patchHTTPRoutePlugins(httpRoute *gatewayv1.HTTPRoute, extensionRefs []gatew
 	for i := range httpRoute.Spec.Rules {
 		if httpRoute.Spec.Rules[i].Filters == nil {
 			httpRoute.Spec.Rules[i].Filters = make([]gatewayv1.HTTPRouteFilter, 0)
+		}
+		if len(httpRoute.Spec.Rules[i].Filters) > MaxPlugins {
+			panic(fmt.Sprintf("maximum number of plugins (%d) exceeded", MaxPlugins))
 		}
 		httpRoute.Spec.Rules[i].Filters = append(httpRoute.Spec.Rules[i].Filters, extensionRefs...)
 	}
