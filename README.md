@@ -1,7 +1,7 @@
 # Ingress to Gateway
 
 Ingress2gateway helps translate Ingress and provider-specific
-resources(CRDs) to Gateway API resources. Ingress2gateway is managed by the [Gateway
+resources (CRDs) to Gateway API resources. Ingress2gateway is managed by the [Gateway
 API](https://gateway-api.sigs.k8s.io/) SIG-Network subproject.
 
 ## Scope
