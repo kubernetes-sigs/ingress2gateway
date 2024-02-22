@@ -1,7 +1,7 @@
 # Ingress to Gateway
 
-Ingress2gateway helps translate Ingress resources to Gateway API resources,
-specifically HTTPRoutes. Ingress2gateway is managed by the [Gateway
+Ingress2gateway helps translate Ingress and provider-specific
+resources (CRDs) to Gateway API resources. Ingress2gateway is managed by the [Gateway
 API](https://gateway-api.sigs.k8s.io/) SIG-Network subproject.
 
 ## Scope
@@ -15,10 +15,6 @@ annotations and/or CRDs support are mostly welcomed as long as they can be
 translated to [Gateway API](https://gateway-api.sigs.k8s.io/) directly.
 
 Note: Ingress2gateway is not intended to copy annotations from Ingress to Gateway API.
-
-### Istio
-
-With the introduction of the new [Istio](pkg/i2gw/providers/istio/README.md) provider, you can convert Istio API entities like Gateway and VirtualService to corresponding resources of the Gateway API, such as Gateway, HTTP/TLS/TCPRoutes, and ReferenceGrants.
 
 ## Installation
 
