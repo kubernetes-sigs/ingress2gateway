@@ -179,8 +179,8 @@ In this section, we will walk through a demo of how to add support for the `exam
 
 ## Creating a feature parser
 
-In case you want to add support for the conversion of a specific feature within a provider (see for example the
-canary feature of ingress-nginx) you'll want to implement a `FeatureParser` function.
+In case you want to add support for the conversion of a specific feature within a provider (see for example the canary
+feature of ingress-nginx) you'll want to implement a `FeatureParser` function.
 
 Different `FeatureParsers` within the same provider will run in undetermined order. This means that when building a
 `Gateway API` resource manifest, you cannot assume anything about previously initialized fields.
