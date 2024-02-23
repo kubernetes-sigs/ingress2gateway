@@ -5,15 +5,15 @@ interface in the `i2gw` package.
 
 ## Overview
 
-Each provider implementation in the `i2gw/providers` package is responsible for converting a provider specific `Ingress` and
-related resources (e.g istio VirtualService) into `Gateway API` resources. A provider must be able to read its custom
-resources, and convert them.
+Each provider implementation in the `i2gw/providers` package is responsible for converting a provider specific `Ingress`
+and related resources (e.g istio VirtualService) into `Gateway API` resources.
+A provider must be able to read its custom resources, and convert them.
 
 ## Prerequisites
 
-- Familiarity with Go programming language.
-- Basic understanding of Kubernetes and its custom resources.
-- A setup Go development environment.
+* Familiarity with Go programming language.
+* Basic understanding of Kubernetes and its custom resources.
+* A setup Go development environment.
 
 ## Step-by-Step Implementation
 
@@ -179,16 +179,16 @@ In this section, we will walk through a demo of how to add support for the `exam
 
 ## Creating a feature parser
 
-In case you want to add support for the conversion of a specific feature within a provider (see for example the canary feature
-of ingress-nginx) you'll want to implement a `FeatureParser` function.
+In case you want to add support for the conversion of a specific feature within a provider (see for example the
+canary feature of ingress-nginx) you'll want to implement a `FeatureParser` function.
 
 Different `FeatureParsers` within the same provider will run in undetermined order. This means that when building a
-`Gateway API` resource manifest, you cannot assume anything about previously initialized fields. The function must modify /
-create only the required fields of the resource manifest and nothing else.
+`Gateway API` resource manifest, you cannot assume anything about previously initialized fields.
+The function must modify / create only the required fields of the resource manifest and nothing else.
 
-For example, let's say we are implementing the canary feature of a provider. When building the `HTTPRoute`, we cannot assume
-that the `BackendRefs` is already initialized with every `BackendRef` required. The canary `FeatureParser` function must add
-every missing `BackendRef` and update existing ones.
+For example, let's say we are implementing the canary feature of a provider. When building the `HTTPRoute`, we cannot
+assume that the `BackendRefs` is already initialized with every `BackendRef` required. The canary `FeatureParser`
+function must add every missing `BackendRef` and update existing ones.
 
 ### Testing the feature parser
 
@@ -197,4 +197,5 @@ There are 2 main things that needs to be tested when creating a feature parser:
 1. The conversion logic is actually correct.
 2. The new function doesn't override other functions modifications.
 
-For example, if one implemented the mirror backend feature and it deletes canary weight from `BackendRefs`, we have a problem.
+For example, if one implemented the mirror backend feature and it deletes canary weight from `BackendRefs`, we have a
+problem.
