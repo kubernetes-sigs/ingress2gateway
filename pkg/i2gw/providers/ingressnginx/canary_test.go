@@ -48,6 +48,7 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 						},
 					},
 					extra: &extra{canary: &canaryAnnotations{
+						enable: true,
 						weight: 101,
 					}},
 				},
@@ -82,6 +83,7 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 						},
 					},
 					extra: &extra{canary: &canaryAnnotations{
+						enable: true,
 						weight: 30,
 					}},
 				},
@@ -116,6 +118,7 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 						},
 					},
 					extra: &extra{canary: &canaryAnnotations{
+						enable:      true,
 						weight:      50,
 						weightTotal: 200,
 					}},
