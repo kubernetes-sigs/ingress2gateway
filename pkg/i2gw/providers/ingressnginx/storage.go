@@ -21,12 +21,19 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+type OrderedIngressMap struct {
+	ingressNames   []types.NamespacedName
+	ingressObjects map[types.NamespacedName]*networkingv1.Ingress
+}
 type storage struct {
-	Ingresses map[types.NamespacedName]*networkingv1.Ingress
+	Ingresses OrderedIngressMap
 }
 
 func newResourcesStorage() *storage {
 	return &storage{
-		Ingresses: map[types.NamespacedName]*networkingv1.Ingress{},
+		Ingresses: OrderedIngressMap{
+			ingressNames:   []types.NamespacedName{},
+			ingressObjects: map[types.NamespacedName]*networkingv1.Ingress{},
+		},
 	}
 }

@@ -42,66 +42,69 @@ func Test_ToGateway(t *testing.T) {
 
 	testCases := []struct {
 		name                     string
-		ingresses                map[types.NamespacedName]*networkingv1.Ingress
+		ingresses                OrderedIngressMap
 		expectedGatewayResources i2gw.GatewayResources
 		expectedErrors           field.ErrorList
 	}{
 		{
 			name: "canary deployment",
-			ingresses: map[types.NamespacedName]*networkingv1.Ingress{
-				{Namespace: "default", Name: "production"}: {
-					ObjectMeta: metav1.ObjectMeta{Name: "production", Namespace: "default"},
-					Spec: networkingv1.IngressSpec{
-						IngressClassName: ptrTo("ingress-nginx"),
-						Rules: []networkingv1.IngressRule{{
-							Host: "echo.prod.mydomain.com",
-							IngressRuleValue: networkingv1.IngressRuleValue{
-								HTTP: &networkingv1.HTTPIngressRuleValue{
-									Paths: []networkingv1.HTTPIngressPath{{
-										Path:     "/",
-										PathType: &iPrefix,
-										Backend: networkingv1.IngressBackend{
-											Resource: &corev1.TypedLocalObjectReference{
-												Name:     "production",
-												Kind:     "StorageBucket",
-												APIGroup: ptrTo("vendor.example.com"),
+			ingresses: OrderedIngressMap{
+				ingressNames: []types.NamespacedName{{Namespace: "default", Name: "production"}, {Namespace: "default", Name: "canary"}},
+				ingressObjects: map[types.NamespacedName]*networkingv1.Ingress{
+					{Namespace: "default", Name: "production"}: {
+						ObjectMeta: metav1.ObjectMeta{Name: "production", Namespace: "default"},
+						Spec: networkingv1.IngressSpec{
+							IngressClassName: ptrTo("ingress-nginx"),
+							Rules: []networkingv1.IngressRule{{
+								Host: "echo.prod.mydomain.com",
+								IngressRuleValue: networkingv1.IngressRuleValue{
+									HTTP: &networkingv1.HTTPIngressRuleValue{
+										Paths: []networkingv1.HTTPIngressPath{{
+											Path:     "/",
+											PathType: &iPrefix,
+											Backend: networkingv1.IngressBackend{
+												Resource: &corev1.TypedLocalObjectReference{
+													Name:     "production",
+													Kind:     "StorageBucket",
+													APIGroup: ptrTo("vendor.example.com"),
+												},
 											},
-										},
-									}},
+										}},
+									},
 								},
-							},
-						}},
-					},
-				},
-				{Namespace: "default", Name: "canary"}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "canary",
-						Namespace: "default",
-						Annotations: map[string]string{
-							"nginx.ingress.kubernetes.io/canary":        "true",
-							"nginx.ingress.kubernetes.io/canary-weight": "20",
+							}},
 						},
 					},
-					Spec: networkingv1.IngressSpec{
-						IngressClassName: ptrTo("ingress-nginx"),
-						Rules: []networkingv1.IngressRule{{
-							Host: "echo.prod.mydomain.com",
-							IngressRuleValue: networkingv1.IngressRuleValue{
-								HTTP: &networkingv1.HTTPIngressRuleValue{
-									Paths: []networkingv1.HTTPIngressPath{{
-										Path:     "/",
-										PathType: &iPrefix,
-										Backend: networkingv1.IngressBackend{
-											Resource: &corev1.TypedLocalObjectReference{
-												Name:     "canary",
-												Kind:     "StorageBucket",
-												APIGroup: ptrTo("vendor.example.com"),
-											},
-										},
-									}},
-								},
+					{Namespace: "default", Name: "canary"}: {
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "canary",
+							Namespace: "default",
+							Annotations: map[string]string{
+								"nginx.ingress.kubernetes.io/canary":        "true",
+								"nginx.ingress.kubernetes.io/canary-weight": "20",
 							},
-						}},
+						},
+						Spec: networkingv1.IngressSpec{
+							IngressClassName: ptrTo("ingress-nginx"),
+							Rules: []networkingv1.IngressRule{{
+								Host: "echo.prod.mydomain.com",
+								IngressRuleValue: networkingv1.IngressRuleValue{
+									HTTP: &networkingv1.HTTPIngressRuleValue{
+										Paths: []networkingv1.HTTPIngressPath{{
+											Path:     "/",
+											PathType: &iPrefix,
+											Backend: networkingv1.IngressBackend{
+												Resource: &corev1.TypedLocalObjectReference{
+													Name:     "canary",
+													Kind:     "StorageBucket",
+													APIGroup: ptrTo("vendor.example.com"),
+												},
+											},
+										}},
+									},
+								},
+							}},
+						},
 					},
 				},
 			},
@@ -168,33 +171,36 @@ func Test_ToGateway(t *testing.T) {
 		},
 		{
 			name: "ImplementationSpecific HTTPRouteMatching",
-			ingresses: map[types.NamespacedName]*networkingv1.Ingress{
-				{Namespace: "default", Name: "implementation-specific-regex"}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "implementation-specific-regex",
-						Namespace: "default",
-					},
-					Spec: networkingv1.IngressSpec{
-						IngressClassName: ptrTo("ingress-nginx"),
-						Rules: []networkingv1.IngressRule{{
-							Host: "test.mydomain.com",
-							IngressRuleValue: networkingv1.IngressRuleValue{
-								HTTP: &networkingv1.HTTPIngressRuleValue{
-									Paths: []networkingv1.HTTPIngressPath{{
-										Path:     "/~/echo/**/test",
-										PathType: &isPathType,
-										Backend: networkingv1.IngressBackend{
-											Service: &networkingv1.IngressServiceBackend{
-												Name: "test",
-												Port: networkingv1.ServiceBackendPort{
-													Number: 80,
+			ingresses: OrderedIngressMap{
+				ingressNames: []types.NamespacedName{{Namespace: "default", Name: "implementation-specific-regex"}},
+				ingressObjects: map[types.NamespacedName]*networkingv1.Ingress{
+					{Namespace: "default", Name: "implementation-specific-regex"}: {
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "implementation-specific-regex",
+							Namespace: "default",
+						},
+						Spec: networkingv1.IngressSpec{
+							IngressClassName: ptrTo("ingress-nginx"),
+							Rules: []networkingv1.IngressRule{{
+								Host: "test.mydomain.com",
+								IngressRuleValue: networkingv1.IngressRuleValue{
+									HTTP: &networkingv1.HTTPIngressRuleValue{
+										Paths: []networkingv1.HTTPIngressPath{{
+											Path:     "/~/echo/**/test",
+											PathType: &isPathType,
+											Backend: networkingv1.IngressBackend{
+												Service: &networkingv1.IngressServiceBackend{
+													Name: "test",
+													Port: networkingv1.ServiceBackendPort{
+														Number: 80,
+													},
 												},
 											},
-										},
-									}},
+										}},
+									},
 								},
-							},
-						}},
+							}},
+						},
 					},
 				},
 			},

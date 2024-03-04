@@ -41,8 +41,8 @@ func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.Erro
 
 	// TODO(liorliberman) temporary until we decide to change ToGateway and featureParsers to get a map of [types.NamespacedName]*networkingv1.Ingress instead of a list
 	ingressList := []networkingv1.Ingress{}
-	for _, ing := range storage.Ingresses {
-		ingressList = append(ingressList, *ing)
+	for _, ing := range storage.Ingresses.ingressNames {
+		ingressList = append(ingressList, *storage.Ingresses.ingressObjects[ing])
 	}
 
 	// Convert plain ingress resources to gateway resources, ignoring all
