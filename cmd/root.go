@@ -22,12 +22,32 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var rootCmd = &cobra.Command{
-	Use:   "ingress2gateway",
-	Short: "Convert Ingress manifests to Gateway API manifests",
+// kubeconfig indicates kubeconfig file location.
+var kubeconfig string
+
+func newRootCmd() *cobra.Command {
+	rootCmd := &cobra.Command{
+		Use:   "ingress2gateway",
+		Short: "Convert Ingress manifests to Gateway API manifests",
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			getKubeconfig()
+		},
+	}
+
+	rootCmd.PersistentFlags().StringVar(&kubeconfig, "kubeconfig", "",
+		`The kubeconfig file to use when talking to the cluster. If the flag is not set, a set of standard locations can be searched for an existing kubeconfig file.`)
+	return rootCmd
+}
+
+func getKubeconfig() {
+	if kubeconfig != "" {
+		os.Setenv("KUBECONFIG", kubeconfig)
+	}
 }
 
 func Execute() {
+	rootCmd := newRootCmd()
+	rootCmd.AddCommand(newPrintCommand())
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)

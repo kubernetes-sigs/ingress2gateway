@@ -261,7 +261,3 @@ func getNamespaceInCurrentContext() (string, error) {
 
 	return currentNamespace, err
 }
-
-func init() {
-	rootCmd.AddCommand(newPrintCommand())
-}
