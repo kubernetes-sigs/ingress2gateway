@@ -67,9 +67,11 @@ In this section, we will walk through a demo of how to add support for the `exam
    }
    ```
 
-   These methods are used by providers to read and store additional resources they may need during conversion.
+   These methods are used by providers to read and store Ingresses and additional resources they may need
+   during conversion.
 
-3. Create a struct named `storage` in a file named `storage.go`:
+3. Create a struct named `storage` in a file named `storage.go`. This struct can store Ingresses, CRDs,
+or other resources the provider needs for the conversion:
 
    ```go
    package examplegateway
