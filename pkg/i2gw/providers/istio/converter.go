@@ -31,6 +31,7 @@ import (
 	"k8s.io/klog/v2"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 type converter struct {
@@ -52,7 +53,7 @@ func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.Erro
 		HTTPRoutes:      make(map[types.NamespacedName]gatewayv1.HTTPRoute),
 		TLSRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
 		TCPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
-		ReferenceGrants: make(map[types.NamespacedName]gatewayv1alpha2.ReferenceGrant),
+		ReferenceGrants: make(map[types.NamespacedName]gatewayv1beta1.ReferenceGrant),
 	}
 
 	rootPath := field.NewPath(ProviderName)
@@ -919,10 +920,10 @@ func (c *converter) isVirtualServiceAllowedForGateway(gateway types.NamespacedNa
 
 // Generate parentRefs and optionally ReferenceGrants for the given VirtualService and all required Gateways
 // We consider fields: vs.Spec.Gateways; gateway.Server[i].Hosts
-func (c *converter) generateReferences(vs *istioclientv1beta1.VirtualService, fieldPath *field.Path) ([]gatewayv1.ParentReference, []*gatewayv1alpha2.ReferenceGrant) {
+func (c *converter) generateReferences(vs *istioclientv1beta1.VirtualService, fieldPath *field.Path) ([]gatewayv1.ParentReference, []*gatewayv1beta1.ReferenceGrant) {
 	var (
 		parentRefs      []gatewayv1.ParentReference
-		referenceGrants []*gatewayv1alpha2.ReferenceGrant
+		referenceGrants []*gatewayv1beta1.ReferenceGrant
 	)
 
 	for _, allowedGateway := range vs.Spec.GetGateways() {
@@ -974,11 +975,11 @@ type generateReferenceGrantsParams struct {
 	forHTTPRoute, forTLSRoute, forTCPRoute bool
 }
 
-func (c *converter) generateReferenceGrant(params generateReferenceGrantsParams) *gatewayv1alpha2.ReferenceGrant {
-	var fromGrants []gatewayv1alpha2.ReferenceGrantFrom
+func (c *converter) generateReferenceGrant(params generateReferenceGrantsParams) *gatewayv1beta1.ReferenceGrant {
+	var fromGrants []gatewayv1beta1.ReferenceGrantFrom
 
 	if params.forHTTPRoute {
-		fromGrants = append(fromGrants, gatewayv1alpha2.ReferenceGrantFrom{
+		fromGrants = append(fromGrants, gatewayv1beta1.ReferenceGrantFrom{
 			Group:     gatewayv1.Group(common.HTTPRouteGVK.Group),
 			Kind:      gatewayv1.Kind(common.HTTPRouteGVK.Kind),
 			Namespace: gatewayv1.Namespace(params.fromNamespace),
@@ -986,7 +987,7 @@ func (c *converter) generateReferenceGrant(params generateReferenceGrantsParams)
 	}
 
 	if params.forTLSRoute {
-		fromGrants = append(fromGrants, gatewayv1alpha2.ReferenceGrantFrom{
+		fromGrants = append(fromGrants, gatewayv1beta1.ReferenceGrantFrom{
 			Group:     gatewayv1.Group(common.TLSRouteGVK.Group),
 			Kind:      gatewayv1.Kind(common.TLSRouteGVK.Kind),
 			Namespace: gatewayv1.Namespace(params.fromNamespace),
@@ -994,7 +995,7 @@ func (c *converter) generateReferenceGrant(params generateReferenceGrantsParams)
 	}
 
 	if params.forTCPRoute {
-		fromGrants = append(fromGrants, gatewayv1alpha2.ReferenceGrantFrom{
+		fromGrants = append(fromGrants, gatewayv1beta1.ReferenceGrantFrom{
 			Group:     gatewayv1.Group(common.TCPRouteGVK.Group),
 			Kind:      gatewayv1.Kind(common.TCPRouteGVK.Kind),
 			Namespace: gatewayv1.Namespace(params.fromNamespace),
@@ -1003,7 +1004,7 @@ func (c *converter) generateReferenceGrant(params generateReferenceGrantsParams)
 
 	gwName := gatewayv1.ObjectName(params.gateway.Name)
 
-	return &gatewayv1alpha2.ReferenceGrant{
+	return &gatewayv1beta1.ReferenceGrant{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: common.ReferenceGrantGVK.GroupVersion().String(),
 			Kind:       common.ReferenceGrantGVK.Kind,
@@ -1012,9 +1013,9 @@ func (c *converter) generateReferenceGrant(params generateReferenceGrantsParams)
 			Namespace: params.gateway.Namespace,
 			Name:      fmt.Sprintf("generated-reference-grant-from-%v-to-%v", params.fromNamespace, params.gateway.Namespace),
 		},
-		Spec: gatewayv1alpha2.ReferenceGrantSpec{
+		Spec: gatewayv1beta1.ReferenceGrantSpec{
 			From: fromGrants,
-			To: []gatewayv1alpha2.ReferenceGrantTo{
+			To: []gatewayv1beta1.ReferenceGrantTo{
 				{
 					Group: gatewayv1.Group(common.GatewayGVK.Group),
 					Kind:  gatewayv1.Kind(common.GatewayGVK.Kind),
