@@ -218,8 +218,7 @@ func Test_ToGateway(t *testing.T) {
 			nginxProvider := provider.(*Provider)
 			nginxProvider.storage.Ingresses = tc.ingresses
 
-			// TODO(#113) we pass an empty i2gw.InputResources temporarily until we change ToGatewayAPI function on the interface
-			gatewayResources, errs := provider.ToGatewayAPI(i2gw.InputResources{})
+			gatewayResources, errs := provider.ToGatewayAPI()
 
 			if len(errs) != len(tc.expectedErrors) {
 				t.Errorf("Expected %d errors, got %d: %+v", len(tc.expectedErrors), len(errs), errs)
