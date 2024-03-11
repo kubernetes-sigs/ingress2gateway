@@ -102,11 +102,7 @@ func NameFromHost(host string) string {
 }
 
 func RouteName(ingressName, host string) string {
-	routeName := ingressName
-	if host != "" {
-		routeName = fmt.Sprintf("%s-%s", ingressName, NameFromHost(host))
-	}
-	return routeName
+	return fmt.Sprintf("%s-%s", ingressName, NameFromHost(host))
 }
 
 func ToBackendRef(ib networkingv1.IngressBackend, path *field.Path) (*gatewayv1.BackendRef, *field.Error) {

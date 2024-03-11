@@ -47,7 +47,7 @@ func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
 // -----------------------------------------------------------------------------
 
 func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage, error) {
-	st := newStorage()
+	st := newResourceStorage()
 
 	ingresses, err := common.ReadIngressesFromCluster(ctx, r.conf.Client, KongIngressClass)
 	if err != nil {
@@ -65,7 +65,7 @@ func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage
 }
 
 func (r *resourceReader) readResourcesFromFile(filename string) (*storage, error) {
-	st := newStorage()
+	st := newResourceStorage()
 
 	ingresses, err := common.ReadIngressesFromFile(filename, r.conf.Namespace, KongIngressClass)
 	if err != nil {

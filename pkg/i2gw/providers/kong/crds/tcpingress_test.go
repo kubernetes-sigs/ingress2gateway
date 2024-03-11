@@ -58,7 +58,6 @@ func TestTCPIngressToGatewayAPI(t *testing.T) {
 						Rules: []kongv1beta1.IngressRule{
 							{
 								Port: 8888,
-								Host: "host",
 								Backend: kongv1beta1.IngressBackend{
 									ServiceName: "tcp-echo",
 									ServicePort: 1025,
@@ -75,18 +74,17 @@ func TestTCPIngressToGatewayAPI(t *testing.T) {
 						Spec: gatewayv1.GatewaySpec{
 							GatewayClassName: "kong",
 							Listeners: []gatewayv1.Listener{{
-								Name:     "tcp-host-8888",
+								Name:     "tcp-all-hosts-8888",
 								Port:     8888,
 								Protocol: gatewayv1.TCPProtocolType,
-								Hostname: common.PtrTo(gatewayv1.Hostname("host")),
 							}},
 						},
 					},
 				},
 				TCPRoutes: map[types.NamespacedName]gatewayv1alpha2.TCPRoute{
-					{Namespace: "default", Name: "sample-host"}: {
+					{Namespace: "default", Name: "sample-all-hosts"}: {
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      "sample-host",
+							Name:      "sample-all-hosts",
 							Namespace: "default",
 						},
 						Spec: gatewayv1alpha2.TCPRouteSpec{
@@ -94,7 +92,7 @@ func TestTCPIngressToGatewayAPI(t *testing.T) {
 								ParentRefs: []gatewayv1.ParentReference{
 									{
 										Name:        "kong",
-										SectionName: common.PtrTo(gatewayv1.SectionName("tcp-host-8888")),
+										SectionName: common.PtrTo(gatewayv1.SectionName("tcp-all-hosts-8888")),
 									},
 								},
 							},
@@ -135,7 +133,7 @@ func TestTCPIngressToGatewayAPI(t *testing.T) {
 						Rules: []kongv1beta1.IngressRule{
 							{
 								Port: 8888,
-								Host: "host",
+								Host: "example.com",
 								Backend: kongv1beta1.IngressBackend{
 									ServiceName: "tcp-echo",
 									ServicePort: 1025,
@@ -152,10 +150,10 @@ func TestTCPIngressToGatewayAPI(t *testing.T) {
 						Spec: gatewayv1.GatewaySpec{
 							GatewayClassName: "kong",
 							Listeners: []gatewayv1.Listener{{
-								Name:     "tls-host-8888",
+								Name:     "tls-example-com-8888",
 								Port:     8888,
 								Protocol: gatewayv1.TLSProtocolType,
-								Hostname: common.PtrTo(gatewayv1.Hostname("host")),
+								Hostname: common.PtrTo(gatewayv1.Hostname("example.com")),
 								TLS: &gatewayv1.GatewayTLSConfig{
 									Mode: common.PtrTo(gatewayv1.TLSModePassthrough),
 									CertificateRefs: []gatewayv1.SecretObjectReference{
@@ -171,9 +169,9 @@ func TestTCPIngressToGatewayAPI(t *testing.T) {
 					},
 				},
 				TLSRoutes: map[types.NamespacedName]gatewayv1alpha2.TLSRoute{
-					{Namespace: "default", Name: "sample-host"}: {
+					{Namespace: "default", Name: "sample-example-com"}: {
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      "sample-host",
+							Name:      "sample-example-com",
 							Namespace: "default",
 						},
 						Spec: gatewayv1alpha2.TLSRouteSpec{
@@ -181,7 +179,7 @@ func TestTCPIngressToGatewayAPI(t *testing.T) {
 								ParentRefs: []gatewayv1.ParentReference{
 									{
 										Name:        "kong",
-										SectionName: common.PtrTo(gatewayv1.SectionName("tls-host-8888")),
+										SectionName: common.PtrTo(gatewayv1.SectionName("tls-example-com-8888")),
 									},
 								},
 							},

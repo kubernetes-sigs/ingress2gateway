@@ -27,7 +27,7 @@ type storage struct {
 	TCPIngresses []kongv1beta1.TCPIngress
 }
 
-func newStorage() *storage {
+func newResourceStorage() *storage {
 	return &storage{
 		Ingresses:    map[types.NamespacedName]*networkingv1.Ingress{},
 		TCPIngresses: []kongv1beta1.TCPIngress{},

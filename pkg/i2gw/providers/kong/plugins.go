@@ -61,8 +61,8 @@ func parsePluginsAnnotation(annotations map[string]string) []gatewayv1.HTTPRoute
 				filters = append(filters, gatewayv1.HTTPRouteFilter{
 					Type: gatewayv1.HTTPRouteFilterExtensionRef,
 					ExtensionRef: &gatewayv1.LocalObjectReference{
-						Group: kongResourcesGroup,
-						Kind:  kongPluginKind,
+						Group: gatewayv1.Group(kongResourcesGroup),
+						Kind:  gatewayv1.Kind(kongPluginKind),
 						Name:  gatewayv1.ObjectName(v),
 					},
 				})
