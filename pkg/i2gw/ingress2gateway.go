@@ -140,6 +140,8 @@ func GetSupportedProviders() []string {
 //     ingresses, as they have a their GatewayClass' name as name. For this reason,
 //     if there are mutiple gateways named the same, their listeners are merged into
 //     a unique Gateway.
+//
+// This behavior is likely to change after https://github.com/kubernetes-sigs/gateway-api/pull/1863 takes place.
 func MergeGatewayResources(gatewayResources ...GatewayResources) (GatewayResources, field.ErrorList) {
 	mergedGatewayResources := GatewayResources{
 		Gateways:        make(map[types.NamespacedName]gatewayv1.Gateway),
