@@ -45,7 +45,7 @@ func newConverter() *converter {
 	}
 }
 
-func (c *converter) convert(storage storage) (i2gw.GatewayResources, field.ErrorList) {
+func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.ErrorList) {
 	ingressList := []networkingv1.Ingress{}
 	for _, ingress := range storage.Ingresses {
 		ingressList = append(ingressList, *ingress)

@@ -47,39 +47,39 @@ func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
 // -----------------------------------------------------------------------------
 
 func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage, error) {
-	st := newResourceStorage()
+	storage := newResourceStorage()
 
 	ingresses, err := common.ReadIngressesFromCluster(ctx, r.conf.Client, KongIngressClass)
 	if err != nil {
 		return nil, err
 	}
-	st.Ingresses = ingresses
+	storage.Ingresses = ingresses
 
 	tcpIngresses, err := r.readTCPIngressesFromCluster(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read TCPIngresses: %w", err)
 	}
-	st.TCPIngresses = tcpIngresses
+	storage.TCPIngresses = tcpIngresses
 
-	return st, nil
+	return storage, nil
 }
 
 func (r *resourceReader) readResourcesFromFile(filename string) (*storage, error) {
-	st := newResourceStorage()
+	storage := newResourceStorage()
 
 	ingresses, err := common.ReadIngressesFromFile(filename, r.conf.Namespace, KongIngressClass)
 	if err != nil {
 		return nil, err
 	}
-	st.Ingresses = ingresses
+	storage.Ingresses = ingresses
 
 	tcpIngresses, err := r.readTCPIngressesFromFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read TCPIngresses: %w", err)
 	}
-	st.TCPIngresses = tcpIngresses
+	storage.TCPIngresses = tcpIngresses
 
-	return st, nil
+	return storage, nil
 }
 
 // -----------------------------------------------------------------------------

@@ -34,8 +34,7 @@ func init() {
 
 // Provider implements the i2gw.Provider interface.
 type Provider struct {
-	storage storage
-
+	*storage
 	*resourceReader
 	*converter
 }
@@ -59,7 +58,7 @@ func (p *Provider) ReadResourcesFromCluster(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	p.storage = *storage
+	p.storage = storage
 	return nil
 }
 
@@ -68,6 +67,6 @@ func (p *Provider) ReadResourcesFromFile(_ context.Context, filename string) err
 	if err != nil {
 		return err
 	}
-	p.storage = *storage
+	p.storage = storage
 	return nil
 }

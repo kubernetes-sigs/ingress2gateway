@@ -501,6 +501,7 @@ func Test_ToGateway(t *testing.T) {
 
 			provider := NewProvider(&i2gw.ProviderConf{})
 			kongProvider := provider.(*Provider)
+			kongProvider.storage = newResourceStorage()
 			kongProvider.storage.Ingresses = tc.ingresses
 
 			// TODO(#113) we pass an empty i2gw.InputResources temporarily until we change ToGatewayAPI function on the interface
