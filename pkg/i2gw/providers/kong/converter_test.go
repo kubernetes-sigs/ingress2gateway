@@ -138,8 +138,8 @@ func Test_ToGateway(t *testing.T) {
 									{
 										Type: gatewayv1.HTTPRouteFilterExtensionRef,
 										ExtensionRef: &gatewayv1.LocalObjectReference{
-											Group: kongPluginGroup,
-											Kind:  kongPluginKind,
+											Group: gatewayv1.Group(kongResourcesGroup),
+											Kind:  gatewayv1.Kind(kongPluginKind),
 											Name:  gatewayv1.ObjectName("plugin1"),
 										},
 									},
@@ -501,6 +501,7 @@ func Test_ToGateway(t *testing.T) {
 
 			provider := NewProvider(&i2gw.ProviderConf{})
 			kongProvider := provider.(*Provider)
+			kongProvider.storage = newResourceStorage()
 			kongProvider.storage.Ingresses = tc.ingresses
 
 			// TODO(#113) we pass an empty i2gw.InputResources temporarily until we change ToGatewayAPI function on the interface

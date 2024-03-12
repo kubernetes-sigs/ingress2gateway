@@ -32,7 +32,7 @@ func init() {
 }
 
 type Provider struct {
-	storage   storage
+	storage   *storage
 	reader    reader
 	converter converter
 }
@@ -58,7 +58,7 @@ func (p *Provider) ReadResourcesFromCluster(ctx context.Context) error {
 		return fmt.Errorf("failed to read resources from cluster: %w", err)
 	}
 
-	p.storage = *storage
+	p.storage = storage
 	return nil
 }
 
@@ -67,6 +67,6 @@ func (p *Provider) ReadResourcesFromFile(ctx context.Context, filename string) e
 	if err != nil {
 		return fmt.Errorf("failed to read resources from file: %w", err)
 	}
-	p.storage = *storage
+	p.storage = storage
 	return nil
 }

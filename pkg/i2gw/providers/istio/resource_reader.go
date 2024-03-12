@@ -58,7 +58,7 @@ func (r *reader) readResourcesFromCluster(ctx context.Context) (*storage, error)
 
 	res.VirtualServices = virtualServices
 
-	return &res, nil
+	return res, nil
 }
 
 func (r *reader) readResourcesFromFile(_ context.Context, filename string) (*storage, error) {
@@ -116,7 +116,7 @@ func (r *reader) readUnstructuredObjects(objects []*unstructured.Unstructured) (
 		}
 	}
 
-	return &res, nil
+	return res, nil
 }
 
 func (r *reader) readGatewaysFromCluster(ctx context.Context) (map[types.NamespacedName]*istiov1beta1.Gateway, error) {

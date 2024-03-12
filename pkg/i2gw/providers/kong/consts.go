@@ -17,19 +17,36 @@ limitations under the License.
 package kong
 
 import (
-	kongv1beta1 "github.com/kong/kubernetes-ingress-controller/v2/pkg/apis/configuration/v1beta1"
-	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/types"
+	"fmt"
+
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-type storage struct {
-	Ingresses    map[types.NamespacedName]*networkingv1.Ingress
-	TCPIngresses []kongv1beta1.TCPIngress
-}
+const (
+	annotationPrefix = "konghq.com"
 
-func newResourceStorage() *storage {
-	return &storage{
-		Ingresses:    map[types.NamespacedName]*networkingv1.Ingress{},
-		TCPIngresses: []kongv1beta1.TCPIngress{},
+	headersKey = "headers"
+	methodsKey = "methods"
+	pluginsKey = "plugins"
+)
+
+const (
+	v1beta1Version = "v1beta1"
+
+	kongResourcesGroup = "configuration.konghq.com"
+
+	kongPluginKind = "KongPlugin"
+	tcpIngressKind = "TCPIngress"
+)
+
+var (
+	tcpIngressGVK = schema.GroupVersionKind{
+		Group:   kongResourcesGroup,
+		Version: v1beta1Version,
+		Kind:    tcpIngressKind,
 	}
+)
+
+func kongAnnotation(suffix string) string {
+	return fmt.Sprintf("%s/%s", annotationPrefix, suffix)
 }

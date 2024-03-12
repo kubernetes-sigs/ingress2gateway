@@ -26,8 +26,8 @@ type storage struct {
 	VirtualServices map[types.NamespacedName]*istiov1beta1.VirtualService
 }
 
-func newResourcesStorage() storage {
-	return storage{
+func newResourcesStorage() *storage {
+	return &storage{
 		Gateways:        map[types.NamespacedName]*istiov1beta1.Gateway{},
 		VirtualServices: map[types.NamespacedName]*istiov1beta1.VirtualService{},
 	}

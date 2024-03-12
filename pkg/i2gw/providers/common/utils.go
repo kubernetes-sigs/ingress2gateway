@@ -95,7 +95,7 @@ func NameFromHost(host string) string {
 	reg2, _ := regexp.Compile("^[^a-zA-Z0-9]+")
 	step2 := reg2.ReplaceAllString(step1, "")
 	// if nothing left, return "all-hosts"
-	if len(host) == 0 {
+	if len(host) == 0 || host == "*" {
 		return "all-hosts"
 	}
 	return step2

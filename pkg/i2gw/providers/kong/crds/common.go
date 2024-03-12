@@ -14,22 +14,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kong
+package crds
 
 import (
 	kongv1beta1 "github.com/kong/kubernetes-ingress-controller/v2/pkg/apis/configuration/v1beta1"
-	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
-type storage struct {
-	Ingresses    map[types.NamespacedName]*networkingv1.Ingress
-	TCPIngresses []kongv1beta1.TCPIngress
+type ruleGroupKey string
+
+type tcpIngressAggregator struct {
+	ruleGroups map[ruleGroupKey]*tcpIngressRuleGroup
 }
 
-func newResourceStorage() *storage {
-	return &storage{
-		Ingresses:    map[types.NamespacedName]*networkingv1.Ingress{},
-		TCPIngresses: []kongv1beta1.TCPIngress{},
-	}
+type tcpIngressRuleGroup struct {
+	namespace    string
+	name         string
+	ingressClass string
+	host         string
+	port         int
+	tls          []kongv1beta1.IngressTLS
+	rules        []ingressRule
+}
+
+type ingressRule struct {
+	rule kongv1beta1.IngressRule
 }

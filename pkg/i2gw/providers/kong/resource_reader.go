@@ -17,8 +17,15 @@ limitations under the License.
 package kong
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"os"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+
+	kongv1beta1 "github.com/kong/kubernetes-ingress-controller/v2/pkg/apis/configuration/v1beta1"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
@@ -35,24 +42,100 @@ func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
 	}
 }
 
+// -----------------------------------------------------------------------------
+// readers - all objects
+// -----------------------------------------------------------------------------
+
 func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage, error) {
-	storage := newResourcesStorage()
+	storage := newResourceStorage()
 
 	ingresses, err := common.ReadIngressesFromCluster(ctx, r.conf.Client, KongIngressClass)
 	if err != nil {
 		return nil, err
 	}
 	storage.Ingresses = ingresses
+
+	tcpIngresses, err := r.readTCPIngressesFromCluster(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read TCPIngresses: %w", err)
+	}
+	storage.TCPIngresses = tcpIngresses
+
 	return storage, nil
 }
 
-func (r *resourceReader) readResourcesFromFile(_ context.Context, filename string) (*storage, error) {
-	storage := newResourcesStorage()
+func (r *resourceReader) readResourcesFromFile(filename string) (*storage, error) {
+	storage := newResourceStorage()
 
 	ingresses, err := common.ReadIngressesFromFile(filename, r.conf.Namespace, KongIngressClass)
 	if err != nil {
 		return nil, err
 	}
 	storage.Ingresses = ingresses
+
+	tcpIngresses, err := r.readTCPIngressesFromFile(filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read TCPIngresses: %w", err)
+	}
+	storage.TCPIngresses = tcpIngresses
+
 	return storage, nil
+}
+
+// -----------------------------------------------------------------------------
+// readers - TCPIngress
+// -----------------------------------------------------------------------------
+
+func (r *resourceReader) readTCPIngressesFromCluster(ctx context.Context) ([]kongv1beta1.TCPIngress, error) {
+	tcpIngressList := &unstructured.UnstructuredList{}
+	tcpIngressList.SetGroupVersionKind(tcpIngressGVK)
+
+	err := r.conf.Client.List(ctx, tcpIngressList)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list Kong TCPIngresses: %w", err)
+	}
+
+	tcpIngresses := []kongv1beta1.TCPIngress{}
+	for _, obj := range tcpIngressList.Items {
+		var tcpIngress kongv1beta1.TCPIngress
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), &tcpIngress); err != nil {
+			return nil, fmt.Errorf("failed to parse Kong TCPIngress object: %w", err)
+		}
+
+		tcpIngresses = append(tcpIngresses, tcpIngress)
+	}
+
+	return tcpIngresses, nil
+}
+
+func (r *resourceReader) readTCPIngressesFromFile(filename string) ([]kongv1beta1.TCPIngress, error) {
+	stream, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	reader := bytes.NewReader(stream)
+	objs, err := common.ExtractObjectsFromReader(reader, r.conf.Namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	tcpIngresses := []kongv1beta1.TCPIngress{}
+	for _, f := range objs {
+		if r.conf.Namespace != "" && f.GetNamespace() != r.conf.Namespace {
+			continue
+		}
+		if !f.GroupVersionKind().Empty() &&
+			f.GroupVersionKind() == tcpIngressGVK {
+			tcpIngress := &kongv1beta1.TCPIngress{}
+			err = runtime.DefaultUnstructuredConverter.
+				FromUnstructured(f.UnstructuredContent(), tcpIngress)
+			if err != nil {
+				return nil, err
+			}
+			tcpIngresses = append(tcpIngresses, *tcpIngress)
+		}
+	}
+
+	return tcpIngresses, nil
 }

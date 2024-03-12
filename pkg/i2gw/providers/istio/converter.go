@@ -44,7 +44,7 @@ func newConverter() converter {
 	}
 }
 
-func (c *converter) convert(storage storage) (i2gw.GatewayResources, field.ErrorList) {
+func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.ErrorList) {
 	var errList field.ErrorList
 
 	gatewayResources := i2gw.GatewayResources{
