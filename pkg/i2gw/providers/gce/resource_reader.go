@@ -20,7 +20,15 @@ import (
 	"context"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
+
+// GCE supports the following Ingress Class values:
+// 1. "gce", for external Ingress
+// 2. "gce-internal", for internal Ingress
+// 3. "", which defaults to external Ingress
+var supportedGCEIngressClass = sets.New(gceIngressClass, gceL7ILBIngressClass, "")
 
 // reader implements the i2gw.CustomResourceReader interface.
 type reader struct {
@@ -35,11 +43,23 @@ func newResourceReader(conf *i2gw.ProviderConf) reader {
 }
 
 func (r *reader) readResourcesFromCluster(ctx context.Context) (*storage, error) {
-	// read example-gateway related resources from the cluster.
-	return nil, nil
+	storage := newResourcesStorage()
+
+	ingresses, err := common.ReadIngressesFromCluster(ctx, r.conf.Client, supportedGCEIngressClass)
+	if err != nil {
+		return nil, err
+	}
+	storage.Ingresses = (ingresses)
+	return storage, nil
 }
 
-func (r *reader) readResourcesFromFile(ctx context.Context, filename string) (*storage, error) {
-	// read example-gateway related resources from the file.
-	return nil, nil
+func (r *reader) readResourcesFromFile(filename string) (*storage, error) {
+	storage := newResourcesStorage()
+
+	ingresses, err := common.ReadIngressesFromFile(filename, r.conf.Namespace, supportedGCEIngressClass)
+	if err != nil {
+		return nil, err
+	}
+	storage.Ingresses = ingresses
+	return storage, nil
 }

@@ -73,6 +73,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 							},
 						},
 					}},
+					IngressClassName: PtrTo("simple"),
 				},
 			}},
 			expectedGatewayResources: i2gw.GatewayResources{
@@ -150,6 +151,7 @@ func Test_ingresses2GatewaysAndHttpRoutes(t *testing.T) {
 							},
 						},
 					}},
+					IngressClassName: PtrTo("with-tls"),
 				},
 			}},
 			expectedGatewayResources: i2gw.GatewayResources{

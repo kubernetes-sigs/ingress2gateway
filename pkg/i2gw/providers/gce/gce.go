@@ -24,7 +24,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-// The ProviderName returned to the provider's registry.
 const ProviderName = "gce"
 
 func init() {
@@ -56,8 +55,8 @@ func (p *Provider) ReadResourcesFromCluster(ctx context.Context) error {
 	return nil
 }
 
-func (p *Provider) ReadResourcesFromFile(ctx context.Context, filename string) error {
-	storage, err := p.reader.readResourcesFromFile(ctx, filename)
+func (p *Provider) ReadResourcesFromFile(_ context.Context, filename string) error {
+	storage, err := p.reader.readResourcesFromFile(filename)
 	if err != nil {
 		return fmt.Errorf("failed to read gce resources from file: %w", err)
 	}
