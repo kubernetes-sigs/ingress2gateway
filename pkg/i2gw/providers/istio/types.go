@@ -17,6 +17,7 @@ limitations under the License.
 package istio
 
 const (
+	CRDName            = "gateways.networking.istio.io"
 	APIVersion         = "networking.istio.io/v1beta1"
 	GatewayKind        = "Gateway"
 	VirtualServiceKind = "VirtualService"
