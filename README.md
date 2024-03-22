@@ -24,6 +24,12 @@ This will put `ingress2gateway` binary in `$(go env GOPATH)/bin`
 
 Alternatively, you can download the binary at the [releases page](https://github.com/kubernetes-sigs/ingress2gateway/releases)
 
+### On macOS and linux via Homebrew:
+Make sure Homebrew is installed on your system.
+```shell
+brew install ingress2gateway
+```
+
 ### Build from Source
 
 1. Ensure that your system meets the following requirements:
