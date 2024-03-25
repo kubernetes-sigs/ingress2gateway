@@ -56,14 +56,14 @@ In this section, we will walk through a demo of how to add support for the `exam
        }
    }
 
-   func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage, error) {
+   func (p *Provider) ReadResourcesFromCluster(ctx context.Context) error {
        // read example-gateway related resources from the cluster.
-       return nil, nil
+       return nil
    }
 
-   func (r *resourceReader) readResourcesFromFile(ctx context.Context, filename string) (*storage, error) {
+   func (p *Provider) ReadResourcesFromFile(ctx context.Context, filename string) error {
        // read example-gateway related resources from the file.
-       return nil, nil
+       return nil
    }
    ```
 
