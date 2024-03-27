@@ -26,6 +26,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	istiov1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -43,6 +44,12 @@ func newResourceReader(conf *i2gw.ProviderConf) reader {
 
 func (r *reader) readResourcesFromCluster(ctx context.Context) (*storage, error) {
 	res := newResourcesStorage()
+
+	crd := &apiextensionsv1.CustomResourceDefinition{}
+	if err := r.conf.Client.Get(ctx, types.NamespacedName{Name: CRDName}, crd); err != nil {
+		log.Printf("CRD '%s' is not installed in the cluster, will not continue reading resources", CRDName)
+		return res, nil
+	}
 
 	gateways, err := r.readGatewaysFromCluster(ctx)
 	if err != nil {

@@ -67,7 +67,7 @@ type PrintRunner struct {
 func (pr *PrintRunner) PrintGatewaysAndHTTPRoutes(cmd *cobra.Command, _ []string) error {
 	err := pr.initializeResourcePrinter()
 	if err != nil {
-		return fmt.Errorf("failed to initialize resrouce printer: %w", err)
+		return fmt.Errorf("failed to initialize resource printer: %w", err)
 	}
 	err = pr.initializeNamespaceFilter()
 	if err != nil {
@@ -245,10 +245,11 @@ func newPrintCommand() *cobra.Command {
 		`If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even
 if specified with --namespace.`)
 
-	cmd.Flags().StringSliceVar(&pr.providers, "providers", i2gw.GetSupportedProviders(),
+	cmd.Flags().StringSliceVar(&pr.providers, "providers", nil,
 		fmt.Sprintf("If present, the tool will try to convert only resources related to the specified providers, supported values are %v", i2gw.GetSupportedProviders()))
 
 	cmd.MarkFlagsMutuallyExclusive("namespace", "all-namespaces")
+	cmd.MarkFlagRequired("providers")
 	return cmd
 }
 
