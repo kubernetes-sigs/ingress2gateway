@@ -17,24 +17,104 @@ limitations under the License.
 package common
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"log"
 	"regexp"
+	"strings"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/apimachinery/pkg/util/yaml"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-func GetIngressClass(ingress networkingv1.Ingress) string {
-	var ingressClass string
+var k8sClientset *kubernetes.Clientset
 
+func init() {
+
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		log.Fatal(errors.New("unable to create config"))
+	}
+
+	k8sClientset, err = kubernetes.NewForConfig(config)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func getFileExtension(fileName string) string {
+	parts := strings.Split(fileName, ".")
+	if len(parts) > 1 {
+		return parts[len(parts)-1]
+	}
+	return ""
+}
+
+func readIngressClassesFromFile(data []byte, extension string) (*networkingv1.IngressClassList, error) {
+	ingressClasses := &networkingv1.IngressClassList{}
+	var err error
+
+	switch extension {
+	case "yaml":
+		err = yaml.Unmarshal(data, ingressClasses)
+	case "json":
+		err = json.Unmarshal(data, ingressClasses)
+	default:
+		return nil, fmt.Errorf("unsupported file type: %s", extension)
+	}
+
+	return ingressClasses, err
+}
+
+func GetDefaultIngressClass(data []byte, fileName string) (string, error) {
+
+	var ingressClasses *networkingv1.IngressClassList
+	var err error
+
+	if data != nil {
+		extension := getFileExtension(fileName)
+		ingressClasses, err = readIngressClassesFromFile(data, extension)
+	} else {
+		ingressClasses, err = k8sClientset.NetworkingV1().IngressClasses().List(context.Background(), metav1.ListOptions{})
+	}
+
+	if err != nil {
+		return "", err
+	}
+
+	for _, ic := range ingressClasses.Items {
+		if ic.Spec.Parameters != nil && ic.Spec.Parameters.APIGroup != nil {
+			if *ic.Spec.Parameters.APIGroup == "networking.k8s.io" && ic.Annotations["ingressclass.kubernetes.io/is-default-class"] == "true" {
+				return ic.Name, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("no default IngressClass found")
+}
+
+func GetIngressClass(ingress networkingv1.Ingress) string {
+	ingressClass := ""
+	var data []byte
+	var fileName string
 	if ingress.Spec.IngressClassName != nil && *ingress.Spec.IngressClassName != "" {
 		ingressClass = *ingress.Spec.IngressClassName
 	} else if _, ok := ingress.Annotations[networkingv1beta1.AnnotationIngressClass]; ok {
 		ingressClass = ingress.Annotations[networkingv1beta1.AnnotationIngressClass]
 	} else {
-		ingressClass = ingress.Name
+		defaultIngressClass, err := GetDefaultIngressClass(data, fileName)
+		if err != nil {
+			log.Fatal(err)
+		}
+		ingressClass = defaultIngressClass
 	}
 
 	return ingressClass
@@ -81,7 +161,6 @@ func GetRuleGroups(ingresses []networkingv1.Ingress) map[string]IngressRuleGroup
 
 			ruleGroups[rgKey] = rg
 		}
-
 	}
 
 	return ruleGroups
