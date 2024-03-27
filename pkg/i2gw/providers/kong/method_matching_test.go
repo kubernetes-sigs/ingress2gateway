@@ -34,44 +34,42 @@ func TestMethodMatchingFeature(t *testing.T) {
 
 	testCases := []struct {
 		name                     string
-		inputResources           i2gw.InputResources
+		ingresses                []networkingv1.Ingress
 		expectedHTTPRouteMatches map[string][][]gatewayv1.HTTPRouteMatch
 		expectedErrors           field.ErrorList
 	}{
 		{
 			name: "method matching - 1 method",
-			inputResources: i2gw.InputResources{
-				Ingresses: []networkingv1.Ingress{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "one-method",
-							Namespace: "default",
-							Annotations: map[string]string{
-								"konghq.com/methods": "GET",
-							},
+			ingresses: []networkingv1.Ingress{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "one-method",
+						Namespace: "default",
+						Annotations: map[string]string{
+							"konghq.com/methods": "GET",
 						},
-						Spec: networkingv1.IngressSpec{
-							IngressClassName: ptrTo("ingress-kong"),
-							Rules: []networkingv1.IngressRule{{
-								Host: "test.mydomain.com",
-								IngressRuleValue: networkingv1.IngressRuleValue{
-									HTTP: &networkingv1.HTTPIngressRuleValue{
-										Paths: []networkingv1.HTTPIngressPath{{
-											Path:     "/",
-											PathType: &iPrefix,
-											Backend: networkingv1.IngressBackend{
-												Service: &networkingv1.IngressServiceBackend{
-													Name: "test",
-													Port: networkingv1.ServiceBackendPort{
-														Number: 80,
-													},
+					},
+					Spec: networkingv1.IngressSpec{
+						IngressClassName: ptrTo("ingress-kong"),
+						Rules: []networkingv1.IngressRule{{
+							Host: "test.mydomain.com",
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{{
+										Path:     "/",
+										PathType: &iPrefix,
+										Backend: networkingv1.IngressBackend{
+											Service: &networkingv1.IngressServiceBackend{
+												Name: "test",
+												Port: networkingv1.ServiceBackendPort{
+													Number: 80,
 												},
 											},
-										}},
-									},
+										},
+									}},
 								},
-							}},
-						},
+							},
+						}},
 					},
 				},
 			},
@@ -88,38 +86,36 @@ func TestMethodMatchingFeature(t *testing.T) {
 		},
 		{
 			name: "method matching - many methods",
-			inputResources: i2gw.InputResources{
-				Ingresses: []networkingv1.Ingress{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "many-methods",
-							Namespace: "default",
-							Annotations: map[string]string{
-								"konghq.com/methods": "GET,POST,DELETE",
-							},
+			ingresses: []networkingv1.Ingress{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "many-methods",
+						Namespace: "default",
+						Annotations: map[string]string{
+							"konghq.com/methods": "GET,POST,DELETE",
 						},
-						Spec: networkingv1.IngressSpec{
-							IngressClassName: ptrTo("ingress-kong"),
-							Rules: []networkingv1.IngressRule{{
-								Host: "test.mydomain.com",
-								IngressRuleValue: networkingv1.IngressRuleValue{
-									HTTP: &networkingv1.HTTPIngressRuleValue{
-										Paths: []networkingv1.HTTPIngressPath{{
-											Path:     "/",
-											PathType: &iPrefix,
-											Backend: networkingv1.IngressBackend{
-												Service: &networkingv1.IngressServiceBackend{
-													Name: "test",
-													Port: networkingv1.ServiceBackendPort{
-														Number: 80,
-													},
+					},
+					Spec: networkingv1.IngressSpec{
+						IngressClassName: ptrTo("ingress-kong"),
+						Rules: []networkingv1.IngressRule{{
+							Host: "test.mydomain.com",
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{{
+										Path:     "/",
+										PathType: &iPrefix,
+										Backend: networkingv1.IngressBackend{
+											Service: &networkingv1.IngressServiceBackend{
+												Name: "test",
+												Port: networkingv1.ServiceBackendPort{
+													Number: 80,
 												},
 											},
-										}},
-									},
+										},
+									}},
 								},
-							}},
-						},
+							},
+						}},
 					},
 				},
 			},
@@ -142,38 +138,36 @@ func TestMethodMatchingFeature(t *testing.T) {
 		},
 		{
 			name: "method matching - wrong method",
-			inputResources: i2gw.InputResources{
-				Ingresses: []networkingv1.Ingress{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "wrong-method",
-							Namespace: "default",
-							Annotations: map[string]string{
-								"konghq.com/methods": "WRONG",
-							},
+			ingresses: []networkingv1.Ingress{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "wrong-method",
+						Namespace: "default",
+						Annotations: map[string]string{
+							"konghq.com/methods": "WRONG",
 						},
-						Spec: networkingv1.IngressSpec{
-							IngressClassName: ptrTo("ingress-kong"),
-							Rules: []networkingv1.IngressRule{{
-								Host: "test.mydomain.com",
-								IngressRuleValue: networkingv1.IngressRuleValue{
-									HTTP: &networkingv1.HTTPIngressRuleValue{
-										Paths: []networkingv1.HTTPIngressPath{{
-											Path:     "/",
-											PathType: &iPrefix,
-											Backend: networkingv1.IngressBackend{
-												Service: &networkingv1.IngressServiceBackend{
-													Name: "test",
-													Port: networkingv1.ServiceBackendPort{
-														Number: 80,
-													},
+					},
+					Spec: networkingv1.IngressSpec{
+						IngressClassName: ptrTo("ingress-kong"),
+						Rules: []networkingv1.IngressRule{{
+							Host: "test.mydomain.com",
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{{
+										Path:     "/",
+										PathType: &iPrefix,
+										Backend: networkingv1.IngressBackend{
+											Service: &networkingv1.IngressServiceBackend{
+												Name: "test",
+												Port: networkingv1.ServiceBackendPort{
+													Number: 80,
 												},
 											},
-										}},
-									},
+										},
+									}},
 								},
-							}},
-						},
+							},
+						}},
 					},
 				},
 			},
@@ -189,14 +183,14 @@ func TestMethodMatchingFeature(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			gatewayResources, errs := common.ToGateway(tc.inputResources.Ingresses, i2gw.ProviderImplementationSpecificOptions{
+			gatewayResources, errs := common.ToGateway(tc.ingresses, i2gw.ProviderImplementationSpecificOptions{
 				ToImplementationSpecificHTTPPathTypeMatch: implementationSpecificHTTPPathTypeMatch,
 			})
 			if len(errs) != 0 {
 				t.Errorf("Expected no errors, got %d: %+v", len(errs), errs)
 			}
 
-			errs = methodMatchingFeature(tc.inputResources, &gatewayResources)
+			errs = methodMatchingFeature(tc.ingresses, &gatewayResources)
 			if len(errs) != len(tc.expectedErrors) {
 				t.Errorf("Expected %d errors, got %d: %+v", len(tc.expectedErrors), len(errs), errs)
 			} else {

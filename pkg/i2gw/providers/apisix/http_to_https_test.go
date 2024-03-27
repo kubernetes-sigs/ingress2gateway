@@ -257,16 +257,14 @@ func Test_httpToHttpsFeature(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ingressResources := i2gw.InputResources{
-				Ingresses: []networkingv1.Ingress{tc.ingress},
-			}
+			ingresses := []networkingv1.Ingress{tc.ingress}
 			gatewayResources := &i2gw.GatewayResources{
 				HTTPRoutes: map[types.NamespacedName]gatewayv1.HTTPRoute{
 					{Name: tc.expectedHTTPRoute.Name, Namespace: tc.expectedHTTPRoute.Namespace}: *tc.initialHTTPRoute,
 				},
 			}
 
-			errs := httpToHTTPSFeature(ingressResources, gatewayResources)
+			errs := httpToHTTPSFeature(ingresses, gatewayResources)
 
 			if len(errs) != len(tc.expectedError) {
 				t.Errorf("expected %d errors, got %d", len(tc.expectedError), len(errs))

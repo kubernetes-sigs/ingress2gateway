@@ -72,7 +72,7 @@ func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.Erro
 
 	for _, parseFeatureFunc := range c.featureParsers {
 		// Apply the feature parsing function to the gateway resources, one by one.
-		errs = parseFeatureFunc(i2gw.InputResources{Ingresses: ingressList}, &gatewayResources)
+		errs = parseFeatureFunc(ingressList, &gatewayResources)
 		// Append the parsing errors to the error list.
 		globalErrs = append(globalErrs, errs...)
 	}

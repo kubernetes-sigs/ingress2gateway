@@ -34,44 +34,42 @@ func TestHeaderMatchingFeature(t *testing.T) {
 
 	testCases := []struct {
 		name                     string
-		inputResources           i2gw.InputResources
+		ingresses                []networkingv1.Ingress
 		expectedHTTPRouteMatches map[string][][]gatewayv1.HTTPRouteMatch
 		expectedErrors           field.ErrorList
 	}{
 		{
 			name: "header matching - ORed headers",
-			inputResources: i2gw.InputResources{
-				Ingresses: []networkingv1.Ingress{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "ored-headers",
-							Namespace: "default",
-							Annotations: map[string]string{
-								"konghq.com/headers.key": "val1,val2",
-							},
+			ingresses: []networkingv1.Ingress{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "ored-headers",
+						Namespace: "default",
+						Annotations: map[string]string{
+							"konghq.com/headers.key": "val1,val2",
 						},
-						Spec: networkingv1.IngressSpec{
-							IngressClassName: ptrTo("ingress-kong"),
-							Rules: []networkingv1.IngressRule{{
-								Host: "test.mydomain.com",
-								IngressRuleValue: networkingv1.IngressRuleValue{
-									HTTP: &networkingv1.HTTPIngressRuleValue{
-										Paths: []networkingv1.HTTPIngressPath{{
-											Path:     "/",
-											PathType: &iPrefix,
-											Backend: networkingv1.IngressBackend{
-												Service: &networkingv1.IngressServiceBackend{
-													Name: "test",
-													Port: networkingv1.ServiceBackendPort{
-														Number: 80,
-													},
+					},
+					Spec: networkingv1.IngressSpec{
+						IngressClassName: ptrTo("ingress-kong"),
+						Rules: []networkingv1.IngressRule{{
+							Host: "test.mydomain.com",
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{{
+										Path:     "/",
+										PathType: &iPrefix,
+										Backend: networkingv1.IngressBackend{
+											Service: &networkingv1.IngressServiceBackend{
+												Name: "test",
+												Port: networkingv1.ServiceBackendPort{
+													Number: 80,
 												},
 											},
-										}},
-									},
+										},
+									}},
 								},
-							}},
-						},
+							},
+						}},
 					},
 				},
 			},
@@ -101,40 +99,38 @@ func TestHeaderMatchingFeature(t *testing.T) {
 		},
 		{
 			name: "header matching - ANDed/ORed headers",
-			inputResources: i2gw.InputResources{
-				Ingresses: []networkingv1.Ingress{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "anded-ored-headers",
-							Namespace: "default",
-							Annotations: map[string]string{
-								"konghq.com/headers.keyA": "val1,val2",
-								"konghq.com/headers.keyB": "val3,val4,val5",
-								"konghq.com/headers.keyC": "val6",
-							},
+			ingresses: []networkingv1.Ingress{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "anded-ored-headers",
+						Namespace: "default",
+						Annotations: map[string]string{
+							"konghq.com/headers.keyA": "val1,val2",
+							"konghq.com/headers.keyB": "val3,val4,val5",
+							"konghq.com/headers.keyC": "val6",
 						},
-						Spec: networkingv1.IngressSpec{
-							IngressClassName: ptrTo("ingress-kong"),
-							Rules: []networkingv1.IngressRule{{
-								Host: "test.mydomain.com",
-								IngressRuleValue: networkingv1.IngressRuleValue{
-									HTTP: &networkingv1.HTTPIngressRuleValue{
-										Paths: []networkingv1.HTTPIngressPath{{
-											Path:     "/",
-											PathType: &iPrefix,
-											Backend: networkingv1.IngressBackend{
-												Service: &networkingv1.IngressServiceBackend{
-													Name: "test",
-													Port: networkingv1.ServiceBackendPort{
-														Number: 80,
-													},
+					},
+					Spec: networkingv1.IngressSpec{
+						IngressClassName: ptrTo("ingress-kong"),
+						Rules: []networkingv1.IngressRule{{
+							Host: "test.mydomain.com",
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{{
+										Path:     "/",
+										PathType: &iPrefix,
+										Backend: networkingv1.IngressBackend{
+											Service: &networkingv1.IngressServiceBackend{
+												Name: "test",
+												Port: networkingv1.ServiceBackendPort{
+													Number: 80,
 												},
 											},
-										}},
-									},
+										},
+									}},
 								},
-							}},
-						},
+							},
+						}},
 					},
 				},
 			},
@@ -246,14 +242,14 @@ func TestHeaderMatchingFeature(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			gatewayResources, errs := common.ToGateway(tc.inputResources.Ingresses, i2gw.ProviderImplementationSpecificOptions{
+			gatewayResources, errs := common.ToGateway(tc.ingresses, i2gw.ProviderImplementationSpecificOptions{
 				ToImplementationSpecificHTTPPathTypeMatch: implementationSpecificHTTPPathTypeMatch,
 			})
 			if len(errs) != 0 {
 				t.Errorf("Expected no errors, got %d: %+v", len(errs), errs)
 			}
 
-			errs = headerMatchingFeature(tc.inputResources, &gatewayResources)
+			errs = headerMatchingFeature(tc.ingresses, &gatewayResources)
 			if len(errs) != len(tc.expectedErrors) {
 				t.Errorf("Expected %d errors, got %d: %+v", len(tc.expectedErrors), len(errs), errs)
 			} else {
