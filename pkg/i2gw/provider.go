@@ -25,6 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 // ProviderConstructorByName is a map of ProviderConstructor functions by a
@@ -100,7 +101,7 @@ type GatewayResources struct {
 	TCPRoutes  map[types.NamespacedName]gatewayv1alpha2.TCPRoute
 	UDPRoutes  map[types.NamespacedName]gatewayv1alpha2.UDPRoute
 
-	ReferenceGrants map[types.NamespacedName]gatewayv1alpha2.ReferenceGrant
+	ReferenceGrants map[types.NamespacedName]gatewayv1beta1.ReferenceGrant
 }
 
 // FeatureParser is a function that reads the InputResources, and applies

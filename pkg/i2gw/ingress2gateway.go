@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string, providers []string) ([]GatewayResources, error) {
@@ -150,7 +151,7 @@ func MergeGatewayResources(gatewayResources ...GatewayResources) (GatewayResourc
 		TLSRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
 		TCPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
 		UDPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.UDPRoute),
-		ReferenceGrants: make(map[types.NamespacedName]gatewayv1alpha2.ReferenceGrant),
+		ReferenceGrants: make(map[types.NamespacedName]gatewayv1beta1.ReferenceGrant),
 	}
 	var errs field.ErrorList
 	mergedGatewayResources.Gateways, errs = mergeGateways(gatewayResources)

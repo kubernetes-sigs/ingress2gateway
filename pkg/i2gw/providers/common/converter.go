@@ -93,7 +93,7 @@ var (
 
 	ReferenceGrantGVK = schema.GroupVersionKind{
 		Group:   "gateway.networking.k8s.io",
-		Version: "v1alpha2",
+		Version: "v1beta1",
 		Kind:    "ReferenceGrant",
 	}
 )

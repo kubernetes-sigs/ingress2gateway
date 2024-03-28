@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 const fixturesDir = "./fixtures"
@@ -108,7 +109,7 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*i2gw.GatewayR
 		HTTPRoutes:      make(map[types.NamespacedName]gatewayv1.HTTPRoute),
 		TLSRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
 		TCPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
-		ReferenceGrants: make(map[types.NamespacedName]gatewayv1alpha2.ReferenceGrant),
+		ReferenceGrants: make(map[types.NamespacedName]gatewayv1beta1.ReferenceGrant),
 	}
 
 	for _, obj := range unstructuredObjects {
@@ -153,7 +154,7 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*i2gw.GatewayR
 				Name:      tcpRoute.Name,
 			}] = tcpRoute
 		case "ReferenceGrant":
-			var referenceGrant gatewayv1alpha2.ReferenceGrant
+			var referenceGrant gatewayv1beta1.ReferenceGrant
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), &referenceGrant); err != nil {
 				return nil, fmt.Errorf("failed to parse k8s gateway ReferenceGrant object: %w", err)
 			}
