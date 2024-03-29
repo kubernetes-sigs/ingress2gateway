@@ -46,7 +46,7 @@ spec:
       name: test
       weight: 1
 ---
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1beta1
 kind: ReferenceGrant
 metadata:
   name: generated-reference-grant-from-custom-ns-to-prod

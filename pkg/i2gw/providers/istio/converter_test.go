@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 func Test_converter_convertGateway(t *testing.T) {
@@ -1565,7 +1566,7 @@ func Test_converter_generateReferenceGrants(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want *gatewayv1alpha2.ReferenceGrant
+		want *gatewayv1beta1.ReferenceGrant
 	}{
 		{
 			name: "generate reference grant for HTTPRoute,TLSRoute,TCPRoute",
@@ -1581,7 +1582,7 @@ func Test_converter_generateReferenceGrants(t *testing.T) {
 					forTCPRoute:   true,
 				},
 			},
-			want: &gatewayv1alpha2.ReferenceGrant{
+			want: &gatewayv1beta1.ReferenceGrant{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: common.ReferenceGrantGVK.GroupVersion().String(),
 					Kind:       common.ReferenceGrantGVK.Kind,
@@ -1590,8 +1591,8 @@ func Test_converter_generateReferenceGrants(t *testing.T) {
 					Namespace: "test",
 					Name:      "generated-reference-grant-from-ns1-to-test",
 				},
-				Spec: gatewayv1alpha2.ReferenceGrantSpec{
-					From: []gatewayv1alpha2.ReferenceGrantFrom{
+				Spec: gatewayv1beta1.ReferenceGrantSpec{
+					From: []gatewayv1beta1.ReferenceGrantFrom{
 						{
 							Group:     gatewayv1.Group(common.HTTPRouteGVK.Group),
 							Kind:      gatewayv1.Kind(common.HTTPRouteGVK.Kind),
@@ -1608,7 +1609,7 @@ func Test_converter_generateReferenceGrants(t *testing.T) {
 							Namespace: gatewayv1.Namespace("ns1"),
 						},
 					},
-					To: []gatewayv1alpha2.ReferenceGrantTo{
+					To: []gatewayv1beta1.ReferenceGrantTo{
 						{
 							Group: gatewayv1.Group(common.GatewayGVK.Group),
 							Kind:  gatewayv1.Kind(common.GatewayGVK.Kind),
@@ -1825,7 +1826,7 @@ func Test_converter_generateReferences(t *testing.T) {
 		fields               fields
 		args                 args
 		wantParentReferences []gatewayv1.ParentReference
-		wantReferenceGrants  []*gatewayv1alpha2.ReferenceGrant
+		wantReferenceGrants  []*gatewayv1beta1.ReferenceGrant
 	}{
 		{
 			name: "nothing is generated if Gateway is not listed in the VirtualService",
@@ -1882,12 +1883,12 @@ func Test_converter_generateReferences(t *testing.T) {
 					Name:      "gateway",
 				},
 			},
-			wantReferenceGrants: []*gatewayv1alpha2.ReferenceGrant{
+			wantReferenceGrants: []*gatewayv1beta1.ReferenceGrant{
 				{
-					TypeMeta:   metav1.TypeMeta{Kind: "ReferenceGrant", APIVersion: "gateway.networking.k8s.io/v1alpha2"},
+					TypeMeta:   metav1.TypeMeta{Kind: "ReferenceGrant", APIVersion: "gateway.networking.k8s.io/v1beta1"},
 					ObjectMeta: metav1.ObjectMeta{Name: "generated-reference-grant-from-test-to-prod", Namespace: "prod"},
-					Spec: gatewayv1alpha2.ReferenceGrantSpec{
-						To: []gatewayv1alpha2.ReferenceGrantTo{
+					Spec: gatewayv1beta1.ReferenceGrantSpec{
+						To: []gatewayv1beta1.ReferenceGrantTo{
 							{
 								Group: "gateway.networking.k8s.io", Kind: "Gateway", Name: common.PtrTo[gatewayv1.ObjectName]("gateway"),
 							},
@@ -1926,7 +1927,7 @@ func Test_converter_generateReferences(t *testing.T) {
 					Name:  "gateway",
 				},
 			},
-			wantReferenceGrants: []*gatewayv1alpha2.ReferenceGrant{},
+			wantReferenceGrants: []*gatewayv1beta1.ReferenceGrant{},
 		},
 	}
 	for _, tt := range tests {
