@@ -1,13 +1,15 @@
 # See the OWNERS docs at https://go.k8s.io/owners
 
 approvers:
-  - bowei
-  - robscott
-  - shaneutt
-  - youngnick
   - LiorLieberman
+  - mlavacca  
+  - robscott
+  - youngnick
 
 reviewers:
   - levikobi
   - Xunzhuo
-  - mlavacca
+
+emeritus_approvers:
+  - bowei
+  - shaneutt
