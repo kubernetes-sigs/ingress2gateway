@@ -48,6 +48,7 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 						},
 					},
 					extra: &extra{canary: &canaryAnnotations{
+						enable: true,
 						weight: 101,
 					}},
 				},
@@ -82,6 +83,7 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 						},
 					},
 					extra: &extra{canary: &canaryAnnotations{
+						enable: true,
 						weight: 30,
 					}},
 				},
@@ -103,6 +105,76 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 			},
 		},
 		{
+			name: "set weight as 0",
+			paths: []ingressPath{
+				{
+					path: networkingv1.HTTPIngressPath{
+						Backend: networkingv1.IngressBackend{
+							Resource: &corev1.TypedLocalObjectReference{
+								Name:     "canary",
+								Kind:     "StorageBucket",
+								APIGroup: ptrTo("vendor.example.com"),
+							},
+						},
+					},
+					extra: &extra{canary: &canaryAnnotations{
+						enable: true,
+						weight: 0,
+					}},
+				},
+				{
+					path: networkingv1.HTTPIngressPath{
+						Backend: networkingv1.IngressBackend{
+							Resource: &corev1.TypedLocalObjectReference{
+								Name:     "prod",
+								Kind:     "StorageBucket",
+								APIGroup: ptrTo("vendor.example.com"),
+							},
+						},
+					},
+				},
+			},
+			expectedBackendRefs: []gatewayv1.HTTPBackendRef{
+				{BackendRef: gatewayv1.BackendRef{Weight: ptrTo(int32(0))}},
+				{BackendRef: gatewayv1.BackendRef{Weight: ptrTo(int32(100))}},
+			},
+		},
+		{
+			name: "set weight as 100",
+			paths: []ingressPath{
+				{
+					path: networkingv1.HTTPIngressPath{
+						Backend: networkingv1.IngressBackend{
+							Resource: &corev1.TypedLocalObjectReference{
+								Name:     "canary",
+								Kind:     "StorageBucket",
+								APIGroup: ptrTo("vendor.example.com"),
+							},
+						},
+					},
+					extra: &extra{canary: &canaryAnnotations{
+						enable: true,
+						weight: 100,
+					}},
+				},
+				{
+					path: networkingv1.HTTPIngressPath{
+						Backend: networkingv1.IngressBackend{
+							Resource: &corev1.TypedLocalObjectReference{
+								Name:     "prod",
+								Kind:     "StorageBucket",
+								APIGroup: ptrTo("vendor.example.com"),
+							},
+						},
+					},
+				},
+			},
+			expectedBackendRefs: []gatewayv1.HTTPBackendRef{
+				{BackendRef: gatewayv1.BackendRef{Weight: ptrTo(int32(100))}},
+				{BackendRef: gatewayv1.BackendRef{Weight: ptrTo(int32(0))}},
+			},
+		},
+		{
 			name: "weight total assigned",
 			paths: []ingressPath{
 				{
@@ -116,6 +188,7 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 						},
 					},
 					extra: &extra{canary: &canaryAnnotations{
+						enable:      true,
 						weight:      50,
 						weightTotal: 200,
 					}},

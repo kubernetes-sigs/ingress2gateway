@@ -127,7 +127,7 @@ func calculateBackendRefWeight(paths []ingressPath) ([]gatewayv1.HTTPBackendRef,
 			errors = append(errors, err)
 			continue
 		}
-		if path.extra != nil && path.extra.canary != nil && path.extra.canary.weight != 0 {
+		if path.extra != nil && path.extra.canary != nil && path.extra.canary.enable {
 			weight := int32(path.extra.canary.weight)
 			backendRef.Weight = &weight
 			totalWeightSet += weight
