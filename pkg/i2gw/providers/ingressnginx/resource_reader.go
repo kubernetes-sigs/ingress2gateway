@@ -18,11 +18,9 @@ package ingressnginx
 
 import (
 	"context"
-	"sort"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 // converter implements the i2gw.CustomResourceReader interface.
@@ -44,14 +42,7 @@ func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage
 	if err != nil {
 		return nil, err
 	}
-	ingNames := []types.NamespacedName{}
-	for ing := range ingresses {
-		ingNames = append(ingNames, ing)
-	}
-	sort.Slice(ingNames, func(i, j int) bool {
-		return ingNames[i].Name < ingNames[j].Name
-	})
-	storage.Ingresses = OrderedIngressMap{ingressNames: ingNames, ingressObjects: ingresses}
+	storage.Ingresses.FromMap(ingresses)
 	return storage, nil
 }
 
@@ -62,13 +53,6 @@ func (r *resourceReader) readResourcesFromFile(filename string) (*storage, error
 	if err != nil {
 		return nil, err
 	}
-	ingNames := []types.NamespacedName{}
-	for ing := range ingresses {
-		ingNames = append(ingNames, ing)
-	}
-	sort.Slice(ingNames, func(i, j int) bool {
-		return ingNames[i].Name < ingNames[j].Name
-	})
-	storage.Ingresses = OrderedIngressMap{ingressNames: ingNames, ingressObjects: ingresses}
+	storage.Ingresses.FromMap(ingresses)
 	return storage, nil
 }
