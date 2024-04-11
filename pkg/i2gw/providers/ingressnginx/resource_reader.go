@@ -42,7 +42,7 @@ func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage
 	if err != nil {
 		return nil, err
 	}
-	storage.Ingresses = ingresses
+	storage.Ingresses.FromMap(ingresses)
 	return storage, nil
 }
 
@@ -53,6 +53,6 @@ func (r *resourceReader) readResourcesFromFile(filename string) (*storage, error
 	if err != nil {
 		return nil, err
 	}
-	storage.Ingresses = ingresses
+	storage.Ingresses.FromMap(ingresses)
 	return storage, nil
 }
