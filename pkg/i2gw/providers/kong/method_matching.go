@@ -42,7 +42,7 @@ func methodMatchingFeature(ingressResources i2gw.InputResources, gatewayResource
 			key := types.NamespacedName{Namespace: rule.Ingress.Namespace, Name: common.RouteName(rg.Name, rg.Host)}
 			httpRoute, ok := gatewayResources.HTTPRoutes[key]
 			if !ok {
-				panic("HTTPRoute does not exist - this should never happen")
+				return field.ErrorList{field.InternalError(nil, fmt.Errorf("HTTPRoute does not exist - this should never happen"))}
 			}
 			methods, errs := parseMethodsAnnotation(rule.Ingress.ObjectMeta.Namespace, rule.Ingress.ObjectMeta.Name, rule.Ingress.Annotations)
 			if len(errs) != 0 {

@@ -51,31 +51,35 @@ func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.Erro
 		ingressList = append(ingressList, *ingress)
 	}
 
-	globalErrs := field.ErrorList{}
+	errorList := field.ErrorList{}
 
 	// Convert plain ingress resources to gateway resources, ignoring all
 	// provider-specific features.
 	gatewayResources, errs := common.ToGateway(ingressList, c.implementationSpecificOptions)
 	if len(errs) > 0 {
-		globalErrs = append(globalErrs, errs...)
+		errorList = append(errorList, errs...)
 	}
 
 	tcpGatewayResources, errs := crds.TCPIngressToGatewayAPI(storage.TCPIngresses)
 	if len(errs) > 0 {
-		globalErrs = append(globalErrs, errs...)
+		errorList = append(errorList, errs...)
+	}
+
+	if len(errorList) > 0 {
+		return i2gw.GatewayResources{}, errorList
 	}
 
 	gatewayResources, errs = i2gw.MergeGatewayResources(gatewayResources, tcpGatewayResources)
 	if len(errs) > 0 {
-		globalErrs = append(globalErrs, errs...)
+		return i2gw.GatewayResources{}, errs
 	}
 
 	for _, parseFeatureFunc := range c.featureParsers {
 		// Apply the feature parsing function to the gateway resources, one by one.
 		errs = parseFeatureFunc(i2gw.InputResources{Ingresses: ingressList}, &gatewayResources)
 		// Append the parsing errors to the error list.
-		globalErrs = append(globalErrs, errs...)
+		errorList = append(errorList, errs...)
 	}
 
-	return gatewayResources, globalErrs
+	return gatewayResources, errorList
 }

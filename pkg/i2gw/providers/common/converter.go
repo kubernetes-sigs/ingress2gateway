@@ -362,6 +362,11 @@ func toHTTPRouteMatch(routePath networkingv1.HTTPIngressPath, path *field.Path, 
 	pmExact := gatewayv1.PathMatchExact
 
 	match := &gatewayv1.HTTPRouteMatch{Path: &gatewayv1.HTTPPathMatch{Value: &routePath.Path}}
+
+	if routePath.PathType == nil {
+		return nil, field.Invalid(path.Child("pathType"), routePath.PathType, "pathType is required")
+	}
+
 	switch *routePath.PathType {
 	case networkingv1.PathTypePrefix:
 		match.Path.Type = &pmPrefix
