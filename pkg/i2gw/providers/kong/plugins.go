@@ -17,6 +17,7 @@ limitations under the License.
 package kong
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
@@ -39,7 +40,7 @@ func pluginsFeature(ingressResources i2gw.InputResources, gatewayResources *i2gw
 			key := types.NamespacedName{Namespace: rule.Ingress.Namespace, Name: common.RouteName(rg.Name, rg.Host)}
 			httpRoute, ok := gatewayResources.HTTPRoutes[key]
 			if !ok {
-				panic("HTTPRoute does not exist - this should never happen")
+				return field.ErrorList{field.InternalError(nil, errors.New("HTTPRoute does not exist - this should never happen"))}
 			}
 			filters := parsePluginsAnnotation(rule.Ingress.Annotations)
 			patchHTTPRoutePlugins(&httpRoute, filters)
