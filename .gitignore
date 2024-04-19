@@ -26,3 +26,6 @@ go.work
 
 # GolangCI-Lint cache
 /cache
+
+# goland
+.idea
