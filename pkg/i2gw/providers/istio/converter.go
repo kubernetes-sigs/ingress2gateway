@@ -583,6 +583,10 @@ func (c *converter) convertVsHTTPRoutes(virtualService metav1.ObjectMeta, istioH
 		// set istio hostnames as is, without extra filters. If it's not a fqdn, it would be rejected by K8S API implementation
 		hostnames := make([]gatewayv1.Hostname, 0, len(allowedHostnames))
 		for _, host := range allowedHostnames {
+			// '*' is valid in istio, but not in HTTPRoute
+			if host == "*" {
+				continue
+			}
 			hostnames = append(hostnames, gatewayv1.Hostname(host))
 		}
 
