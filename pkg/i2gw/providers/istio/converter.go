@@ -289,9 +289,26 @@ func (c *converter) convertGateway(gw *istioclientv1beta1.Gateway, fieldPath *fi
 	}, nil
 }
 
-func (c *converter) convertVsHTTPRoutes(virtualService metav1.ObjectMeta, istioHTTPRoutes []*istiov1beta1.HTTPRoute, allowedHostnames []string, fieldPath *field.Path) ([]*gatewayv1.HTTPRoute, field.ErrorList) {
+// convertHostnames set istio hostnames as is, without extra filters.
+// If it's not a fqdn, it would be rejected by K8S API implementation
+func (c *converter) convertHostnames(hosts []string) []gatewayv1.Hostname {
+	var resHostnames []gatewayv1.Hostname
+	for _, host := range hosts {
+		// '*' is valid in istio, but not in HTTPRoute
+		if host == "*" {
+			klog.Infof("ignoring host '*', which is not allowed in Gateway API HTTPRoute")
+			continue
+		}
+		resHostnames = append(resHostnames, gatewayv1.Hostname(host))
+	}
+	return resHostnames
+}
+
+func (c *converter) convertVsHTTPRoutes(virtualService metav1.ObjectMeta, istioHTTPRoutes []*istiov1beta1.HTTPRoute, istioHTTPHosts []string, fieldPath *field.Path) ([]*gatewayv1.HTTPRoute, field.ErrorList) {
 	var errList field.ErrorList
 	var resHTTPRoutes []*gatewayv1.HTTPRoute
+
+	allowedHostnames := c.convertHostnames(istioHTTPHosts)
 
 	for i, httpRoute := range istioHTTPRoutes {
 		httpRouteFieldName := fmt.Sprintf("%v", i)
@@ -580,16 +597,6 @@ func (c *converter) convertVsHTTPRoutes(virtualService metav1.ObjectMeta, istioH
 			}
 		}
 
-		// set istio hostnames as is, without extra filters. If it's not a fqdn, it would be rejected by K8S API implementation
-		hostnames := make([]gatewayv1.Hostname, 0, len(allowedHostnames))
-		for _, host := range allowedHostnames {
-			// '*' is valid in istio, but not in HTTPRoute
-			if host == "*" {
-				continue
-			}
-			hostnames = append(hostnames, gatewayv1.Hostname(host))
-		}
-
 		routeName := fmt.Sprintf("%v-idx-%v", virtualService.Name, i)
 		if httpRoute.GetName() != "" {
 			routeName = fmt.Sprintf("%v-%v", virtualService.Name, httpRoute.GetName())
@@ -604,7 +611,7 @@ func (c *converter) convertVsHTTPRoutes(virtualService metav1.ObjectMeta, istioH
 				OwnerReferences: virtualService.OwnerReferences,
 				Finalizers:      virtualService.Finalizers,
 			},
-			hostnames:   hostnames,
+			hostnames:   allowedHostnames,
 			matches:     gwHTTPRouteMatches,
 			filters:     gwHTTPRouteFilters,
 			backendRefs: backendRefs,
