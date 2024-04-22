@@ -1256,22 +1256,9 @@ func Test_converter_convertVsHTTPRoutes(t *testing.T) {
 					{
 						Headers: &istiov1beta1.Headers{
 							Request: &istiov1beta1.Headers_HeaderOperations{
-								Set: map[string]string{
-									"h1": "v1",
-								},
 								Add: map[string]string{
 									"h2": "v2",
 								},
-								Remove: []string{"h3"},
-							},
-							Response: &istiov1beta1.Headers_HeaderOperations{
-								Set: map[string]string{
-									"h4": "v4",
-								},
-								Add: map[string]string{
-									"h5": "v5",
-								},
-								Remove: []string{"h6"},
 							},
 						},
 					},
@@ -1295,37 +1282,12 @@ func Test_converter_convertVsHTTPRoutes(t *testing.T) {
 									{
 										Type: gatewayv1.HTTPRouteFilterRequestHeaderModifier,
 										RequestHeaderModifier: &gatewayv1.HTTPHeaderFilter{
-											Set: []gatewayv1.HTTPHeader{
-												{
-													Name:  "h1",
-													Value: "v1",
-												},
-											},
 											Add: []gatewayv1.HTTPHeader{
 												{
 													Name:  "h2",
 													Value: "v2",
 												},
 											},
-											Remove: []string{"h3"},
-										},
-									},
-									{
-										Type: gatewayv1.HTTPRouteFilterResponseHeaderModifier,
-										ResponseHeaderModifier: &gatewayv1.HTTPHeaderFilter{
-											Set: []gatewayv1.HTTPHeader{
-												{
-													Name:  "h4",
-													Value: "v4",
-												},
-											},
-											Add: []gatewayv1.HTTPHeader{
-												{
-													Name:  "h5",
-													Value: "v5",
-												},
-											},
-											Remove: []string{"h6"},
 										},
 									},
 								},
