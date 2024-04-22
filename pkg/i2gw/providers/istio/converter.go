@@ -300,13 +300,13 @@ func convertHostnames(hosts []string) []gatewayv1.Hostname {
 	for _, host := range hosts {
 		// '*' is valid in istio, but not in HTTPRoute
 		if !hostnameRegexp.MatchString(host) {
-			klog.Infof("ignoring host %s, which is not allowed in Gateway API HTTPRoute", host)
+			klog.Warningf("ignoring host %s, which is not allowed in Gateway API HTTPRoute", host)
 			continue
 		}
 
 		// IP addresses are not allowed in Gateway API
 		if net.ParseIP(host) != nil {
-			klog.Infof("ignoring host %s, which is an IP address", host)
+			klog.Warningf("ignoring host %s, which is an IP address", host)
 			continue
 		}
 

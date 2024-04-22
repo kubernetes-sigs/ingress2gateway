@@ -2020,9 +2020,14 @@ func Test_convertHostnames(t *testing.T) {
 			expected:  []gatewayv1alpha2.Hostname{},
 		},
 		{
-			name:      "The wildcard label must appear by itself as the first label",
+			name:      "The wildcard label must appear by itself as the first character",
 			hostnames: []string{"example*.com"},
 			expected:  []gatewayv1alpha2.Hostname{},
+		},
+		{
+			name:      "mix",
+			hostnames: []string{"192.0.2.1", "2001:db8::68", "::ffff:192.0.2.1", "*", "*.com", "test.net", "*.example.com"},
+			expected:  []gatewayv1alpha2.Hostname{"*.com", "test.net", "*.example.com"},
 		},
 	}
 
