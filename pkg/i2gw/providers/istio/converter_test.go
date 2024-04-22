@@ -1997,3 +1997,41 @@ func Test_converter_generateReferences(t *testing.T) {
 		})
 	}
 }
+
+func Test_convertHostnames(t *testing.T) {
+	cases := []struct {
+		name      string
+		hostnames []string
+		expected  []gatewayv1alpha2.Hostname
+	}{
+		{
+			name:      "default",
+			hostnames: []string{"*.com", "test.net", "*.example.com"},
+			expected:  []gatewayv1alpha2.Hostname{"*.com", "test.net", "*.example.com"},
+		},
+		{
+			name:      "* is not allowed",
+			hostnames: []string{"*"},
+			expected:  []gatewayv1alpha2.Hostname{},
+		},
+		{
+			name:      "IP is not allowed",
+			hostnames: []string{"192.0.2.1", "2001:db8::68", "::ffff:192.0.2.1"},
+			expected:  []gatewayv1alpha2.Hostname{},
+		},
+		{
+			name:      "The wildcard label must appear by itself as the first label",
+			hostnames: []string{"example*.com"},
+			expected:  []gatewayv1alpha2.Hostname{},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := convertHostnames(tc.hostnames)
+			if !apiequality.Semantic.DeepEqual(actual, tc.expected) {
+				t.Errorf("convertHostnames() = %v, want %v", actual, tc.expected)
+			}
+		})
+	}
+}

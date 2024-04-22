@@ -18,6 +18,8 @@ package istio
 
 import (
 	"fmt"
+	"net"
+	"regexp"
 	"strings"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
@@ -289,16 +291,25 @@ func (c *converter) convertGateway(gw *istioclientv1beta1.Gateway, fieldPath *fi
 	}, nil
 }
 
+var hostnameRegexp = regexp.MustCompile(`^(\*\.)?[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$`)
+
 // convertHostnames set istio hostnames as is, without extra filters.
 // If it's not a fqdn, it would be rejected by K8S API implementation
-func (c *converter) convertHostnames(hosts []string) []gatewayv1.Hostname {
+func convertHostnames(hosts []string) []gatewayv1.Hostname {
 	var resHostnames []gatewayv1.Hostname
 	for _, host := range hosts {
 		// '*' is valid in istio, but not in HTTPRoute
-		if host == "*" {
-			klog.Infof("ignoring host '*', which is not allowed in Gateway API HTTPRoute")
+		if !hostnameRegexp.MatchString(host) {
+			klog.Infof("ignoring host %s, which is not allowed in Gateway API HTTPRoute", host)
 			continue
 		}
+
+		// IP addresses are not allowed in Gateway API
+		if net.ParseIP(host) != nil {
+			klog.Infof("ignoring host %s, which is an IP address", host)
+			continue
+		}
+
 		resHostnames = append(resHostnames, gatewayv1.Hostname(host))
 	}
 	return resHostnames
@@ -308,7 +319,7 @@ func (c *converter) convertVsHTTPRoutes(virtualService metav1.ObjectMeta, istioH
 	var errList field.ErrorList
 	var resHTTPRoutes []*gatewayv1.HTTPRoute
 
-	allowedHostnames := c.convertHostnames(istioHTTPHosts)
+	allowedHostnames := convertHostnames(istioHTTPHosts)
 
 	for i, httpRoute := range istioHTTPRoutes {
 		httpRouteFieldName := fmt.Sprintf("%v", i)
