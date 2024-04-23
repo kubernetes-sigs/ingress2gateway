@@ -18,6 +18,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -38,6 +39,9 @@ type PrintRunner struct {
 	// outputFormat contains currently set output format. Value assigned via --output/-o flag.
 	// Defaults to YAML.
 	outputFormat string
+
+	// The path to the conversion result file. Value assigned via --output-file flag
+	outputFile string
 
 	// The path to the input yaml config file. Value assigned via --input_file flag
 	inputFile string
@@ -73,95 +77,36 @@ func (pr *PrintRunner) PrintGatewaysAndHTTPRoutes(cmd *cobra.Command, _ []string
 	if err != nil {
 		return fmt.Errorf("failed to initialize namespace filter: %w", err)
 	}
-
+	pr.initializeOutputFile()
 	gatewayResources, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers)
 	if err != nil {
 		return err
 	}
 
-	pr.outputResult(gatewayResources)
+	if pr.outputFile == "" {
+		if pr.checkResourceCount(gatewayResources) {
+			pr.outputResult(gatewayResources, os.Stdout)
+		}
+	} else {
+		if pr.checkResourceCount(gatewayResources) {
+			pr.output2File(gatewayResources)
+		}
+	}
 
 	return nil
 }
 
-func (pr *PrintRunner) outputResult(gatewayResources []i2gw.GatewayResources) {
+func (pr *PrintRunner) checkResourceCount(gatewayResources []i2gw.GatewayResources) bool {
 	resourceCount := 0
 
 	for _, r := range gatewayResources {
 		resourceCount += len(r.GatewayClasses)
-		for _, gatewayClass := range r.GatewayClasses {
-			gatewayClass := gatewayClass
-			err := pr.resourcePrinter.PrintObj(&gatewayClass, os.Stdout)
-			if err != nil {
-				fmt.Printf("# Error printing %s GatewayClass: %v\n", gatewayClass.Name, err)
-			}
-		}
-	}
-
-	for _, r := range gatewayResources {
 		resourceCount += len(r.Gateways)
-		for _, gateway := range r.Gateways {
-			gateway := gateway
-			err := pr.resourcePrinter.PrintObj(&gateway, os.Stdout)
-			if err != nil {
-				fmt.Printf("# Error printing %s Gateway: %v\n", gateway.Name, err)
-			}
-		}
-	}
-
-	for _, r := range gatewayResources {
 		resourceCount += len(r.HTTPRoutes)
-		for _, httpRoute := range r.HTTPRoutes {
-			httpRoute := httpRoute
-			err := pr.resourcePrinter.PrintObj(&httpRoute, os.Stdout)
-			if err != nil {
-				fmt.Printf("# Error printing %s HTTPRoute: %v\n", httpRoute.Name, err)
-			}
-		}
-	}
-
-	for _, r := range gatewayResources {
 		resourceCount += len(r.TLSRoutes)
-		for _, tlsRoute := range r.TLSRoutes {
-			tlsRoute := tlsRoute
-			err := pr.resourcePrinter.PrintObj(&tlsRoute, os.Stdout)
-			if err != nil {
-				fmt.Printf("# Error printing %s TLSRoute: %v\n", tlsRoute.Name, err)
-			}
-		}
-	}
-
-	for _, r := range gatewayResources {
 		resourceCount += len(r.TCPRoutes)
-		for _, tcpRoute := range r.TCPRoutes {
-			tcpRoute := tcpRoute
-			err := pr.resourcePrinter.PrintObj(&tcpRoute, os.Stdout)
-			if err != nil {
-				fmt.Printf("# Error printing %s TCPRoute: %v\n", tcpRoute.Name, err)
-			}
-		}
-	}
-
-	for _, r := range gatewayResources {
 		resourceCount += len(r.UDPRoutes)
-		for _, udpRoute := range r.UDPRoutes {
-			udpRoute := udpRoute
-			err := pr.resourcePrinter.PrintObj(&udpRoute, os.Stdout)
-			if err != nil {
-				fmt.Printf("# Error printing %s UDPRoute: %v\n", udpRoute.Name, err)
-			}
-		}
-	}
-
-	for _, r := range gatewayResources {
 		resourceCount += len(r.ReferenceGrants)
-		for _, referenceGrant := range r.ReferenceGrants {
-			referenceGrant := referenceGrant
-			err := pr.resourcePrinter.PrintObj(&referenceGrant, os.Stdout)
-			if err != nil {
-				fmt.Printf("# Error printing %s ReferenceGrant: %v\n", referenceGrant.Name, err)
-			}
-		}
 	}
 
 	if resourceCount == 0 {
@@ -170,7 +115,97 @@ func (pr *PrintRunner) outputResult(gatewayResources []i2gw.GatewayResources) {
 			msg = fmt.Sprintf("%s in %s namespace", msg, pr.namespaceFilter)
 		}
 		fmt.Println(msg)
+		return false
 	}
+	return true
+}
+
+func (pr *PrintRunner) outputResult(gatewayResources []i2gw.GatewayResources, writer io.Writer) {
+	for _, r := range gatewayResources {
+		for _, gatewayClass := range r.GatewayClasses {
+			gatewayClass := gatewayClass
+			err := pr.resourcePrinter.PrintObj(&gatewayClass, writer)
+			if err != nil {
+				fmt.Printf("# Error printing %s GatewayClass: %v\n", gatewayClass.Name, err)
+			}
+		}
+	}
+
+	for _, r := range gatewayResources {
+		for _, gateway := range r.Gateways {
+			gateway := gateway
+			err := pr.resourcePrinter.PrintObj(&gateway, writer)
+			if err != nil {
+				fmt.Printf("# Error printing %s Gateway: %v\n", gateway.Name, err)
+			}
+		}
+	}
+
+	for _, r := range gatewayResources {
+		for _, httpRoute := range r.HTTPRoutes {
+			httpRoute := httpRoute
+			err := pr.resourcePrinter.PrintObj(&httpRoute, writer)
+			if err != nil {
+				fmt.Printf("# Error printing %s HTTPRoute: %v\n", httpRoute.Name, err)
+			}
+		}
+	}
+
+	for _, r := range gatewayResources {
+		for _, tlsRoute := range r.TLSRoutes {
+			tlsRoute := tlsRoute
+			err := pr.resourcePrinter.PrintObj(&tlsRoute, writer)
+			if err != nil {
+				fmt.Printf("# Error printing %s TLSRoute: %v\n", tlsRoute.Name, err)
+			}
+		}
+	}
+
+	for _, r := range gatewayResources {
+		for _, tcpRoute := range r.TCPRoutes {
+			tcpRoute := tcpRoute
+			err := pr.resourcePrinter.PrintObj(&tcpRoute, writer)
+			if err != nil {
+				fmt.Printf("# Error printing %s TCPRoute: %v\n", tcpRoute.Name, err)
+			}
+		}
+	}
+
+	for _, r := range gatewayResources {
+		for _, udpRoute := range r.UDPRoutes {
+			udpRoute := udpRoute
+			err := pr.resourcePrinter.PrintObj(&udpRoute, writer)
+			if err != nil {
+				fmt.Printf("# Error printing %s UDPRoute: %v\n", udpRoute.Name, err)
+			}
+		}
+	}
+
+	for _, r := range gatewayResources {
+		for _, referenceGrant := range r.ReferenceGrants {
+			referenceGrant := referenceGrant
+			err := pr.resourcePrinter.PrintObj(&referenceGrant, writer)
+			if err != nil {
+				fmt.Printf("# Error printing %s ReferenceGrant: %v\n", referenceGrant.Name, err)
+			}
+		}
+	}
+}
+
+func (pr *PrintRunner) output2File(gatewayResources []i2gw.GatewayResources) {
+	file, openFileErr := os.OpenFile(pr.outputFile, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0666)
+	if openFileErr != nil {
+		fmt.Println("Error opening file:", openFileErr)
+		return
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			fmt.Println("Error closing file:", err)
+		}
+	}(file)
+
+	pr.outputResult(gatewayResources, file)
 }
 
 // initializeResourcePrinter assign a specific type of printers.ResourcePrinter
@@ -219,6 +254,22 @@ func (pr *PrintRunner) initializeNamespaceFilter() error {
 	return nil
 }
 
+// 1. When --output-file receives no argument, initializeOutputFile will do nothing.
+// 2. When --output-file receives an argument, initializeOutputFile will validate whether the value is correct.
+func (pr *PrintRunner) initializeOutputFile() {
+	if pr.outputFile == "" {
+		return
+	}
+	if !strings.HasSuffix(pr.outputFile, ".json") && !strings.HasSuffix(pr.outputFile, ".yaml") {
+		fmt.Println("Warning: output file should be *.json or *.yaml")
+	} else if strings.HasSuffix(pr.outputFile, ".json") && pr.outputFormat != "json" {
+		fmt.Println("Warning: output format is yaml, but output file is *.json")
+	} else if strings.HasSuffix(pr.outputFile, ".yaml") && pr.outputFormat != "yaml" {
+		fmt.Printf("Warning: output format is json, but output file is *.yaml")
+	}
+	return
+}
+
 func newPrintCommand() *cobra.Command {
 	pr := &PrintRunner{}
 	var printFlags genericclioptions.JSONYamlPrintFlags
@@ -234,6 +285,9 @@ func newPrintCommand() *cobra.Command {
 
 	cmd.Flags().StringVarP(&pr.outputFormat, "output", "o", "yaml",
 		fmt.Sprintf(`Output format. One of: (%s)`, strings.Join(allowedFormats, ", ")))
+
+	cmd.Flags().StringVarP(&pr.outputFile, "output-file", "", "",
+		"Path to the  conversion result file, the tool will output the conversion result to the file. Value pattern should be *.yaml of *.json. If not set, the tool will output to stdout")
 
 	cmd.Flags().StringVar(&pr.inputFile, "input_file", "",
 		`Path to the manifest file. When set, the tool will read ingresses from the file instead of reading from the cluster. Supported files are yaml and json`)
