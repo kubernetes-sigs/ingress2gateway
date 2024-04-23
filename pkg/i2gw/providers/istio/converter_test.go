@@ -1245,6 +1245,58 @@ func Test_converter_convertVsHTTPRoutes(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "hosts with '*'",
+			args: args{
+				virtualService: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "ns",
+				},
+				istioHTTPRoutes: []*istiov1beta1.HTTPRoute{
+					{
+						Headers: &istiov1beta1.Headers{
+							Request: &istiov1beta1.Headers_HeaderOperations{
+								Add: map[string]string{
+									"h2": "v2",
+								},
+							},
+						},
+					},
+				},
+				allowedHostnames: []string{"*"},
+			},
+			want: []*gatewayv1.HTTPRoute{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "HTTPRoute",
+						APIVersion: "gateway.networking.k8s.io/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-idx-0",
+						Namespace: "ns",
+					},
+					Spec: gatewayv1.HTTPRouteSpec{
+						Rules: []gatewayv1.HTTPRouteRule{
+							{
+								Filters: []gatewayv1.HTTPRouteFilter{
+									{
+										Type: gatewayv1.HTTPRouteFilterRequestHeaderModifier,
+										RequestHeaderModifier: &gatewayv1.HTTPHeaderFilter{
+											Add: []gatewayv1.HTTPHeader{
+												{
+													Name:  "h2",
+													Value: "v2",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1941,6 +1993,49 @@ func Test_converter_generateReferences(t *testing.T) {
 			}
 			if !apiequality.Semantic.DeepEqual(gotReferenceGrants, tt.wantReferenceGrants) {
 				t.Errorf("converter.generateReferences() gotReferenceGrants = %v, want %v, diff (-want +got): %s", gotReferenceGrants, tt.wantReferenceGrants, cmp.Diff(tt.wantReferenceGrants, gotReferenceGrants))
+			}
+		})
+	}
+}
+
+func Test_convertHostnames(t *testing.T) {
+	cases := []struct {
+		name      string
+		hostnames []string
+		expected  []gatewayv1alpha2.Hostname
+	}{
+		{
+			name:      "default",
+			hostnames: []string{"*.com", "test.net", "*.example.com"},
+			expected:  []gatewayv1alpha2.Hostname{"*.com", "test.net", "*.example.com"},
+		},
+		{
+			name:      "* is not allowed",
+			hostnames: []string{"*"},
+			expected:  []gatewayv1alpha2.Hostname{},
+		},
+		{
+			name:      "IP is not allowed",
+			hostnames: []string{"192.0.2.1", "2001:db8::68", "::ffff:192.0.2.1"},
+			expected:  []gatewayv1alpha2.Hostname{},
+		},
+		{
+			name:      "The wildcard label must appear by itself as the first character",
+			hostnames: []string{"example*.com"},
+			expected:  []gatewayv1alpha2.Hostname{},
+		},
+		{
+			name:      "mix",
+			hostnames: []string{"192.0.2.1", "2001:db8::68", "::ffff:192.0.2.1", "*", "*.com", "test.net", "*.example.com"},
+			expected:  []gatewayv1alpha2.Hostname{"*.com", "test.net", "*.example.com"},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := convertHostnames(tc.hostnames)
+			if !apiequality.Semantic.DeepEqual(actual, tc.expected) {
+				t.Errorf("convertHostnames() = %v, want %v", actual, tc.expected)
 			}
 		})
 	}
