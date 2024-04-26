@@ -1,0 +1,227 @@
+{
+  "apiVersion": "gateway.networking.k8s.io/v1",
+  "kind": "HTTPRoute",
+  "metadata": {
+    "creationTimestamp": null,
+    "name": "route-1-1"
+  },
+  "spec": {
+    "rules": [
+      {
+        "matches": [
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-001" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-002" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-003" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-004" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-005" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-006" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-007" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-008" } }
+        ]
+      },
+      {
+        "matches": [
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-009" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-010" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-011" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-012" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-013" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-014" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-015" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-016" } }
+        ]
+      },
+      {
+        "matches": [
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-017" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-018" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-019" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-020" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-021" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-022" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-023" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-024" } }
+        ]
+      },
+      {
+        "matches": [
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-025" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-026" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-027" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-028" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-029" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-030" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-031" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-032" } }
+        ]
+      },
+      {
+        "matches": [
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-033" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-034" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-035" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-036" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-037" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-038" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-039" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-040" } }
+        ]
+      },
+      {
+        "matches": [
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-041" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-042" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-043" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-044" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-045" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-046" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-047" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-048" } }
+        ]
+      },
+      {
+        "matches": [
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-049" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-050" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-051" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-052" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-053" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-054" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-055" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-056" } }
+        ]
+      },
+      {
+        "matches": [
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-057" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-058" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-059" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-060" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-061" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-062" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-063" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-064" } }
+        ]
+      },
+      {
+        "matches": [
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-065" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-066" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-067" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-068" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-069" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-070" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-071" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-072" } }
+        ]
+      },
+      {
+        "matches": [
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-073" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-074" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-075" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-076" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-077" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-078" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-079" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-080" } }
+        ]
+      },
+      {
+        "matches": [
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-081" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-082" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-083" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-084" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-085" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-086" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-087" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-088" } }
+        ]
+      },
+      {
+        "matches": [
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-089" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-090" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-091" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-092" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-093" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-094" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-095" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-096" } }
+        ]
+      },
+      {
+        "matches": [
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-097" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-098" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-099" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-100" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-101" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-102" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-103" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-104" } }
+        ]
+      },
+      {
+        "matches": [
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-105" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-106" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-107" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-108" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-109" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-110" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-111" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-112" } }
+        ]
+      },
+      {
+        "matches": [
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-113" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-114" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-115" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-116" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-117" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-118" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-119" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-120" } }
+        ]
+      },
+      {
+        "matches": [
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-121" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-122" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-123" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-124" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-125" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-126" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-127" } },
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-128" } }
+        ]
+      }
+    ]
+  },
+  "status": {
+    "parents": null
+  }
+}
+{
+  "apiVersion": "gateway.networking.k8s.io/v1",
+  "kind": "HTTPRoute",
+  "metadata": {
+    "creationTimestamp": null,
+    "name": "route-1-2"
+  },
+  "spec": {
+    "rules": [
+      {
+        "matches": [
+          { "method": "GET", "path": { "type": "Exact", "value": "/path-129" } }
+        ]
+      }
+    ]
+  },
+  "status": {
+    "parents": null
+  }
+}

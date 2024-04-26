@@ -1,0 +1,88 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  creationTimestamp: null
+  name: route-1-1
+spec:
+  rules:
+  - matches:
+    - method: POST
+      path:
+        type: Exact
+        value: /api/v3/pet
+    - method: PUT
+      path:
+        type: Exact
+        value: /api/v3/pet
+    - method: GET
+      path:
+        type: Exact
+        value: /api/v3/pet/findByStatus
+    - method: GET
+      path:
+        type: Exact
+        value: /api/v3/pet/findByTags
+    - method: DELETE
+      path:
+        type: Exact
+        value: /api/v3/pet/{petId}
+    - method: GET
+      path:
+        type: Exact
+        value: /api/v3/pet/{petId}
+    - method: POST
+      path:
+        type: Exact
+        value: /api/v3/pet/{petId}
+    - method: POST
+      path:
+        type: Exact
+        value: /api/v3/pet/{petId}/uploadImage
+  - matches:
+    - method: GET
+      path:
+        type: Exact
+        value: /api/v3/store/inventory
+    - method: POST
+      path:
+        type: Exact
+        value: /api/v3/store/order
+    - method: DELETE
+      path:
+        type: Exact
+        value: /api/v3/store/order/{orderId}
+    - method: GET
+      path:
+        type: Exact
+        value: /api/v3/store/order/{orderId}
+    - method: POST
+      path:
+        type: Exact
+        value: /api/v3/user
+    - method: POST
+      path:
+        type: Exact
+        value: /api/v3/user/createWithList
+    - method: GET
+      path:
+        type: Exact
+        value: /api/v3/user/login
+    - method: GET
+      path:
+        type: Exact
+        value: /api/v3/user/logout
+  - matches:
+    - method: DELETE
+      path:
+        type: Exact
+        value: /api/v3/user/{username}
+    - method: GET
+      path:
+        type: Exact
+        value: /api/v3/user/{username}
+    - method: PUT
+      path:
+        type: Exact
+        value: /api/v3/user/{username}
+status:
+  parents: null

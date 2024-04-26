@@ -1,0 +1,28 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  creationTimestamp: null
+  name: route-1-1
+spec:
+  rules:
+  - matches:
+    - method: GET
+      path:
+        type: Exact
+        value: /resource/{id}
+    - method: GET
+      path:
+        type: Exact
+        value: /resources
+      queryParams:
+      - name: q
+        type: Exact
+    - method: POST
+      path:
+        type: Exact
+        value: /resources
+      headers:
+      - name: digest
+        type: Exact
+status:
+  parents: null
