@@ -24,7 +24,6 @@ import (
 	"os"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	istiov1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -69,7 +68,7 @@ func (r *reader) readResourcesFromFile(_ context.Context, filename string) (*sto
 		return nil, fmt.Errorf("failed to read file %v: %w", filename, err)
 	}
 
-	unstructuredObjects, err := common.ExtractObjectsFromReader(bytes.NewReader(stream), r.conf.Namespace)
+	unstructuredObjects, err := i2gw.ExtractObjectsFromReader(bytes.NewReader(stream), r.conf.Namespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract objects: %w", err)
 	}

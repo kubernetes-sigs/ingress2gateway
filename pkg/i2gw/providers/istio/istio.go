@@ -29,6 +29,8 @@ const ProviderName = "istio"
 
 func init() {
 	i2gw.ProviderConstructorByName[ProviderName] = NewProvider
+	i2gw.FilteredResources[gatewayGVK.GroupKind()] = struct{}{}
+	i2gw.FilteredResources[virtualServiceGVK.GroupKind()] = struct{}{}
 }
 
 type Provider struct {

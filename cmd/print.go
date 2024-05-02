@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -28,6 +29,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/client-go/tools/clientcmd"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	// Call init function for the providers
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/apisix"
@@ -54,6 +56,10 @@ type PrintRunner struct {
 	// allNamespaces indicates whether all namespaces should be used. Value assigned via
 	// --all-namespaces/-A flag.
 	allNamespaces bool
+
+	// allResources indicates whether to print all the resources instead of printing only
+	// the Gateway API ones. It can be used only when reading from file.
+	allResources bool
 
 	// resourcePrinter determines how resource objects are printed out
 	resourcePrinter printers.ResourcePrinter
@@ -82,102 +88,31 @@ func (pr *PrintRunner) PrintGatewayAPIObjects(cmd *cobra.Command, _ []string) er
 		return fmt.Errorf("failed to initialize namespace filter: %w", err)
 	}
 
-	gatewayResources, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers, pr.getProviderSpecificFlags())
+	resources, err := i2gw.GetResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.allResources, pr.providers, pr.getProviderSpecificFlags())
 	if err != nil {
 		return err
 	}
 
-	pr.outputResult(gatewayResources)
+	pr.outputResult(resources)
 
 	return nil
 }
 
-func (pr *PrintRunner) outputResult(gatewayResources []i2gw.GatewayResources) {
-	resourceCount := 0
-
-	for _, r := range gatewayResources {
-		resourceCount += len(r.GatewayClasses)
-		for _, gatewayClass := range r.GatewayClasses {
-			gatewayClass := gatewayClass
-			err := pr.resourcePrinter.PrintObj(&gatewayClass, os.Stdout)
-			if err != nil {
-				fmt.Printf("# Error printing %s GatewayClass: %v\n", gatewayClass.Name, err)
-			}
-		}
-	}
-
-	for _, r := range gatewayResources {
-		resourceCount += len(r.Gateways)
-		for _, gateway := range r.Gateways {
-			gateway := gateway
-			err := pr.resourcePrinter.PrintObj(&gateway, os.Stdout)
-			if err != nil {
-				fmt.Printf("# Error printing %s Gateway: %v\n", gateway.Name, err)
-			}
-		}
-	}
-
-	for _, r := range gatewayResources {
-		resourceCount += len(r.HTTPRoutes)
-		for _, httpRoute := range r.HTTPRoutes {
-			httpRoute := httpRoute
-			err := pr.resourcePrinter.PrintObj(&httpRoute, os.Stdout)
-			if err != nil {
-				fmt.Printf("# Error printing %s HTTPRoute: %v\n", httpRoute.Name, err)
-			}
-		}
-	}
-
-	for _, r := range gatewayResources {
-		resourceCount += len(r.TLSRoutes)
-		for _, tlsRoute := range r.TLSRoutes {
-			tlsRoute := tlsRoute
-			err := pr.resourcePrinter.PrintObj(&tlsRoute, os.Stdout)
-			if err != nil {
-				fmt.Printf("# Error printing %s TLSRoute: %v\n", tlsRoute.Name, err)
-			}
-		}
-	}
-
-	for _, r := range gatewayResources {
-		resourceCount += len(r.TCPRoutes)
-		for _, tcpRoute := range r.TCPRoutes {
-			tcpRoute := tcpRoute
-			err := pr.resourcePrinter.PrintObj(&tcpRoute, os.Stdout)
-			if err != nil {
-				fmt.Printf("# Error printing %s TCPRoute: %v\n", tcpRoute.Name, err)
-			}
-		}
-	}
-
-	for _, r := range gatewayResources {
-		resourceCount += len(r.UDPRoutes)
-		for _, udpRoute := range r.UDPRoutes {
-			udpRoute := udpRoute
-			err := pr.resourcePrinter.PrintObj(&udpRoute, os.Stdout)
-			if err != nil {
-				fmt.Printf("# Error printing %s UDPRoute: %v\n", udpRoute.Name, err)
-			}
-		}
-	}
-
-	for _, r := range gatewayResources {
-		resourceCount += len(r.ReferenceGrants)
-		for _, referenceGrant := range r.ReferenceGrants {
-			referenceGrant := referenceGrant
-			err := pr.resourcePrinter.PrintObj(&referenceGrant, os.Stdout)
-			if err != nil {
-				fmt.Printf("# Error printing %s ReferenceGrant: %v\n", referenceGrant.Name, err)
-			}
-		}
-	}
-
-	if resourceCount == 0 {
+func (pr *PrintRunner) outputResult(resources []client.Object) {
+	if len(resources) == 0 {
 		msg := "No resources found"
 		if pr.namespaceFilter != "" {
 			msg = fmt.Sprintf("%s in %s namespace", msg, pr.namespaceFilter)
 		}
 		fmt.Println(msg)
+		return
+	}
+
+	for _, r := range resources {
+		err := pr.resourcePrinter.PrintObj(r, os.Stdout)
+		if err != nil {
+			fmt.Printf("# Error printing %s %s: %v\n", r.GetName(), r.GetObjectKind().GroupVersionKind().Kind, err)
+		}
 	}
 }
 
@@ -238,6 +173,12 @@ func newPrintCommand() *cobra.Command {
 		Use:   "print",
 		Short: "Prints Gateway API objects generated from ingress and provider-specific resources.",
 		RunE:  pr.PrintGatewayAPIObjects,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if pr.allResources && pr.inputFile == "" {
+				return errors.New("--all-resources flag can be set only when --input-file is set")
+			}
+			return nil
+		},
 	}
 
 	cmd.Flags().StringVarP(&pr.outputFormat, "output", "o", "yaml",
@@ -252,6 +193,9 @@ func newPrintCommand() *cobra.Command {
 	cmd.Flags().BoolVarP(&pr.allNamespaces, "all-namespaces", "A", false,
 		`If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even
 if specified with --namespace.`)
+
+	cmd.Flags().BoolVar(&pr.allResources, "all-resources", false,
+		`If present, list all the objects across the selected namespaces. This flag can be set only when reading from a file.`)
 
 	cmd.Flags().StringSliceVar(&pr.providers, "providers", i2gw.GetSupportedProviders(),
 		fmt.Sprintf("If present, the tool will try to convert only resources related to the specified providers, supported values are %v.", i2gw.GetSupportedProviders()))

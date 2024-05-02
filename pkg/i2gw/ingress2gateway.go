@@ -17,9 +17,11 @@ limitations under the License.
 package i2gw
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"maps"
+	"os"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -30,7 +32,7 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string, providers []string, providerSpecificFlags map[string]map[string]string) ([]GatewayResources, error) {
+func GetResources(ctx context.Context, namespace string, inputFile string, allresources bool, providers []string, providerSpecificFlags map[string]map[string]string) ([]client.Object, error) {
 	var clusterClient client.Client
 
 	if inputFile == "" {
@@ -55,9 +57,15 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 		return nil, err
 	}
 
+	var genericResources []client.Object
 	if inputFile != "" {
 		if err = readProviderResourcesFromFile(ctx, providerByName, inputFile); err != nil {
 			return nil, err
+		}
+		if allresources {
+			if genericResources, err = readGenericResourcesFromFile(inputFile, namespace); err != nil {
+				return nil, err
+			}
 		}
 	} else {
 		if err = readProviderResourcesFromCluster(ctx, providerByName); err != nil {
@@ -78,7 +86,42 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 		return nil, aggregatedErrs(errs)
 	}
 
-	return gatewayResources, nil
+	return append(gatewayResourcesToObjects(gatewayResources), genericResources...), nil
+}
+
+func gatewayResourcesToObjects(gatewayResources []GatewayResources) []client.Object {
+	var objects []client.Object
+	for _, gr := range gatewayResources {
+		for _, gateway := range gr.Gateways {
+			gateway := gateway
+			objects = append(objects, &gateway)
+		}
+		for _, gatewayClass := range gr.GatewayClasses {
+			gatewayClass := gatewayClass
+			objects = append(objects, &gatewayClass)
+		}
+		for _, httpRoute := range gr.HTTPRoutes {
+			httpRoute := httpRoute
+			objects = append(objects, &httpRoute)
+		}
+		for _, tlsRoute := range gr.TLSRoutes {
+			tlsRoute := tlsRoute
+			objects = append(objects, &tlsRoute)
+		}
+		for _, tcpRoute := range gr.TCPRoutes {
+			tcpRoute := tcpRoute
+			objects = append(objects, &tcpRoute)
+		}
+		for _, udpRoute := range gr.UDPRoutes {
+			udpRoute := udpRoute
+			objects = append(objects, &udpRoute)
+		}
+		for _, referenceGrant := range gr.ReferenceGrants {
+			referenceGrant := referenceGrant
+			objects = append(objects, &referenceGrant)
+		}
+	}
+	return objects
 }
 
 func readProviderResourcesFromFile(ctx context.Context, providerByName map[ProviderName]Provider, inputFile string) error {
@@ -88,6 +131,29 @@ func readProviderResourcesFromFile(ctx context.Context, providerByName map[Provi
 		}
 	}
 	return nil
+}
+
+func readGenericResourcesFromFile(inputFile, namespace string) ([]client.Object, error) {
+	objects := make([]client.Object, 0)
+	stream, err := os.ReadFile(inputFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file %v: %w", inputFile, err)
+	}
+
+	unstructuredObjects, err := ExtractObjectsFromReader(bytes.NewReader(stream), namespace)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract objects: %w", err)
+	}
+	for _, o := range unstructuredObjects {
+		if o.GetNamespace() != namespace {
+			continue
+		}
+		if _, ok := FilteredResources[o.GetObjectKind().GroupVersionKind().GroupKind()]; ok {
+			continue
+		}
+		objects = append(objects, o)
+	}
+	return objects, nil
 }
 
 func readProviderResourcesFromCluster(ctx context.Context, providerByName map[ProviderName]Provider) error {

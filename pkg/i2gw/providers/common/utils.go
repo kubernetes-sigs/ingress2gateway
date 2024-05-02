@@ -24,6 +24,8 @@ import (
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 )
 
 func GetIngressClass(ingress networkingv1.Ingress) string {
@@ -58,7 +60,7 @@ func GetRuleGroups(ingresses []networkingv1.Ingress) map[string]IngressRuleGroup
 	ruleGroups := make(map[string]IngressRuleGroup)
 
 	for _, ingress := range ingresses {
-		ingressClass := GetIngressClass(ingress)
+		ingressClass := i2gw.GetIngressClass(ingress)
 
 		for _, rule := range ingress.Spec.Rules {
 

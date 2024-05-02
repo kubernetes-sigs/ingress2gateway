@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package common
+package i2gw
 
 import (
 	"bytes"
@@ -52,14 +52,9 @@ func ReadIngressesFromCluster(ctx context.Context, client client.Client, ingress
 }
 
 func ReadIngressesFromFile(filename, namespace string, ingressClasses sets.Set[string]) (map[types.NamespacedName]*networkingv1.Ingress, error) {
-	stream, err := os.ReadFile(filename)
+	unstructuredObjects, err := ReadResourcesFromFile(filename, namespace)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read file %v: %w", filename, err)
-	}
-
-	unstructuredObjects, err := ExtractObjectsFromReader(bytes.NewReader(stream), namespace)
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract objects: %w", err)
+		return nil, fmt.Errorf("failed to read objects: %w", err)
 	}
 
 	ingresses := map[types.NamespacedName]*networkingv1.Ingress{}
@@ -79,6 +74,19 @@ func ReadIngressesFromFile(filename, namespace string, ingressClasses sets.Set[s
 
 	}
 	return ingresses, nil
+}
+
+func ReadResourcesFromFile(filename, namespace string) ([]*unstructured.Unstructured, error) {
+	stream, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file %v: %w", filename, err)
+	}
+
+	unstructuredObjects, err := ExtractObjectsFromReader(bytes.NewReader(stream), namespace)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract objects: %w", err)
+	}
+	return unstructuredObjects, nil
 }
 
 // ExtractObjectsFromReader extracts all objects from a reader,

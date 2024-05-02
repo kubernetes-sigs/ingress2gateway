@@ -30,7 +30,6 @@ import (
 
 	kongv1beta1 "github.com/kong/kubernetes-ingress-controller/v2/pkg/apis/configuration/v1beta1"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
 // converter implements the i2gw.CustomResourceReader interface.
@@ -52,7 +51,7 @@ func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
 func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage, error) {
 	storage := newResourceStorage()
 
-	ingresses, err := common.ReadIngressesFromCluster(ctx, r.conf.Client, sets.New(KongIngressClass))
+	ingresses, err := i2gw.ReadIngressesFromCluster(ctx, r.conf.Client, sets.New(KongIngressClass))
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +69,7 @@ func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage
 func (r *resourceReader) readResourcesFromFile(filename string) (*storage, error) {
 	storage := newResourceStorage()
 
-	ingresses, err := common.ReadIngressesFromFile(filename, r.conf.Namespace, sets.New(KongIngressClass))
+	ingresses, err := i2gw.ReadIngressesFromFile(filename, r.conf.Namespace, sets.New(KongIngressClass))
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +121,7 @@ func (r *resourceReader) readTCPIngressesFromFile(filename string) ([]kongv1beta
 	}
 
 	reader := bytes.NewReader(stream)
-	objs, err := common.ExtractObjectsFromReader(reader, r.conf.Namespace)
+	objs, err := i2gw.ExtractObjectsFromReader(reader, r.conf.Namespace)
 	if err != nil {
 		return nil, err
 	}

@@ -19,9 +19,9 @@ package ingressnginx
 import (
 	"context"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"k8s.io/apimachinery/pkg/util/sets"
+
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 )
 
 // converter implements the i2gw.CustomResourceReader interface.
@@ -39,7 +39,7 @@ func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
 func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage, error) {
 	storage := newResourcesStorage()
 
-	ingresses, err := common.ReadIngressesFromCluster(ctx, r.conf.Client, sets.New(NginxIngressClass))
+	ingresses, err := i2gw.ReadIngressesFromCluster(ctx, r.conf.Client, sets.New(NginxIngressClass))
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage
 func (r *resourceReader) readResourcesFromFile(filename string) (*storage, error) {
 	storage := newResourcesStorage()
 
-	ingresses, err := common.ReadIngressesFromFile(filename, r.conf.Namespace, sets.New(NginxIngressClass))
+	ingresses, err := i2gw.ReadIngressesFromFile(filename, r.conf.Namespace, sets.New(NginxIngressClass))
 	if err != nil {
 		return nil, err
 	}

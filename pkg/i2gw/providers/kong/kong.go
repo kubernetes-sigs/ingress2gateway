@@ -30,6 +30,7 @@ const KongIngressClass = "kong"
 
 func init() {
 	i2gw.ProviderConstructorByName[Name] = NewProvider
+	i2gw.FilteredResources[tcpIngressGVK.GroupKind()] = struct{}{}
 }
 
 // Provider implements the i2gw.Provider interface.
