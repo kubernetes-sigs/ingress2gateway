@@ -39,7 +39,7 @@ type PrintRunner struct {
 	// Defaults to YAML.
 	outputFormat string
 
-	// The path to the input yaml config file. Value assigned via --input_file flag
+	// The path to the input yaml config file. Value assigned via --input-file flag
 	inputFile string
 
 	// The namespace used to query Gateway API objects. Value assigned via
@@ -229,7 +229,7 @@ func newPrintCommand() *cobra.Command {
 	// generated from Ingress resources.
 	var cmd = &cobra.Command{
 		Use:   "print",
-		Short: "Prints Gateway API objects generated from ingress and provider-specific resources",
+		Short: "Prints Gateway API objects generated from ingress and provider-specific resources.",
 		RunE:  pr.PrintGatewayAPIObjects,
 	}
 
