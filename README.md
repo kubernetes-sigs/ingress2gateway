@@ -69,11 +69,11 @@ This above command will:
 
 | Flag           | Default Value           | Required | Description                                                  |
 | -------------- | ----------------------- | -------- | ------------------------------------------------------------ |
-| namespace      |                         | No       | If present, the namespace scope for the invocation           |
-| all-namespaces | False                   | No       | If present, list the requested object(s) across all namespaces. Namespace in the current context is ignored even if specified with --namespace |
-| output         | yaml                    | No       | The output format, either yaml or json                       |
-| input_file     |                         | No       | Path to the manifest file. When set, the tool will read ingresses from the file instead of reading from the cluster. Supported files are yaml and json |
-| providers      | all supported providers | No       | Comma-separated list of providers. If present, the tool will try to convert only resources related to the specified providers. Otherwise it will default to all the supported providers |
+| namespace      |                         | No       | If present, the namespace scope for the invocation.           |
+| all-namespaces | False                   | No       | If present, list the requested object(s) across all namespaces. Namespace in the current context is ignored even if specified with --namespace. |
+| output         | yaml                    | No       | The output format, either yaml or json.                       |
+| input-file     |                         | No       | Path to the manifest file. When set, the tool will read ingresses from the file instead of reading from the cluster. Supported files are yaml and json. |
+| providers      | all supported providers | No       | Comma-separated list of providers. If present, the tool will try to convert only resources related to the specified providers. Otherwise it will default to all the supported providers. |
 | kubeconfig     |                         | No       | The kubeconfig file to use when talking to the cluster. If the flag is not set, a set of standard locations can be searched for an existing kubeconfig file. |
 
 ## Conversion of Ingress resources to Gateway API

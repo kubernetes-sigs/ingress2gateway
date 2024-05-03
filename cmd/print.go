@@ -39,7 +39,7 @@ type PrintRunner struct {
 	// Defaults to YAML.
 	outputFormat string
 
-	// The path to the input yaml config file. Value assigned via --input_file flag
+	// The path to the input yaml config file. Value assigned via --input-file flag
 	inputFile string
 
 	// The namespace used to query Gateway API objects. Value assigned via
@@ -61,10 +61,11 @@ type PrintRunner struct {
 	providers []string
 }
 
-// PrintGatewaysAndHTTPRoutes performs necessary steps to digest and print
-// converted Gateways and HTTP Routes. The steps include reading from the source,
-// construct ingresses, convert them, then print them out.
-func (pr *PrintRunner) PrintGatewaysAndHTTPRoutes(cmd *cobra.Command, _ []string) error {
+// PrintGatewayAPIObjects performs necessary steps to digest and print
+// converted Gateway API objects. The steps include reading from the source,
+// construct ingresses and provider-specific resources, convert them, then print
+// the Gateway API objects out.
+func (pr *PrintRunner) PrintGatewayAPIObjects(cmd *cobra.Command, _ []string) error {
 	err := pr.initializeResourcePrinter()
 	if err != nil {
 		return fmt.Errorf("failed to initialize resrouce printer: %w", err)
@@ -228,25 +229,25 @@ func newPrintCommand() *cobra.Command {
 	// generated from Ingress resources.
 	var cmd = &cobra.Command{
 		Use:   "print",
-		Short: "Prints HTTPRoutes and Gateways generated from Ingress resources",
-		RunE:  pr.PrintGatewaysAndHTTPRoutes,
+		Short: "Prints Gateway API objects generated from ingress and provider-specific resources.",
+		RunE:  pr.PrintGatewayAPIObjects,
 	}
 
 	cmd.Flags().StringVarP(&pr.outputFormat, "output", "o", "yaml",
-		fmt.Sprintf(`Output format. One of: (%s)`, strings.Join(allowedFormats, ", ")))
+		fmt.Sprintf(`Output format. One of: (%s).`, strings.Join(allowedFormats, ", ")))
 
-	cmd.Flags().StringVar(&pr.inputFile, "input_file", "",
-		`Path to the manifest file. When set, the tool will read ingresses from the file instead of reading from the cluster. Supported files are yaml and json`)
+	cmd.Flags().StringVar(&pr.inputFile, "input-file", "",
+		`Path to the manifest file. When set, the tool will read ingresses from the file instead of reading from the cluster. Supported files are yaml and json.`)
 
 	cmd.Flags().StringVarP(&pr.namespace, "namespace", "n", "",
-		`If present, the namespace scope for this CLI request`)
+		`If present, the namespace scope for this CLI request.`)
 
 	cmd.Flags().BoolVarP(&pr.allNamespaces, "all-namespaces", "A", false,
 		`If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even
 if specified with --namespace.`)
 
 	cmd.Flags().StringSliceVar(&pr.providers, "providers", i2gw.GetSupportedProviders(),
-		fmt.Sprintf("If present, the tool will try to convert only resources related to the specified providers, supported values are %v", i2gw.GetSupportedProviders()))
+		fmt.Sprintf("If present, the tool will try to convert only resources related to the specified providers, supported values are %v.", i2gw.GetSupportedProviders()))
 
 	cmd.MarkFlagsMutuallyExclusive("namespace", "all-namespaces")
 	return cmd
