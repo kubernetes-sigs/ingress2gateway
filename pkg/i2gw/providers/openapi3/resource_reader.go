@@ -21,34 +21,32 @@ import (
 	"fmt"
 
 	"github.com/getkin/kin-openapi/openapi3"
-
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 )
 
 type resourceReader struct {
-	conf *i2gw.ProviderConf
+	storage Storage
 }
 
 // newResourceReader returns a reader instance.
-func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
+func newResourceReader(storage Storage) *resourceReader {
 	return &resourceReader{
-		conf: conf,
+		storage: storage,
 	}
 }
 
-func (r *resourceReader) readResourcesFromFile(ctx context.Context, filename string) (*storage, error) {
+func (r *resourceReader) readResourcesFromFile(ctx context.Context, filename string) error {
 	loader := openapi3.NewLoader()
 	spec, err := loader.LoadFromFile(filename)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load OpenAPI spec: %w", err)
+		return fmt.Errorf("failed to load OpenAPI spec: %w", err)
 	}
 
 	if err := spec.Validate(ctx); err != nil {
-		return nil, fmt.Errorf("invalid OpenAPI 3.x spec: %w", err)
+		return fmt.Errorf("invalid OpenAPI 3.x spec: %w", err)
 	}
 
-	storage := newResourceStorage()
-	storage.addResource(spec)
+	r.storage.Clear()
+	r.storage.AddResource(spec)
 
-	return storage, nil
+	return nil
 }

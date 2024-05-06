@@ -29,7 +29,7 @@ import (
 const ProviderName = "openapi3"
 
 type Provider struct {
-	storage   *storage
+	storage   Storage
 	reader    *resourceReader
 	converter *converter
 }
@@ -38,9 +38,10 @@ var _ i2gw.Provider = &Provider{}
 
 // NewProvider returns an implementation of i2gw.Provider that converts OpenAPI specs to Gateway API resources.
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
+	storage := NewResourceStorage()
 	return &Provider{
-		storage:   newResourceStorage(),
-		reader:    newResourceReader(conf),
+		storage:   storage,
+		reader:    newResourceReader(storage),
 		converter: newConverter(conf),
 	}
 }
@@ -52,11 +53,10 @@ func (p *Provider) ReadResourcesFromCluster(_ context.Context) error {
 
 // ReadResourcesFromFile reads OpenAPI specs from a JSON or YAML file.
 func (p *Provider) ReadResourcesFromFile(ctx context.Context, filename string) error {
-	storage, err := p.reader.readResourcesFromFile(ctx, filename)
+	err := p.reader.readResourcesFromFile(ctx, filename)
 	if err != nil {
 		return fmt.Errorf("failed to read resources from file: %w", err)
 	}
-	p.storage = storage
 	return nil
 }
 

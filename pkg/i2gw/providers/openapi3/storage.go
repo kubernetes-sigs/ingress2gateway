@@ -22,26 +22,42 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 )
 
+type Storage interface {
+	AddResource(resource *openapi3.T)
+	GetResources() []*openapi3.T
+	Clear()
+}
+
+// NewResourceStorage returns a thread-safe storage for OpenAPI specs.
+func NewResourceStorage() Storage {
+	return &storage{}
+}
+
 type storage struct {
 	mu sync.RWMutex
 
 	resources []*openapi3.T
 }
 
-func newResourceStorage() *storage {
-	return &storage{}
-}
+var _ Storage = &storage{}
 
-func (s *storage) addResource(resource *openapi3.T) {
+func (s *storage) AddResource(resource *openapi3.T) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.resources = append(s.resources, resource)
 }
 
-func (s *storage) getResources() []*openapi3.T {
+func (s *storage) GetResources() []*openapi3.T {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	return s.resources
+}
+
+func (s *storage) Clear() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.resources = []*openapi3.T{}
 }

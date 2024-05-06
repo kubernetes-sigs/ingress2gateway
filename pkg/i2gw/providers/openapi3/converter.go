@@ -64,7 +64,7 @@ func newConverter(conf *i2gw.ProviderConf) *converter {
 	}
 }
 
-func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.ErrorList) {
+func (c *converter) convert(storage Storage) (i2gw.GatewayResources, field.ErrorList) {
 	gatewayResources := i2gw.GatewayResources{
 		Gateways:        make(map[types.NamespacedName]gatewayv1.Gateway),
 		HTTPRoutes:      make(map[types.NamespacedName]gatewayv1.HTTPRoute),
@@ -75,7 +75,7 @@ func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.Erro
 
 	var errors field.ErrorList
 
-	for _, spec := range storage.getResources() {
+	for _, spec := range storage.GetResources() {
 		httpRoutes := toHTTPRoutes(spec, errors)
 		for _, httpRoute := range httpRoutes {
 			gatewayResources.HTTPRoutes[types.NamespacedName{Name: httpRoute.GetName(), Namespace: httpRoute.GetNamespace()}] = httpRoute
