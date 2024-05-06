@@ -43,28 +43,20 @@ const (
 	HTTPRouteMatchesMaxMax = HTTPRouteRulesMax * HTTPRouteMatchesMax
 )
 
-// converter implements the ToGatewayAPI function of i2gw.ResourceConverter interface.
-type converter struct {
-	conf *i2gw.ProviderConf
-
-	featureParsers                []i2gw.FeatureParser
-	implementationSpecificOptions i2gw.ProviderImplementationSpecificOptions
+type Converter interface {
+	Convert(Storage) (i2gw.GatewayResources, field.ErrorList)
 }
 
-// newConverter returns an ingress-nginx converter instance.
-func newConverter(conf *i2gw.ProviderConf) *converter {
-	return &converter{
-		conf:           conf,
-		featureParsers: []i2gw.FeatureParser{
-			// The list of feature parsers comes here.
-		},
-		implementationSpecificOptions: i2gw.ProviderImplementationSpecificOptions{
-			// The list of the implementationSpecific ingress fields options comes here.
-		},
-	}
+// NewConverter returns a converter of OpenAPI Specifications 3.x from a storage into Gateway API resources.
+func NewConverter() Converter {
+	return &converter{}
 }
 
-func (c *converter) convert(storage Storage) (i2gw.GatewayResources, field.ErrorList) {
+type converter struct {}
+
+var _ Converter = &converter{}
+
+func (c *converter) Convert(storage Storage) (i2gw.GatewayResources, field.ErrorList) {
 	gatewayResources := i2gw.GatewayResources{
 		Gateways:        make(map[types.NamespacedName]gatewayv1.Gateway),
 		HTTPRoutes:      make(map[types.NamespacedName]gatewayv1.HTTPRoute),

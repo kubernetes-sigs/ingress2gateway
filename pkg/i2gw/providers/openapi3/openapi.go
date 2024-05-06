@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/getkin/kin-openapi/openapi3"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
@@ -30,19 +31,16 @@ const ProviderName = "openapi3"
 
 type Provider struct {
 	storage   Storage
-	reader    *resourceReader
-	converter *converter
+	converter Converter
 }
 
 var _ i2gw.Provider = &Provider{}
 
 // NewProvider returns an implementation of i2gw.Provider that converts OpenAPI specs to Gateway API resources.
-func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
-	storage := NewResourceStorage()
+func NewProvider(_ *i2gw.ProviderConf) i2gw.Provider {
 	return &Provider{
-		storage:   storage,
-		reader:    newResourceReader(storage),
-		converter: newConverter(conf),
+		storage:   NewResourceStorage(),
+		converter: NewConverter(),
 	}
 }
 
@@ -53,18 +51,38 @@ func (p *Provider) ReadResourcesFromCluster(_ context.Context) error {
 
 // ReadResourcesFromFile reads OpenAPI specs from a JSON or YAML file.
 func (p *Provider) ReadResourcesFromFile(ctx context.Context, filename string) error {
-	err := p.reader.readResourcesFromFile(ctx, filename)
+	spec, err := readSpecFromFile(ctx, filename)
 	if err != nil {
 		return fmt.Errorf("failed to read resources from file: %w", err)
 	}
+
+	p.storage.Clear()
+	if spec != nil {
+		p.storage.AddResource(spec)
+	}
+
 	return nil
 }
 
 // ToGatewayAPI converts stored OpenAPI specs to Gateway API resources.
 func (p *Provider) ToGatewayAPI(_ i2gw.InputResources) (i2gw.GatewayResources, field.ErrorList) {
-	return p.converter.convert(p.storage)
+	return p.converter.Convert(p.storage)
 }
 
 func init() {
 	i2gw.ProviderConstructorByName[ProviderName] = NewProvider
+}
+
+func readSpecFromFile(ctx context.Context, filename string) (*openapi3.T, error) {
+	loader := openapi3.NewLoader()
+	spec, err := loader.LoadFromFile(filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load OpenAPI spec: %w", err)
+	}
+
+	if err := spec.Validate(ctx); err != nil {
+		return nil, fmt.Errorf("invalid OpenAPI 3.x spec: %w", err)
+	}
+
+	return spec, nil
 }
