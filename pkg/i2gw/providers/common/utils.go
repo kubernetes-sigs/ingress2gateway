@@ -200,3 +200,23 @@ func removeBackendRefsDuplicates(backendRefs []gatewayv1.HTTPBackendRef) []gatew
 	}
 	return uniqueBackendRefs
 }
+
+// Map applies the given mapper function to each element in the input slice and returns a new slice with the results.
+func Map[T, U any](slice []T, f func(T) U) []U {
+	arr := make([]U, len(slice))
+	for i, e := range slice {
+		arr[i] = f(e)
+	}
+	return arr
+}
+
+// Filter filters the input slice using the given predicate function and returns a new slice with the results.
+func Filter[T any](slice []T, f func(T) bool) []T {
+	arr := make([]T, 0)
+	for _, e := range slice {
+		if f(e) {
+			arr = append(arr, e)
+		}
+	}
+	return arr
+}

@@ -187,7 +187,7 @@ func toHTTPRoute(name string, hostnames []string, matchers httpRouteRuleMatchers
 		},
 	}
 	if len(hostnames) > 1 || !slices.Contains(hostnames, "") {
-		route.Spec.Hostnames = Map(hostnames, toGatewayAPIHostname)
+		route.Spec.Hostnames = common.Map(hostnames, toGatewayAPIHostname)
 	}
 	return route
 }
@@ -212,7 +212,7 @@ func toHTTPRouteRules(matchers httpRouteRuleMatchers) []gatewayv1.HTTPRouteRule 
 				Method: common.PtrTo(gatewayv1.HTTPMethod(matcher.method)),
 			}
 			if matcher.headers != "" {
-				ruleMatch.Headers = Map(strings.Split(matcher.headers, ParamSeparator), func(header string) gatewayv1.HTTPHeaderMatch {
+				ruleMatch.Headers = common.Map(strings.Split(matcher.headers, ParamSeparator), func(header string) gatewayv1.HTTPHeaderMatch {
 					return gatewayv1.HTTPHeaderMatch{
 						Name:  gatewayv1.HTTPHeaderName(header),
 						Type:  common.PtrTo(gatewayv1.HeaderMatchExact),
@@ -220,7 +220,7 @@ func toHTTPRouteRules(matchers httpRouteRuleMatchers) []gatewayv1.HTTPRouteRule 
 				})
 			}
 			if matcher.params != "" {
-				ruleMatch.QueryParams = Map(strings.Split(matcher.params, ParamSeparator), func(param string) gatewayv1.HTTPQueryParamMatch {
+				ruleMatch.QueryParams = common.Map(strings.Split(matcher.params, ParamSeparator), func(param string) gatewayv1.HTTPQueryParamMatch {
 					return gatewayv1.HTTPQueryParamMatch{
 						Name: gatewayv1.HTTPHeaderName(param),
 						Type: common.PtrTo(gatewayv1.QueryParamMatchExact),
@@ -289,7 +289,7 @@ func operationToHTTPMatchers(operation *openapi3.Operation, relativePath string,
 		}
 	}
 
-	return Map(expandedServers, toHTTPMatcher(relativePath, method, parameters, errors))
+	return common.Map(expandedServers, toHTTPMatcher(relativePath, method, parameters, errors))
 }
 
 func toHTTPMatcher(relativePath string, method string, parameters openapi3.Parameters, errors field.ErrorList) func(server openapi3.Server) httpRouteMatcher {
@@ -300,8 +300,8 @@ func toHTTPMatcher(relativePath string, method string, parameters openapi3.Param
 	}
 	paramNameFunc := func(p *openapi3.ParameterRef) string { return p.Value.Name }
 
-	headers := strings.Join(Map(Filter(parameters, paramInFunc("header")), paramNameFunc), ParamSeparator)
-	params := strings.Join(Map(Filter(parameters, paramInFunc("query")), paramNameFunc), ParamSeparator)
+	headers := strings.Join(common.Map(common.Filter(parameters, paramInFunc("header")), paramNameFunc), ParamSeparator)
+	params := strings.Join(common.Map(common.Filter(parameters, paramInFunc("query")), paramNameFunc), ParamSeparator)
 
 	return func(server openapi3.Server) httpRouteMatcher {
 		basePath, err := server.BasePath()
