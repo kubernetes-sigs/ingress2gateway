@@ -47,7 +47,7 @@ func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 
 // ReadResourcesFromCluster reads OpenAPI specs stored in the Kubernetes cluster. UNIMPLEMENTED.
 func (p *Provider) ReadResourcesFromCluster(_ context.Context) error {
-	return fmt.Errorf("provider does not support reading resources from cluster")
+	return nil
 }
 
 // ReadResourcesFromFile reads OpenAPI specs from a JSON or YAML file.
