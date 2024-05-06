@@ -5,7 +5,7 @@ The provider translates OpenAPI Specification (OAS) 3.x documents to Kubernetes 
 ## Example
 
 ```sh
-./ingress2gateway print --providers openapi --input-file=petstore3-openapi.json
+./ingress2gateway print --providers openapi3 --input-file=petstore3-openapi.json
 ```
 
 ## Known limitations

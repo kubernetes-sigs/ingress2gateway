@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package openapi
+package openapi3
 
 import (
 	"context"
@@ -26,7 +26,7 @@ import (
 )
 
 // The ProviderName returned to the provider's registry.
-const ProviderName = "openapi"
+const ProviderName = "openapi3"
 
 type Provider struct {
 	storage   *storage
