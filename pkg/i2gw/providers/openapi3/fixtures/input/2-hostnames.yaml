@@ -74,3 +74,18 @@ paths:
           description: Invalid ID supplied
         "404":
           description: Resource not found
+  /status:
+    get:
+      operationId: status
+      responses:
+        "200":
+          description: Successful operation
+    servers:
+    - url: http://api.example.com/{version}
+      variables:
+        version:
+          enum:
+          - v1
+          - v2
+          - v3
+          default: v3

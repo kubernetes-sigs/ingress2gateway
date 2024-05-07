@@ -18,6 +18,7 @@ package openapi3
 
 import (
 	"fmt"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -35,6 +36,7 @@ import (
 )
 
 const (
+	HostWildcard	 = "*"
 	HostSeparator  = ","
 	ParamSeparator = ","
 
@@ -42,6 +44,8 @@ const (
 	HTTPRouteMatchesMax    = 8
 	HTTPRouteMatchesMaxMax = HTTPRouteRulesMax * HTTPRouteMatchesMax
 )
+
+var uriRegexp = regexp.MustCompile(`^((https?)://([^/]+))?(/.*)?$`) // [_][1] = scheme, [_][2] = host, [_][3] = path
 
 type Converter interface {
 	Convert(Storage) (i2gw.GatewayResources, field.ErrorList)
@@ -68,12 +72,13 @@ func (c *converter) Convert(storage Storage) (i2gw.GatewayResources, field.Error
 	var errors field.ErrorList
 
 	for _, spec := range storage.GetResources() {
-		httpRoutes := toHTTPRoutes(spec, errors)
+		httpRoutes, gateways := toHTTPRoutesAndGateways(spec, errors)
 		for _, httpRoute := range httpRoutes {
 			gatewayResources.HTTPRoutes[types.NamespacedName{Name: httpRoute.GetName(), Namespace: httpRoute.GetNamespace()}] = httpRoute
 		}
-		// TODO: build Gateways
-		// TODO: add parentRefs to HTTPRoutes
+		for _, gateway := range gateways {
+			gatewayResources.Gateways[types.NamespacedName{Name: gateway.GetName(), Namespace: gateway.GetNamespace()}] = gateway
+		}
 	}
 
 	return gatewayResources, errors
@@ -98,11 +103,12 @@ func (m httpRouteRuleMatchers) Less(i, j int) bool {
 }
 
 type httpRouteMatcher struct {
-	host string
+	protocol string
+	host     string
 	httpRouteRuleMatcher
 }
 
-func toHTTPRoutes(spec *openapi3.T, errors field.ErrorList) []gatewayv1.HTTPRoute {
+func toHTTPRoutesAndGateways(spec *openapi3.T, errors field.ErrorList) ([]gatewayv1.HTTPRoute, []gatewayv1.Gateway) {
 	var matchers []httpRouteMatcher
 
 	servers := spec.Servers
@@ -116,34 +122,65 @@ func toHTTPRoutes(spec *openapi3.T, errors field.ErrorList) []gatewayv1.HTTPRout
 		matchers = append(matchers, pathItemToHTTPMatchers(pathItem, relativePath, servers, errors)...)
 	}
 
-	hostsByHTTPRouteRuleMatcher := make(map[httpRouteRuleMatcher][]string)
+	listenersByHTTPRouteRuleMatcher := make(map[httpRouteRuleMatcher][]string)
 	for _, matcher := range matchers {
-		hostsByHTTPRouteRuleMatcher[matcher.httpRouteRuleMatcher] = append(hostsByHTTPRouteRuleMatcher[matcher.httpRouteRuleMatcher], matcher.host)
+		listener := fmt.Sprintf("%s://%s", matcher.protocol, matcher.host)
+		listenersByHTTPRouteRuleMatcher[matcher.httpRouteRuleMatcher] = append(listenersByHTTPRouteRuleMatcher[matcher.httpRouteRuleMatcher], listener)
 	}
 
-	var hostGroups []string
-	httpRouteRuleMatchersByHosts := make(map[string]httpRouteRuleMatchers)
-	for matcher, hosts := range hostsByHTTPRouteRuleMatcher {
-		group := strings.Join(hosts, HostSeparator)
-		if _, exists := httpRouteRuleMatchersByHosts[group]; !exists {
-			hostGroups = append(hostGroups, group)
+	var listenerGroups []string
+	httpRouteRuleMatchersByListeners := make(map[string]httpRouteRuleMatchers)
+	for matcher, listeners := range listenersByHTTPRouteRuleMatcher {
+		group := strings.Join(listeners, HostSeparator)
+		if _, exists := httpRouteRuleMatchersByListeners[group]; !exists {
+			listenerGroups = append(listenerGroups, group)
 		}
-		httpRouteRuleMatchersByHosts[group] = append(httpRouteRuleMatchersByHosts[group], matcher)
+		httpRouteRuleMatchersByListeners[group] = append(httpRouteRuleMatchersByListeners[group], matcher)
 	}
 
-	var routes []gatewayv1.HTTPRoute
+	// sort listener groups for deterministic output
+	sort.Strings(listenerGroups)
 
-	// sort host groups for deterministic output
-	sort.Strings(hostGroups)
+	gatewayName := "gateway-1" // TODO: name the gateway after the spec
+	gateway := gatewayv1.Gateway{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: gatewayName,
+		},
+		Spec: gatewayv1.GatewaySpec{
+			// TODO: gateway class
+		},
+	}
+	gateway.SetGroupVersionKind(common.GatewayGVK)
+
+	uniqueListeners := make(map[string]struct{})
+	for _, group := range listenerGroups {
+		listeners := common.Filter(strings.Split(group, HostSeparator), func (listener string) bool {
+			_, exists := uniqueListeners[listener]
+			if !exists {
+				uniqueListeners[listener] = struct{}{}
+			}
+			return !exists
+		})
+		gateway.Spec.Listeners = append(gateway.Spec.Listeners, common.Map(listeners, toListener)...) // TODO: gateways cannot have more than 64 listeners
+	}
+
+  var routes []gatewayv1.HTTPRoute
 
 	i := 0
-	for _, group := range hostGroups {
-		hosts := strings.Split(group, HostSeparator)
-		matchers := httpRouteRuleMatchersByHosts[group]
+	for _, group := range listenerGroups {
+		listeners := strings.Split(group, HostSeparator)
+		hosts := common.Map(listeners, uriToHostname)
+		matchers := httpRouteRuleMatchersByListeners[group]
+
+		var listenerName gatewayv1.SectionName
+		if len(uniqueListeners) > 1 && len(listeners) == 1 {
+			listenerName, _, _ = toListenerName(listeners[0])
+		}
 
 		// sort hostnames and matchers for deterministic output inside each route object
-		sort.Strings(hosts)
 		sort.Sort(matchers)
+		sort.Strings(hosts)
+		hosts = slices.Compact(hosts)
 
 		nMatchers := len(matchers)
 		nRoutes := nMatchers / HTTPRouteMatchesMaxMax
@@ -157,15 +194,60 @@ func toHTTPRoutes(spec *openapi3.T, errors field.ErrorList) []gatewayv1.HTTPRout
 			if last > nMatchers {
 				last = nMatchers
 			}
-			routes = append(routes, toHTTPRoute(routeName, hosts, matchers[j*HTTPRouteMatchesMaxMax:last]))
+			routes = append(routes, toHTTPRoute(routeName, gatewayName, listenerName, hosts, matchers[j*HTTPRouteMatchesMaxMax:last]))
 		}
 		i++
 	}
 
-	return routes
+	return routes, []gatewayv1.Gateway{gateway}
 }
 
-func toHTTPRoute(name string, hostnames []string, matchers httpRouteRuleMatchers) gatewayv1.HTTPRoute {
+func toListener(protocolAndHostname string) gatewayv1.Listener {
+	name, protocol, hostname := toListenerName(protocolAndHostname)
+
+	listener := gatewayv1.Listener{
+		Name:     name,
+		Protocol: gatewayv1.ProtocolType(strings.ToUpper(protocol)),
+		Hostname: common.PtrTo(gatewayv1.Hostname(hostname)),
+	}
+
+	switch protocol {
+	case "http":
+		listener.Port = 80
+	case "https":
+		listener.Port = 443
+		listener.TLS = &gatewayv1.GatewayTLSConfig{}
+	}
+
+	return listener
+}
+
+func toListenerName(protocolAndHostname string) (listenerName gatewayv1.SectionName, protocol string, hostname string) {
+	protocol = "http"
+	hostname = HostWildcard
+
+	if s := uriRegexp.FindAllStringSubmatch(protocolAndHostname, 1); len(s) > 0 {
+		if s[0][2] != "" {
+			protocol = s[0][2]
+		}
+		if s[0][3] != "" {
+			hostname = s[0][3]
+		}
+	}
+
+	var listenerNamePrefix string
+	if hostname != HostWildcard {
+		listenerNamePrefix = fmt.Sprintf("%s-", common.NameFromHost(hostname))
+	}
+
+	return gatewayv1.SectionName(listenerNamePrefix + protocol), protocol, hostname
+}
+
+func toHTTPRoute(name, gatewayName string, listenerName gatewayv1.SectionName, hostnames []string, matchers httpRouteRuleMatchers) gatewayv1.HTTPRoute {
+	parentRef := gatewayv1.ParentReference{Name: gatewayv1.ObjectName(gatewayName)}
+	if listenerName != "" {
+		parentRef.SectionName = common.PtrTo(listenerName)
+	}
 	route := gatewayv1.HTTPRoute{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: gatewayv1.GroupVersion.String(),
@@ -175,10 +257,13 @@ func toHTTPRoute(name string, hostnames []string, matchers httpRouteRuleMatchers
 			Name: name,
 		},
 		Spec: gatewayv1.HTTPRouteSpec{
+			CommonRouteSpec: gatewayv1.CommonRouteSpec{
+				ParentRefs: []gatewayv1.ParentReference{parentRef},
+			},
 			Rules: toHTTPRouteRules(matchers),
 		},
 	}
-	if len(hostnames) > 1 || !slices.Contains(hostnames, "") {
+	if len(hostnames) > 1 || !slices.Contains(hostnames, HostWildcard) {
 		route.Spec.Hostnames = common.Map(hostnames, toGatewayAPIHostname)
 	}
 	return route
@@ -266,19 +351,8 @@ func operationToHTTPMatchers(operation *openapi3.Operation, relativePath string,
 	}
 
   var expandedServers []openapi3.Server
-	expandedHosts := make(map[string]struct{})
 	for _, server := range servers {
-		for _, expandedServer := range expandServerVariables(*server) {
-			basePath, err := expandedServer.BasePath()
-			if err != nil {
-				errors = append(errors, field.Invalid(field.NewPath("servers"), expandedServer, err.Error()))
-			}
-			host := uriToHostname(expandedServer.URL) + basePath
-			if _, exists := expandedHosts[host]; !exists {
-				expandedServers = append(expandedServers, expandedServer)
-				expandedHosts[host] = struct{}{}
-			}
-		}
+		expandedServers = append(expandedServers, expandServerVariables(*server)...)
 	}
 
 	return common.Map(expandedServers, toHTTPMatcher(relativePath, method, parameters, errors))
@@ -303,7 +377,12 @@ func toHTTPMatcher(relativePath string, method string, parameters openapi3.Param
 		if basePath == "/" {
 			basePath = ""
 		}
+		protocol := "http"
+		if s := uriRegexp.FindAllStringSubmatch(server.URL, 1); len(s) > 0 && s[0][2] != "" {
+			protocol = s[0][2]
+		}
 		return httpRouteMatcher{
+			protocol: strings.ToLower(protocol),
 			host: uriToHostname(server.URL),
 			httpRouteRuleMatcher: httpRouteRuleMatcher{
 				path:    basePath + relativePath,
@@ -374,11 +453,11 @@ func expandServerVariables(server openapi3.Server) []openapi3.Server {
 }
 
 func uriToHostname(uri string) string {
-	host := uri
-	if strings.Contains(host, "://") {
-		host = strings.SplitN(host, "://", 2)[1]
+	host := HostWildcard
+  if s := uriRegexp.FindAllStringSubmatch(uri, 1); len(s) > 0 && s[0][3] != "" {
+		host = s[0][3]
 	}
-	return strings.SplitN(host, "/", 2)[0]
+	return host
 }
 
 func toGatewayAPIHostname(hostname string) gatewayv1.Hostname {
