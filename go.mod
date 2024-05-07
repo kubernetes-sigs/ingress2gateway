@@ -3,6 +3,7 @@ module github.com/kubernetes-sigs/ingress2gateway
 go 1.21
 
 require (
+	github.com/getkin/kin-openapi v0.124.0
 	github.com/google/go-cmp v0.6.0
 	github.com/kong/kubernetes-ingress-controller/v2 v2.12.3
 	github.com/spf13/cobra v1.8.0
@@ -18,7 +19,6 @@ require (
 )
 
 require (
-	github.com/getkin/kin-openapi v0.124.0 // indirect
 	github.com/invopop/yaml v0.2.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
