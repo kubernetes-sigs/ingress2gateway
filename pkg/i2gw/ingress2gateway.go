@@ -69,8 +69,7 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 		errs             field.ErrorList
 	)
 	for _, provider := range providerByName {
-		// TODO(#113) Remove input resources from ToGatewayAPI function
-		providerGatewayResources, conversionErrs := provider.ToGatewayAPI(InputResources{})
+		providerGatewayResources, conversionErrs := provider.ToGatewayAPI()
 		errs = append(errs, conversionErrs...)
 		gatewayResources = append(gatewayResources, providerGatewayResources)
 	}

@@ -504,8 +504,7 @@ func Test_ToGateway(t *testing.T) {
 			kongProvider.storage = newResourceStorage()
 			kongProvider.storage.Ingresses = tc.ingresses
 
-			// TODO(#113) we pass an empty i2gw.InputResources temporarily until we change ToGatewayAPI function on the interface
-			gatewayResources, errs := provider.ToGatewayAPI(i2gw.InputResources{})
+			gatewayResources, errs := provider.ToGatewayAPI()
 
 			if len(gatewayResources.HTTPRoutes) != len(tc.expectedGatewayResources.HTTPRoutes) {
 				t.Errorf("Expected %d HTTPRoutes, got %d: %+v",

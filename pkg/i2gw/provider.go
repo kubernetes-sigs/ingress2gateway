@@ -70,9 +70,9 @@ type CustomResourceReader interface {
 // conversion functions.
 type ResourceConverter interface {
 
-	// ToGatewayAPIResources converts the received InputResources associated
+	// ToGatewayAPIResources converts stored API entities associated
 	// with the Provider into GatewayResources.
-	ToGatewayAPI(resources InputResources) (GatewayResources, field.ErrorList)
+	ToGatewayAPI() (GatewayResources, field.ErrorList)
 }
 
 // ImplementationSpecificHTTPPathTypeMatchConverter is an option to customize the ingress implementationSpecific
@@ -84,11 +84,6 @@ type ImplementationSpecificHTTPPathTypeMatchConverter func(*gatewayv1.HTTPPathMa
 // implementation-specific fields of the ingress API.
 type ProviderImplementationSpecificOptions struct {
 	ToImplementationSpecificHTTPPathTypeMatch ImplementationSpecificHTTPPathTypeMatchConverter
-}
-
-// InputResources contains all Ingress objects.
-type InputResources struct {
-	Ingresses []networkingv1.Ingress
 }
 
 // GatewayResources contains all Gateway-API objects.
@@ -104,9 +99,9 @@ type GatewayResources struct {
 	ReferenceGrants map[types.NamespacedName]gatewayv1beta1.ReferenceGrant
 }
 
-// FeatureParser is a function that reads the InputResources, and applies
+// FeatureParser is a function that reads the Ingresses, and applies
 // the appropriate modifications to the GatewayResources.
 //
 // Different FeatureParsers will run in undetermined order. The function must
 // modify / create only the required fields of the gateway resources and nothing else.
-type FeatureParser func(InputResources, *GatewayResources) field.ErrorList
+type FeatureParser func([]networkingv1.Ingress, *GatewayResources) field.ErrorList

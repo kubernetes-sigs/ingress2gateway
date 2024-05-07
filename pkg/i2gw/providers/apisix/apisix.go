@@ -48,9 +48,9 @@ func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 	}
 }
 
-// ToGatewayAPI converts the received i2gw.InputResources to i2gw.GatewayResources
+// ToGatewayAPI converts stored Apisix API entities to i2gw.GatewayResources
 // including the apisix specific features.
-func (p *Provider) ToGatewayAPI(_ i2gw.InputResources) (i2gw.GatewayResources, field.ErrorList) {
+func (p *Provider) ToGatewayAPI() (i2gw.GatewayResources, field.ErrorList) {
 	return p.converter.convert(p.storage)
 }
 
