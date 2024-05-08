@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/samber/lo"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -154,14 +155,14 @@ func toHTTPRoutesAndGateways(spec *openapi3.T, errors field.ErrorList) ([]gatewa
 
 	uniqueListeners := make(map[string]struct{})
 	for _, group := range listenerGroups {
-		listeners := common.Filter(strings.Split(group, HostSeparator), func (listener string) bool {
+		listeners := lo.Filter(strings.Split(group, HostSeparator), func (listener string, _ int) bool {
 			_, exists := uniqueListeners[listener]
 			if !exists {
 				uniqueListeners[listener] = struct{}{}
 			}
 			return !exists
 		})
-		gateway.Spec.Listeners = append(gateway.Spec.Listeners, common.Map(listeners, toListener)...) // TODO: gateways cannot have more than 64 listeners
+		gateway.Spec.Listeners = append(gateway.Spec.Listeners, lo.Map(listeners, toListener)...) // TODO: gateways cannot have more than 64 listeners
 	}
 
   var routes []gatewayv1.HTTPRoute
@@ -169,7 +170,7 @@ func toHTTPRoutesAndGateways(spec *openapi3.T, errors field.ErrorList) ([]gatewa
 	i := 0
 	for _, group := range listenerGroups {
 		listeners := strings.Split(group, HostSeparator)
-		hosts := common.Map(listeners, uriToHostname)
+		hosts := lo.Map(listeners, uriToHostname)
 		matchers := httpRouteRuleMatchersByListeners[group]
 
 		var listenerName gatewayv1.SectionName
@@ -202,7 +203,7 @@ func toHTTPRoutesAndGateways(spec *openapi3.T, errors field.ErrorList) ([]gatewa
 	return routes, []gatewayv1.Gateway{gateway}
 }
 
-func toListener(protocolAndHostname string) gatewayv1.Listener {
+func toListener(protocolAndHostname string, _ int) gatewayv1.Listener {
 	name, protocol, hostname := toListenerName(protocolAndHostname)
 
 	listener := gatewayv1.Listener{
@@ -264,7 +265,7 @@ func toHTTPRoute(name, gatewayName string, listenerName gatewayv1.SectionName, h
 		},
 	}
 	if len(hostnames) > 1 || !slices.Contains(hostnames, HostWildcard) {
-		route.Spec.Hostnames = common.Map(hostnames, toGatewayAPIHostname)
+		route.Spec.Hostnames = lo.Map(hostnames, toGatewayAPIHostname)
 	}
 	return route
 }
@@ -289,7 +290,7 @@ func toHTTPRouteRules(matchers httpRouteRuleMatchers) []gatewayv1.HTTPRouteRule 
 				Method: common.PtrTo(gatewayv1.HTTPMethod(matcher.method)),
 			}
 			if matcher.headers != "" {
-				ruleMatch.Headers = common.Map(strings.Split(matcher.headers, ParamSeparator), func(header string) gatewayv1.HTTPHeaderMatch {
+				ruleMatch.Headers = lo.Map(strings.Split(matcher.headers, ParamSeparator), func(header string, _ int) gatewayv1.HTTPHeaderMatch {
 					return gatewayv1.HTTPHeaderMatch{
 						Name:  gatewayv1.HTTPHeaderName(header),
 						Type:  common.PtrTo(gatewayv1.HeaderMatchExact),
@@ -297,7 +298,7 @@ func toHTTPRouteRules(matchers httpRouteRuleMatchers) []gatewayv1.HTTPRouteRule 
 				})
 			}
 			if matcher.params != "" {
-				ruleMatch.QueryParams = common.Map(strings.Split(matcher.params, ParamSeparator), func(param string) gatewayv1.HTTPQueryParamMatch {
+				ruleMatch.QueryParams = lo.Map(strings.Split(matcher.params, ParamSeparator), func(param string, _ int) gatewayv1.HTTPQueryParamMatch {
 					return gatewayv1.HTTPQueryParamMatch{
 						Name: gatewayv1.HTTPHeaderName(param),
 						Type: common.PtrTo(gatewayv1.QueryParamMatchExact),
@@ -355,21 +356,22 @@ func operationToHTTPMatchers(operation *openapi3.Operation, relativePath string,
 		expandedServers = append(expandedServers, expandServerVariables(*server)...)
 	}
 
-	return common.Map(expandedServers, toHTTPMatcher(relativePath, method, parameters, errors))
+	return lo.Map(expandedServers, toHTTPMatcher(relativePath, method, parameters, errors))
 }
 
-func toHTTPMatcher(relativePath string, method string, parameters openapi3.Parameters, errors field.ErrorList) func(server openapi3.Server) httpRouteMatcher {
-	paramInFunc := func(in string) func(p *openapi3.ParameterRef) bool {
-		return func(p *openapi3.ParameterRef) bool {
-			return p.Value != nil && p.Value.Required && p.Value.In == in
+func toHTTPMatcher(relativePath string, method string, parameters openapi3.Parameters, errors field.ErrorList) func(server openapi3.Server, _ int) httpRouteMatcher {
+	paramNameFunc := func(in string) func(p *openapi3.ParameterRef, _ int) (string, bool) {
+		return func(p *openapi3.ParameterRef, _ int) (string, bool) {
+			if p.Value != nil && p.Value.Required && p.Value.In == in {
+				return p.Value.Name, true
+			}
+			return "", false
 		}
 	}
-	paramNameFunc := func(p *openapi3.ParameterRef) string { return p.Value.Name }
+	headers := strings.Join(lo.FilterMap(parameters, paramNameFunc("header")), ParamSeparator)
+	params := strings.Join(lo.FilterMap(parameters, paramNameFunc("query")), ParamSeparator)
 
-	headers := strings.Join(common.Map(common.Filter(parameters, paramInFunc("header")), paramNameFunc), ParamSeparator)
-	params := strings.Join(common.Map(common.Filter(parameters, paramInFunc("query")), paramNameFunc), ParamSeparator)
-
-	return func(server openapi3.Server) httpRouteMatcher {
+	return func(server openapi3.Server, _ int) httpRouteMatcher {
 		basePath, err := server.BasePath()
 		if err != nil {
 			errors = append(errors, field.Invalid(field.NewPath("servers"), server, err.Error()))
@@ -383,7 +385,7 @@ func toHTTPMatcher(relativePath string, method string, parameters openapi3.Param
 		}
 		return httpRouteMatcher{
 			protocol: strings.ToLower(protocol),
-			host: uriToHostname(server.URL),
+			host: uriToHostname(server.URL, 0),
 			httpRouteRuleMatcher: httpRouteRuleMatcher{
 				path:    basePath + relativePath,
 				method:  method,
@@ -452,7 +454,7 @@ func expandServerVariables(server openapi3.Server) []openapi3.Server {
 	return servers
 }
 
-func uriToHostname(uri string) string {
+func uriToHostname(uri string, _ int) string {
 	host := HostWildcard
   if s := uriRegexp.FindAllStringSubmatch(uri, 1); len(s) > 0 && s[0][3] != "" {
 		host = s[0][3]
@@ -460,6 +462,6 @@ func uriToHostname(uri string) string {
 	return host
 }
 
-func toGatewayAPIHostname(hostname string) gatewayv1.Hostname {
+func toGatewayAPIHostname(hostname string, _ int) gatewayv1.Hostname {
 	return gatewayv1.Hostname(hostname)
 }
