@@ -35,7 +35,7 @@ import (
 )
 
 const (
-	HostWildcard	 = "*"
+	HostWildcard   = "*"
 	HostSeparator  = ","
 	ParamSeparator = ","
 
@@ -55,7 +55,7 @@ func NewConverter() Converter {
 	return &converter{}
 }
 
-type converter struct {}
+type converter struct{}
 
 var _ Converter = &converter{}
 
@@ -150,7 +150,7 @@ func toHTTPRoutesAndGateways(spec *openapi3.T, errors field.ErrorList) ([]gatewa
 
 	uniqueListeners := make(map[string]struct{})
 	for _, group := range listenerGroups {
-		listeners := lo.Filter(strings.Split(group, HostSeparator), func (listener string, _ int) bool {
+		listeners := lo.Filter(strings.Split(group, HostSeparator), func(listener string, _ int) bool {
 			_, exists := uniqueListeners[listener]
 			if !exists {
 				uniqueListeners[listener] = struct{}{}
@@ -160,7 +160,7 @@ func toHTTPRoutesAndGateways(spec *openapi3.T, errors field.ErrorList) ([]gatewa
 		gateway.Spec.Listeners = append(gateway.Spec.Listeners, lo.Map(listeners, toListener)...) // TODO: gateways cannot have more than 64 listeners
 	}
 
-  var routes []gatewayv1.HTTPRoute
+	var routes []gatewayv1.HTTPRoute
 
 	i := 0
 	for _, group := range listenerGroups {
@@ -287,8 +287,8 @@ func toHTTPRouteRules(matchers httpRouteRuleMatchers) []gatewayv1.HTTPRouteRule 
 			if matcher.headers != "" {
 				ruleMatch.Headers = lo.Map(strings.Split(matcher.headers, ParamSeparator), func(header string, _ int) gatewayv1.HTTPHeaderMatch {
 					return gatewayv1.HTTPHeaderMatch{
-						Name:  gatewayv1.HTTPHeaderName(header),
-						Type:  common.PtrTo(gatewayv1.HeaderMatchExact),
+						Name: gatewayv1.HTTPHeaderName(header),
+						Type: common.PtrTo(gatewayv1.HeaderMatchExact),
 					}
 				})
 			}
@@ -346,7 +346,7 @@ func operationToHTTPMatchers(operation *openapi3.Operation, relativePath string,
 		parameters = operation.Parameters
 	}
 
-  var expandedServers []openapi3.Server
+	var expandedServers []openapi3.Server
 	for _, server := range servers {
 		expandedServers = append(expandedServers, expandServerVariables(*server)...)
 	}
@@ -380,7 +380,7 @@ func toHTTPMatcher(relativePath string, method string, parameters openapi3.Param
 		}
 		return httpRouteMatcher{
 			protocol: strings.ToLower(protocol),
-			host: uriToHostname(server.URL, 0),
+			host:     uriToHostname(server.URL, 0),
 			httpRouteRuleMatcher: httpRouteRuleMatcher{
 				path:    basePath + relativePath,
 				method:  method,
@@ -422,7 +422,9 @@ func expandServerVariables(server openapi3.Server) []openapi3.Server {
 			}
 			var name string
 			var svar *openapi3.ServerVariable
-			for name, svar = range server.Variables { break }
+			for name, svar = range server.Variables {
+				break
+			}
 			var uris []string
 			for _, enum := range svar.Enum {
 				uri := strings.ReplaceAll(server.URL, "{"+name+"}", enum)
@@ -451,7 +453,7 @@ func expandServerVariables(server openapi3.Server) []openapi3.Server {
 
 func uriToHostname(uri string, _ int) string {
 	host := HostWildcard
-  if s := uriRegexp.FindAllStringSubmatch(uri, 1); len(s) > 0 && s[0][3] != "" {
+	if s := uriRegexp.FindAllStringSubmatch(uri, 1); len(s) > 0 && s[0][3] != "" {
 		host = s[0][3]
 	}
 	return host
