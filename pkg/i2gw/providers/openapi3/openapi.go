@@ -30,6 +30,10 @@ import (
 // The ProviderName returned to the provider's registry.
 const ProviderName = "openapi3"
 
+func init() {
+	i2gw.ProviderConstructorByName[ProviderName] = NewProvider
+}
+
 type Provider struct {
 	storage   Storage
 	converter Converter
@@ -68,10 +72,6 @@ func (p *Provider) ReadResourcesFromFile(ctx context.Context, filename string) e
 // ToGatewayAPI converts stored OpenAPI specs to Gateway API resources.
 func (p *Provider) ToGatewayAPI(_ i2gw.InputResources) (i2gw.GatewayResources, field.ErrorList) {
 	return p.converter.Convert(p.storage)
-}
-
-func init() {
-	i2gw.ProviderConstructorByName[ProviderName] = NewProvider
 }
 
 func readSpecFromFile(ctx context.Context, filename string) (*openapi3.T, error) {
