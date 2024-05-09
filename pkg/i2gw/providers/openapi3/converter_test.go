@@ -50,7 +50,14 @@ func TestFileConvertion(t *testing.T) {
 			return nil
 		}
 
-		provider := NewProvider(&i2gw.ProviderConf{})
+		provider := NewProvider(&i2gw.ProviderConf{
+			ProviderSpecific: map[string]map[string]string{
+				"openapi3": {
+					"backend":            "backend-1",
+					"gateway-class-name": "external",
+				},
+			},
+		})
 
 		err = provider.ReadResourcesFromFile(ctx, path)
 		if err != nil {

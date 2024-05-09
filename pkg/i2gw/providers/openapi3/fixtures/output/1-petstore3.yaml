@@ -3,6 +3,7 @@ kind: Gateway
 metadata:
   name: gateway-1
 spec:
+  gatewayClassName: external
   listeners:
   - name: http
     hostname: "*"
@@ -51,6 +52,8 @@ spec:
       path:
         type: Exact
         value: /api/v3/pet/{petId}/uploadImage
+    backendRefs:
+    - name: backend-1
   - matches:
     - method: GET
       path:
@@ -84,6 +87,8 @@ spec:
       path:
         type: Exact
         value: /api/v3/user/logout
+    backendRefs:
+    - name: backend-1
   - matches:
     - method: DELETE
       path:
@@ -97,5 +102,7 @@ spec:
       path:
         type: Exact
         value: /api/v3/user/{username}
+    backendRefs:
+    - name: backend-1
 status:
   parents: null

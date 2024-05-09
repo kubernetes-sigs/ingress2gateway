@@ -18,6 +18,7 @@ package i2gw
 
 import (
 	"context"
+	"sync"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -43,8 +44,9 @@ type ProviderConstructor func(conf *ProviderConf) Provider
 // ProviderConf contains all the configuration required for every concrete
 // Provider implementation.
 type ProviderConf struct {
-	Client    client.Client
-	Namespace string
+	Client           client.Client
+	Namespace        string
+	ProviderSpecific map[string]map[string]string
 }
 
 // The Provider interface specifies the required functionality which needs to be
@@ -110,3 +112,35 @@ type GatewayResources struct {
 // Different FeatureParsers will run in undetermined order. The function must
 // modify / create only the required fields of the gateway resources and nothing else.
 type FeatureParser func(InputResources, *GatewayResources) field.ErrorList
+
+type ProviderSpecificConf struct {
+	Name         string
+	Description  string
+	DefaultValue string
+}
+
+var (
+	providerSpecificConfs      = map[ProviderName]map[string]ProviderSpecificConf{}
+	providerSpecificConfsMutex = sync.RWMutex{}
+)
+
+// RegisterProviderSpecificConf registers a provider-specific conf.
+// Each provider-specific conf is exposed to the user as a command-line flag, defined as optional.
+// If the flag is not provided, it is up for the provider to decide to use the default value or raise an error.
+// The provider can read the values of provider-specific confs input by the user from the ProviderConf,
+// prefixed by the provider name.
+func RegisterProviderSpecificConf(provider ProviderName, conf ProviderSpecificConf) {
+	providerSpecificConfsMutex.Lock()
+	defer providerSpecificConfsMutex.Unlock()
+	if providerSpecificConfs[provider] == nil {
+		providerSpecificConfs[provider] = map[string]ProviderSpecificConf{}
+	}
+	providerSpecificConfs[provider][conf.Name] = conf
+}
+
+// GetProviderSpecificConfDefinitions returns the provider specific confs registered by the providers.
+func GetProviderSpecificConfDefinitions() map[ProviderName]map[string]ProviderSpecificConf {
+	providerSpecificConfsMutex.RLock()
+	defer providerSpecificConfsMutex.RUnlock()
+	return providerSpecificConfs
+}

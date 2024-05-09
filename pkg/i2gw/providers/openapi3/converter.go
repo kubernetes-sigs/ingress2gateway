@@ -51,11 +51,26 @@ type Converter interface {
 }
 
 // NewConverter returns a converter of OpenAPI Specifications 3.x from a storage into Gateway API resources.
-func NewConverter() Converter {
-	return &converter{}
+func NewConverter(conf *i2gw.ProviderConf) Converter {
+	var backendName, gatewayClassName string
+
+	if ps := conf.ProviderSpecific[ProviderName]; ps != nil {
+		backendName = ps[BackendFlag]
+		gatewayClassName = ps[GatewayClassFlag]
+	}
+
+	return &converter{
+		namespace:        conf.Namespace,
+		backendName:      backendName,
+		gatewayClassName: gatewayClassName,
+	}
 }
 
-type converter struct{}
+type converter struct {
+	namespace        string
+	backendName      string
+	gatewayClassName string
+}
 
 var _ Converter = &converter{}
 
@@ -68,10 +83,11 @@ func (c *converter) Convert(storage Storage) (i2gw.GatewayResources, field.Error
 	var errors field.ErrorList
 
 	for _, spec := range storage.GetResources() {
-		httpRoutes, gateways := toHTTPRoutesAndGateways(spec, errors)
+		httpRoutes, gateways := c.toHTTPRoutesAndGateways(spec, errors)
 		for _, httpRoute := range httpRoutes {
 			gatewayResources.HTTPRoutes[types.NamespacedName{Name: httpRoute.GetName(), Namespace: httpRoute.GetNamespace()}] = httpRoute
 		}
+		// TODO: ReferenceGrants
 		for _, gateway := range gateways {
 			gatewayResources.Gateways[types.NamespacedName{Name: gateway.GetName(), Namespace: gateway.GetNamespace()}] = gateway
 		}
@@ -104,7 +120,7 @@ type httpRouteMatcher struct {
 	httpRouteRuleMatcher
 }
 
-func toHTTPRoutesAndGateways(spec *openapi3.T, errors field.ErrorList) ([]gatewayv1.HTTPRoute, []gatewayv1.Gateway) {
+func (c *converter) toHTTPRoutesAndGateways(spec *openapi3.T, errors field.ErrorList) ([]gatewayv1.HTTPRoute, []gatewayv1.Gateway) {
 	var matchers []httpRouteMatcher
 
 	servers := spec.Servers
@@ -143,10 +159,13 @@ func toHTTPRoutesAndGateways(spec *openapi3.T, errors field.ErrorList) ([]gatewa
 			Name: gatewayName,
 		},
 		Spec: gatewayv1.GatewaySpec{
-			// TODO: gateway class
+			GatewayClassName: gatewayv1.ObjectName(c.gatewayClassName),
 		},
 	}
 	gateway.SetGroupVersionKind(common.GatewayGVK)
+	if c.namespace != "" {
+		gateway.SetNamespace(c.namespace)
+	}
 
 	uniqueListeners := make(map[string]struct{})
 	for _, group := range listenerGroups {
@@ -190,7 +209,7 @@ func toHTTPRoutesAndGateways(spec *openapi3.T, errors field.ErrorList) ([]gatewa
 			if last > nMatchers {
 				last = nMatchers
 			}
-			routes = append(routes, toHTTPRoute(routeName, gatewayName, listenerName, hosts, matchers[j*HTTPRouteMatchesMaxMax:last]))
+			routes = append(routes, c.toHTTPRoute(routeName, gatewayName, listenerName, hosts, matchers[j*HTTPRouteMatchesMaxMax:last]))
 		}
 		i++
 	}
@@ -239,7 +258,7 @@ func toListenerName(protocolAndHostname string) (listenerName gatewayv1.SectionN
 	return gatewayv1.SectionName(listenerNamePrefix + protocol), protocol, hostname
 }
 
-func toHTTPRoute(name, gatewayName string, listenerName gatewayv1.SectionName, hostnames []string, matchers httpRouteRuleMatchers) gatewayv1.HTTPRoute {
+func (c *converter) toHTTPRoute(name, gatewayName string, listenerName gatewayv1.SectionName, hostnames []string, matchers httpRouteRuleMatchers) gatewayv1.HTTPRoute {
 	parentRef := gatewayv1.ParentReference{Name: gatewayv1.ObjectName(gatewayName)}
 	if listenerName != "" {
 		parentRef.SectionName = common.PtrTo(listenerName)
@@ -256,8 +275,11 @@ func toHTTPRoute(name, gatewayName string, listenerName gatewayv1.SectionName, h
 			CommonRouteSpec: gatewayv1.CommonRouteSpec{
 				ParentRefs: []gatewayv1.ParentReference{parentRef},
 			},
-			Rules: toHTTPRouteRules(matchers),
+			Rules: c.toHTTPRouteRules(matchers),
 		},
+	}
+	if c.namespace != "" {
+		route.SetNamespace(c.namespace)
 	}
 	if len(hostnames) > 1 || !slices.Contains(hostnames, HostWildcard) {
 		route.Spec.Hostnames = lo.Map(hostnames, toGatewayAPIHostname)
@@ -265,13 +287,14 @@ func toHTTPRoute(name, gatewayName string, listenerName gatewayv1.SectionName, h
 	return route
 }
 
-func toHTTPRouteRules(matchers httpRouteRuleMatchers) []gatewayv1.HTTPRouteRule {
+func (c *converter) toHTTPRouteRules(matchers httpRouteRuleMatchers) []gatewayv1.HTTPRouteRule {
 	var rules []gatewayv1.HTTPRouteRule
 	nMatches := len(matchers)
 	nRules := nMatches / HTTPRouteMatchesMax
 	if len(matchers)%HTTPRouteMatchesMax != 0 {
 		nRules++
 	}
+	backendRef := c.toBackendRef()
 	for i := 0; i < nRules; i++ {
 		rule := gatewayv1.HTTPRouteRule{}
 		offfset := i * HTTPRouteMatchesMax
@@ -302,10 +325,29 @@ func toHTTPRouteRules(matchers httpRouteRuleMatchers) []gatewayv1.HTTPRouteRule 
 			}
 			rule.Matches = append(rule.Matches, ruleMatch)
 		}
-		// TODO: backendRefs
+
+		rule.BackendRefs = []gatewayv1.HTTPBackendRef{backendRef}
 		rules = append(rules, rule)
 	}
 	return rules
+}
+
+func (c *converter) toBackendRef() gatewayv1.HTTPBackendRef {
+	obj := gatewayv1.BackendObjectReference{}
+
+	backendKey := strings.SplitN(c.backendName, "/", 2)
+	if len(backendKey) == 2 {
+		obj.Name = gatewayv1.ObjectName(backendKey[1])
+		obj.Namespace = common.PtrTo(gatewayv1.Namespace(backendKey[0]))
+	} else {
+		obj.Name = gatewayv1.ObjectName(backendKey[0])
+	}
+
+	return gatewayv1.HTTPBackendRef{
+		BackendRef: gatewayv1.BackendRef{
+			BackendObjectReference: obj,
+		},
+	}
 }
 
 func pathItemToHTTPMatchers(pathItem *openapi3.PathItem, relativePath string, servers openapi3.Servers, errors field.ErrorList) []httpRouteMatcher {

@@ -5,6 +5,7 @@
     "name": "gateway-1"
   },
   "spec": {
+    "gatewayClassName": "external",
     "listeners": [
       {
         "name": "http",
@@ -39,7 +40,8 @@
           { "method": "GET", "path": { "type": "Exact", "value": "/path-006" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-007" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-008" } }
-        ]
+        ],
+        "backendRefs": [{ "name": "backend-1" } ]
       },
       {
         "matches": [
@@ -51,7 +53,8 @@
           { "method": "GET", "path": { "type": "Exact", "value": "/path-014" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-015" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-016" } }
-        ]
+        ],
+        "backendRefs": [{ "name": "backend-1" } ]
       },
       {
         "matches": [
@@ -63,7 +66,8 @@
           { "method": "GET", "path": { "type": "Exact", "value": "/path-022" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-023" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-024" } }
-        ]
+        ],
+        "backendRefs": [{ "name": "backend-1" } ]
       },
       {
         "matches": [
@@ -75,7 +79,8 @@
           { "method": "GET", "path": { "type": "Exact", "value": "/path-030" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-031" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-032" } }
-        ]
+        ],
+        "backendRefs": [{ "name": "backend-1" } ]
       },
       {
         "matches": [
@@ -87,7 +92,8 @@
           { "method": "GET", "path": { "type": "Exact", "value": "/path-038" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-039" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-040" } }
-        ]
+        ],
+        "backendRefs": [{ "name": "backend-1" } ]
       },
       {
         "matches": [
@@ -99,7 +105,8 @@
           { "method": "GET", "path": { "type": "Exact", "value": "/path-046" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-047" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-048" } }
-        ]
+        ],
+        "backendRefs": [{ "name": "backend-1" } ]
       },
       {
         "matches": [
@@ -111,7 +118,8 @@
           { "method": "GET", "path": { "type": "Exact", "value": "/path-054" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-055" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-056" } }
-        ]
+        ],
+        "backendRefs": [{ "name": "backend-1" } ]
       },
       {
         "matches": [
@@ -123,7 +131,8 @@
           { "method": "GET", "path": { "type": "Exact", "value": "/path-062" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-063" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-064" } }
-        ]
+        ],
+        "backendRefs": [{ "name": "backend-1" } ]
       },
       {
         "matches": [
@@ -135,7 +144,8 @@
           { "method": "GET", "path": { "type": "Exact", "value": "/path-070" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-071" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-072" } }
-        ]
+        ],
+        "backendRefs": [{ "name": "backend-1" } ]
       },
       {
         "matches": [
@@ -147,7 +157,8 @@
           { "method": "GET", "path": { "type": "Exact", "value": "/path-078" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-079" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-080" } }
-        ]
+        ],
+        "backendRefs": [{ "name": "backend-1" } ]
       },
       {
         "matches": [
@@ -159,7 +170,8 @@
           { "method": "GET", "path": { "type": "Exact", "value": "/path-086" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-087" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-088" } }
-        ]
+        ],
+        "backendRefs": [{ "name": "backend-1" } ]
       },
       {
         "matches": [
@@ -171,7 +183,8 @@
           { "method": "GET", "path": { "type": "Exact", "value": "/path-094" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-095" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-096" } }
-        ]
+        ],
+        "backendRefs": [{ "name": "backend-1" } ]
       },
       {
         "matches": [
@@ -183,7 +196,8 @@
           { "method": "GET", "path": { "type": "Exact", "value": "/path-102" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-103" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-104" } }
-        ]
+        ],
+        "backendRefs": [{ "name": "backend-1" } ]
       },
       {
         "matches": [
@@ -195,7 +209,8 @@
           { "method": "GET", "path": { "type": "Exact", "value": "/path-110" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-111" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-112" } }
-        ]
+        ],
+        "backendRefs": [{ "name": "backend-1" } ]
       },
       {
         "matches": [
@@ -207,7 +222,8 @@
           { "method": "GET", "path": { "type": "Exact", "value": "/path-118" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-119" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-120" } }
-        ]
+        ],
+        "backendRefs": [{ "name": "backend-1" } ]
       },
       {
         "matches": [
@@ -219,7 +235,8 @@
           { "method": "GET", "path": { "type": "Exact", "value": "/path-126" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-127" } },
           { "method": "GET", "path": { "type": "Exact", "value": "/path-128" } }
-        ]
+        ],
+        "backendRefs": [{ "name": "backend-1" } ]
       }
     ]
   },
@@ -244,7 +261,8 @@
       {
         "matches": [
           { "method": "GET", "path": { "type": "Exact", "value": "/path-129" } }
-        ]
+        ],
+        "backendRefs": [{ "name": "backend-1" } ]
       }
     ]
   },

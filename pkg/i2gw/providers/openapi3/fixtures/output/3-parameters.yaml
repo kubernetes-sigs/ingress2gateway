@@ -3,6 +3,7 @@ kind: Gateway
 metadata:
   name: gateway-1
 spec:
+  gatewayClassName: external
   listeners:
   - name: http
     hostname: "*"
@@ -37,5 +38,7 @@ spec:
       headers:
       - name: digest
         type: Exact
+    backendRefs:
+    - name: backend-1
 status:
   parents: null

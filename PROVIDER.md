@@ -96,7 +96,7 @@ func newConverter(conf *i2gw.ProviderConf) *converter {
 	}
 }
 ```
-4. Create a new struct named after the provider you are implementing. This struct should embed the previous 2 structs 
+4. Create a new struct named after the provider you are implementing. This struct should embed the previous 2 structs
 you created.
 ```go
 package examplegateway
@@ -152,12 +152,12 @@ import (
 In case you want to add support for the conversion of a specific feature within a provider (see for example the canary
 feature of ingress-nginx) you'll want to implement a `FeatureParser` function.
 
-Different `FeatureParsers` within the same provider will run in undetermined order. This means that when building a 
+Different `FeatureParsers` within the same provider will run in undetermined order. This means that when building a
 `Gateway API` resource manifest, you cannot assume anything about previously initialized fields.
 The function must modify / create only the required fields of the resource manifest and nothing else.
 
 For example, lets say we are implementing the canary feature of some provider. When building the `HTTPRoute`, we cannot
-assume that the `BackendRefs` is already initialized with every `BackendRef` required. The canary `FeatureParser` 
+assume that the `BackendRefs` is already initialized with every `BackendRef` required. The canary `FeatureParser`
 function must add every missing `BackendRef` and update existing ones.
 
 ### Testing the feature parser
@@ -166,3 +166,31 @@ There are 2 main things that needs to be tested when creating a feature parser:
 2. The new function doesn't override other functions modifications.
 For example, if one implemented the mirror backend feature and it deletes canary weight from `BackendRefs`, we have a
 problem.
+
+## Provider-specific user input
+To define provider-specific configuration that the user can supply in the `print` command, call the
+`i2gw.RegisterProviderSpecificConf(ProviderName, i2gw.ProviderSpecificConf)` function in the init function of the
+provider. E.g.:
+```go
+const Name = "example-gateway-provider"
+
+func init() {
+	i2gw.ProviderConstructorByName[Name] = NewProvider
+
+	i2gw.RegisterProviderSpecificConf(ProviderName, i2gw.ProviderSpecificConf{
+		Name:         "infrastructure-labels",
+		Description:  "Comma-separated list of Gateway infrastructure key=value labels",
+    DefaultValue: "",
+	})
+}
+```
+Users can supply values the provider-specific configuration flag defined above as follows:
+```sh
+./ingress2gateway print --providers=example-gateway-provider --example-gateway-provider-infrastructure-labels="app=my-app"
+```
+The values all provider-specific flags supplied by the user can be retrieved from the provider `conf`:
+```go
+if ps := conf.ProviderSpecific[ProviderName]; ps != nil {
+  labels := ps["infrastructure-labels"]
+}
+```

@@ -3,6 +3,7 @@ kind: Gateway
 metadata:
   name: gateway-1
 spec:
+  gatewayClassName: external
   listeners:
   - name: http
     hostname: "*"
@@ -45,6 +46,8 @@ spec:
       path:
         type: Exact
         value: /api/v1/resource/{id}
+    backendRefs:
+    - name: backend-1
 status:
   parents: null
 ---
@@ -73,6 +76,8 @@ spec:
       path:
         type: Exact
         value: /v3/status
+    backendRefs:
+    - name: backend-1
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -118,5 +123,7 @@ spec:
       path:
         type: Exact
         value: /v3/resource/{id}
+    backendRefs:
+    - name: backend-1
 status:
   parents: null

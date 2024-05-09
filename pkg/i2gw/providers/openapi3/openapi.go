@@ -27,11 +27,26 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 )
 
-// The ProviderName returned to the provider's registry.
-const ProviderName = "openapi3"
+const (
+	// The ProviderName returned to the provider's registry.
+	ProviderName = "openapi3"
+
+	BackendFlag      = "backend"
+	GatewayClassFlag = "gateway-class-name"
+)
 
 func init() {
 	i2gw.ProviderConstructorByName[ProviderName] = NewProvider
+
+	i2gw.RegisterProviderSpecificConf(ProviderName, i2gw.ProviderSpecificConf{
+		Name:        BackendFlag,
+		Description: "The name of the backend service to use in the HTTPRoutes",
+	})
+
+	i2gw.RegisterProviderSpecificConf(ProviderName, i2gw.ProviderSpecificConf{
+		Name:        GatewayClassFlag,
+		Description: "The name of the gateway class to use in the Gateways",
+	})
 }
 
 type Provider struct {
@@ -42,10 +57,10 @@ type Provider struct {
 var _ i2gw.Provider = &Provider{}
 
 // NewProvider returns an implementation of i2gw.Provider that converts OpenAPI specs to Gateway API resources.
-func NewProvider(_ *i2gw.ProviderConf) i2gw.Provider {
+func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 	return &Provider{
 		storage:   NewResourceStorage(),
-		converter: NewConverter(),
+		converter: NewConverter(conf),
 	}
 }
 

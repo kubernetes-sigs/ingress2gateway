@@ -60,6 +60,9 @@ type PrintRunner struct {
 
 	// providers indicates which providers are used to execute convert action.
 	providers []string
+
+	// Provider specific conf. Value assigned via provider specific flags --<provider>-<conf>.
+	providerSpecificConf map[string]*string
 }
 
 // PrintGatewayAPIObjects performs necessary steps to digest and print
@@ -76,7 +79,18 @@ func (pr *PrintRunner) PrintGatewayAPIObjects(cmd *cobra.Command, _ []string) er
 		return fmt.Errorf("failed to initialize namespace filter: %w", err)
 	}
 
-	gatewayResources, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers)
+	providerSpecificConf := make(map[string]map[string]string)
+	for flagName, value := range pr.providerSpecificConf {
+		parts := strings.SplitN(flagName, "-", 2)
+		provider := parts[0]
+		conf := parts[1]
+		if providerSpecificConf[provider] == nil {
+			providerSpecificConf[provider] = make(map[string]string)
+		}
+		providerSpecificConf[provider][conf] = *value
+	}
+
+	gatewayResources, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers, providerSpecificConf)
 	if err != nil {
 		return err
 	}
@@ -249,6 +263,14 @@ if specified with --namespace.`)
 
 	cmd.Flags().StringSliceVar(&pr.providers, "providers", i2gw.GetSupportedProviders(),
 		fmt.Sprintf("If present, the tool will try to convert only resources related to the specified providers, supported values are %v.", i2gw.GetSupportedProviders()))
+
+	pr.providerSpecificConf = make(map[string]*string)
+	for provider, flags := range i2gw.GetProviderSpecificConfDefinitions() {
+		for _, flag := range flags {
+			flagName := fmt.Sprintf("%s-%s", provider, flag.Name)
+			pr.providerSpecificConf[flagName] = cmd.Flags().String(flagName, flag.DefaultValue, fmt.Sprintf("Provider-specific: %s. %s", provider, flag.Description))
+		}
+	}
 
 	cmd.MarkFlagsMutuallyExclusive("namespace", "all-namespaces")
 	return cmd
