@@ -52,24 +52,24 @@ type Converter interface {
 
 // NewConverter returns a converter of OpenAPI Specifications 3.x from a storage into Gateway API resources.
 func NewConverter(conf *i2gw.ProviderConf) Converter {
-	var backendName, gatewayClassName string
+	converter := &converter{
+		namespace: conf.Namespace,
+	}
 
 	if ps := conf.ProviderSpecific[ProviderName]; ps != nil {
-		backendName = ps[BackendFlag]
-		gatewayClassName = ps[GatewayClassFlag]
+		converter.backendName = ps[BackendFlag]
+		converter.gatewayClassName = ps[GatewayClassFlag]
+		converter.tlsSecretName = ps[TlsSecretFlag]
 	}
 
-	return &converter{
-		namespace:        conf.Namespace,
-		backendName:      backendName,
-		gatewayClassName: gatewayClassName,
-	}
+	return converter
 }
 
 type converter struct {
 	namespace        string
 	backendName      string
 	gatewayClassName string
+	tlsSecretName    string
 }
 
 var _ Converter = &converter{}
@@ -176,7 +176,7 @@ func (c *converter) toHTTPRoutesAndGateways(spec *openapi3.T, errors field.Error
 			}
 			return !exists
 		})
-		gateway.Spec.Listeners = append(gateway.Spec.Listeners, lo.Map(listeners, toListener)...) // TODO: gateways cannot have more than 64 listeners
+		gateway.Spec.Listeners = append(gateway.Spec.Listeners, lo.Map(listeners, c.toListener)...) // TODO: gateways cannot have more than 64 listeners
 	}
 
 	var routes []gatewayv1.HTTPRoute
@@ -217,7 +217,7 @@ func (c *converter) toHTTPRoutesAndGateways(spec *openapi3.T, errors field.Error
 	return routes, []gatewayv1.Gateway{gateway}
 }
 
-func toListener(protocolAndHostname string, _ int) gatewayv1.Listener {
+func (c *converter) toListener(protocolAndHostname string, _ int) gatewayv1.Listener {
 	name, protocol, hostname := toListenerName(protocolAndHostname)
 
 	listener := gatewayv1.Listener{
@@ -231,7 +231,19 @@ func toListener(protocolAndHostname string, _ int) gatewayv1.Listener {
 		listener.Port = 80
 	case "https":
 		listener.Port = 443
-		listener.TLS = &gatewayv1.GatewayTLSConfig{}
+
+		tlsSecretRef := gatewayv1.SecretObjectReference{}
+		tlsSecretKey := strings.SplitN(c.tlsSecretName, "/", 2)
+		if len(tlsSecretKey) == 2 {
+			tlsSecretRef.Namespace = common.PtrTo(gatewayv1.Namespace(tlsSecretKey[0]))
+			tlsSecretRef.Name = gatewayv1.ObjectName(tlsSecretKey[1])
+		} else {
+			tlsSecretRef.Name = gatewayv1.ObjectName(tlsSecretKey[0])
+		}
+
+		listener.TLS = &gatewayv1.GatewayTLSConfig{
+			CertificateRefs: []gatewayv1.SecretObjectReference{tlsSecretRef},
+		}
 	}
 
 	return listener

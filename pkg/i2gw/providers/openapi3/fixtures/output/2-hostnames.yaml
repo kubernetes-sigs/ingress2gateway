@@ -17,7 +17,9 @@ spec:
     hostname: api.example.com
     port: 443
     protocol: HTTPS
-    tls: {}
+    tls:
+      certificateRefs:
+      - name: gateway-tls-cert
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
