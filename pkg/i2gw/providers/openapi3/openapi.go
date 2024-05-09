@@ -85,7 +85,7 @@ func (p *Provider) ReadResourcesFromFile(ctx context.Context, filename string) e
 }
 
 // ToGatewayAPI converts stored OpenAPI specs to Gateway API resources.
-func (p *Provider) ToGatewayAPI(_ i2gw.InputResources) (i2gw.GatewayResources, field.ErrorList) {
+func (p *Provider) ToGatewayAPI() (i2gw.GatewayResources, field.ErrorList) {
 	return p.converter.Convert(p.storage)
 }
 

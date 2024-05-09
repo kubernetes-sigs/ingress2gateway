@@ -29,8 +29,8 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-func canaryFeature(ingressResources i2gw.InputResources, gatewayResources *i2gw.GatewayResources) field.ErrorList {
-	ruleGroups := common.GetRuleGroups(ingressResources.Ingresses)
+func canaryFeature(ingresses []networkingv1.Ingress, gatewayResources *i2gw.GatewayResources) field.ErrorList {
+	ruleGroups := common.GetRuleGroups(ingresses)
 
 	for _, rg := range ruleGroups {
 		ingressPathsByMatchKey, errs := getPathsByMatchGroups(rg)

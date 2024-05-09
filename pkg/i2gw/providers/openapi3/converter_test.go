@@ -64,7 +64,7 @@ func TestFileConvertion(t *testing.T) {
 			t.Fatalf("Failed to read input from file %v: %v", d.Name(), err.Error())
 		}
 
-		gotGatewayResources, errList := provider.ToGatewayAPI(i2gw.InputResources{})
+		gotGatewayResources, errList := provider.ToGatewayAPI()
 		if len(errList) > 0 {
 			t.Fatalf("unexpected errors during input conversion for file %v: %v", d.Name(), errList.ToAggregate().Error())
 		}
