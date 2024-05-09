@@ -1,0 +1,67 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: gateway-1
+  namespace: networking
+spec:
+  gatewayClassName: external
+  listeners:
+  - name: api-example-com-https
+    hostname: api.example.com
+    port: 443
+    protocol: HTTPS
+    tls:
+      certificateRefs:
+      - name: gateway-tls-cert
+        namespace: secrets
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: from-networking-to-secret-gateway-tls-cert
+  namespace: secrets
+spec:
+  from:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    namespace: networking
+  to:
+  - kind: Secret
+    name: gateway-tls-cert
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  creationTimestamp: null
+  name: route-1-1
+  namespace: networking
+spec:
+  parentRefs:
+  - name: gateway-1
+  hostnames:
+  - api.example.com
+  rules:
+  - matches:
+    - method: POST
+      path:
+        type: Exact
+        value: /resources
+    backendRefs:
+    - name: backend-1
+      namespace: apps
+status:
+  parents: null
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: from-networking-to-service-backend-1
+  namespace: apps
+spec:
+  from:
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    namespace: networking
+  to:
+  - kind: Service
+    name: backend-1

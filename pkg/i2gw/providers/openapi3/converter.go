@@ -26,9 +26,11 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/samber/lo"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
@@ -53,13 +55,15 @@ type Converter interface {
 // NewConverter returns a converter of OpenAPI Specifications 3.x from a storage into Gateway API resources.
 func NewConverter(conf *i2gw.ProviderConf) Converter {
 	converter := &converter{
-		namespace: conf.Namespace,
+		namespace:    conf.Namespace,
+		tlsSecretRef: &types.NamespacedName{},
+		backendRef:   &types.NamespacedName{},
 	}
 
 	if ps := conf.ProviderSpecific[ProviderName]; ps != nil {
-		converter.backendName = ps[BackendFlag]
 		converter.gatewayClassName = ps[GatewayClassFlag]
-		converter.tlsSecretName = ps[TlsSecretFlag]
+		converter.tlsSecretRef = toNamespacedName(ps[TlsSecretFlag])
+		converter.backendRef = toNamespacedName(ps[BackendFlag])
 	}
 
 	return converter
@@ -67,17 +71,18 @@ func NewConverter(conf *i2gw.ProviderConf) Converter {
 
 type converter struct {
 	namespace        string
-	backendName      string
 	gatewayClassName string
-	tlsSecretName    string
+	tlsSecretRef     *types.NamespacedName
+	backendRef       *types.NamespacedName
 }
 
 var _ Converter = &converter{}
 
 func (c *converter) Convert(storage Storage) (i2gw.GatewayResources, field.ErrorList) {
 	gatewayResources := i2gw.GatewayResources{
-		Gateways:   make(map[types.NamespacedName]gatewayv1.Gateway),
-		HTTPRoutes: make(map[types.NamespacedName]gatewayv1.HTTPRoute),
+		Gateways:        make(map[types.NamespacedName]gatewayv1.Gateway),
+		HTTPRoutes:      make(map[types.NamespacedName]gatewayv1.HTTPRoute),
+		ReferenceGrants: make(map[types.NamespacedName]gatewayv1beta1.ReferenceGrant),
 	}
 
 	var errors field.ErrorList
@@ -87,9 +92,14 @@ func (c *converter) Convert(storage Storage) (i2gw.GatewayResources, field.Error
 		for _, httpRoute := range httpRoutes {
 			gatewayResources.HTTPRoutes[types.NamespacedName{Name: httpRoute.GetName(), Namespace: httpRoute.GetNamespace()}] = httpRoute
 		}
-		// TODO: ReferenceGrants
+		if referenceGrant := c.buildHTTPRouteBackendReferenceGrant(); referenceGrant != nil {
+			gatewayResources.ReferenceGrants[types.NamespacedName{Name: referenceGrant.GetName(), Namespace: referenceGrant.GetNamespace()}] = *referenceGrant
+		}
 		for _, gateway := range gateways {
 			gatewayResources.Gateways[types.NamespacedName{Name: gateway.GetName(), Namespace: gateway.GetNamespace()}] = gateway
+			if referenceGrant := c.buildGatewayTlsSecretReferenceGrant(gateway); referenceGrant != nil {
+				gatewayResources.ReferenceGrants[types.NamespacedName{Name: referenceGrant.GetName(), Namespace: referenceGrant.GetNamespace()}] = *referenceGrant
+			}
 		}
 	}
 
@@ -232,13 +242,11 @@ func (c *converter) toListener(protocolAndHostname string, _ int) gatewayv1.List
 	case "https":
 		listener.Port = 443
 
-		tlsSecretRef := gatewayv1.SecretObjectReference{}
-		tlsSecretKey := strings.SplitN(c.tlsSecretName, "/", 2)
-		if len(tlsSecretKey) == 2 {
-			tlsSecretRef.Namespace = common.PtrTo(gatewayv1.Namespace(tlsSecretKey[0]))
-			tlsSecretRef.Name = gatewayv1.ObjectName(tlsSecretKey[1])
-		} else {
-			tlsSecretRef.Name = gatewayv1.ObjectName(tlsSecretKey[0])
+		tlsSecretRef := gatewayv1.SecretObjectReference{
+			Name: gatewayv1.ObjectName(c.tlsSecretRef.Name),
+		}
+		if c.tlsSecretRef.Namespace != "" {
+			tlsSecretRef.Namespace = common.PtrTo(gatewayv1.Namespace(c.tlsSecretRef.Namespace))
 		}
 
 		listener.TLS = &gatewayv1.GatewayTLSConfig{
@@ -306,7 +314,11 @@ func (c *converter) toHTTPRouteRules(matchers httpRouteRuleMatchers) []gatewayv1
 	if len(matchers)%HTTPRouteMatchesMax != 0 {
 		nRules++
 	}
-	backendRef := c.toBackendRef()
+
+	backendObjectReference := gatewayv1.BackendObjectReference{Name: gatewayv1.ObjectName(c.backendRef.Name)}
+	if c.backendRef.Namespace != "" {
+		backendObjectReference.Namespace = common.PtrTo(gatewayv1.Namespace(c.backendRef.Namespace))
+	}
 	for i := 0; i < nRules; i++ {
 		rule := gatewayv1.HTTPRouteRule{}
 		offfset := i * HTTPRouteMatchesMax
@@ -338,28 +350,16 @@ func (c *converter) toHTTPRouteRules(matchers httpRouteRuleMatchers) []gatewayv1
 			rule.Matches = append(rule.Matches, ruleMatch)
 		}
 
-		rule.BackendRefs = []gatewayv1.HTTPBackendRef{backendRef}
+		rule.BackendRefs = []gatewayv1.HTTPBackendRef{
+			gatewayv1.HTTPBackendRef{
+				BackendRef: gatewayv1.BackendRef{
+					BackendObjectReference: backendObjectReference,
+				},
+			},
+		}
 		rules = append(rules, rule)
 	}
 	return rules
-}
-
-func (c *converter) toBackendRef() gatewayv1.HTTPBackendRef {
-	obj := gatewayv1.BackendObjectReference{}
-
-	backendKey := strings.SplitN(c.backendName, "/", 2)
-	if len(backendKey) == 2 {
-		obj.Name = gatewayv1.ObjectName(backendKey[1])
-		obj.Namespace = common.PtrTo(gatewayv1.Namespace(backendKey[0]))
-	} else {
-		obj.Name = gatewayv1.ObjectName(backendKey[0])
-	}
-
-	return gatewayv1.HTTPBackendRef{
-		BackendRef: gatewayv1.BackendRef{
-			BackendObjectReference: obj,
-		},
-	}
 }
 
 func pathItemToHTTPMatchers(pathItem *openapi3.PathItem, relativePath string, servers openapi3.Servers, errors field.ErrorList) []httpRouteMatcher {
@@ -445,6 +445,46 @@ func toHTTPMatcher(relativePath string, method string, parameters openapi3.Param
 	}
 }
 
+func (c *converter) buildHTTPRouteBackendReferenceGrant() *gatewayv1beta1.ReferenceGrant {
+	return c.buildReferenceGrant(common.HTTPRouteGVK, gatewayv1.Kind("Service"), c.backendRef)
+}
+
+func (c *converter) buildGatewayTlsSecretReferenceGrant(gateway gatewayv1.Gateway) *gatewayv1beta1.ReferenceGrant {
+	if slices.IndexFunc(gateway.Spec.Listeners, func(listener gatewayv1.Listener) bool { return listener.TLS != nil }) == -1 {
+		return nil
+	}
+	return c.buildReferenceGrant(common.GatewayGVK, gatewayv1.Kind("Secret"), c.tlsSecretRef)
+}
+
+func (c *converter) buildReferenceGrant(fromGVK schema.GroupVersionKind, toKind gatewayv1.Kind, toRef *types.NamespacedName) *gatewayv1beta1.ReferenceGrant {
+	if c.namespace == "" || toRef.Namespace == "" {
+		return nil
+	}
+	rg := &gatewayv1beta1.ReferenceGrant{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("from-%s-to-%s-%s", c.namespace, strings.ToLower(string(toKind)), toRef.Name),
+			Namespace: toRef.Namespace,
+		},
+		Spec: gatewayv1beta1.ReferenceGrantSpec{
+			From: []gatewayv1beta1.ReferenceGrantFrom{
+				{
+					Group:     gatewayv1.Group(fromGVK.Group),
+					Kind:      gatewayv1.Kind(fromGVK.Kind),
+					Namespace: gatewayv1.Namespace(c.namespace),
+				},
+			},
+			To: []gatewayv1beta1.ReferenceGrantTo{
+				{
+					Kind: toKind,
+					Name: common.PtrTo(gatewayv1.ObjectName(toRef.Name)),
+				},
+			},
+		},
+	}
+	rg.SetGroupVersionKind(common.ReferenceGrantGVK)
+	return rg
+}
+
 func expandNonEnumServerVariables(server openapi3.Server) openapi3.Server {
 	if len(server.Variables) == 0 {
 		return server
@@ -515,4 +555,15 @@ func uriToHostname(uri string, _ int) string {
 
 func toGatewayAPIHostname(hostname string, _ int) gatewayv1.Hostname {
 	return gatewayv1.Hostname(hostname)
+}
+
+func toNamespacedName(s string) *types.NamespacedName {
+	if s == "" {
+		return nil
+	}
+	parts := strings.SplitN(s, "/", 2)
+	if len(parts) == 1 {
+		return &types.NamespacedName{Name: parts[0]}
+	}
+	return &types.NamespacedName{Namespace: parts[0], Name: parts[1]}
 }

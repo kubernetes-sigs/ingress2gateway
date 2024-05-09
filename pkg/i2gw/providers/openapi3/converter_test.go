@@ -23,6 +23,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -42,6 +43,28 @@ const fixturesDir = "./fixtures"
 func TestFileConvertion(t *testing.T) {
 	ctx := context.Background()
 
+	providerConf := map[string]*i2gw.ProviderConf{
+		"default": &i2gw.ProviderConf{
+			ProviderSpecific: map[string]map[string]string{
+				"openapi3": {
+					"gateway-class-name": "external",
+					"gateway-tls-secret": "gateway-tls-cert",
+					"backend":            "backend-1",
+				},
+			},
+		},
+		"reference-grants.yaml": &i2gw.ProviderConf{
+			Namespace: "networking",
+			ProviderSpecific: map[string]map[string]string{
+				"openapi3": {
+					"gateway-class-name": "external",
+					"gateway-tls-secret": "secrets/gateway-tls-cert",
+					"backend":            "apps/backend-1",
+				},
+			},
+		},
+	}
+
 	filepath.WalkDir(filepath.Join(fixturesDir, "input"), func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			t.Fatalf(err.Error())
@@ -50,15 +73,11 @@ func TestFileConvertion(t *testing.T) {
 			return nil
 		}
 
-		provider := NewProvider(&i2gw.ProviderConf{
-			ProviderSpecific: map[string]map[string]string{
-				"openapi3": {
-					"backend":            "backend-1",
-					"gateway-class-name": "external",
-					"gateway-tls-secret": "gateway-tls-cert",
-				},
-			},
-		})
+		conf, ok := providerConf[regexp.MustCompile(`\d+-(.+\.(json|yaml))$`).FindAllStringSubmatch(d.Name(), -1)[0][1]]
+		if !ok {
+			conf = providerConf["default"]
+		}
+		provider := NewProvider(conf)
 
 		err = provider.ReadResourcesFromFile(ctx, path)
 		if err != nil {
