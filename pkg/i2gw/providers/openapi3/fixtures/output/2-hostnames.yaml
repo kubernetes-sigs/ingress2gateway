@@ -1,7 +1,7 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: gateway-1
+  name: sample-api-gateway
 spec:
   gatewayClassName: external
   listeners:
@@ -25,10 +25,10 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   creationTimestamp: null
-  name: route-1-1
+  name: sample-api-route-1
 spec:
   parentRefs:
-  - name: gateway-1
+  - name: sample-api-gateway
     sectionName: http
   rules:
   - matches:
@@ -57,10 +57,10 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   creationTimestamp: null
-  name: route-2-1
+  name: sample-api-route-2
 spec:
   parentRefs:
-  - name: gateway-1
+  - name: sample-api-gateway
     sectionName: api-example-com-http
   hostnames:
   - api.example.com
@@ -85,12 +85,12 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   creationTimestamp: null
-  name: route-3-1
+  name: sample-api-route-3
 spec:
   hostnames:
   - api.example.com
   parentRefs:
-  - name: gateway-1
+  - name: sample-api-gateway
   rules:
   - matches:
     - method: POST

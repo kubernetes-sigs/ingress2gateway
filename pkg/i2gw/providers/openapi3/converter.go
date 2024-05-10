@@ -86,9 +86,19 @@ func (c *converter) Convert(storage Storage) (i2gw.GatewayResources, field.Error
 	}
 
 	var errors field.ErrorList
+	resourcesNamePrefixes := make(map[string]int)
 
 	for _, spec := range storage.GetResources() {
-		httpRoutes, gateways := c.toHTTPRoutesAndGateways(spec, errors)
+		resourcesNamePrefix := toResourcesNamePrefix(spec)
+		if _, exists := resourcesNamePrefixes[resourcesNamePrefix]; !exists {
+			resourcesNamePrefixes[resourcesNamePrefix] = 0
+		}
+		resourcesNamePrefixes[resourcesNamePrefix]++
+		if resourcesNamePrefixes[resourcesNamePrefix] > 1 {
+			resourcesNamePrefix = fmt.Sprintf("%s-%d", resourcesNamePrefix, resourcesNamePrefixes[resourcesNamePrefix]+1)
+		}
+
+		httpRoutes, gateways := c.toHTTPRoutesAndGateways(spec, resourcesNamePrefix, errors)
 		for _, httpRoute := range httpRoutes {
 			gatewayResources.HTTPRoutes[types.NamespacedName{Name: httpRoute.GetName(), Namespace: httpRoute.GetNamespace()}] = httpRoute
 		}
@@ -106,31 +116,7 @@ func (c *converter) Convert(storage Storage) (i2gw.GatewayResources, field.Error
 	return gatewayResources, errors
 }
 
-type httpRouteRuleMatcher struct {
-	path    string
-	method  string
-	headers string
-	params  string
-}
-
-type httpRouteRuleMatchers []httpRouteRuleMatcher
-
-func (m httpRouteRuleMatchers) Len() int      { return len(m) }
-func (m httpRouteRuleMatchers) Swap(i, j int) { m[i], m[j] = m[j], m[i] }
-func (m httpRouteRuleMatchers) Less(i, j int) bool {
-	if m[i].path != m[j].path {
-		return m[i].path < m[j].path
-	}
-	return m[i].method < m[j].method
-}
-
-type httpRouteMatcher struct {
-	protocol string
-	host     string
-	httpRouteRuleMatcher
-}
-
-func (c *converter) toHTTPRoutesAndGateways(spec *openapi3.T, errors field.ErrorList) ([]gatewayv1.HTTPRoute, []gatewayv1.Gateway) {
+func (c *converter) toHTTPRoutesAndGateways(spec *openapi3.T, resourcesNamePrefix string, errors field.ErrorList) ([]gatewayv1.HTTPRoute, []gatewayv1.Gateway) {
 	var matchers []httpRouteMatcher
 
 	servers := spec.Servers
@@ -163,7 +149,7 @@ func (c *converter) toHTTPRoutesAndGateways(spec *openapi3.T, errors field.Error
 	// sort listener groups for deterministic output
 	sort.Strings(listenerGroups)
 
-	gatewayName := "gateway-1" // TODO: name the gateway after the spec
+	gatewayName := fmt.Sprintf("%s-gateway", resourcesNamePrefix)
 	gateway := gatewayv1.Gateway{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: gatewayName,
@@ -191,6 +177,19 @@ func (c *converter) toHTTPRoutesAndGateways(spec *openapi3.T, errors field.Error
 
 	var routes []gatewayv1.HTTPRoute
 
+	backendRefs := []gatewayv1.HTTPBackendRef{
+		gatewayv1.HTTPBackendRef{
+			BackendRef: gatewayv1.BackendRef{
+				BackendObjectReference: gatewayv1.BackendObjectReference{
+					Name: gatewayv1.ObjectName(c.backendRef.Name),
+				},
+			},
+		},
+	}
+	if c.backendRef.Namespace != "" {
+		backendRefs[0].BackendRef.BackendObjectReference.Namespace = common.PtrTo(gatewayv1.Namespace(c.backendRef.Namespace))
+	}
+
 	i := 0
 	for _, group := range listenerGroups {
 		listeners := strings.Split(group, HostSeparator)
@@ -213,13 +212,18 @@ func (c *converter) toHTTPRoutesAndGateways(spec *openapi3.T, errors field.Error
 			nRoutes++
 		}
 		for j := 0; j < nRoutes; j++ {
-			routeName := fmt.Sprintf("route-%d-%d", i+1, j+1)
-			// TODO: name the route after the spec
+			routeName := fmt.Sprintf("%s-route", resourcesNamePrefix)
+			if len(listenerGroups) > 1 {
+				routeName = fmt.Sprintf("%s-%d", routeName, i+1)
+			}
+			if nRoutes > 1 {
+				routeName = fmt.Sprintf("%s-%d", routeName, j+1)
+			}
 			last := (j + 1) * HTTPRouteMatchesMaxMax
 			if last > nMatchers {
 				last = nMatchers
 			}
-			routes = append(routes, c.toHTTPRoute(routeName, gatewayName, listenerName, hosts, matchers[j*HTTPRouteMatchesMaxMax:last]))
+			routes = append(routes, c.toHTTPRoute(routeName, gatewayName, listenerName, hosts, matchers[j*HTTPRouteMatchesMaxMax:last], backendRefs))
 		}
 		i++
 	}
@@ -278,7 +282,7 @@ func toListenerName(protocolAndHostname string) (listenerName gatewayv1.SectionN
 	return gatewayv1.SectionName(listenerNamePrefix + protocol), protocol, hostname
 }
 
-func (c *converter) toHTTPRoute(name, gatewayName string, listenerName gatewayv1.SectionName, hostnames []string, matchers httpRouteRuleMatchers) gatewayv1.HTTPRoute {
+func (c *converter) toHTTPRoute(name, gatewayName string, listenerName gatewayv1.SectionName, hostnames []string, matchers httpRouteRuleMatchers, backendRefs []gatewayv1.HTTPBackendRef) gatewayv1.HTTPRoute {
 	parentRef := gatewayv1.ParentReference{Name: gatewayv1.ObjectName(gatewayName)}
 	if listenerName != "" {
 		parentRef.SectionName = common.PtrTo(listenerName)
@@ -295,7 +299,7 @@ func (c *converter) toHTTPRoute(name, gatewayName string, listenerName gatewayv1
 			CommonRouteSpec: gatewayv1.CommonRouteSpec{
 				ParentRefs: []gatewayv1.ParentReference{parentRef},
 			},
-			Rules: c.toHTTPRouteRules(matchers),
+			Rules: toHTTPRouteRules(matchers, backendRefs),
 		},
 	}
 	if c.namespace != "" {
@@ -307,7 +311,71 @@ func (c *converter) toHTTPRoute(name, gatewayName string, listenerName gatewayv1
 	return route
 }
 
-func (c *converter) toHTTPRouteRules(matchers httpRouteRuleMatchers) []gatewayv1.HTTPRouteRule {
+func (c *converter) buildHTTPRouteBackendReferenceGrant() *gatewayv1beta1.ReferenceGrant {
+	return c.buildReferenceGrant(common.HTTPRouteGVK, gatewayv1.Kind("Service"), c.backendRef)
+}
+
+func (c *converter) buildGatewayTlsSecretReferenceGrant(gateway gatewayv1.Gateway) *gatewayv1beta1.ReferenceGrant {
+	if slices.IndexFunc(gateway.Spec.Listeners, func(listener gatewayv1.Listener) bool { return listener.TLS != nil }) == -1 {
+		return nil
+	}
+	return c.buildReferenceGrant(common.GatewayGVK, gatewayv1.Kind("Secret"), c.tlsSecretRef)
+}
+
+func (c *converter) buildReferenceGrant(fromGVK schema.GroupVersionKind, toKind gatewayv1.Kind, toRef *types.NamespacedName) *gatewayv1beta1.ReferenceGrant {
+	if c.namespace == "" || toRef.Namespace == "" {
+		return nil
+	}
+	rg := &gatewayv1beta1.ReferenceGrant{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("from-%s-to-%s-%s", c.namespace, strings.ToLower(string(toKind)), toRef.Name),
+			Namespace: toRef.Namespace,
+		},
+		Spec: gatewayv1beta1.ReferenceGrantSpec{
+			From: []gatewayv1beta1.ReferenceGrantFrom{
+				{
+					Group:     gatewayv1.Group(fromGVK.Group),
+					Kind:      gatewayv1.Kind(fromGVK.Kind),
+					Namespace: gatewayv1.Namespace(c.namespace),
+				},
+			},
+			To: []gatewayv1beta1.ReferenceGrantTo{
+				{
+					Kind: toKind,
+					Name: common.PtrTo(gatewayv1.ObjectName(toRef.Name)),
+				},
+			},
+		},
+	}
+	rg.SetGroupVersionKind(common.ReferenceGrantGVK)
+	return rg
+}
+
+type httpRouteRuleMatcher struct {
+	path    string
+	method  string
+	headers string
+	params  string
+}
+
+type httpRouteRuleMatchers []httpRouteRuleMatcher
+
+func (m httpRouteRuleMatchers) Len() int      { return len(m) }
+func (m httpRouteRuleMatchers) Swap(i, j int) { m[i], m[j] = m[j], m[i] }
+func (m httpRouteRuleMatchers) Less(i, j int) bool {
+	if m[i].path != m[j].path {
+		return m[i].path < m[j].path
+	}
+	return m[i].method < m[j].method
+}
+
+type httpRouteMatcher struct {
+	protocol string
+	host     string
+	httpRouteRuleMatcher
+}
+
+func toHTTPRouteRules(matchers httpRouteRuleMatchers, backendRefs []gatewayv1.HTTPBackendRef) []gatewayv1.HTTPRouteRule {
 	var rules []gatewayv1.HTTPRouteRule
 	nMatches := len(matchers)
 	nRules := nMatches / HTTPRouteMatchesMax
@@ -315,12 +383,10 @@ func (c *converter) toHTTPRouteRules(matchers httpRouteRuleMatchers) []gatewayv1
 		nRules++
 	}
 
-	backendObjectReference := gatewayv1.BackendObjectReference{Name: gatewayv1.ObjectName(c.backendRef.Name)}
-	if c.backendRef.Namespace != "" {
-		backendObjectReference.Namespace = common.PtrTo(gatewayv1.Namespace(c.backendRef.Namespace))
-	}
 	for i := 0; i < nRules; i++ {
-		rule := gatewayv1.HTTPRouteRule{}
+		rule := gatewayv1.HTTPRouteRule{
+			BackendRefs: backendRefs,
+		}
 		offfset := i * HTTPRouteMatchesMax
 		for j := 0; j < HTTPRouteMatchesMax && offfset+j < nMatches; j++ {
 			matcher := matchers[offfset+j]
@@ -348,14 +414,6 @@ func (c *converter) toHTTPRouteRules(matchers httpRouteRuleMatchers) []gatewayv1
 				})
 			}
 			rule.Matches = append(rule.Matches, ruleMatch)
-		}
-
-		rule.BackendRefs = []gatewayv1.HTTPBackendRef{
-			gatewayv1.HTTPBackendRef{
-				BackendRef: gatewayv1.BackendRef{
-					BackendObjectReference: backendObjectReference,
-				},
-			},
 		}
 		rules = append(rules, rule)
 	}
@@ -445,46 +503,6 @@ func toHTTPMatcher(relativePath string, method string, parameters openapi3.Param
 	}
 }
 
-func (c *converter) buildHTTPRouteBackendReferenceGrant() *gatewayv1beta1.ReferenceGrant {
-	return c.buildReferenceGrant(common.HTTPRouteGVK, gatewayv1.Kind("Service"), c.backendRef)
-}
-
-func (c *converter) buildGatewayTlsSecretReferenceGrant(gateway gatewayv1.Gateway) *gatewayv1beta1.ReferenceGrant {
-	if slices.IndexFunc(gateway.Spec.Listeners, func(listener gatewayv1.Listener) bool { return listener.TLS != nil }) == -1 {
-		return nil
-	}
-	return c.buildReferenceGrant(common.GatewayGVK, gatewayv1.Kind("Secret"), c.tlsSecretRef)
-}
-
-func (c *converter) buildReferenceGrant(fromGVK schema.GroupVersionKind, toKind gatewayv1.Kind, toRef *types.NamespacedName) *gatewayv1beta1.ReferenceGrant {
-	if c.namespace == "" || toRef.Namespace == "" {
-		return nil
-	}
-	rg := &gatewayv1beta1.ReferenceGrant{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("from-%s-to-%s-%s", c.namespace, strings.ToLower(string(toKind)), toRef.Name),
-			Namespace: toRef.Namespace,
-		},
-		Spec: gatewayv1beta1.ReferenceGrantSpec{
-			From: []gatewayv1beta1.ReferenceGrantFrom{
-				{
-					Group:     gatewayv1.Group(fromGVK.Group),
-					Kind:      gatewayv1.Kind(fromGVK.Kind),
-					Namespace: gatewayv1.Namespace(c.namespace),
-				},
-			},
-			To: []gatewayv1beta1.ReferenceGrantTo{
-				{
-					Kind: toKind,
-					Name: common.PtrTo(gatewayv1.ObjectName(toRef.Name)),
-				},
-			},
-		},
-	}
-	rg.SetGroupVersionKind(common.ReferenceGrantGVK)
-	return rg
-}
-
 func expandNonEnumServerVariables(server openapi3.Server) openapi3.Server {
 	if len(server.Variables) == 0 {
 		return server
@@ -555,6 +573,10 @@ func uriToHostname(uri string, _ int) string {
 
 func toGatewayAPIHostname(hostname string, _ int) gatewayv1.Hostname {
 	return gatewayv1.Hostname(hostname)
+}
+
+func toResourcesNamePrefix(spec *openapi3.T) string {
+	return strings.ToLower(common.NameFromHost(spec.Info.Title))
 }
 
 func toNamespacedName(s string) *types.NamespacedName {

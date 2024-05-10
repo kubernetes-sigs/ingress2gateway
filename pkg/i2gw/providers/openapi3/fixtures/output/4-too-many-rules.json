@@ -2,7 +2,7 @@
   "apiVersion": "gateway.networking.k8s.io/v1",
   "kind": "Gateway",
   "metadata": {
-    "name": "gateway-1"
+    "name": "sample-api-gateway"
   },
   "spec": {
     "gatewayClassName": "external",
@@ -21,12 +21,12 @@
   "kind": "HTTPRoute",
   "metadata": {
     "creationTimestamp": null,
-    "name": "route-1-1"
+    "name": "sample-api-route-1"
   },
   "spec": {
     "parentRefs": [
       {
-        "name": "gateway-1"
+        "name": "sample-api-gateway"
       }
     ],
     "rules": [
@@ -249,12 +249,12 @@
   "kind": "HTTPRoute",
   "metadata": {
     "creationTimestamp": null,
-    "name": "route-1-2"
+    "name": "sample-api-route-2"
   },
   "spec": {
     "parentRefs": [
       {
-        "name": "gateway-1"
+        "name": "sample-api-gateway"
       }
     ],
     "rules": [
