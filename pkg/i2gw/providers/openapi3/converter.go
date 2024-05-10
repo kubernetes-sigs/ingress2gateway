@@ -56,8 +56,8 @@ type Converter interface {
 func NewConverter(conf *i2gw.ProviderConf) Converter {
 	converter := &converter{
 		namespace:    conf.Namespace,
-		tlsSecretRef: &types.NamespacedName{},
-		backendRef:   &types.NamespacedName{},
+		tlsSecretRef: types.NamespacedName{},
+		backendRef:   types.NamespacedName{},
 	}
 
 	if ps := conf.ProviderSpecific[ProviderName]; ps != nil {
@@ -72,8 +72,8 @@ func NewConverter(conf *i2gw.ProviderConf) Converter {
 type converter struct {
 	namespace        string
 	gatewayClassName string
-	tlsSecretRef     *types.NamespacedName
-	backendRef       *types.NamespacedName
+	tlsSecretRef     types.NamespacedName
+	backendRef       types.NamespacedName
 }
 
 var _ Converter = &converter{}
@@ -322,7 +322,7 @@ func (c *converter) buildGatewayTlsSecretReferenceGrant(gateway gatewayv1.Gatewa
 	return c.buildReferenceGrant(common.GatewayGVK, gatewayv1.Kind("Secret"), c.tlsSecretRef)
 }
 
-func (c *converter) buildReferenceGrant(fromGVK schema.GroupVersionKind, toKind gatewayv1.Kind, toRef *types.NamespacedName) *gatewayv1beta1.ReferenceGrant {
+func (c *converter) buildReferenceGrant(fromGVK schema.GroupVersionKind, toKind gatewayv1.Kind, toRef types.NamespacedName) *gatewayv1beta1.ReferenceGrant {
 	if c.namespace == "" || toRef.Namespace == "" {
 		return nil
 	}
@@ -579,13 +579,13 @@ func toResourcesNamePrefix(spec *openapi3.T) string {
 	return strings.ToLower(common.NameFromHost(spec.Info.Title))
 }
 
-func toNamespacedName(s string) *types.NamespacedName {
+func toNamespacedName(s string) types.NamespacedName {
 	if s == "" {
-		return nil
+		return types.NamespacedName{}
 	}
 	parts := strings.SplitN(s, "/", 2)
 	if len(parts) == 1 {
-		return &types.NamespacedName{Name: parts[0]}
+		return types.NamespacedName{Name: parts[0]}
 	}
-	return &types.NamespacedName{Namespace: parts[0], Name: parts[1]}
+	return types.NamespacedName{Namespace: parts[0], Name: parts[1]}
 }
