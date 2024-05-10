@@ -114,6 +114,7 @@ Ingress2gateway also supports translating provider-specific resources and ingres
 - [ingress-nginx](pkg/i2gw/providers/ingressnginx/README.md)
 - [kong](pkg/i2gw/providers/kong/README.md)
 - [istio](pkg/i2gw/providers/istio/README.md)
+- [apisix](pkg/i2gw/providers/apisix/README.md)
 
 If your provider, or a specific feature, is not currently supported, please open an issue and describe your use case.
 
