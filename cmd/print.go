@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/samber/lo"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
@@ -79,18 +80,7 @@ func (pr *PrintRunner) PrintGatewayAPIObjects(cmd *cobra.Command, _ []string) er
 		return fmt.Errorf("failed to initialize namespace filter: %w", err)
 	}
 
-	providerSpecificConf := make(map[string]map[string]string)
-	for flagName, value := range pr.providerSpecificConf {
-		parts := strings.SplitN(flagName, "-", 2)
-		provider := parts[0]
-		conf := parts[1]
-		if providerSpecificConf[provider] == nil {
-			providerSpecificConf[provider] = make(map[string]string)
-		}
-		providerSpecificConf[provider][conf] = *value
-	}
-
-	gatewayResources, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers, providerSpecificConf)
+	gatewayResources, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers, pr.getProviderSpecificConf())
 	if err != nil {
 		return err
 	}
@@ -284,4 +274,20 @@ func getNamespaceInCurrentContext() (string, error) {
 	currentNamespace, _, err := kubeConfig.Namespace()
 
 	return currentNamespace, err
+}
+
+func (pr *PrintRunner) getProviderSpecificConf() map[string]map[string]string {
+	providerSpecificConf := make(map[string]map[string]string)
+	for flagName, value := range pr.providerSpecificConf {
+		provider, found := lo.Find(pr.providers, func(p string) bool { return strings.HasPrefix(flagName, p+"-") })
+		if !found {
+			continue
+		}
+		conf := strings.SplitN(flagName, provider+"-", 2)[1]
+		if providerSpecificConf[provider] == nil {
+			providerSpecificConf[provider] = make(map[string]string)
+		}
+		providerSpecificConf[provider][conf] = *value
+	}
+	return providerSpecificConf
 }
