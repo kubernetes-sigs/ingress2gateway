@@ -18,9 +18,11 @@ package openapi3
 
 import (
 	"fmt"
+	"log"
 	"regexp"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -57,23 +59,28 @@ func NewConverter(conf *i2gw.ProviderConf) Converter {
 	converter := &converter{
 		namespace:    conf.Namespace,
 		tlsSecretRef: types.NamespacedName{},
-		backendRef:   types.NamespacedName{},
+		backendRef:   toBackendRef(""),
 	}
 
 	if ps := conf.ProviderSpecific[ProviderName]; ps != nil {
 		converter.gatewayClassName = ps[GatewayClassFlag]
 		converter.tlsSecretRef = toNamespacedName(ps[TlsSecretFlag])
-		converter.backendRef = toNamespacedName(ps[BackendFlag])
+		converter.backendRef = toBackendRef(ps[BackendFlag])
 	}
 
 	return converter
+}
+
+type backendRef struct {
+	types.NamespacedName
+	port *gatewayv1.PortNumber
 }
 
 type converter struct {
 	namespace        string
 	gatewayClassName string
 	tlsSecretRef     types.NamespacedName
-	backendRef       types.NamespacedName
+	backendRef       backendRef
 }
 
 var _ Converter = &converter{}
@@ -186,8 +193,11 @@ func (c *converter) toHTTPRoutesAndGateways(spec *openapi3.T, resourcesNamePrefi
 			},
 		},
 	}
-	if c.backendRef.Namespace != "" {
-		backendRefs[0].BackendRef.BackendObjectReference.Namespace = common.PtrTo(gatewayv1.Namespace(c.backendRef.Namespace))
+	if ns := c.backendRef.Namespace; ns != "" {
+		backendRefs[0].Namespace = common.PtrTo(gatewayv1.Namespace(ns))
+	}
+	if port := c.backendRef.port; port != nil {
+		backendRefs[0].Port = port
 	}
 
 	i := 0
@@ -312,7 +322,7 @@ func (c *converter) toHTTPRoute(name, gatewayName string, listenerName gatewayv1
 }
 
 func (c *converter) buildHTTPRouteBackendReferenceGrant() *gatewayv1beta1.ReferenceGrant {
-	return c.buildReferenceGrant(common.HTTPRouteGVK, gatewayv1.Kind("Service"), c.backendRef)
+	return c.buildReferenceGrant(common.HTTPRouteGVK, gatewayv1.Kind("Service"), c.backendRef.NamespacedName)
 }
 
 func (c *converter) buildGatewayTlsSecretReferenceGrant(gateway gatewayv1.Gateway) *gatewayv1beta1.ReferenceGrant {
@@ -588,4 +598,22 @@ func toNamespacedName(s string) types.NamespacedName {
 		return types.NamespacedName{Name: parts[0]}
 	}
 	return types.NamespacedName{Namespace: parts[0], Name: parts[1]}
+}
+
+func toBackendRef(s string) backendRef {
+	backendRef := backendRef{NamespacedName: types.NamespacedName{}}
+	if s == "" {
+		return backendRef
+	}
+	parts := strings.SplitN(s, ":", 2)
+	backendRef.NamespacedName = toNamespacedName(parts[0])
+	if len(parts) > 1 {
+		port, err := strconv.ParseUint(parts[1], 10, 32)
+		if err != nil {
+			log.Printf("%s provider: invalid backend: %v", ProviderName, err)
+			return backendRef
+		}
+		backendRef.port = common.PtrTo(gatewayv1.PortNumber(port))
+	}
+	return backendRef
 }

@@ -17,14 +17,18 @@ To specify the name of the gateway class for the Gateway resources, use `--opena
 **Gateways with TLS configuration**
 
 If one or more servers specified in the OAS start with `https`, TLS configuration will be added to the corresponding gateway listener.
+
 To specify the reference to the gateway TLS secret, use `--openapi3-gateway-tls-secret=SECRET-NAME` or `--openapi3-gateway-tls-secret=SECRET-NAMESPACE/SECRET-NAME`.
 
 **Backend references**
 
 All routes generated will point to a single backend service.
-To specify the backend reference, use `--openapi3-backend=SERVICE-NAME` or `--openapi3-backend=SERVICE-NAMESPACE/SERVICE-NAME`.
 
-Specifying the port number to the backend service is currently not supported.
+To specify the backend reference, use `--openapi3-backend=[namespace/]name[:port]`. Examples of valid values:
+* `my-service`
+* `my-namespace/my-service`
+* `my-service:3000`
+* `my-namespace/my-service:3000`
 
 **Resource names**
 
@@ -41,7 +45,7 @@ The examples below are based on the [Swagger Petstore Sample API](https://petsto
 ```sh
 ./ingress2gateway print --providers=openapi3 \
                         --openapi3-gateway-class-name=istio \
-                        --openapi3-backend=my-app \
+                        --openapi3-backend=my-app:3000 \
                         --input-file=petstore3-openapi.json
 ```
 
@@ -76,6 +80,7 @@ spec:
   rules:
   - backendRefs:
     - name: my-app
+      port: 3000
     matches:
     - method: POST
       path:
@@ -111,6 +116,7 @@ spec:
         value: /api/v3/pet/{petId}/uploadImage
   - backendRefs:
     - name: my-app
+      port: 3000
     matches:
     - method: GET
       path:
@@ -146,6 +152,7 @@ spec:
         value: /api/v3/user/logout
   - backendRefs:
     - name: my-app
+      port: 3000
     matches:
     - method: DELETE
       path:

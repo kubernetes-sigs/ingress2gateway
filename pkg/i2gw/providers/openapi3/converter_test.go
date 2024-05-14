@@ -49,7 +49,7 @@ func TestFileConvertion(t *testing.T) {
 				"openapi3": {
 					"gateway-class-name": "external",
 					"gateway-tls-secret": "gateway-tls-cert",
-					"backend":            "backend-1",
+					"backend":            "backend-1:3000",
 				},
 			},
 		},

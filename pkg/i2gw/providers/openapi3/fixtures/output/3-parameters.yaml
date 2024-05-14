@@ -40,5 +40,6 @@ spec:
         type: Exact
     backendRefs:
     - name: backend-1
+      port: 3000
 status:
   parents: null

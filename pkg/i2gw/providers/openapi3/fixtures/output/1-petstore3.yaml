@@ -54,6 +54,7 @@ spec:
         value: /api/v3/pet/{petId}/uploadImage
     backendRefs:
     - name: backend-1
+      port: 3000
   - matches:
     - method: GET
       path:
@@ -89,6 +90,7 @@ spec:
         value: /api/v3/user/logout
     backendRefs:
     - name: backend-1
+      port: 3000
   - matches:
     - method: DELETE
       path:
@@ -104,5 +106,6 @@ spec:
         value: /api/v3/user/{username}
     backendRefs:
     - name: backend-1
+      port: 3000
 status:
   parents: null
