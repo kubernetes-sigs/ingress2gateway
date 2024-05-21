@@ -48,7 +48,14 @@ const (
 	HTTPRouteMatchesMaxMax = HTTPRouteRulesMax * HTTPRouteMatchesMax
 )
 
-var uriRegexp = regexp.MustCompile(`^((https?)://([^/]+))?(/.*)?$`) // [_][1] = scheme, [_][2] = host, [_][3] = path
+// uriRegexp allows parsing HTTP URIs where, for each string submatch, the following values are returned
+// respectivelly to each index position in the slice:
+//   0: full match
+//   1: full match without the path
+//   2: http scheme
+//   3: host name
+//   4: path
+var uriRegexp = regexp.MustCompile(`^((https?)://([^/]+))?(/.*)?$`)
 
 type Converter interface {
 	Convert(Storage) (i2gw.GatewayResources, field.ErrorList)
@@ -62,7 +69,7 @@ func NewConverter(conf *i2gw.ProviderConf) Converter {
 		backendRef:   toBackendRef(""),
 	}
 
-	if ps := conf.ProviderSpecific[ProviderName]; ps != nil {
+	if ps := conf.ProviderSpecificFlags[ProviderName]; ps != nil {
 		converter.gatewayClassName = ps[GatewayClassFlag]
 		converter.tlsSecretRef = toNamespacedName(ps[TlsSecretFlag])
 		converter.backendRef = toBackendRef(ps[BackendFlag])

@@ -45,7 +45,7 @@ func TestFileConvertion(t *testing.T) {
 
 	providerConf := map[string]*i2gw.ProviderConf{
 		"default": &i2gw.ProviderConf{
-			ProviderSpecific: map[string]map[string]string{
+			ProviderSpecificFlags: map[string]map[string]string{
 				"openapi3": {
 					"gateway-class-name": "external",
 					"gateway-tls-secret": "gateway-tls-cert",
@@ -55,7 +55,7 @@ func TestFileConvertion(t *testing.T) {
 		},
 		"reference-grants.yaml": &i2gw.ProviderConf{
 			Namespace: "networking",
-			ProviderSpecific: map[string]map[string]string{
+			ProviderSpecificFlags: map[string]map[string]string{
 				"openapi3": {
 					"gateway-class-name": "external",
 					"gateway-tls-secret": "secrets/gateway-tls-cert",

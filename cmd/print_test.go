@@ -24,6 +24,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"k8s.io/cli-runtime/pkg/printers"
 )
 
@@ -237,32 +238,32 @@ func Test_getNamespaceInCurrentContext(t *testing.T) {
 	}
 }
 
-func Test_getProviderSpecificConf(t *testing.T) {
+func Test_getProviderSpecificFlags(t *testing.T) {
 	value1 := "value1"
 	value2 := "value2"
 	testCases := []struct {
-		name                 string
-		providerSpecificConf map[string]*string
-		providers            []string
-		expected             map[string]map[string]string
+		name                  string
+		providerSpecificFlags map[string]*string
+		providers             []string
+		expected              map[string]map[string]string
 	}{
 		{
-			name:                 "No provider specific configuration",
-			providerSpecificConf: make(map[string]*string),
-			providers:            []string{"provider"},
-			expected:             map[string]map[string]string{},
+			name:                  "No provider specific configuration",
+			providerSpecificFlags: make(map[string]*string),
+			providers:             []string{"provider"},
+			expected:              map[string]map[string]string{},
 		},
 		{
-			name:                 "Provider specific configuration matching provider in the list",
-			providerSpecificConf: map[string]*string{"provider-conf": &value1},
-			providers:            []string{"provider"},
+			name:                  "Provider specific configuration matching provider in the list",
+			providerSpecificFlags: map[string]*string{"provider-conf": &value1},
+			providers:             []string{"provider"},
 			expected: map[string]map[string]string{
 				"provider": {"conf": value1},
 			},
 		},
 		{
 			name: "Provider specific configuration matching providers in the list with multiple providers",
-			providerSpecificConf: map[string]*string{
+			providerSpecificFlags: map[string]*string{
 				"provider-a-conf1": &value1,
 				"provider-b-conf2": &value2,
 			},
@@ -273,22 +274,22 @@ func Test_getProviderSpecificConf(t *testing.T) {
 			},
 		},
 		{
-			name:                 "Provider specific configuration not matching provider in the list",
-			providerSpecificConf: map[string]*string{"provider-conf": &value1},
-			providers:            []string{"provider-a", "provider-b", "provider-c"},
-			expected:             map[string]map[string]string{},
+			name:                  "Provider specific configuration not matching provider in the list",
+			providerSpecificFlags: map[string]*string{"provider-conf": &value1},
+			providers:             []string{"provider-a", "provider-b", "provider-c"},
+			expected:              map[string]map[string]string{},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			pr := PrintRunner{
-				providerSpecificConf: tc.providerSpecificConf,
-				providers:            tc.providers,
+				providerSpecificFlags: tc.providerSpecificFlags,
+				providers:             tc.providers,
 			}
-			actual := pr.getProviderSpecificConf()
-			if !reflect.DeepEqual(actual, tc.expected) {
-				t.Errorf("getProviderSpecificConf() = %v, expected %v", actual, tc.expected)
+			actual := pr.getProviderSpecificFlags()
+			if diff := cmp.Diff(tc.expected, actual); diff != "" {
+				t.Errorf("Unexpected provider-specific flags, \n want: %+v\n got: %+v\n diff (-want +got):\n%s", tc.expected, actual, diff)
 			}
 		})
 	}

@@ -167,9 +167,9 @@ There are 2 main things that needs to be tested when creating a feature parser:
 For example, if one implemented the mirror backend feature and it deletes canary weight from `BackendRefs`, we have a
 problem.
 
-## Provider-specific user input
-To define provider-specific configuration that the user can supply in the `print` command, call the
-`i2gw.RegisterProviderSpecificConf(ProviderName, i2gw.ProviderSpecificConf)` function in the init function of the
+## Provider-specific flags
+To define provider-specific flags the user can supply in the `print` command, call the
+`i2gw.RegisterProviderSpecificFlag(ProviderName, i2gw.ProviderSpecificFlag)` function in the init function of the
 provider. E.g.:
 ```go
 const Name = "example-gateway-provider"
@@ -177,20 +177,20 @@ const Name = "example-gateway-provider"
 func init() {
 	i2gw.ProviderConstructorByName[Name] = NewProvider
 
-	i2gw.RegisterProviderSpecificConf(ProviderName, i2gw.ProviderSpecificConf{
+	i2gw.RegisterProviderSpecificFlag(ProviderName, i2gw.ProviderSpecificFlag{
 		Name:         "infrastructure-labels",
 		Description:  "Comma-separated list of Gateway infrastructure key=value labels",
     DefaultValue: "",
 	})
 }
 ```
-Users can supply values the provider-specific configuration flag defined above as follows:
+Users can provide a value to the flag as follows:
 ```sh
 ./ingress2gateway print --providers=example-gateway-provider --example-gateway-provider-infrastructure-labels="app=my-app"
 ```
-The values all provider-specific flags supplied by the user can be retrieved from the provider `conf`:
+The values of all provider-specific flags supplied by the user can be retrieved from the provider `conf`:
 ```go
-if ps := conf.ProviderSpecific[ProviderName]; ps != nil {
+if ps := conf.ProviderSpecificFlags[ProviderName]; ps != nil {
   labels := ps["infrastructure-labels"]
 }
 ```

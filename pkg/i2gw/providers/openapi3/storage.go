@@ -34,13 +34,15 @@ func NewResourceStorage() Storage {
 }
 
 type storage struct {
-	mu sync.RWMutex
+	mu sync.RWMutex // thread-safe, so we can read and write to the storage concurrently
 
 	resources []*openapi3.T
 }
 
 var _ Storage = &storage{}
 
+// AddResource adds a new OpenAPI spec to the storage.
+// AddResource is thread-safe and therefore can be called for multiple resources concurrently.
 func (s *storage) AddResource(resource *openapi3.T) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -48,6 +50,7 @@ func (s *storage) AddResource(resource *openapi3.T) {
 	s.resources = append(s.resources, resource)
 }
 
+// GetResources returns all OpenAPI specs stored in the storage.
 func (s *storage) GetResources() []*openapi3.T {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

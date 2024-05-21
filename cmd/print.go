@@ -62,8 +62,8 @@ type PrintRunner struct {
 	// providers indicates which providers are used to execute convert action.
 	providers []string
 
-	// Provider specific conf. Value assigned via provider specific flags --<provider>-<conf>.
-	providerSpecificConf map[string]*string
+	// Provider specific flags --<provider>-<flag>.
+	providerSpecificFlags map[string]*string
 }
 
 // PrintGatewayAPIObjects performs necessary steps to digest and print
@@ -80,7 +80,7 @@ func (pr *PrintRunner) PrintGatewayAPIObjects(cmd *cobra.Command, _ []string) er
 		return fmt.Errorf("failed to initialize namespace filter: %w", err)
 	}
 
-	gatewayResources, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers, pr.getProviderSpecificConf())
+	gatewayResources, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers, pr.getProviderSpecificFlags())
 	if err != nil {
 		return err
 	}
@@ -254,11 +254,11 @@ if specified with --namespace.`)
 	cmd.Flags().StringSliceVar(&pr.providers, "providers", i2gw.GetSupportedProviders(),
 		fmt.Sprintf("If present, the tool will try to convert only resources related to the specified providers, supported values are %v.", i2gw.GetSupportedProviders()))
 
-	pr.providerSpecificConf = make(map[string]*string)
-	for provider, flags := range i2gw.GetProviderSpecificConfDefinitions() {
+	pr.providerSpecificFlags = make(map[string]*string)
+	for provider, flags := range i2gw.GetProviderSpecificFlagDefinitions() {
 		for _, flag := range flags {
 			flagName := fmt.Sprintf("%s-%s", provider, flag.Name)
-			pr.providerSpecificConf[flagName] = cmd.Flags().String(flagName, flag.DefaultValue, fmt.Sprintf("Provider-specific: %s. %s", provider, flag.Description))
+			pr.providerSpecificFlags[flagName] = cmd.Flags().String(flagName, flag.DefaultValue, fmt.Sprintf("Provider-specific: %s. %s", provider, flag.Description))
 		}
 	}
 
@@ -276,18 +276,20 @@ func getNamespaceInCurrentContext() (string, error) {
 	return currentNamespace, err
 }
 
-func (pr *PrintRunner) getProviderSpecificConf() map[string]map[string]string {
-	providerSpecificConf := make(map[string]map[string]string)
-	for flagName, value := range pr.providerSpecificConf {
-		provider, found := lo.Find(pr.providers, func(p string) bool { return strings.HasPrefix(flagName, p+"-") })
+// getProviderSpecificFlags returns the provider specific flags input by the user.
+// The flags are returned in a map where the key is the provider name and the value is a map of flag name to flag value.
+func (pr *PrintRunner) getProviderSpecificFlags() map[string]map[string]string {
+	providerSpecificFlags := make(map[string]map[string]string)
+	for flagName, value := range pr.providerSpecificFlags {
+		provider, found := lo.Find(pr.providers, func(p string) bool { return strings.HasPrefix(flagName, fmt.Sprintf("%s-", p)) })
 		if !found {
 			continue
 		}
-		conf := strings.SplitN(flagName, provider+"-", 2)[1]
-		if providerSpecificConf[provider] == nil {
-			providerSpecificConf[provider] = make(map[string]string)
+		flagNameWithoutProvider := strings.TrimPrefix(flagName, fmt.Sprintf("%s-", provider))
+		if providerSpecificFlags[provider] == nil {
+			providerSpecificFlags[provider] = make(map[string]string)
 		}
-		providerSpecificConf[provider][conf] = *value
+		providerSpecificFlags[provider][flagNameWithoutProvider] = *value
 	}
-	return providerSpecificConf
+	return providerSpecificFlags
 }
