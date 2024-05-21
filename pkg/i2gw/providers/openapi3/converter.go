@@ -50,11 +50,12 @@ const (
 
 // uriRegexp allows parsing HTTP URIs where, for each string submatch, the following values are returned
 // respectivelly to each index position in the slice:
-//   0: full match
-//   1: full match without the path
-//   2: http scheme
-//   3: host name
-//   4: path
+//
+//	0: full match
+//	1: full match without the path
+//	2: http scheme
+//	3: host name
+//	4: path
 var uriRegexp = regexp.MustCompile(`^((https?)://([^/]+))?(/.*)?$`)
 
 type Converter interface {
@@ -103,6 +104,9 @@ func (c *converter) Convert(storage Storage) (i2gw.GatewayResources, field.Error
 	resourcesNamePrefixes := make(map[string]int)
 
 	for _, spec := range storage.GetResources() {
+		// prefixes all resource names with the title of the spec to avoid conflicts between resources from different specs
+		// in case of multiple specs with the same title, a counter, starting at 1, is appended to the prefix from the 2nd
+		// spec and onwards
 		resourcesNamePrefix := toResourcesNamePrefix(spec)
 		if _, exists := resourcesNamePrefixes[resourcesNamePrefix]; !exists {
 			resourcesNamePrefixes[resourcesNamePrefix] = 0
@@ -112,10 +116,13 @@ func (c *converter) Convert(storage Storage) (i2gw.GatewayResources, field.Error
 			resourcesNamePrefix = fmt.Sprintf("%s-%d", resourcesNamePrefix, resourcesNamePrefixes[resourcesNamePrefix]+1)
 		}
 
+		// convert the spec to Gateway API resources
 		httpRoutes, gateways := c.toHTTPRoutesAndGateways(spec, resourcesNamePrefix, errors)
 		for _, httpRoute := range httpRoutes {
 			gatewayResources.HTTPRoutes[types.NamespacedName{Name: httpRoute.GetName(), Namespace: httpRoute.GetNamespace()}] = httpRoute
 		}
+
+		// build reference grants for the resources
 		if referenceGrant := c.buildHTTPRouteBackendReferenceGrant(); referenceGrant != nil {
 			gatewayResources.ReferenceGrants[types.NamespacedName{Name: referenceGrant.GetName(), Namespace: referenceGrant.GetNamespace()}] = *referenceGrant
 		}
@@ -130,6 +137,7 @@ func (c *converter) Convert(storage Storage) (i2gw.GatewayResources, field.Error
 	return gatewayResources, errors
 }
 
+// toHTTPRoutesAndGateways converts an OpenAPI Specification 3.x to Gateway API HTTPRoutes and Gateways.
 func (c *converter) toHTTPRoutesAndGateways(spec *openapi3.T, resourcesNamePrefix string, errors field.ErrorList) ([]gatewayv1.HTTPRoute, []gatewayv1.Gateway) {
 	var matchers []httpRouteMatcher
 
@@ -138,18 +146,22 @@ func (c *converter) toHTTPRoutesAndGateways(spec *openapi3.T, resourcesNamePrefi
 		servers = openapi3.Servers{{URL: "/"}}
 	}
 
+	// get a list of http matchers for all path items in the spec.
+	// servers are expanded to account for all enum variables
 	paths := spec.Paths.Map()
 	for _, relativePath := range spec.Paths.InMatchingOrder() {
 		pathItem := paths[relativePath]
 		matchers = append(matchers, pathItemToHTTPMatchers(pathItem, relativePath, servers, errors)...)
 	}
 
+	// group each expected listener (given by the hostnames) by the sets of http matchers related to the listener
 	listenersByHTTPRouteRuleMatcher := make(map[httpRouteRuleMatcher][]string)
 	for _, matcher := range matchers {
 		listener := fmt.Sprintf("%s://%s", matcher.protocol, matcher.host)
 		listenersByHTTPRouteRuleMatcher[matcher.httpRouteRuleMatcher] = append(listenersByHTTPRouteRuleMatcher[matcher.httpRouteRuleMatcher], listener)
 	}
 
+	// invert the grouping into a map of listener groups as keys and their corresponding common http matchers as values
 	var listenerGroups []string
 	httpRouteRuleMatchersByListeners := make(map[string]httpRouteRuleMatchers)
 	for matcher, listeners := range listenersByHTTPRouteRuleMatcher {
@@ -163,6 +175,7 @@ func (c *converter) toHTTPRoutesAndGateways(spec *openapi3.T, resourcesNamePrefi
 	// sort listener groups for deterministic output
 	sort.Strings(listenerGroups)
 
+	// build the gateway object
 	gatewayName := fmt.Sprintf("%s-gateway", resourcesNamePrefix)
 	gateway := gatewayv1.Gateway{
 		ObjectMeta: metav1.ObjectMeta{
@@ -177,6 +190,7 @@ func (c *converter) toHTTPRoutesAndGateways(spec *openapi3.T, resourcesNamePrefi
 		gateway.SetNamespace(c.namespace)
 	}
 
+	// declare unique listeners in the gateway for each hostname in the listener groups
 	uniqueListeners := make(map[string]struct{})
 	for _, group := range listenerGroups {
 		listeners := lo.Filter(strings.Split(group, HostSeparator), func(listener string, _ int) bool {
@@ -191,6 +205,7 @@ func (c *converter) toHTTPRoutesAndGateways(spec *openapi3.T, resourcesNamePrefi
 
 	var routes []gatewayv1.HTTPRoute
 
+	// build the unique backend reference to be used in all route rules
 	backendRefs := []gatewayv1.HTTPBackendRef{
 		gatewayv1.HTTPBackendRef{
 			BackendRef: gatewayv1.BackendRef{
@@ -207,6 +222,7 @@ func (c *converter) toHTTPRoutesAndGateways(spec *openapi3.T, resourcesNamePrefi
 		backendRefs[0].Port = port
 	}
 
+	// build the HTTPRoutes respectively to the listener groups
 	i := 0
 	for _, group := range listenerGroups {
 		listeners := strings.Split(group, HostSeparator)
@@ -223,23 +239,26 @@ func (c *converter) toHTTPRoutesAndGateways(spec *openapi3.T, resourcesNamePrefi
 		sort.Strings(hosts)
 		hosts = slices.Compact(hosts)
 
+		// split the matchers into nRoutes HTTPRoutes, each with a maximum of HTTPRouteMatchesMaxMax matchers
 		nMatchers := len(matchers)
 		nRoutes := nMatchers / HTTPRouteMatchesMaxMax
 		if nMatchers%HTTPRouteMatchesMaxMax != 0 {
 			nRoutes++
 		}
 		for j := 0; j < nRoutes; j++ {
+			// generate a unique name for the route object
 			routeName := fmt.Sprintf("%s-route", resourcesNamePrefix)
 			if len(listenerGroups) > 1 {
-				routeName = fmt.Sprintf("%s-%d", routeName, i+1)
+				routeName = fmt.Sprintf("%s-%d", routeName, i+1) // appends a grouping counter to the route name, starting at 1, if there are multiple listener groups, to avoid conflicts
 			}
 			if nRoutes > 1 {
-				routeName = fmt.Sprintf("%s-%d", routeName, j+1)
+				routeName = fmt.Sprintf("%s-%d", routeName, j+1) // appends a counter to the route name, starting at 1, if there are more multiple routes, to avoid conflicts
 			}
 			last := (j + 1) * HTTPRouteMatchesMaxMax
 			if last > nMatchers {
 				last = nMatchers
 			}
+			// build the route object for the given slice of route matchers
 			routes = append(routes, c.toHTTPRoute(routeName, gatewayName, listenerName, hosts, matchers[j*HTTPRouteMatchesMaxMax:last], backendRefs))
 		}
 		i++
@@ -248,6 +267,10 @@ func (c *converter) toHTTPRoutesAndGateways(spec *openapi3.T, resourcesNamePrefi
 	return routes, []gatewayv1.Gateway{gateway}
 }
 
+// toListener converts a http scheme (protocol) and host string to a Gateway API Listener.
+// The listener name is derived from the protocol and hostname.
+// The listener port is assumed 80 for http protocol and 443 for https.
+// If the protocol is https, the listener TLS configuration is set from the general TLS secret reference.
 func (c *converter) toListener(protocolAndHostname string, _ int) gatewayv1.Listener {
 	name, protocol, hostname := toListenerName(protocolAndHostname)
 
@@ -278,6 +301,9 @@ func (c *converter) toListener(protocolAndHostname string, _ int) gatewayv1.List
 	return listener
 }
 
+// toListenerName extract a listener name, protocol and hostname from a protocol (http scheme) and hostname string.
+// If the protocol is not provided, "http" is assumed by default.
+// If the hostname is not provided, "*" is assumed by default.
 func toListenerName(protocolAndHostname string) (listenerName gatewayv1.SectionName, protocol string, hostname string) {
 	protocol = "http"
 	hostname = HostWildcard
@@ -299,6 +325,9 @@ func toListenerName(protocolAndHostname string) (listenerName gatewayv1.SectionN
 	return gatewayv1.SectionName(listenerNamePrefix + protocol), protocol, hostname
 }
 
+// toHTTPRoute builds a Gateway API HTTPRoute object with a given name, for a given gateway parent, set of hostnames,
+// and HTTP route matchers out of which HTTPRouteMatches are built for the rules.
+// All HTTPRouteRules in the HTTPRoute are built with the same set of backendRefs, provided as argument.
 func (c *converter) toHTTPRoute(name, gatewayName string, listenerName gatewayv1.SectionName, hostnames []string, matchers httpRouteRuleMatchers, backendRefs []gatewayv1.HTTPBackendRef) gatewayv1.HTTPRoute {
 	parentRef := gatewayv1.ParentReference{Name: gatewayv1.ObjectName(gatewayName)}
 	if listenerName != "" {
@@ -328,10 +357,14 @@ func (c *converter) toHTTPRoute(name, gatewayName string, listenerName gatewayv1
 	return route
 }
 
+// buildHTTPRouteBackendReferenceGrant builds a Gateway API ReferenceGrant object for the general backend reference
+// to be used in all HTTPRoute rules.
 func (c *converter) buildHTTPRouteBackendReferenceGrant() *gatewayv1beta1.ReferenceGrant {
 	return c.buildReferenceGrant(common.HTTPRouteGVK, gatewayv1.Kind("Service"), c.backendRef.NamespacedName)
 }
 
+// buildGatewayTlsSecretReferenceGrant builds a Gateway API ReferenceGrant object for the general TLS secret
+// reference to be used in all https gateway listeners.
 func (c *converter) buildGatewayTlsSecretReferenceGrant(gateway gatewayv1.Gateway) *gatewayv1beta1.ReferenceGrant {
 	if slices.IndexFunc(gateway.Spec.Listeners, func(listener gatewayv1.Listener) bool { return listener.TLS != nil }) == -1 {
 		return nil
@@ -339,6 +372,8 @@ func (c *converter) buildGatewayTlsSecretReferenceGrant(gateway gatewayv1.Gatewa
 	return c.buildReferenceGrant(common.GatewayGVK, gatewayv1.Kind("Secret"), c.tlsSecretRef)
 }
 
+// buildReferenceGrant builds a Gateway API ReferenceGrant object for a given source and destination resource.
+// The name of the reference grant is derived from the source resource namespace and the destination resource kind and name.
 func (c *converter) buildReferenceGrant(fromGVK schema.GroupVersionKind, toKind gatewayv1.Kind, toRef types.NamespacedName) *gatewayv1beta1.ReferenceGrant {
 	if c.namespace == "" || toRef.Namespace == "" {
 		return nil
@@ -368,6 +403,7 @@ func (c *converter) buildReferenceGrant(fromGVK schema.GroupVersionKind, toKind 
 	return rg
 }
 
+// httpRouteRuleMatcher is abstraction from which to build Gateway API HTTPRouteRules.
 type httpRouteRuleMatcher struct {
 	path    string
 	method  string
@@ -386,14 +422,19 @@ func (m httpRouteRuleMatchers) Less(i, j int) bool {
 	return m[i].method < m[j].method
 }
 
+// httpRouteMatcher is an abstraction used to associate a http route match to a hostname and protocol that
+// will be used to build gateway listeners and references from the routes.
 type httpRouteMatcher struct {
 	protocol string
 	host     string
 	httpRouteRuleMatcher
 }
 
+// toHTTPRouteRules builds Gateway API HTTPRouteRules from a list of httpRouteRuleMatchers and fixed backendRefs.
 func toHTTPRouteRules(matchers httpRouteRuleMatchers, backendRefs []gatewayv1.HTTPBackendRef) []gatewayv1.HTTPRouteRule {
 	var rules []gatewayv1.HTTPRouteRule
+
+	// split the matchers into nRules HTTPRouteRules, each with a maximum of HTTPRouteMatchesMax matchers
 	nMatches := len(matchers)
 	nRules := nMatches / HTTPRouteMatchesMax
 	if len(matchers)%HTTPRouteMatchesMax != 0 {
@@ -437,6 +478,8 @@ func toHTTPRouteRules(matchers httpRouteRuleMatchers, backendRefs []gatewayv1.HT
 	return rules
 }
 
+// pathItemToHTTPMatchers converts an OpenAPI Specification 3.x PathItem to a list of httpRouteMatchers.
+// The servers are expanded to account for all enum variables.
 func pathItemToHTTPMatchers(pathItem *openapi3.PathItem, relativePath string, servers openapi3.Servers, errors field.ErrorList) []httpRouteMatcher {
 	var matchers []httpRouteMatcher
 
@@ -456,6 +499,7 @@ func pathItemToHTTPMatchers(pathItem *openapi3.PathItem, relativePath string, se
 		"TRACE":   pathItem.Trace,
 	}
 
+	// build httpRouteMatchers for each operation of the path item
 	for method, operation := range operations {
 		if operation == nil {
 			continue
@@ -466,6 +510,8 @@ func pathItemToHTTPMatchers(pathItem *openapi3.PathItem, relativePath string, se
 	return matchers
 }
 
+// pathItemToHTTPMatchers converts an OpenAPI Specification 3.x Operation (http method + relative path) to a list of
+// httpRouteMatchers. The servers are expanded to account for all enum variables.
 func operationToHTTPMatchers(operation *openapi3.Operation, relativePath string, method string, parameters openapi3.Parameters, servers openapi3.Servers, errors field.ErrorList) []httpRouteMatcher {
 	if operation.Servers != nil && len(*operation.Servers) > 0 {
 		servers = *operation.Servers
@@ -480,9 +526,11 @@ func operationToHTTPMatchers(operation *openapi3.Operation, relativePath string,
 		expandedServers = append(expandedServers, expandServerVariables(*server)...)
 	}
 
+	// build httpRouteMatchers for each expanded server
 	return lo.Map(expandedServers, toHTTPMatcher(relativePath, method, parameters, errors))
 }
 
+// toHTTPMatcher converts a HTTP method and relative path to a httpRouteMatcher.
 func toHTTPMatcher(relativePath string, method string, parameters openapi3.Parameters, errors field.ErrorList) func(server openapi3.Server, _ int) httpRouteMatcher {
 	paramNameFunc := func(in string) func(p *openapi3.ParameterRef, _ int) (string, bool) {
 		return func(p *openapi3.ParameterRef, _ int) (string, bool) {
@@ -520,6 +568,9 @@ func toHTTPMatcher(relativePath string, method string, parameters openapi3.Param
 	}
 }
 
+// expandNonEnumServerVariables expands all non-enum variables in an OpenAPI Specification 3.x Server.
+// Each variable is replaced by its default value.
+// Values other than the default for non-enum variables are not supported.
 func expandNonEnumServerVariables(server openapi3.Server) openapi3.Server {
 	if len(server.Variables) == 0 {
 		return server
@@ -540,6 +591,7 @@ func expandNonEnumServerVariables(server openapi3.Server) openapi3.Server {
 	}
 }
 
+// expandServerVariables expands an OpenAPI Specification 3.x Server into N servers with all enum variables resolved.
 func expandServerVariables(server openapi3.Server) []openapi3.Server {
 	servers := []openapi3.Server{expandNonEnumServerVariables(server)}
 	for {
@@ -580,6 +632,8 @@ func expandServerVariables(server openapi3.Server) []openapi3.Server {
 	return servers
 }
 
+// uriToHostname converts a URI string to a hostname.
+// If the URI does not contain a hostname, "*" is returned.
 func uriToHostname(uri string, _ int) string {
 	host := HostWildcard
 	if s := uriRegexp.FindAllStringSubmatch(uri, 1); len(s) > 0 && s[0][3] != "" {
@@ -588,14 +642,17 @@ func uriToHostname(uri string, _ int) string {
 	return host
 }
 
+// toGatewayAPIHostname converts a hostname string to a Gateway API Hostname.
 func toGatewayAPIHostname(hostname string, _ int) gatewayv1.Hostname {
 	return gatewayv1.Hostname(hostname)
 }
 
+// toResourcesNamePrefix returns a base common prefix for the names of ther esources, from the title of a spec.
 func toResourcesNamePrefix(spec *openapi3.T) string {
 	return strings.ToLower(common.NameFromHost(spec.Info.Title))
 }
 
+// toNamespacedName converts a string in the format "namespace/name" to a types.NamespacedName object.
 func toNamespacedName(s string) types.NamespacedName {
 	if s == "" {
 		return types.NamespacedName{}
@@ -607,6 +664,8 @@ func toNamespacedName(s string) types.NamespacedName {
 	return types.NamespacedName{Namespace: parts[0], Name: parts[1]}
 }
 
+// toBackendRef converts a backend reference string to a backendRef object, including namespaced reference to the
+// Backend and port number if available.
 func toBackendRef(s string) backendRef {
 	backendRef := backendRef{NamespacedName: types.NamespacedName{}}
 	if s == "" {
