@@ -36,6 +36,8 @@ import (
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/openapi3"
+
+	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 )
 
 type PrintRunner struct {
