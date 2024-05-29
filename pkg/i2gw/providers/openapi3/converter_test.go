@@ -43,6 +43,7 @@ const fixturesDir = "./fixtures"
 func TestFileConvertion(t *testing.T) {
 	ctx := context.Background()
 
+	//nolint:gofmt
 	providerConf := map[string]*i2gw.ProviderConf{
 		"default": &i2gw.ProviderConf{
 			ProviderSpecificFlags: map[string]map[string]string{

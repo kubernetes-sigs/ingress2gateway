@@ -49,7 +49,7 @@ const (
 )
 
 // uriRegexp allows parsing HTTP URIs where, for each string submatch, the following values are returned
-// respectivelly to each index position in the slice:
+// respectively to each index position in the slice:
 //
 //	0: full match
 //	1: full match without the path
@@ -72,7 +72,7 @@ func NewConverter(conf *i2gw.ProviderConf) Converter {
 
 	if ps := conf.ProviderSpecificFlags[ProviderName]; ps != nil {
 		converter.gatewayClassName = ps[GatewayClassFlag]
-		converter.tlsSecretRef = toNamespacedName(ps[TlsSecretFlag])
+		converter.tlsSecretRef = toNamespacedName(ps[TLSSecretFlag])
 		converter.backendRef = toBackendRef(ps[BackendFlag])
 	}
 
@@ -128,7 +128,7 @@ func (c *converter) Convert(storage Storage) (i2gw.GatewayResources, field.Error
 		}
 		for _, gateway := range gateways {
 			gatewayResources.Gateways[types.NamespacedName{Name: gateway.GetName(), Namespace: gateway.GetNamespace()}] = gateway
-			if referenceGrant := c.buildGatewayTlsSecretReferenceGrant(gateway); referenceGrant != nil {
+			if referenceGrant := c.buildGatewayTLSSecretReferenceGrant(gateway); referenceGrant != nil {
 				gatewayResources.ReferenceGrants[types.NamespacedName{Name: referenceGrant.GetName(), Namespace: referenceGrant.GetNamespace()}] = *referenceGrant
 			}
 		}
@@ -207,7 +207,7 @@ func (c *converter) toHTTPRoutesAndGateways(spec *openapi3.T, resourcesNamePrefi
 
 	// build the unique backend reference to be used in all route rules
 	backendRefs := []gatewayv1.HTTPBackendRef{
-		gatewayv1.HTTPBackendRef{
+		gatewayv1.HTTPBackendRef{ //nolint:gofmt
 			BackendRef: gatewayv1.BackendRef{
 				BackendObjectReference: gatewayv1.BackendObjectReference{
 					Name: gatewayv1.ObjectName(c.backendRef.Name),
@@ -363,9 +363,9 @@ func (c *converter) buildHTTPRouteBackendReferenceGrant() *gatewayv1beta1.Refere
 	return c.buildReferenceGrant(common.HTTPRouteGVK, gatewayv1.Kind("Service"), c.backendRef.NamespacedName)
 }
 
-// buildGatewayTlsSecretReferenceGrant builds a Gateway API ReferenceGrant object for the general TLS secret
+// buildGatewayTLSSecretReferenceGrant builds a Gateway API ReferenceGrant object for the general TLS secret
 // reference to be used in all https gateway listeners.
-func (c *converter) buildGatewayTlsSecretReferenceGrant(gateway gatewayv1.Gateway) *gatewayv1beta1.ReferenceGrant {
+func (c *converter) buildGatewayTLSSecretReferenceGrant(gateway gatewayv1.Gateway) *gatewayv1beta1.ReferenceGrant {
 	if slices.IndexFunc(gateway.Spec.Listeners, func(listener gatewayv1.Listener) bool { return listener.TLS != nil }) == -1 {
 		return nil
 	}
@@ -647,7 +647,7 @@ func toGatewayAPIHostname(hostname string, _ int) gatewayv1.Hostname {
 	return gatewayv1.Hostname(hostname)
 }
 
-// toResourcesNamePrefix returns a base common prefix for the names of ther esources, from the title of a spec.
+// toResourcesNamePrefix returns a base common prefix for the names of the resources, from the title of a spec.
 func toResourcesNamePrefix(spec *openapi3.T) string {
 	return strings.ToLower(common.NameFromHost(spec.Info.Title))
 }
@@ -667,19 +667,19 @@ func toNamespacedName(s string) types.NamespacedName {
 // toBackendRef converts a backend reference string to a backendRef object, including namespaced reference to the
 // Backend and port number if available.
 func toBackendRef(s string) backendRef {
-	backendRef := backendRef{NamespacedName: types.NamespacedName{}}
+	ref := backendRef{NamespacedName: types.NamespacedName{}}
 	if s == "" {
-		return backendRef
+		return ref
 	}
 	parts := strings.SplitN(s, ":", 2)
-	backendRef.NamespacedName = toNamespacedName(parts[0])
+	ref.NamespacedName = toNamespacedName(parts[0])
 	if len(parts) > 1 {
 		port, err := strconv.ParseUint(parts[1], 10, 32)
 		if err != nil {
 			log.Printf("%s provider: invalid backend: %v", ProviderName, err)
-			return backendRef
+			return ref
 		}
-		backendRef.port = common.PtrTo(gatewayv1.PortNumber(port))
+		ref.port = common.PtrTo(gatewayv1.PortNumber(port))
 	}
-	return backendRef
+	return ref
 }

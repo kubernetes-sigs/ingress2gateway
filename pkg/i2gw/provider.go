@@ -110,7 +110,7 @@ type FeatureParser func([]networkingv1.Ingress, *GatewayResources) field.ErrorLi
 
 var providerSpecificFlagDefinitions = providerSpecificFlags{
 	flags: make(map[ProviderName]map[string]ProviderSpecificFlag),
-	mu: 	sync.RWMutex{},
+	mu:    sync.RWMutex{},
 }
 
 type providerSpecificFlags struct {

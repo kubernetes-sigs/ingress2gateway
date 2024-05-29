@@ -33,7 +33,7 @@ const (
 
 	BackendFlag      = "backend"
 	GatewayClassFlag = "gateway-class-name"
-	TlsSecretFlag    = "gateway-tls-secret"
+	TLSSecretFlag    = "gateway-tls-secret" //nolint:gosec
 )
 
 func init() {
@@ -50,7 +50,7 @@ func init() {
 	})
 
 	i2gw.RegisterProviderSpecificFlag(ProviderName, i2gw.ProviderSpecificFlag{
-		Name:        TlsSecretFlag,
+		Name:        TLSSecretFlag,
 		Description: "The name of the secret for the TLS certificate references in the Gateways",
 	})
 }
