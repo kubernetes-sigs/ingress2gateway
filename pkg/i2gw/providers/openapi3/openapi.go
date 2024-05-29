@@ -19,7 +19,6 @@ package openapi3
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -103,8 +102,7 @@ func readSpecFromFile(ctx context.Context, filename string) (*openapi3.T, error)
 	}
 
 	if err := spec.Validate(ctx); err != nil {
-		log.Printf("%s provider: invalid OpenAPI 3.x spec: %v", ProviderName, err)
-		return nil, nil
+		return nil, fmt.Errorf("invalid OpenAPI 3.x spec: %w", err)
 	}
 
 	return spec, nil

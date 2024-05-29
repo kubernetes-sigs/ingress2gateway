@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -43,9 +44,13 @@ const fixturesDir = "./fixtures"
 func TestFileConvertion(t *testing.T) {
 	ctx := context.Background()
 
-	//nolint:gofmt
-	providerConf := map[string]*i2gw.ProviderConf{
-		"default": &i2gw.ProviderConf{
+	type testData struct {
+		providerConf          *i2gw.ProviderConf
+		expectedReadFileError error
+	}
+
+	defaultTestData := testData{
+		providerConf: &i2gw.ProviderConf{
 			ProviderSpecificFlags: map[string]map[string]string{
 				"openapi3": {
 					"gateway-class-name": "external",
@@ -54,15 +59,23 @@ func TestFileConvertion(t *testing.T) {
 				},
 			},
 		},
-		"reference-grants.yaml": &i2gw.ProviderConf{
-			Namespace: "networking",
-			ProviderSpecificFlags: map[string]map[string]string{
-				"openapi3": {
-					"gateway-class-name": "external",
-					"gateway-tls-secret": "secrets/gateway-tls-cert",
-					"backend":            "apps/backend-1",
+	}
+
+	customTestData := map[string]testData{
+		"reference-grants.yaml": {
+			providerConf: &i2gw.ProviderConf{
+				Namespace: "networking",
+				ProviderSpecificFlags: map[string]map[string]string{
+					"openapi3": {
+						"gateway-class-name": "external",
+						"gateway-tls-secret": "secrets/gateway-tls-cert",
+						"backend":            "apps/backend-1",
+					},
 				},
 			},
+		},
+		"invalid-spec.yaml": {
+			expectedReadFileError: fmt.Errorf("failed to read resources from file: invalid OpenAPI 3.x spec"),
 		},
 	}
 
@@ -74,15 +87,32 @@ func TestFileConvertion(t *testing.T) {
 			return nil
 		}
 
-		conf, ok := providerConf[regexp.MustCompile(`\d+-(.+\.(json|yaml))$`).FindAllStringSubmatch(d.Name(), -1)[0][1]]
-		if !ok {
-			conf = providerConf["default"]
-		}
-		provider := NewProvider(conf)
+		providerConf := defaultTestData.providerConf
+		expectedReadFileError := defaultTestData.expectedReadFileError
 
-		err = provider.ReadResourcesFromFile(ctx, path)
-		if err != nil {
-			t.Fatalf("Failed to read input from file %v: %v", d.Name(), err.Error())
+		inputFileName := regexp.MustCompile(`\d+-(.+\.(json|yaml))$`).FindAllStringSubmatch(d.Name(), -1)[0][1]
+		data, ok := customTestData[inputFileName]
+		if ok {
+			if data.providerConf != nil {
+				providerConf = data.providerConf
+			}
+			if data.expectedReadFileError != nil {
+				expectedReadFileError = data.expectedReadFileError
+			}
+		}
+
+		provider := NewProvider(providerConf)
+
+		if readFileErr := provider.ReadResourcesFromFile(ctx, path); readFileErr != nil {
+			if expectedReadFileError == nil {
+				t.Fatalf("unexpected error during reading test file %v: %v", d.Name(), readFileErr.Error())
+			} else if !strings.Contains(readFileErr.Error(), expectedReadFileError.Error()) {
+				t.Fatalf("unexpected error during reading test file %v: '%v' does not contain expected '%v'", d.Name(), readFileErr.Error(), expectedReadFileError.Error())
+			} else {
+				return nil // success
+			}
+		} else if expectedReadFileError != nil {
+			t.Fatalf("missing expected error during reading test file %v: %v", d.Name(), expectedReadFileError.Error())
 		}
 
 		gotGatewayResources, errList := provider.ToGatewayAPI()
