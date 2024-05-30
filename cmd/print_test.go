@@ -24,6 +24,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"k8s.io/cli-runtime/pkg/printers"
 )
 
@@ -234,5 +235,62 @@ func Test_getNamespaceInCurrentContext(t *testing.T) {
 	if expectedNamespace != actualNamespace {
 		t.Errorf(`getNamespaceInCurrentContext() = "%s", %v, expected %s, %v`,
 			actualNamespace, err, expectedNamespace, nil)
+	}
+}
+
+func Test_getProviderSpecificFlags(t *testing.T) {
+	value1 := "value1"
+	value2 := "value2"
+	testCases := []struct {
+		name                  string
+		providerSpecificFlags map[string]*string
+		providers             []string
+		expected              map[string]map[string]string
+	}{
+		{
+			name:                  "No provider specific configuration",
+			providerSpecificFlags: make(map[string]*string),
+			providers:             []string{"provider"},
+			expected:              map[string]map[string]string{},
+		},
+		{
+			name:                  "Provider specific configuration matching provider in the list",
+			providerSpecificFlags: map[string]*string{"provider-conf": &value1},
+			providers:             []string{"provider"},
+			expected: map[string]map[string]string{
+				"provider": {"conf": value1},
+			},
+		},
+		{
+			name: "Provider specific configuration matching providers in the list with multiple providers",
+			providerSpecificFlags: map[string]*string{
+				"provider-a-conf1": &value1,
+				"provider-b-conf2": &value2,
+			},
+			providers: []string{"provider-a", "provider-b", "provider-c"},
+			expected: map[string]map[string]string{
+				"provider-a": {"conf1": value1},
+				"provider-b": {"conf2": value2},
+			},
+		},
+		{
+			name:                  "Provider specific configuration not matching provider in the list",
+			providerSpecificFlags: map[string]*string{"provider-conf": &value1},
+			providers:             []string{"provider-a", "provider-b", "provider-c"},
+			expected:              map[string]map[string]string{},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			pr := PrintRunner{
+				providerSpecificFlags: tc.providerSpecificFlags,
+				providers:             tc.providers,
+			}
+			actual := pr.getProviderSpecificFlags()
+			if diff := cmp.Diff(tc.expected, actual); diff != "" {
+				t.Errorf("Unexpected provider-specific flags, \n want: %+v\n got: %+v\n diff (-want +got):\n%s", tc.expected, actual, diff)
+			}
+		})
 	}
 }

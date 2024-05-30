@@ -18,6 +18,7 @@ package i2gw
 
 import (
 	"context"
+	"sync"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -43,8 +44,9 @@ type ProviderConstructor func(conf *ProviderConf) Provider
 // ProviderConf contains all the configuration required for every concrete
 // Provider implementation.
 type ProviderConf struct {
-	Client    client.Client
-	Namespace string
+	Client                client.Client
+	Namespace             string
+	ProviderSpecificFlags map[string]map[string]string
 }
 
 // The Provider interface specifies the required functionality which needs to be
@@ -105,3 +107,48 @@ type GatewayResources struct {
 // Different FeatureParsers will run in undetermined order. The function must
 // modify / create only the required fields of the gateway resources and nothing else.
 type FeatureParser func([]networkingv1.Ingress, *GatewayResources) field.ErrorList
+
+var providerSpecificFlagDefinitions = providerSpecificFlags{
+	flags: make(map[ProviderName]map[string]ProviderSpecificFlag),
+	mu:    sync.RWMutex{},
+}
+
+type providerSpecificFlags struct {
+	flags map[ProviderName]map[string]ProviderSpecificFlag
+	mu    sync.RWMutex // thread-safe, so provider-specific flags can be registered concurrently.
+}
+
+type ProviderSpecificFlag struct {
+	Name         string
+	Description  string
+	DefaultValue string
+}
+
+func (f *providerSpecificFlags) add(provider ProviderName, flag ProviderSpecificFlag) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.flags[provider] == nil {
+		f.flags[provider] = map[string]ProviderSpecificFlag{}
+	}
+	f.flags[provider][flag.Name] = flag
+}
+
+func (f *providerSpecificFlags) all() map[ProviderName]map[string]ProviderSpecificFlag {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+	return f.flags
+}
+
+// RegisterProviderSpecificFlag registers a provider-specific flag.
+// Each provider-specific flag is exposed to the user as an optional command-line flag --<provider>-<flag>.
+// If the flag is not provided, it is up to the provider to decide to use the default value or raise an error.
+// The provider can read the values of provider-specific flags input by the user from the ProviderConf.
+// RegisterProviderSpecificFlag is thread-safe.
+func RegisterProviderSpecificFlag(provider ProviderName, flag ProviderSpecificFlag) {
+	providerSpecificFlagDefinitions.add(provider, flag)
+}
+
+// GetProviderSpecificFlagDefinitions returns the provider specific confs registered by the providers.
+func GetProviderSpecificFlagDefinitions() map[ProviderName]map[string]ProviderSpecificFlag {
+	return providerSpecificFlagDefinitions.all()
+}

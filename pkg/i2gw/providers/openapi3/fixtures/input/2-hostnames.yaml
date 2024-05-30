@@ -1,0 +1,91 @@
+openapi: 3.0.2
+info:
+  title: Sample API
+  version: 1.0.0
+servers:
+- url: /api/v1
+- url: "{scheme}://api.example.com/{version}"
+  variables:
+    scheme:
+      enum:
+      - http
+      - https
+      default: https
+    version:
+      enum:
+      - v2
+      - v3
+      default: v3
+paths:
+  /resource:
+    post:
+      operationId: createResource
+      responses:
+        "200":
+          description: Successful operation
+        "405":
+          description: Invalid input
+  /resource/{id}:
+    get:
+      operationId: readResource
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: Successful operation
+        "400":
+          description: Invalid ID supplied
+        "404":
+          description: Resource not found
+    patch:
+      operationId: updateResource
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: Successful operation
+        "400":
+          description: Invalid ID supplied
+        "404":
+          description: Resource not found
+    delete:
+      operationId: deleteResource
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: Successful operation
+        "400":
+          description: Invalid ID supplied
+        "404":
+          description: Resource not found
+  /status:
+    get:
+      operationId: status
+      responses:
+        "200":
+          description: Successful operation
+    servers:
+    - url: http://api.example.com/{version}
+      variables:
+        version:
+          enum:
+          - v1
+          - v2
+          - v3
+          default: v3

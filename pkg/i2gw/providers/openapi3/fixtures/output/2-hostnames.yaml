@@ -1,0 +1,134 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: sample-api-gateway
+spec:
+  gatewayClassName: external
+  listeners:
+  - name: http
+    hostname: "*"
+    port: 80
+    protocol: HTTP
+  - name: api-example-com-http
+    hostname: api.example.com
+    port: 80
+    protocol: HTTP
+  - name: api-example-com-https
+    hostname: api.example.com
+    port: 443
+    protocol: HTTPS
+    tls:
+      certificateRefs:
+      - name: gateway-tls-cert
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  creationTimestamp: null
+  name: sample-api-route-1
+spec:
+  parentRefs:
+  - name: sample-api-gateway
+    sectionName: http
+  rules:
+  - matches:
+    - method: POST
+      path:
+        type: Exact
+        value: /api/v1/resource
+    - method: DELETE
+      path:
+        type: Exact
+        value: /api/v1/resource/{id}
+    - method: GET
+      path:
+        type: Exact
+        value: /api/v1/resource/{id}
+    - method: PATCH
+      path:
+        type: Exact
+        value: /api/v1/resource/{id}
+    backendRefs:
+    - name: backend-1
+      port: 3000
+status:
+  parents: null
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  creationTimestamp: null
+  name: sample-api-route-2
+spec:
+  parentRefs:
+  - name: sample-api-gateway
+    sectionName: api-example-com-http
+  hostnames:
+  - api.example.com
+  rules:
+  - matches:
+    - method: GET
+      path:
+        type: Exact
+        value: /v1/status
+    - method: GET
+      path:
+        type: Exact
+        value: /v2/status
+    - method: GET
+      path:
+        type: Exact
+        value: /v3/status
+    backendRefs:
+    - name: backend-1
+      port: 3000
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  creationTimestamp: null
+  name: sample-api-route-3
+spec:
+  hostnames:
+  - api.example.com
+  parentRefs:
+  - name: sample-api-gateway
+  rules:
+  - matches:
+    - method: POST
+      path:
+        type: Exact
+        value: /v2/resource
+    - method: DELETE
+      path:
+        type: Exact
+        value: /v2/resource/{id}
+    - method: GET
+      path:
+        type: Exact
+        value: /v2/resource/{id}
+    - method: PATCH
+      path:
+        type: Exact
+        value: /v2/resource/{id}
+    - method: POST
+      path:
+        type: Exact
+        value: /v3/resource
+    - method: DELETE
+      path:
+        type: Exact
+        value: /v3/resource/{id}
+    - method: GET
+      path:
+        type: Exact
+        value: /v3/resource/{id}
+    - method: PATCH
+      path:
+        type: Exact
+        value: /v3/resource/{id}
+    backendRefs:
+    - name: backend-1
+      port: 3000
+status:
+  parents: null
