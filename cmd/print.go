@@ -195,7 +195,7 @@ func newPrintCommand() *cobra.Command {
 if specified with --namespace.`)
 
 	cmd.Flags().BoolVar(&pr.allResources, "all-resources", false,
-		`If present, list all the objects across the selected namespaces. This flag can be set only when reading from a file.`)
+		`If present, list all the objects across the selected namespaces. This flag can be set only when the --input-file flag is set as well.`)
 
 	cmd.Flags().StringSliceVar(&pr.providers, "providers", i2gw.GetSupportedProviders(),
 		fmt.Sprintf("If present, the tool will try to convert only resources related to the specified providers, supported values are %v.", i2gw.GetSupportedProviders()))

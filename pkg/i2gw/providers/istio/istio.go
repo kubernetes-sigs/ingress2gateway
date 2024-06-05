@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -29,8 +30,6 @@ const ProviderName = "istio"
 
 func init() {
 	i2gw.ProviderConstructorByName[ProviderName] = NewProvider
-	i2gw.FilteredResources[gatewayGVK.GroupKind()] = struct{}{}
-	i2gw.FilteredResources[virtualServiceGVK.GroupKind()] = struct{}{}
 }
 
 type Provider struct {
@@ -71,4 +70,11 @@ func (p *Provider) ReadResourcesFromFile(ctx context.Context, filename string) e
 	}
 	p.storage = storage
 	return nil
+}
+
+func (p *Provider) GetCRDs() []schema.GroupKind {
+	return []schema.GroupKind{
+		gatewayGK,
+		virtualServiceGK,
+	}
 }

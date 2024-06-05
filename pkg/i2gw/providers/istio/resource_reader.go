@@ -85,7 +85,7 @@ func (r *reader) readUnstructuredObjects(objects []*unstructured.Unstructured) (
 	res := newResourcesStorage()
 
 	for _, obj := range objects {
-		if obj.GetAPIVersion() != APIVersion {
+		if obj.GetAPIVersion() != APIVersion.String() {
 			log.Printf("%v provider: skipped resource with unsupported APIVersion: %v", ProviderName, obj.GetAPIVersion())
 			continue
 		}
@@ -122,7 +122,7 @@ func (r *reader) readUnstructuredObjects(objects []*unstructured.Unstructured) (
 
 func (r *reader) readGatewaysFromCluster(ctx context.Context) (map[types.NamespacedName]*istiov1beta1.Gateway, error) {
 	gatewayList := &unstructured.UnstructuredList{}
-	gatewayList.SetAPIVersion(APIVersion)
+	gatewayList.SetAPIVersion(APIVersion.String())
 	gatewayList.SetKind(GatewayKind)
 
 	err := r.conf.Client.List(ctx, gatewayList)
@@ -152,7 +152,7 @@ func (r *reader) readGatewaysFromCluster(ctx context.Context) (map[types.Namespa
 
 func (r *reader) readVirtualServicesFromCluster(ctx context.Context) (map[types.NamespacedName]*istiov1beta1.VirtualService, error) {
 	virtualServicesList := &unstructured.UnstructuredList{}
-	virtualServicesList.SetAPIVersion(APIVersion)
+	virtualServicesList.SetAPIVersion(APIVersion.String())
 	virtualServicesList.SetKind(VirtualServiceKind)
 
 	err := r.conf.Client.List(ctx, virtualServicesList)

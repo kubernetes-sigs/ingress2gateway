@@ -63,7 +63,7 @@ func GetResources(ctx context.Context, namespace string, inputFile string, allre
 			return nil, err
 		}
 		if allresources {
-			if genericResources, err = readGenericResourcesFromFile(inputFile, namespace); err != nil {
+			if genericResources, err = readGenericResourcesFromFile(inputFile, namespace, providerByName); err != nil {
 				return nil, err
 			}
 		}
@@ -133,7 +133,7 @@ func readProviderResourcesFromFile(ctx context.Context, providerByName map[Provi
 	return nil
 }
 
-func readGenericResourcesFromFile(inputFile, namespace string) ([]client.Object, error) {
+func readGenericResourcesFromFile(inputFile, namespace string, providerByName map[ProviderName]Provider) ([]client.Object, error) {
 	objects := make([]client.Object, 0)
 	stream, err := os.ReadFile(inputFile)
 	if err != nil {
@@ -144,6 +144,13 @@ func readGenericResourcesFromFile(inputFile, namespace string) ([]client.Object,
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract objects: %w", err)
 	}
+
+	for _, p := range providerByName {
+		for _, crd := range p.GetCRDs() {
+			FilteredResources[crd] = struct{}{}
+		}
+	}
+
 	for _, o := range unstructuredObjects {
 		if o.GetNamespace() != namespace {
 			continue

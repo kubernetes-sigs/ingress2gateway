@@ -19,7 +19,6 @@ package istio
 import "k8s.io/apimachinery/pkg/runtime/schema"
 
 const (
-	APIVersion         = "networking.istio.io/v1beta1"
 	GatewayKind        = "Gateway"
 	VirtualServiceKind = "VirtualService"
 
@@ -27,6 +26,11 @@ const (
 )
 
 var (
-	gatewayGVK        = schema.GroupVersionKind{Group: "networking.istio.io", Version: "v1beta1", Kind: "Gateway"}
-	virtualServiceGVK = schema.GroupVersionKind{Group: "networking.istio.io", Version: "v1beta1", Kind: "VirtualService"}
+	APIVersion = schema.GroupVersion{
+		Group:   "networking.istio.io",
+		Version: "v1beta1",
+	}
+
+	gatewayGK        = schema.GroupKind{Group: APIVersion.Group, Kind: GatewayKind}
+	virtualServiceGK = schema.GroupKind{Group: APIVersion.Group, Kind: VirtualServiceKind}
 )
