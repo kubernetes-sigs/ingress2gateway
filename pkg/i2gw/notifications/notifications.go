@@ -18,16 +18,13 @@ package notifications
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/jedib0t/go-pretty/v6/text"
 )
 
 func init() {
 	CommonNotification = NotificationAggregator{make([]Notification, 0)}
 }
-
 
 const (
 	InfoNotification    MessageType = "INFO"
@@ -36,6 +33,7 @@ const (
 )
 
 type MessageType string
+
 type Notification struct {
 	Type     MessageType
 	Message  string
@@ -62,30 +60,15 @@ func (na *NotificationAggregator) ProcessNotifications() {
 	}
 
 	for provider, msgs := range providerNotifications {
-		t := table.NewWriter()
+		t := newTableConfig()
 
-		t.SetOutputMirror(os.Stdout)
 		t.SetTitle(fmt.Sprintf("Notifications from %v", provider))
 		t.AppendHeader(table.Row{"Provider", "Message Type", "Notification"})
-		
-		t.SetRowPainter(func(row table.Row) text.Colors {
-			switch row[1]{
-			case InfoNotification:
-				return text.Colors{text.BgBlack, text.FgHiWhite}
-			case WarningNotification:
-				return text.Colors{text.BgBlack, text.FgHiBlue}
-			case ErrorNotification:
-				return text.Colors{text.BgBlack, text.FgRed}
-			default:
-				return text.Colors{text.BgBlack, text.FgWhite}
-			}
-		})
 
 		for _, n := range msgs {
 			t.AppendRow(table.Row{n.Provider, n.Type, n.Message})
 		}
 
-		t.SetStyle(table.StyleRounded)
 		t.Render()
 	}
 }
