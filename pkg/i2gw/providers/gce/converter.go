@@ -18,6 +18,8 @@ package gce
 
 import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -33,15 +35,37 @@ type converter struct {
 func newConverter(conf *i2gw.ProviderConf) converter {
 	return converter{
 		conf:           conf,
-		featureParsers: []i2gw.FeatureParser{
-			// The list of feature parsers comes here.
-		},
+		featureParsers: []i2gw.FeatureParser{},
 		implementationSpecificOptions: i2gw.ProviderImplementationSpecificOptions{
-			// The list of the implementationSpecific ingress fields options comes here.
+			ToImplementationSpecificHTTPPathTypeMatch: implementationSpecificHTTPPathTypeMatch,
 		},
 	}
 }
 
 func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.ErrorList) {
-	return i2gw.GatewayResources{}, field.ErrorList{}
+	ingressList := []networkingv1.Ingress{}
+	for _, ing := range storage.Ingresses {
+		ingressList = append(ingressList, *ing)
+	}
+
+	// Convert plain ingress resources to gateway resources, ignoring all
+	// provider-specific features.
+	gatewayResources, errs := common.ToGateway(ingressList, c.implementationSpecificOptions)
+	if len(errs) > 0 {
+		return i2gw.GatewayResources{}, errs
+	}
+
+	errs = setGCEGatewayClasses(ingressList, &gatewayResources)
+	if len(errs) > 0 {
+		return i2gw.GatewayResources{}, errs
+	}
+
+	for _, parseFeatureFunc := range c.featureParsers {
+		// Apply the feature parsing function to the gateway resources, one by one.
+		parseErrs := parseFeatureFunc(ingressList, &gatewayResources)
+		// Append the parsing errors to the error list.
+		errs = append(errs, parseErrs...)
+	}
+
+	return gatewayResources, errs
 }
