@@ -24,6 +24,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -51,7 +52,7 @@ func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
 func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage, error) {
 	storage := newResourceStorage()
 
-	ingresses, err := common.ReadIngressesFromCluster(ctx, r.conf.Client, KongIngressClass)
+	ingresses, err := common.ReadIngressesFromCluster(ctx, r.conf.Client, sets.New(KongIngressClass))
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +70,7 @@ func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage
 func (r *resourceReader) readResourcesFromFile(filename string) (*storage, error) {
 	storage := newResourceStorage()
 
-	ingresses, err := common.ReadIngressesFromFile(filename, r.conf.Namespace, KongIngressClass)
+	ingresses, err := common.ReadIngressesFromFile(filename, r.conf.Namespace, sets.New(KongIngressClass))
 	if err != nil {
 		return nil, err
 	}
