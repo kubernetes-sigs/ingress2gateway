@@ -21,6 +21,7 @@ import (
 	"sync"
 
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -55,6 +56,9 @@ type ProviderConf struct {
 type Provider interface {
 	CustomResourceReader
 	ResourceConverter
+
+	// GetCRDs returns the list of CustomResourceDefinitions associated with the Provider.
+	GetCRDs() []schema.GroupKind
 }
 
 type CustomResourceReader interface {

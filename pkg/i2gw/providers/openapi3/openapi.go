@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
@@ -106,4 +107,8 @@ func readSpecFromFile(ctx context.Context, filename string) (*openapi3.T, error)
 	}
 
 	return spec, nil
+}
+
+func (p *Provider) GetCRDs() []schema.GroupKind {
+	return nil
 }

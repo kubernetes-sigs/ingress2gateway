@@ -36,7 +36,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
 const fixturesDir = "./fixtures"
@@ -158,7 +157,7 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*i2gw.GatewayR
 		return nil, fmt.Errorf("failed to read file %v: %w", filename, err)
 	}
 
-	unstructuredObjects, err := common.ExtractObjectsFromReader(bytes.NewReader(stream), "")
+	unstructuredObjects, err := i2gw.ExtractObjectsFromReader(bytes.NewReader(stream), "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract objects: %w", err)
 	}

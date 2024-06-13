@@ -24,7 +24,6 @@ import (
 	"os"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	istiov1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -69,7 +68,7 @@ func (r *reader) readResourcesFromFile(_ context.Context, filename string) (*sto
 		return nil, fmt.Errorf("failed to read file %v: %w", filename, err)
 	}
 
-	unstructuredObjects, err := common.ExtractObjectsFromReader(bytes.NewReader(stream), r.conf.Namespace)
+	unstructuredObjects, err := i2gw.ExtractObjectsFromReader(bytes.NewReader(stream), r.conf.Namespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract objects: %w", err)
 	}
@@ -86,7 +85,7 @@ func (r *reader) readUnstructuredObjects(objects []*unstructured.Unstructured) (
 	res := newResourcesStorage()
 
 	for _, obj := range objects {
-		if obj.GetAPIVersion() != APIVersion {
+		if obj.GetAPIVersion() != APIVersion.String() {
 			log.Printf("%v provider: skipped resource with unsupported APIVersion: %v", ProviderName, obj.GetAPIVersion())
 			continue
 		}
@@ -123,7 +122,7 @@ func (r *reader) readUnstructuredObjects(objects []*unstructured.Unstructured) (
 
 func (r *reader) readGatewaysFromCluster(ctx context.Context) (map[types.NamespacedName]*istiov1beta1.Gateway, error) {
 	gatewayList := &unstructured.UnstructuredList{}
-	gatewayList.SetAPIVersion(APIVersion)
+	gatewayList.SetAPIVersion(APIVersion.String())
 	gatewayList.SetKind(GatewayKind)
 
 	err := r.conf.Client.List(ctx, gatewayList)
@@ -153,7 +152,7 @@ func (r *reader) readGatewaysFromCluster(ctx context.Context) (map[types.Namespa
 
 func (r *reader) readVirtualServicesFromCluster(ctx context.Context) (map[types.NamespacedName]*istiov1beta1.VirtualService, error) {
 	virtualServicesList := &unstructured.UnstructuredList{}
-	virtualServicesList.SetAPIVersion(APIVersion)
+	virtualServicesList.SetAPIVersion(APIVersion.String())
 	virtualServicesList.SetKind(VirtualServiceKind)
 
 	err := r.conf.Client.List(ctx, virtualServicesList)

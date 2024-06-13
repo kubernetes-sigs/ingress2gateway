@@ -1,5 +1,5 @@
 /*
-Copyright 2023 The Kubernetes Authors.
+Copyright 2024 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,23 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package istio
+package i2gw
 
-import "k8s.io/apimachinery/pkg/runtime/schema"
-
-const (
-	GatewayKind        = "Gateway"
-	VirtualServiceKind = "VirtualService"
-
-	K8SGatewayClassName = "istio"
+import (
+	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 var (
-	APIVersion = schema.GroupVersion{
-		Group:   "networking.istio.io",
-		Version: "v1beta1",
-	}
+	ingressClassGK = schema.GroupKind{Group: networkingv1.GroupName, Kind: "IngressClass"}
+	ingressGK      = schema.GroupKind{Group: networkingv1.GroupName, Kind: "Ingress"}
+)
 
-	gatewayGK        = schema.GroupKind{Group: APIVersion.Group, Kind: GatewayKind}
-	virtualServiceGK = schema.GroupKind{Group: APIVersion.Group, Kind: VirtualServiceKind}
+var (
+	FilteredResources = map[schema.GroupKind]struct{}{
+		ingressClassGK: {},
+		ingressGK:      {},
+	}
 )

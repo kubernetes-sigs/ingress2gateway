@@ -20,7 +20,6 @@ import (
 	"context"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -45,7 +44,7 @@ func newResourceReader(conf *i2gw.ProviderConf) reader {
 func (r *reader) readResourcesFromCluster(ctx context.Context) (*storage, error) {
 	storage := newResourcesStorage()
 
-	ingresses, err := common.ReadIngressesFromCluster(ctx, r.conf.Client, supportedGCEIngressClass)
+	ingresses, err := i2gw.ReadIngressesFromCluster(ctx, r.conf.Client, supportedGCEIngressClass)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +55,7 @@ func (r *reader) readResourcesFromCluster(ctx context.Context) (*storage, error)
 func (r *reader) readResourcesFromFile(filename string) (*storage, error) {
 	storage := newResourcesStorage()
 
-	ingresses, err := common.ReadIngressesFromFile(filename, r.conf.Namespace, supportedGCEIngressClass)
+	ingresses, err := i2gw.ReadIngressesFromFile(filename, r.conf.Namespace, supportedGCEIngressClass)
 	if err != nil {
 		return nil, err
 	}

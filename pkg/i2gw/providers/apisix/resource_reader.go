@@ -19,9 +19,9 @@ package apisix
 import (
 	"context"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"k8s.io/apimachinery/pkg/util/sets"
+
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 )
 
 // converter implements the i2gw.CustomResourceReader interface.
@@ -40,7 +40,7 @@ func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage
 	// read apisix related resources from cluster.
 	storage := newResourcesStorage()
 
-	ingresses, err := common.ReadIngressesFromCluster(ctx, r.conf.Client, sets.New(ApisixIngressClass))
+	ingresses, err := i2gw.ReadIngressesFromCluster(ctx, r.conf.Client, sets.New(ApisixIngressClass))
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func (r *resourceReader) readResourcesFromFile(filename string) (*storage, error
 	// read apisix related resources from file.
 	storage := newResourcesStorage()
 
-	ingresses, err := common.ReadIngressesFromFile(filename, r.conf.Namespace, sets.New[string](ApisixIngressClass))
+	ingresses, err := i2gw.ReadIngressesFromFile(filename, r.conf.Namespace, sets.New[string](ApisixIngressClass))
 	if err != nil {
 		return nil, err
 	}

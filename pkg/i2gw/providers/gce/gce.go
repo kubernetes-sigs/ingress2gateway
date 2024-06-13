@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -68,4 +69,8 @@ func (p *Provider) ReadResourcesFromFile(_ context.Context, filename string) err
 // i2gw.GatewayResources including the ingress-gce specific features.
 func (p *Provider) ToGatewayAPI() (i2gw.GatewayResources, field.ErrorList) {
 	return p.converter.convert(p.storage)
+}
+
+func (p *Provider) GetCRDs() []schema.GroupKind {
+	return nil
 }

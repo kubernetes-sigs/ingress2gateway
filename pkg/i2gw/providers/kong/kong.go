@@ -19,6 +19,7 @@ package kong
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
@@ -69,4 +70,10 @@ func (p *Provider) ReadResourcesFromFile(_ context.Context, filename string) err
 	}
 	p.storage = storage
 	return nil
+}
+
+func (p *Provider) GetCRDs() []schema.GroupKind {
+	return []schema.GroupKind{
+		tcpIngressGVK.GroupKind(),
+	}
 }
