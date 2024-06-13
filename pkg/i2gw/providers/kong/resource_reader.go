@@ -25,8 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/klog/v2"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kongv1beta1 "github.com/kong/kubernetes-ingress-controller/v2/pkg/apis/configuration/v1beta1"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
@@ -95,10 +93,6 @@ func (r *resourceReader) readTCPIngressesFromCluster(ctx context.Context) ([]kon
 
 	err := r.conf.Client.List(ctx, tcpIngressList)
 	if err != nil {
-		if client.IgnoreNotFound(err) == nil {
-			klog.Warningf("couldn't find %s CRD, it is likely not installed in the cluster", tcpIngressGVK.GroupKind().String())
-			return []kongv1beta1.TCPIngress{}, nil
-		}
 		return nil, fmt.Errorf("failed to list %s: %w", tcpIngressGVK.GroupKind().String(), err)
 	}
 

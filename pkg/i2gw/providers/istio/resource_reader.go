@@ -29,8 +29,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/klog/v2"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type reader struct {
@@ -128,10 +126,6 @@ func (r *reader) readGatewaysFromCluster(ctx context.Context) (map[types.Namespa
 
 	err := r.conf.Client.List(ctx, gatewayList)
 	if err != nil {
-		if client.IgnoreNotFound(err) == nil {
-			klog.Warningf("couldn't find %s CRD, it is likely not installed in the cluster", fmt.Sprintf("%s.%s", APIVersion, GatewayKind))
-			return map[types.NamespacedName]*istiov1beta1.Gateway{}, nil
-		}
 		return nil, fmt.Errorf("failed to list istio gateways: %w", err)
 	}
 
@@ -158,10 +152,6 @@ func (r *reader) readVirtualServicesFromCluster(ctx context.Context) (map[types.
 
 	err := r.conf.Client.List(ctx, virtualServicesList)
 	if err != nil {
-		if client.IgnoreNotFound(err) == nil {
-			klog.Warningf("couldn't find %s CRD, it is likely not installed in the cluster", fmt.Sprintf("%s.%s", APIVersion, VirtualServiceKind))
-			return map[types.NamespacedName]*istiov1beta1.VirtualService{}, nil
-		}
 		return nil, fmt.Errorf("failed to list istio virtual services: %w", err)
 	}
 

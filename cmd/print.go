@@ -18,8 +18,8 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
@@ -238,6 +238,13 @@ func newPrintCommand() *cobra.Command {
 		Use:   "print",
 		Short: "Prints Gateway API objects generated from ingress and provider-specific resources.",
 		RunE:  pr.PrintGatewayAPIObjects,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			openAPIExist := slices.Contains(pr.providers, "openapi3")
+			if openAPIExist && len(pr.providers) != 1 {
+				return fmt.Errorf("openapi3 must be the only provider when specified")
+			}
+			return nil
+		},
 	}
 
 	cmd.Flags().StringVarP(&pr.outputFormat, "output", "o", "yaml",
@@ -253,7 +260,7 @@ func newPrintCommand() *cobra.Command {
 		`If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even
 if specified with --namespace.`)
 
-	cmd.Flags().StringSliceVar(&pr.providers, "providers", i2gw.GetSupportedProviders(),
+	cmd.Flags().StringSliceVar(&pr.providers, "providers", []string{},
 		fmt.Sprintf("If present, the tool will try to convert only resources related to the specified providers, supported values are %v.", i2gw.GetSupportedProviders()))
 
 	pr.providerSpecificFlags = make(map[string]*string)
@@ -264,6 +271,7 @@ if specified with --namespace.`)
 		}
 	}
 
+	_ = cmd.MarkFlagRequired("providers")
 	cmd.MarkFlagsMutuallyExclusive("namespace", "all-namespaces")
 	return cmd
 }
@@ -285,7 +293,6 @@ func (pr *PrintRunner) getProviderSpecificFlags() map[string]map[string]string {
 	for flagName, value := range pr.providerSpecificFlags {
 		provider, found := lo.Find(pr.providers, func(p string) bool { return strings.HasPrefix(flagName, fmt.Sprintf("%s-", p)) })
 		if !found {
-			log.Printf("Warning: Ignoring flag %s as it does not match any of the providers", flagName)
 			continue
 		}
 		flagNameWithoutProvider := strings.TrimPrefix(flagName, fmt.Sprintf("%s-", provider))
