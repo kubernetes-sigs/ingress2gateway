@@ -1,5 +1,5 @@
 /*
-Copyright 2023 The Kubernetes Authors.
+Copyright 2024 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package ingressnginx
+package gce
 
 import (
 	"context"
@@ -24,36 +24,42 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-// converter implements the i2gw.CustomResourceReader interface.
-type resourceReader struct {
+// GCE supports the following Ingress Class values:
+// 1. "gce", for external Ingress
+// 2. "gce-internal", for internal Ingress
+// 3. "", which defaults to external Ingress
+var supportedGCEIngressClass = sets.New(gceIngressClass, gceL7ILBIngressClass, "")
+
+// reader implements the i2gw.CustomResourceReader interface.
+type reader struct {
 	conf *i2gw.ProviderConf
 }
 
 // newResourceReader returns a resourceReader instance.
-func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
-	return &resourceReader{
+func newResourceReader(conf *i2gw.ProviderConf) reader {
+	return reader{
 		conf: conf,
 	}
 }
 
-func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage, error) {
+func (r *reader) readResourcesFromCluster(ctx context.Context) (*storage, error) {
 	storage := newResourcesStorage()
 
-	ingresses, err := common.ReadIngressesFromCluster(ctx, r.conf.Client, sets.New(NginxIngressClass))
+	ingresses, err := common.ReadIngressesFromCluster(ctx, r.conf.Client, supportedGCEIngressClass)
 	if err != nil {
 		return nil, err
 	}
-	storage.Ingresses.FromMap(ingresses)
+	storage.Ingresses = (ingresses)
 	return storage, nil
 }
 
-func (r *resourceReader) readResourcesFromFile(filename string) (*storage, error) {
+func (r *reader) readResourcesFromFile(filename string) (*storage, error) {
 	storage := newResourcesStorage()
 
-	ingresses, err := common.ReadIngressesFromFile(filename, r.conf.Namespace, sets.New(NginxIngressClass))
+	ingresses, err := common.ReadIngressesFromFile(filename, r.conf.Namespace, supportedGCEIngressClass)
 	if err != nil {
 		return nil, err
 	}
-	storage.Ingresses.FromMap(ingresses)
+	storage.Ingresses = ingresses
 	return storage, nil
 }

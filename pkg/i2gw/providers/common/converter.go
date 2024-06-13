@@ -22,7 +22,6 @@ import (
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	networkingv1 "k8s.io/api/networking/v1"
-	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -135,14 +134,7 @@ type ingressPath struct {
 }
 
 func (a *ingressAggregator) addIngress(ingress networkingv1.Ingress) {
-	var ingressClass string
-	if ingress.Spec.IngressClassName != nil && *ingress.Spec.IngressClassName != "" {
-		ingressClass = *ingress.Spec.IngressClassName
-	} else if _, ok := ingress.Annotations[networkingv1beta1.AnnotationIngressClass]; ok {
-		ingressClass = ingress.Annotations[networkingv1beta1.AnnotationIngressClass]
-	} else {
-		ingressClass = ingress.Name
-	}
+	ingressClass := GetIngressClass(ingress)
 	for _, rule := range ingress.Spec.Rules {
 		a.addIngressRule(ingress.Namespace, ingress.Name, ingressClass, rule, ingress.Spec)
 	}

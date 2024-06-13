@@ -24,8 +24,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/klog/v2"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	kongv1beta1 "github.com/kong/kubernetes-ingress-controller/v2/pkg/apis/configuration/v1beta1"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
@@ -51,7 +50,7 @@ func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
 func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage, error) {
 	storage := newResourceStorage()
 
-	ingresses, err := common.ReadIngressesFromCluster(ctx, r.conf.Client, KongIngressClass)
+	ingresses, err := common.ReadIngressesFromCluster(ctx, r.conf.Client, sets.New(KongIngressClass))
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +68,7 @@ func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage
 func (r *resourceReader) readResourcesFromFile(filename string) (*storage, error) {
 	storage := newResourceStorage()
 
-	ingresses, err := common.ReadIngressesFromFile(filename, r.conf.Namespace, KongIngressClass)
+	ingresses, err := common.ReadIngressesFromFile(filename, r.conf.Namespace, sets.New(KongIngressClass))
 	if err != nil {
 		return nil, err
 	}
@@ -94,10 +93,6 @@ func (r *resourceReader) readTCPIngressesFromCluster(ctx context.Context) ([]kon
 
 	err := r.conf.Client.List(ctx, tcpIngressList)
 	if err != nil {
-		if client.IgnoreNotFound(err) == nil {
-			klog.Warningf("couldn't find %s CRD, it is likely not installed in the cluster", tcpIngressGVK.GroupKind().String())
-			return []kongv1beta1.TCPIngress{}, nil
-		}
 		return nil, fmt.Errorf("failed to list %s: %w", tcpIngressGVK.GroupKind().String(), err)
 	}
 

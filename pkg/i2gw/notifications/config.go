@@ -37,7 +37,7 @@ var (
 	maxWidthforNotificationColumn = 100
 
 	tableStyle    table.Style = table.StyleRounded
-	rowSeperation bool        = true
+	rowSeperation             = true
 	textAlignment text.Align  = text.AlignCenter
 )
 

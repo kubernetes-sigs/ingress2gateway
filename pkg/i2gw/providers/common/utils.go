@@ -34,7 +34,7 @@ func GetIngressClass(ingress networkingv1.Ingress) string {
 	} else if _, ok := ingress.Annotations[networkingv1beta1.AnnotationIngressClass]; ok {
 		ingressClass = ingress.Annotations[networkingv1beta1.AnnotationIngressClass]
 	} else {
-		ingressClass = ingress.Name
+		ingressClass = ""
 	}
 
 	return ingressClass

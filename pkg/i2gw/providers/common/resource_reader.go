@@ -28,11 +28,12 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	kubeyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func ReadIngressesFromCluster(ctx context.Context, client client.Client, ingressClass string) (map[types.NamespacedName]*networkingv1.Ingress, error) {
+func ReadIngressesFromCluster(ctx context.Context, client client.Client, ingressClasses sets.Set[string]) (map[types.NamespacedName]*networkingv1.Ingress, error) {
 	var ingressList networkingv1.IngressList
 	err := client.List(ctx, &ingressList)
 	if err != nil {
@@ -41,7 +42,7 @@ func ReadIngressesFromCluster(ctx context.Context, client client.Client, ingress
 
 	ingresses := map[types.NamespacedName]*networkingv1.Ingress{}
 	for i, ingress := range ingressList.Items {
-		if GetIngressClass(ingress) != ingressClass {
+		if !ingressClasses.Has(GetIngressClass(ingress)) {
 			continue
 		}
 		ingresses[types.NamespacedName{Namespace: ingress.Namespace, Name: ingress.Name}] = &ingressList.Items[i]
@@ -50,7 +51,7 @@ func ReadIngressesFromCluster(ctx context.Context, client client.Client, ingress
 	return ingresses, nil
 }
 
-func ReadIngressesFromFile(filename, namespace, ingressClass string) (map[types.NamespacedName]*networkingv1.Ingress, error) {
+func ReadIngressesFromFile(filename, namespace string, ingressClasses sets.Set[string]) (map[types.NamespacedName]*networkingv1.Ingress, error) {
 	stream, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file %v: %w", filename, err)
@@ -70,7 +71,7 @@ func ReadIngressesFromFile(filename, namespace, ingressClass string) (map[types.
 			if err != nil {
 				return nil, err
 			}
-			if GetIngressClass(ingress) != ingressClass {
+			if !ingressClasses.Has(GetIngressClass(ingress)) {
 				continue
 			}
 			ingresses[types.NamespacedName{Namespace: ingress.Namespace, Name: ingress.Name}] = &ingress
