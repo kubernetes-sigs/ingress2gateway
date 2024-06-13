@@ -23,7 +23,7 @@ import (
 )
 
 func init() {
-	CommonNotification = NotificationAggregator{make([]Notification, 0)}
+	CommonNotification = NotificationAggregator{map[string][]Notification{}}
 }
 
 const (
@@ -35,38 +35,31 @@ const (
 type MessageType string
 
 type Notification struct {
-	Type     MessageType
-	Message  string
-	Provider string
+	Type    MessageType
+	Message string
 }
 
 type NotificationAggregator struct {
-	Notifications []Notification
+	Notifications map[string][]Notification
 }
 
 var CommonNotification NotificationAggregator
 
-func (na *NotificationAggregator) DispatchNotication(notification Notification) {
-	na.Notifications = append(na.Notifications, notification)
+// DispatchNotification is used to send a notification to the NotificationAggregator
+func (na *NotificationAggregator) DispatchNotification(notification Notification, ProviderName string) {
+	na.Notifications[ProviderName] = append(na.Notifications[ProviderName], notification)
 }
 
+// ProcessNotifications takes all generated notifications and displays it in a tabular format based on provider
 func (na *NotificationAggregator) ProcessNotifications() {
-	// Create a mapping of provider and their messages
-	providerNotifications := make(map[string][]Notification)
-
-	// Segregate messages into
-	for _, msg := range na.Notifications {
-		providerNotifications[msg.Provider] = append(providerNotifications[msg.Provider], msg)
-	}
-
-	for provider, msgs := range providerNotifications {
+	for provider, msgs := range na.Notifications {
 		t := newTableConfig()
 
 		t.SetTitle(fmt.Sprintf("Notifications from %v", provider))
-		t.AppendHeader(table.Row{"Provider", "Message Type", "Notification"})
+		t.AppendHeader(table.Row{"Notification Type", "Notification"})
 
 		for _, n := range msgs {
-			t.AppendRow(table.Row{n.Provider, n.Type, n.Message})
+			t.AppendRow(table.Row{n.Type, n.Message})
 		}
 
 		t.Render()

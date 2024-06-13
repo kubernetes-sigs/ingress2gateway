@@ -19,6 +19,6 @@ package kong
 import "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 
 func notify(mType notifications.MessageType, message string) {
-	newNotification := notifications.Notification{Type: mType, Message: message, Provider: string(Name)}
-    notifications.CommonNotification.DispatchNotication(newNotification)
+	newNotification := notifications.Notification{Type: mType, Message: message}
+    notifications.CommonNotification.DispatchNotification(newNotification, string(Name))
 }

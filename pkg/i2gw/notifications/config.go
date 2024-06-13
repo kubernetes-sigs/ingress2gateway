@@ -32,12 +32,21 @@ const (
 	defaultColor = text.FgWhite
 )
 
+var (
+	notificationColumnNumber      = 2
+	maxWidthforNotificationColumn = 100
+
+	tableStyle    table.Style = table.StyleRounded
+	rowSeperation bool        = true
+	textAlignment text.Align  = text.AlignCenter
+)
+
 func newTableConfig() table.Writer {
 	t := table.NewWriter()
 
 	t.SetOutputMirror(os.Stdout)
 	t.SetRowPainter(func(row table.Row) text.Colors {
-		switch row[1] {
+		switch notificationType := row[0]; notificationType {
 		case InfoNotification:
 			return text.Colors{bgColor, infoColor}
 		case WarningNotification:
@@ -50,12 +59,12 @@ func newTableConfig() table.Writer {
 	})
 
 	t.SetColumnConfigs([]table.ColumnConfig{
-		{Number: 3, WidthMax: 100},
+		{Number: notificationColumnNumber, WidthMax: maxWidthforNotificationColumn},
 	})
 
-	style := table.StyleRounded
-	style.Options.SeparateRows = true
-	style.Title.Align = text.AlignCenter
+	style := tableStyle
+	style.Options.SeparateRows = rowSeperation
+	style.Title.Align = textAlignment
 
 	t.SetStyle(style)
 
