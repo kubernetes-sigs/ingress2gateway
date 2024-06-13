@@ -40,17 +40,17 @@ func init() {
 
 	i2gw.RegisterProviderSpecificFlag(ProviderName, i2gw.ProviderSpecificFlag{
 		Name:        BackendFlag,
-		Description: "The name of the backend service to use in the HTTPRoutes",
+		Description: "The name of the backend service to use in the HTTPRoutes.",
 	})
 
 	i2gw.RegisterProviderSpecificFlag(ProviderName, i2gw.ProviderSpecificFlag{
 		Name:        GatewayClassFlag,
-		Description: "The name of the gateway class to use in the Gateways",
+		Description: "The name of the gateway class to use in the Gateways.",
 	})
 
 	i2gw.RegisterProviderSpecificFlag(ProviderName, i2gw.ProviderSpecificFlag{
 		Name:        TLSSecretFlag,
-		Description: "The name of the secret for the TLS certificate references in the Gateways",
+		Description: "The name of the secret for the TLS certificate references in the Gateways.",
 	})
 }
 
