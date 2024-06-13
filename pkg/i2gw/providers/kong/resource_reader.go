@@ -31,8 +31,6 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
-var count int
-
 // converter implements the i2gw.CustomResourceReader interface.
 type resourceReader struct {
 	conf *i2gw.ProviderConf
@@ -90,8 +88,6 @@ func (r *resourceReader) readResourcesFromFile(filename string) (*storage, error
 // -----------------------------------------------------------------------------
 
 func (r *resourceReader) readTCPIngressesFromCluster(ctx context.Context) ([]kongv1beta1.TCPIngress, error) {
-	count++
-	fmt.Println(count)
 	tcpIngressList := &unstructured.UnstructuredList{}
 	tcpIngressList.SetGroupVersionKind(tcpIngressGVK)
 
