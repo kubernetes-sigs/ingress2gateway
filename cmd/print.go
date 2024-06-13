@@ -293,7 +293,6 @@ func (pr *PrintRunner) getProviderSpecificFlags() map[string]map[string]string {
 	for flagName, value := range pr.providerSpecificFlags {
 		provider, found := lo.Find(pr.providers, func(p string) bool { return strings.HasPrefix(flagName, fmt.Sprintf("%s-", p)) })
 		if !found {
-			// log.Printf("Warning: Ignoring flag %s as it does not match any of the providers", flagName)
 			continue
 		}
 		flagNameWithoutProvider := strings.TrimPrefix(flagName, fmt.Sprintf("%s-", provider))
