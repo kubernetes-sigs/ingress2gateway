@@ -19,16 +19,15 @@
 - Deprecate `i2gw.InputResources` and remove input resources from `ToGatewayAPI` function (#141, @YTGhost)
 - New support for OpenAPI Provider (#157, @guicassolato)
 - Providers flag is now required (#159, @LiorLieberman)
-- The Kong `TCPIngress` resources are properly translated into `Gateway`s, `TCPRoute`s, and `TLSRoute`s. (#86, @mlavacca)
+- The Kong `TCPIngress` resources are properly translated into `Gateway`s, `TCPRoute`s, and `TLSRoute`s (#86, @mlavacca)
 
 ### Bug or Regression
 
 - Add translation when canary-weight is set to 0 (#137, @MregXN)
 - Fix errors when CRDs are not installed in the cluster (#153, @LiorLieberman)
 - Fixed ingress-nginx conversion tests (#139, @LiorLieberman)
-- Improves error handling for Kong and Ingress Nginx providers, making them more understandable.
-  - Prevents the tool from crashing in case no `pathType` is specified (#152, @levikobi)
-- [istio] allow & handle wildcard hosts in VirtualServices (#155, @zirain)
+- Improve error handling for Kong and Ingress Nginx providers, also prevents the tool from crashing in case no `pathType` is specified (#152, @levikobi)
+- Allow & handle wildcard hosts in Istio VirtualServices (#155, @zirain)
 
 ### Other (Cleanup or Flake)
 
