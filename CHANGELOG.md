@@ -2,10 +2,37 @@
 
 ## Table of Contents
 
+- [v0.3.0-rc1](#v030-rc1)
 - [v0.2.0](#v020)
 - [v0.2.0-rc1](#v020-rc1)
 - [v0.1.0](#v010)
 - [v0.1.0-rc1](#v010-rc1)
+
+## v0.3.0-rc1
+
+## Changes by Kind
+### Feature
+
+- Add a `--kubeconfig` flag to specify kubeconfig file location (#133, @YTGhost)
+- Added support for GCE provider. (#148, @sawsa307)
+- Bump `ReferenceGrant` to `v1beta1` (#142, @YTGhost)
+- Deprecate `i2gw.InputResources` and remove input resources from `ToGatewayAPI` function (#141, @YTGhost)
+- New support for OpenAPI Provider (#157, @guicassolato)
+- Providers flag is now required (#159, @LiorLieberman)
+- The Kong `TCPIngress` resources are properly translated into `Gateway`s, `TCPRoute`s, and `TLSRoute`s. (#86, @mlavacca)
+
+### Bug or Regression
+
+- Add translation when canary-weight is set to 0 (#137, @MregXN)
+- Fix errors when CRDs are not installed in the cluster (#153, @LiorLieberman)
+- Fixed ingress-nginx conversion tests (#139, @LiorLieberman)
+- Improves error handling for Kong and Ingress Nginx providers, making them more understandable.
+  - Prevents the tool from crashing in case no `pathType` is specified (#152, @levikobi)
+- [istio] allow & handle wildcard hosts in VirtualServices (#155, @zirain)
+
+### Other (Cleanup or Flake)
+
+- The `--input_file` flag has been renamed `--input-file`. (#156, @mlavacca)
 
 ## v0.2.0
 
