@@ -17,16 +17,27 @@ limitations under the License.
 package gce
 
 import (
+	apiv1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
+	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
 )
 
 type storage struct {
 	Ingresses map[types.NamespacedName]*networkingv1.Ingress
+
+	// BackendConfig is a GKE Ingress extension, and it is associated to an GKE
+	// Ingress through specifying `cloud.google.com/backend-config` or
+	// `beta.cloud.google.com/backend-config` annotation on its Backend Services.
+
+	Services       map[types.NamespacedName]*apiv1.Service
+	BackendConfigs map[types.NamespacedName]*backendconfigv1.BackendConfig
 }
 
 func newResourcesStorage() *storage {
 	return &storage{
-		Ingresses: map[types.NamespacedName]*networkingv1.Ingress{},
+		Ingresses:      make(map[types.NamespacedName]*networkingv1.Ingress),
+		Services:       make(map[types.NamespacedName]*apiv1.Service),
+		BackendConfigs: make(map[types.NamespacedName]*backendconfigv1.BackendConfig),
 	}
 }
