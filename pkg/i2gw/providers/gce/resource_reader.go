@@ -30,6 +30,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
+	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
+	backendconfigv1beta1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1beta1"
 )
 
 // GCE supports the following Ingress Class values:
@@ -68,6 +70,12 @@ func (r *reader) readResourcesFromCluster(ctx context.Context) (*storage, error)
 		return nil, err
 	}
 	storage.Services = services
+
+	backendConfigs, err := r.readBackendConfigsFromCluster(ctx)
+	if err != nil {
+		return nil, err
+	}
+	storage.BackendConfigs = backendConfigs
 	return storage, nil
 }
 
@@ -103,11 +111,27 @@ func (r *reader) readServicesFromCluster(ctx context.Context) (map[types.Namespa
 	return services, nil
 }
 
+func (r *reader) readBackendConfigsFromCluster(ctx context.Context) (map[types.NamespacedName]*backendconfigv1.BackendConfig, error) {
+	var backendConfigList backendconfigv1.BackendConfigList
+	err := r.conf.Client.List(ctx, &backendConfigList)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get backendConfigs from the cluster: %w", err)
+	}
+	backendConfigs := make(map[types.NamespacedName]*backendconfigv1.BackendConfig)
+	for i, backendConfig := range backendConfigList.Items {
+		backendConfigs[types.NamespacedName{Namespace: backendConfig.Namespace, Name: backendConfig.Name}] = &backendConfigList.Items[i]
+	}
+	return backendConfigs, nil
+}
+
 func (r *reader) readUnstructuredObjects(objects []*unstructured.Unstructured) (*storage, error) {
 	res := newResourcesStorage()
 
 	ingresses := make(map[types.NamespacedName]*networkingv1.Ingress)
 	services := make(map[types.NamespacedName]*apiv1.Service)
+	backendConfigs := make(map[types.NamespacedName]*backendconfigv1.BackendConfig)
+	betaBackendConfigs := make(map[types.NamespacedName]*backendconfigv1beta1.BackendConfig)
+
 	for _, f := range objects {
 		if f.GroupVersionKind().Empty() {
 			continue
@@ -134,8 +158,28 @@ func (r *reader) readUnstructuredObjects(objects []*unstructured.Unstructured) (
 			}
 			services[types.NamespacedName{Namespace: service.Namespace, Name: service.Name}] = &service
 		}
+		if f.GetAPIVersion() == "cloud.google.com/v1" && f.GetKind() == "BackendConfig" {
+			var backendConfig backendconfigv1.BackendConfig
+			err := runtime.DefaultUnstructuredConverter.
+				FromUnstructured(f.UnstructuredContent(), &backendConfig)
+			if err != nil {
+				return nil, err
+			}
+			backendConfigs[types.NamespacedName{Namespace: backendConfig.Namespace, Name: backendConfig.Name}] = &backendConfig
+		}
+		if f.GetAPIVersion() == "cloud.google.com/v1beta1" && f.GetKind() == "BackendConfig" {
+			var betaBackendConfig backendconfigv1beta1.BackendConfig
+			err := runtime.DefaultUnstructuredConverter.
+				FromUnstructured(f.UnstructuredContent(), &betaBackendConfig)
+			if err != nil {
+				return nil, err
+			}
+			betaBackendConfigs[types.NamespacedName{Namespace: betaBackendConfig.Namespace, Name: betaBackendConfig.Name}] = &betaBackendConfig
+		}
 	}
 	res.Ingresses = ingresses
 	res.Services = services
+	res.BackendConfigs = backendConfigs
+	res.BetaBackendConfigs = betaBackendConfigs
 	return res, nil
 }

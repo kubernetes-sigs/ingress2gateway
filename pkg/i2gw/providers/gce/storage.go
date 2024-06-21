@@ -20,16 +20,25 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
+	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
+	backendconfigv1beta1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1beta1"
 )
 
 type storage struct {
 	Ingresses map[types.NamespacedName]*networkingv1.Ingress
-	Services  map[types.NamespacedName]*apiv1.Service
+
+	// BackendConfig is a GKE Ingress extension, and it is associated to an GKE
+	// Ingress through an annotation on the Service `cloud.google.com/backend-config`.
+	Services           map[types.NamespacedName]*apiv1.Service
+	BackendConfigs     map[types.NamespacedName]*backendconfigv1.BackendConfig
+	BetaBackendConfigs map[types.NamespacedName]*backendconfigv1beta1.BackendConfig
 }
 
 func newResourcesStorage() *storage {
 	return &storage{
-		Ingresses: make(map[types.NamespacedName]*networkingv1.Ingress),
-		Services:  make(map[types.NamespacedName]*apiv1.Service),
+		Ingresses:          make(map[types.NamespacedName]*networkingv1.Ingress),
+		Services:           make(map[types.NamespacedName]*apiv1.Service),
+		BackendConfigs:     make(map[types.NamespacedName]*backendconfigv1.BackendConfig),
+		BetaBackendConfigs: make(map[types.NamespacedName]*backendconfigv1beta1.BackendConfig),
 	}
 }
