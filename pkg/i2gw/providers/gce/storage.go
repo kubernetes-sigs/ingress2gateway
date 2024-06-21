@@ -20,11 +20,13 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
+	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
 )
 
 type storage struct {
-	Ingresses map[types.NamespacedName]*networkingv1.Ingress
-	Services  map[types.NamespacedName]*apiv1.Service
+	Ingresses      map[types.NamespacedName]*networkingv1.Ingress
+	Services       map[types.NamespacedName]*apiv1.Service
+	BackendConfigs map[types.NamespacedName]*backendconfigv1.BackendConfig
 }
 
 func newResourcesStorage() *storage {
