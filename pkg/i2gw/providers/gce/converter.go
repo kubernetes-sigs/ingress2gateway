@@ -17,9 +17,11 @@ limitations under the License.
 package gce
 
 import (
+	gkegatewayv1 "github.com/GoogleCloudPlatform/gke-gateway-api/apis/networking/v1"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -67,5 +69,37 @@ func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.Erro
 		errs = append(errs, parseErrs...)
 	}
 
+	hcPolicies, err := c.convertHealthCheckPolicy()
+	if err != nil {
+		return i2gw.GatewayResources{}, errs
+	}
+	gatewayResources.HealthCheckPolicies = hcPolicies
+
+	// gwPolicies, err := c.convertGCPGatewayPolicy()
+	// if err != nil {
+	// 	return i2gw.GatewayResources{}, errs
+	// }
+	// gatewayResources.GCPGatewayPolicies = gwPolicies
+
+	// bePolicies, err := c.convertGCPBackendPolicy()
+	// if err != nil {
+	// 	return i2gw.GatewayResources{}, errs
+	// }
+	// gatewayResources.GCPBackendPolicies = bePolicies
 	return gatewayResources, errs
 }
+
+func (c *converter) convertHealthCheckPolicy() (map[types.NamespacedName]gkegatewayv1.HealthCheckPolicy, error) {
+	hcPolicies := make(map[types.NamespacedName]gkegatewayv1.HealthCheckPolicy)
+	return hcPolicies, nil
+}
+
+// func (c *converter) convertGCPGatewayPolicy() (map[types.NamespacedName]gkegatewayv1.GCPGatewayPolicy, error) {
+// 	gwPolicies := make(map[types.NamespacedName]gkegatewayv1.GCPGatewayPolicy)
+// 	return gwPolicies, nil
+// }
+
+// func (c *converter) convertGCPBackendPolicy() (map[types.NamespacedName]gkegatewayv1.GCPBackendPolicy, error) {
+// 	bePolicies := make(map[types.NamespacedName]gkegatewayv1.GCPBackendPolicy)
+// 	return bePolicies, nil
+// }

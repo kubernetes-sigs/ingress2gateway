@@ -20,6 +20,7 @@ import (
 	"context"
 	"sync"
 
+	gkegatewayv1 "github.com/GoogleCloudPlatform/gke-gateway-api/apis/networking/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -99,6 +100,10 @@ type GatewayResources struct {
 	UDPRoutes  map[types.NamespacedName]gatewayv1alpha2.UDPRoute
 
 	ReferenceGrants map[types.NamespacedName]gatewayv1beta1.ReferenceGrant
+
+	HealthCheckPolicies map[types.NamespacedName]gkegatewayv1.HealthCheckPolicy
+	// GCPGatewayPolicies  map[types.NamespacedName]gkegatewayv1.GCPGatewayPolicy
+	// GCPBackendPolicies  map[types.NamespacedName]gkegatewayv1.GCPBackendPolicy
 }
 
 // FeatureParser is a function that reads the Ingresses, and applies
