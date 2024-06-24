@@ -137,7 +137,7 @@ func init() {
 	i2gw.ProviderConstructorByName[Name] = NewProvider
 }
 ```
-6. In order to use notification mechanism, create a `notify` function in a file named `notification.go`. This method is used to reduce the function signature for creating notifications during the conversion process.
+6. [optional] In order to use notification mechanism, create a `notify` function in a file named `notification.go`. This method is used to reduce the function signature for creating notifications during the conversion process.
 ```go
 package examplegateway
 

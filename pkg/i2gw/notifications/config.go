@@ -26,10 +26,9 @@ import (
 const (
 	bgColor = text.BgBlack
 
-	infoColor    = text.FgHiWhite
-	warningColor = text.FgHiMagenta
-	errorColor   = text.FgRed
-	defaultColor = text.FgWhite
+	whiteColor   = text.FgHiWhite
+	magentaColor = text.FgHiMagenta
+	redColor     = text.FgRed
 )
 
 var (
@@ -48,13 +47,13 @@ func newTableConfig() table.Writer {
 	t.SetRowPainter(func(row table.Row) text.Colors {
 		switch notificationType := row[0]; notificationType {
 		case InfoNotification:
-			return text.Colors{bgColor, infoColor}
+			return text.Colors{bgColor, whiteColor}
 		case WarningNotification:
-			return text.Colors{bgColor, warningColor}
+			return text.Colors{bgColor, magentaColor}
 		case ErrorNotification:
-			return text.Colors{bgColor, errorColor}
+			return text.Colors{bgColor, redColor}
 		default:
-			return text.Colors{bgColor, defaultColor}
+			return text.Colors{bgColor, whiteColor}
 		}
 	})
 

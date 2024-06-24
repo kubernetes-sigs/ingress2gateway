@@ -18,8 +18,10 @@ package notifications
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func init() {
@@ -35,8 +37,9 @@ const (
 type MessageType string
 
 type Notification struct {
-	Type    MessageType
-	Message string
+	Type           MessageType
+	Message        string
+	CallingObjects []client.Object
 }
 
 type NotificationAggregator struct {
@@ -56,12 +59,26 @@ func (na *NotificationAggregator) ProcessNotifications() {
 		t := newTableConfig()
 
 		t.SetTitle(fmt.Sprintf("Notifications from %v", provider))
-		t.AppendHeader(table.Row{"Notification Type", "Notification"})
+		t.AppendHeader(table.Row{"Message Type", "Notification", "Calling Object"})
 
 		for _, n := range msgs {
-			t.AppendRow(table.Row{n.Type, n.Message})
+			t.AppendRow(table.Row{n.Type, n.Message, convertObjectsToStr(n.CallingObjects)})
 		}
 
 		t.Render()
 	}
+}
+
+func convertObjectsToStr(ob []client.Object) string {
+	var sb strings.Builder
+
+	for i, o := range ob {
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		object := o.GetObjectKind().GroupVersionKind().Kind + ": " + client.ObjectKeyFromObject(o).String()
+		sb.WriteString(object)
+	}
+
+	return sb.String()
 }
