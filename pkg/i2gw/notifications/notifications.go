@@ -19,13 +19,14 @@ package notifications
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func init() {
-	CommonNotification = NotificationAggregator{map[string][]Notification{}}
+	NotificationAggr = NotificationAggregator{Notifications: map[string][]Notification{}}
 }
 
 const (
@@ -43,18 +44,21 @@ type Notification struct {
 }
 
 type NotificationAggregator struct {
+	mutex         sync.Mutex
 	Notifications map[string][]Notification
 }
 
-var CommonNotification NotificationAggregator
+var NotificationAggr NotificationAggregator
 
 // DispatchNotification is used to send a notification to the NotificationAggregator
 func (na *NotificationAggregator) DispatchNotification(notification Notification, ProviderName string) {
+	na.mutex.Lock()
 	na.Notifications[ProviderName] = append(na.Notifications[ProviderName], notification)
+	na.mutex.Unlock()
 }
 
-// ProcessNotifications takes all generated notifications and displays it in a tabular format based on provider
-func (na *NotificationAggregator) ProcessNotifications() {
+// CreateNotificationTables takes all generated notifications and displays it in a tabular format based on provider
+func (na *NotificationAggregator) CreateNotificationTables() {
 	for provider, msgs := range na.Notifications {
 		t := newTableConfig()
 
