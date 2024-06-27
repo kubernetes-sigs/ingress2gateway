@@ -75,7 +75,7 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 		errs = append(errs, conversionErrs...)
 		gatewayResources = append(gatewayResources, providerGatewayResources)
 	}
-	notifications.CommonNotification.ProcessNotifications()
+	notifications.NotificationAggr.CreateNotificationTables()
 	if len(errs) > 0 {
 		return nil, aggregatedErrs(errs)
 	}
