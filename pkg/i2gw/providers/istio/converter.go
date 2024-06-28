@@ -89,6 +89,8 @@ func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.Erro
 			Name:      vs.Name,
 		}.String())
 
+		// We add Virtual Service to the context in order to reference the calling object during notifications
+		// generated from functions that do not have access to this object.
 		c.ctx = context.WithValue(c.ctx, virtualServiceKey, vs)
 
 		parentRefs, referenceGrants := c.generateReferences(vs, vsFieldPath)

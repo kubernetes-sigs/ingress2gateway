@@ -17,8 +17,6 @@ limitations under the License.
 package notifications
 
 import (
-	"os"
-
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 )
@@ -43,7 +41,7 @@ var (
 func newTableConfig() table.Writer {
 	t := table.NewWriter()
 
-	t.SetOutputMirror(os.Stdout)
+	// t.SetOutputMirror(os.Stdout)
 	t.SetRowPainter(func(row table.Row) text.Colors {
 		switch notificationType := row[0]; notificationType {
 		case InfoNotification:

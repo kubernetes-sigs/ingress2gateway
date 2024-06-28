@@ -22,6 +22,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/samber/lo"
 	"github.com/spf13/cobra"
@@ -85,18 +86,23 @@ func (pr *PrintRunner) PrintGatewayAPIObjects(cmd *cobra.Command, _ []string) er
 		return fmt.Errorf("failed to initialize namespace filter: %w", err)
 	}
 
-	gatewayResources, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers, pr.getProviderSpecificFlags())
+	gatewayResources, tables, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers, pr.getProviderSpecificFlags())
 	if err != nil {
 		return err
 	}
 
-	pr.outputResult(gatewayResources)
+	pr.outputResult(gatewayResources, tables)
 
 	return nil
 }
 
-func (pr *PrintRunner) outputResult(gatewayResources []i2gw.GatewayResources) {
+func (pr *PrintRunner) outputResult(gatewayResources []i2gw.GatewayResources, tables []table.Writer) {
 	resourceCount := 0
+
+	for _, t := range tables {
+		t.SetOutputMirror(os.Stdout)
+		t.Render()
+	}
 
 	for _, r := range gatewayResources {
 		resourceCount += len(r.GatewayClasses)
