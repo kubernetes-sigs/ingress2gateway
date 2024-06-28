@@ -57,8 +57,10 @@ func (na *NotificationAggregator) DispatchNotification(notification Notification
 	na.mutex.Unlock()
 }
 
-// CreateNotificationTables takes all generated notifications and displays it in a tabular format based on provider
-func (na *NotificationAggregator) CreateNotificationTables() {
+// CreateNotificationTables takes all generated notifications and returns an array of
+// table.Writers that displays the notifications in a tabular format based on provider
+func (na *NotificationAggregator) CreateNotificationTables() []table.Writer {
+	tables := make([]table.Writer, 0)
 	for provider, msgs := range na.Notifications {
 		t := newTableConfig()
 
@@ -69,8 +71,10 @@ func (na *NotificationAggregator) CreateNotificationTables() {
 			t.AppendRow(table.Row{n.Type, n.Message, convertObjectsToStr(n.CallingObjects)})
 		}
 
-		t.Render()
+		tables = append(tables, t)
 	}
+
+	return tables
 }
 
 func convertObjectsToStr(ob []client.Object) string {
