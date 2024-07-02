@@ -22,7 +22,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/samber/lo"
 	"github.com/spf13/cobra"
@@ -91,18 +90,17 @@ func (pr *PrintRunner) PrintGatewayAPIObjects(cmd *cobra.Command, _ []string) er
 		return err
 	}
 
-	pr.outputResult(gatewayResources, tables)
+	for _, t := range tables {
+		t.Render()
+	}
+
+	pr.outputResult(gatewayResources)
 
 	return nil
 }
 
-func (pr *PrintRunner) outputResult(gatewayResources []i2gw.GatewayResources, tables []table.Writer) {
+func (pr *PrintRunner) outputResult(gatewayResources []i2gw.GatewayResources) {
 	resourceCount := 0
-
-	for _, t := range tables {
-		t.SetOutputMirror(os.Stdout)
-		t.Render()
-	}
 
 	for _, r := range gatewayResources {
 		resourceCount += len(r.GatewayClasses)

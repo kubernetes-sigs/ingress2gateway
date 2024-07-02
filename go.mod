@@ -5,8 +5,8 @@ go 1.21
 require (
 	github.com/getkin/kin-openapi v0.124.0
 	github.com/google/go-cmp v0.6.0
-	github.com/jedib0t/go-pretty/v6 v6.5.9
 	github.com/kong/kubernetes-ingress-controller/v2 v2.12.3
+	github.com/olekukonko/tablewriter v0.0.5
 	github.com/samber/lo v1.39.0
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.9.0
