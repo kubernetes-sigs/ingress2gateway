@@ -17,6 +17,7 @@ limitations under the License.
 package istio
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -332,7 +333,7 @@ func Test_converter_convertGateway(t *testing.T) {
 
 func Test_converter_convertVsHTTPRoutes(t *testing.T) {
 	type args struct {
-		virtualService   metav1.ObjectMeta
+		virtualService   *istioclientv1beta1.VirtualService
 		istioHTTPRoutes  []*istiov1beta1.HTTPRoute
 		allowedHostnames []string
 	}
@@ -345,17 +346,22 @@ func Test_converter_convertVsHTTPRoutes(t *testing.T) {
 		{
 			name: "objectMeta field is converted and hosts are set",
 			args: args{
-				virtualService: metav1.ObjectMeta{
-					Name:        "test",
-					Namespace:   "ns",
-					Labels:      map[string]string{"k": "v"},
-					Annotations: map[string]string{"k1": "v1"},
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							Name: "object",
-						},
+				virtualService: &istioclientv1beta1.VirtualService{
+					TypeMeta: metav1.TypeMeta{
+						Kind: "VirtualService",
 					},
-					Finalizers: []string{"finalizer1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "test",
+						Namespace:   "ns",
+						Labels:      map[string]string{"k": "v"},
+						Annotations: map[string]string{"k1": "v1"},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								Name: "object",
+							},
+						},
+						Finalizers: []string{"finalizer1"},
+					},
 				},
 				istioHTTPRoutes: []*istiov1beta1.HTTPRoute{
 					{},
@@ -390,9 +396,14 @@ func Test_converter_convertVsHTTPRoutes(t *testing.T) {
 		{
 			name: "backendRefs are generated",
 			args: args{
-				virtualService: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "ns",
+				virtualService: &istioclientv1beta1.VirtualService{
+					TypeMeta: metav1.TypeMeta{
+						Kind: "VirtualService",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "ns",
+					},
 				},
 				istioHTTPRoutes: []*istiov1beta1.HTTPRoute{
 					{
@@ -464,9 +475,14 @@ func Test_converter_convertVsHTTPRoutes(t *testing.T) {
 		{
 			name: "match.Uri is converted",
 			args: args{
-				virtualService: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "ns",
+				virtualService: &istioclientv1beta1.VirtualService{
+					TypeMeta: metav1.TypeMeta{
+						Kind: "VirtualService",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "ns",
+					},
 				},
 				istioHTTPRoutes: []*istiov1beta1.HTTPRoute{
 					{
@@ -541,9 +557,14 @@ func Test_converter_convertVsHTTPRoutes(t *testing.T) {
 		{
 			name: "match.Headers are converted",
 			args: args{
-				virtualService: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "ns",
+				virtualService: &istioclientv1beta1.VirtualService{
+					TypeMeta: metav1.TypeMeta{
+						Kind: "VirtualService",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "ns",
+					},
 				},
 				istioHTTPRoutes: []*istiov1beta1.HTTPRoute{
 					{
@@ -612,9 +633,14 @@ func Test_converter_convertVsHTTPRoutes(t *testing.T) {
 		{
 			name: "match.QueryParams are converted",
 			args: args{
-				virtualService: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "ns",
+				virtualService: &istioclientv1beta1.VirtualService{
+					TypeMeta: metav1.TypeMeta{
+						Kind: "VirtualService",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "ns",
+					},
 				},
 				istioHTTPRoutes: []*istiov1beta1.HTTPRoute{
 					{
@@ -705,9 +731,14 @@ func Test_converter_convertVsHTTPRoutes(t *testing.T) {
 		{
 			name: "match.Method is converted",
 			args: args{
-				virtualService: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "ns",
+				virtualService: &istioclientv1beta1.VirtualService{
+					TypeMeta: metav1.TypeMeta{
+						Kind: "VirtualService",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "ns",
+					},
 				},
 				istioHTTPRoutes: []*istiov1beta1.HTTPRoute{
 					{
@@ -750,9 +781,14 @@ func Test_converter_convertVsHTTPRoutes(t *testing.T) {
 		{
 			name: "route.Redirect is converted",
 			args: args{
-				virtualService: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "ns",
+				virtualService: &istioclientv1beta1.VirtualService{
+					TypeMeta: metav1.TypeMeta{
+						Kind: "VirtualService",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "ns",
+					},
 				},
 				istioHTTPRoutes: []*istiov1beta1.HTTPRoute{
 					{
@@ -830,9 +866,14 @@ func Test_converter_convertVsHTTPRoutes(t *testing.T) {
 		{
 			name: "route.Rewrite is converted",
 			args: args{
-				virtualService: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "ns",
+				virtualService: &istioclientv1beta1.VirtualService{
+					TypeMeta: metav1.TypeMeta{
+						Kind: "VirtualService",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "ns",
+					},
 				},
 				istioHTTPRoutes: []*istiov1beta1.HTTPRoute{
 					{
@@ -1022,9 +1063,14 @@ func Test_converter_convertVsHTTPRoutes(t *testing.T) {
 		{
 			name: "route.Mirror is converted",
 			args: args{
-				virtualService: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "ns",
+				virtualService: &istioclientv1beta1.VirtualService{
+					TypeMeta: metav1.TypeMeta{
+						Kind: "VirtualService",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "ns",
+					},
 				},
 				istioHTTPRoutes: []*istiov1beta1.HTTPRoute{
 					{
@@ -1071,9 +1117,14 @@ func Test_converter_convertVsHTTPRoutes(t *testing.T) {
 		{
 			name: "route.Mirrors are converted",
 			args: args{
-				virtualService: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "ns",
+				virtualService: &istioclientv1beta1.VirtualService{
+					TypeMeta: metav1.TypeMeta{
+						Kind: "VirtualService",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "ns",
+					},
 				},
 				istioHTTPRoutes: []*istiov1beta1.HTTPRoute{
 					{
@@ -1124,9 +1175,14 @@ func Test_converter_convertVsHTTPRoutes(t *testing.T) {
 		{
 			name: "route.Timeout is converted",
 			args: args{
-				virtualService: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "ns",
+				virtualService: &istioclientv1beta1.VirtualService{
+					TypeMeta: metav1.TypeMeta{
+						Kind: "VirtualService",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "ns",
+					},
 				},
 				istioHTTPRoutes: []*istiov1beta1.HTTPRoute{
 					{
@@ -1159,9 +1215,14 @@ func Test_converter_convertVsHTTPRoutes(t *testing.T) {
 		{
 			name: "route.Headers are converted",
 			args: args{
-				virtualService: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "ns",
+				virtualService: &istioclientv1beta1.VirtualService{
+					TypeMeta: metav1.TypeMeta{
+						Kind: "VirtualService",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "ns",
+					},
 				},
 				istioHTTPRoutes: []*istiov1beta1.HTTPRoute{
 					{
@@ -1248,9 +1309,14 @@ func Test_converter_convertVsHTTPRoutes(t *testing.T) {
 		{
 			name: "hosts with '*'",
 			args: args{
-				virtualService: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "ns",
+				virtualService: &istioclientv1beta1.VirtualService{
+					TypeMeta: metav1.TypeMeta{
+						Kind: "VirtualService",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "ns",
+					},
 				},
 				istioHTTPRoutes: []*istiov1beta1.HTTPRoute{
 					{
@@ -1300,8 +1366,9 @@ func Test_converter_convertVsHTTPRoutes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &converter{}
-			httpRoutes, errList := c.convertVsHTTPRoutes(tt.args.virtualService, tt.args.istioHTTPRoutes, tt.args.allowedHostnames, field.NewPath(""))
+			c := &converter{ctx: context.Background()}
+			c.ctx = context.WithValue(c.ctx, virtualServiceKey, tt.args.virtualService)
+			httpRoutes, errList := c.convertVsHTTPRoutes(tt.args.virtualService.ObjectMeta, tt.args.istioHTTPRoutes, tt.args.allowedHostnames, field.NewPath(""))
 			if tt.wantError && len(errList) == 0 {
 				t.Errorf("converter.convertVsHTTPRoutes().errList = %+v, wantError %+v", errList, tt.wantError)
 			}
@@ -1314,7 +1381,7 @@ func Test_converter_convertVsHTTPRoutes(t *testing.T) {
 
 func Test_converter_convertVsTLSRoutes(t *testing.T) {
 	type args struct {
-		virtualService metav1.ObjectMeta
+		virtualService *istioclientv1beta1.VirtualService
 		istioTLSRoutes []*istiov1beta1.TLSRoute
 	}
 	tests := []struct {
@@ -1325,17 +1392,22 @@ func Test_converter_convertVsTLSRoutes(t *testing.T) {
 		{
 			name: "supported spec",
 			args: args{
-				virtualService: metav1.ObjectMeta{
-					Name:        "test",
-					Namespace:   "ns",
-					Labels:      map[string]string{"k": "v"},
-					Annotations: map[string]string{"k1": "v1"},
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							Name: "object",
-						},
+				virtualService: &istioclientv1beta1.VirtualService{
+					TypeMeta: metav1.TypeMeta{
+						Kind: "VirtualService",
 					},
-					Finalizers: []string{"finalizer1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "test",
+						Namespace:   "ns",
+						Labels:      map[string]string{"k": "v"},
+						Annotations: map[string]string{"k1": "v1"},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								Name: "object",
+							},
+						},
+						Finalizers: []string{"finalizer1"},
+					},
 				},
 				istioTLSRoutes: []*istiov1beta1.TLSRoute{
 					{
@@ -1423,8 +1495,9 @@ func Test_converter_convertVsTLSRoutes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &converter{}
-			if got := c.convertVsTLSRoutes(tt.args.virtualService, tt.args.istioTLSRoutes, field.NewPath("")); !apiequality.Semantic.DeepEqual(got, tt.want) {
+			c := &converter{ctx: context.Background()}
+			c.ctx = context.WithValue(c.ctx, virtualServiceKey, tt.args.virtualService)
+			if got := c.convertVsTLSRoutes(tt.args.virtualService.ObjectMeta, tt.args.istioTLSRoutes, field.NewPath("")); !apiequality.Semantic.DeepEqual(got, tt.want) {
 				t.Errorf("converter.convertVsTLSRoutes() = %+v, want %+v, diff (-want +got): %s", got, tt.want, cmp.Diff(tt.want, got))
 			}
 		})
@@ -1433,7 +1506,7 @@ func Test_converter_convertVsTLSRoutes(t *testing.T) {
 
 func Test_converter_convertVsTCPRoutes(t *testing.T) {
 	type args struct {
-		virtualService metav1.ObjectMeta
+		virtualService *istioclientv1beta1.VirtualService
 		istioTCPRoutes []*istiov1beta1.TCPRoute
 	}
 	tests := []struct {
@@ -1444,17 +1517,22 @@ func Test_converter_convertVsTCPRoutes(t *testing.T) {
 		{
 			name: "supported spec",
 			args: args{
-				virtualService: metav1.ObjectMeta{
-					Name:        "test",
-					Namespace:   "ns",
-					Labels:      map[string]string{"k": "v"},
-					Annotations: map[string]string{"k1": "v1"},
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							Name: "object",
-						},
+				virtualService: &istioclientv1beta1.VirtualService{
+					TypeMeta: metav1.TypeMeta{
+						Kind: "VirtualService",
 					},
-					Finalizers: []string{"finalizer1"},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "test",
+						Namespace:   "ns",
+						Labels:      map[string]string{"k": "v"},
+						Annotations: map[string]string{"k1": "v1"},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								Name: "object",
+							},
+						},
+						Finalizers: []string{"finalizer1"},
+					},
 				},
 				istioTCPRoutes: []*istiov1beta1.TCPRoute{
 					{
@@ -1529,8 +1607,9 @@ func Test_converter_convertVsTCPRoutes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &converter{}
-			if got := c.convertVsTCPRoutes(tt.args.virtualService, tt.args.istioTCPRoutes, field.NewPath("")); !apiequality.Semantic.DeepEqual(got, tt.want) {
+			c := &converter{ctx: context.Background()}
+			c.ctx = context.WithValue(c.ctx, virtualServiceKey, tt.args.virtualService)
+			if got := c.convertVsTCPRoutes(tt.args.virtualService.ObjectMeta, tt.args.istioTCPRoutes, field.NewPath("")); !apiequality.Semantic.DeepEqual(got, tt.want) {
 				t.Errorf("converter.convertVsTCPRoutes() = %+v, want %+v, diff (-want +got): %s", got, tt.want, cmp.Diff(tt.want, got))
 			}
 		})
@@ -1897,6 +1976,9 @@ func Test_converter_generateReferences(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "test",
 					},
+					TypeMeta: metav1.TypeMeta{
+						Kind: "VirtualService",
+					},
 					Spec: istiov1beta1.VirtualService{
 						ExportTo: []string{"*"},
 						Hosts:    []string{"prod.com"},
@@ -1920,6 +2002,9 @@ func Test_converter_generateReferences(t *testing.T) {
 				vs: &istioclientv1beta1.VirtualService{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "test",
+					},
+					TypeMeta: metav1.TypeMeta{
+						Kind: "VirtualService",
 					},
 					Spec: istiov1beta1.VirtualService{
 						ExportTo: []string{"*"},
@@ -1966,6 +2051,9 @@ func Test_converter_generateReferences(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "prod",
 					},
+					TypeMeta: metav1.TypeMeta{
+						Kind: "VirtualService",
+					},
 					Spec: istiov1beta1.VirtualService{
 						ExportTo: []string{"*"},
 						Hosts:    []string{"prod.com"},
@@ -2000,32 +2088,79 @@ func Test_converter_generateReferences(t *testing.T) {
 
 func Test_convertHostnames(t *testing.T) {
 	cases := []struct {
-		name      string
-		hostnames []string
-		expected  []gatewayv1alpha2.Hostname
+		name           string
+		virtualService *istioclientv1beta1.VirtualService
+		hostnames      []string
+		expected       []gatewayv1alpha2.Hostname
 	}{
 		{
-			name:      "default",
+			name: "default",
+			virtualService: &istioclientv1beta1.VirtualService{
+				TypeMeta: metav1.TypeMeta{
+					Kind: "VirtualService",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "ns",
+				},
+			},
 			hostnames: []string{"*.com", "test.net", "*.example.com"},
 			expected:  []gatewayv1alpha2.Hostname{"*.com", "test.net", "*.example.com"},
 		},
 		{
-			name:      "* is not allowed",
+			name: "* is not allowed",
+			virtualService: &istioclientv1beta1.VirtualService{
+				TypeMeta: metav1.TypeMeta{
+					Kind: "VirtualService",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "ns",
+				},
+			},
 			hostnames: []string{"*"},
 			expected:  []gatewayv1alpha2.Hostname{},
 		},
 		{
-			name:      "IP is not allowed",
+			name: "IP is not allowed",
+			virtualService: &istioclientv1beta1.VirtualService{
+				TypeMeta: metav1.TypeMeta{
+					Kind: "VirtualService",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "ns",
+				},
+			},
 			hostnames: []string{"192.0.2.1", "2001:db8::68", "::ffff:192.0.2.1"},
 			expected:  []gatewayv1alpha2.Hostname{},
 		},
 		{
-			name:      "The wildcard label must appear by itself as the first character",
+			name: "The wildcard label must appear by itself as the first character",
+			virtualService: &istioclientv1beta1.VirtualService{
+				TypeMeta: metav1.TypeMeta{
+					Kind: "VirtualService",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "ns",
+				},
+			},
 			hostnames: []string{"example*.com"},
-			expected:  []gatewayv1alpha2.Hostname{},
+
+			expected: []gatewayv1alpha2.Hostname{},
 		},
 		{
-			name:      "mix",
+			name: "mix",
+			virtualService: &istioclientv1beta1.VirtualService{
+				TypeMeta: metav1.TypeMeta{
+					Kind: "VirtualService",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "ns",
+				},
+			},
 			hostnames: []string{"192.0.2.1", "2001:db8::68", "::ffff:192.0.2.1", "*", "*.com", "test.net", "*.example.com"},
 			expected:  []gatewayv1alpha2.Hostname{"*.com", "test.net", "*.example.com"},
 		},
@@ -2033,7 +2168,8 @@ func Test_convertHostnames(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			actual := convertHostnames(tc.hostnames)
+			ctx := context.WithValue(context.Background(), virtualServiceKey, tc.virtualService)
+			actual := convertHostnames(ctx, tc.hostnames, field.NewPath(""))
 			if !apiequality.Semantic.DeepEqual(actual, tc.expected) {
 				t.Errorf("convertHostnames() = %v, want %v", actual, tc.expected)
 			}
