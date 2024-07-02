@@ -17,12 +17,13 @@ limitations under the License.
 package notifications
 
 import (
-	"fmt"
+	"os"
 	"strings"
 	"sync"
 
-	"github.com/jedib0t/go-pretty/v6/table"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/olekukonko/tablewriter"
 )
 
 func init() {
@@ -58,22 +59,22 @@ func (na *NotificationAggregator) DispatchNotification(notification Notification
 }
 
 // CreateNotificationTables takes all generated notifications and returns an array of
-// table.Writers that displays the notifications in a tabular format based on provider
-func (na *NotificationAggregator) CreateNotificationTables() []table.Writer {
-	tables := make([]table.Writer, 0)
-	for provider, msgs := range na.Notifications {
-		t := newTableConfig()
-
-		t.SetTitle(fmt.Sprintf("Notifications from %v", provider))
-		t.AppendHeader(table.Row{"Message Type", "Notification", "Calling Object"})
+// tablewriter.Table that displays the notifications in a tabular format based on provider
+func (na *NotificationAggregator) CreateNotificationTables() []*tablewriter.Table {
+	tables := make([]*tablewriter.Table, 0)
+	for _, msgs := range na.Notifications {
+		t := tablewriter.NewWriter(os.Stdout)
+		t.SetHeader([]string{"Message Type", "Notification", "Calling Object"})
+		t.SetColWidth(200)
+		t.SetRowLine(true)
 
 		for _, n := range msgs {
-			t.AppendRow(table.Row{n.Type, n.Message, convertObjectsToStr(n.CallingObjects)})
+			row := []string{string(n.Type), n.Message, convertObjectsToStr(n.CallingObjects)}
+			t.Append(row)
 		}
 
 		tables = append(tables, t)
 	}
-
 	return tables
 }
 
