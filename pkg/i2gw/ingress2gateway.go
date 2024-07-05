@@ -20,9 +20,9 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"strings"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
-	"github.com/olekukonko/tablewriter"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,7 +32,7 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string, providers []string, providerSpecificFlags map[string]map[string]string) ([]GatewayResources, []*tablewriter.Table, error) {
+func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string, providers []string, providerSpecificFlags map[string]map[string]string) ([]GatewayResources, *strings.Builder, error) {
 	var clusterClient client.Client
 
 	if inputFile == "" {
@@ -76,12 +76,12 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 		errs = append(errs, conversionErrs...)
 		gatewayResources = append(gatewayResources, providerGatewayResources)
 	}
-	tables := notifications.NotificationAggr.CreateNotificationTables()
+	tableString := notifications.NotificationAggr.CreateNotificationTables()
 	if len(errs) > 0 {
-		return nil, tables, aggregatedErrs(errs)
+		return nil, tableString, aggregatedErrs(errs)
 	}
 
-	return gatewayResources, tables, nil
+	return gatewayResources, tableString, nil
 }
 
 func readProviderResourcesFromFile(ctx context.Context, providerByName map[ProviderName]Provider, inputFile string) error {

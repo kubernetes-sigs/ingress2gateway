@@ -17,7 +17,7 @@ limitations under the License.
 package notifications
 
 import (
-	"os"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -58,12 +58,12 @@ func (na *NotificationAggregator) DispatchNotification(notification Notification
 	na.mutex.Unlock()
 }
 
-// CreateNotificationTables takes all generated notifications and returns an array of
-// tablewriter.Table that displays the notifications in a tabular format based on provider
-func (na *NotificationAggregator) CreateNotificationTables() []*tablewriter.Table {
-	tables := make([]*tablewriter.Table, 0)
-	for _, msgs := range na.Notifications {
-		t := tablewriter.NewWriter(os.Stdout)
+// CreateNotificationTables takes all generated notifications and returns a string.Builder
+// that displays the notifications in a tabular format based on provider
+func (na *NotificationAggregator) CreateNotificationTables() *strings.Builder {
+	tableString := &strings.Builder{}
+	for provider, msgs := range na.Notifications {
+		t := tablewriter.NewWriter(tableString)
 		t.SetHeader([]string{"Message Type", "Notification", "Calling Object"})
 		t.SetColWidth(200)
 		t.SetRowLine(true)
@@ -73,9 +73,10 @@ func (na *NotificationAggregator) CreateNotificationTables() []*tablewriter.Tabl
 			t.Append(row)
 		}
 
-		tables = append(tables, t)
+		tableString.WriteString(fmt.Sprintf("Notifications from %v\n", provider))
+		t.Render()
 	}
-	return tables
+	return tableString
 }
 
 func convertObjectsToStr(ob []client.Object) string {
