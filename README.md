@@ -143,6 +143,8 @@ routing rules.
 
 ## Get Involved
 
+[![GitHub repo Good Issues for newbies](https://img.shields.io/github/issues/kubernetes-sigs/ingress2gateway/good%20first%20issue?style=flat&logo=github&logoColor=green&label=Good%20First%20issues)](https://github.com/kubernetes-sigs/ingress2gateway/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) [![GitHub Help Wanted issues](https://img.shields.io/github/issues/kubernetes-sigs/ingress2gateway/help%20wanted?style=flat&logo=github&logoColor=b545d1&label=%22Help%20Wanted%22%20issues)](https://github.com/kubernetes-sigs/ingress2gateway/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22) [![GitHub Help Wanted PRs](https://img.shields.io/github/issues-pr/kubernetes-sigs/ingress2gateway/help%20wanted?style=flat&logo=github&logoColor=b545d1&label=%22Help%20Wanted%22%20PRs)](https://github.com/kubernetes-sigs/ingress2gateway/pulls?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22) [![GitHub repo Issues](https://img.shields.io/github/issues/kubernetes-sigs/ingress2gateway?style=flat&logo=github&logoColor=red&label=Issues)](https://github.com/kubernetes-sigs/ingress2gateway/issues?q=is%3Aopen)
+
 This project will be discussed in the same Slack channel and community meetings
 as the rest of the Gateway API subproject. For more information, refer to the
 [Gateway API Community](https://gateway-api.sigs.k8s.io/contributing/) page.
