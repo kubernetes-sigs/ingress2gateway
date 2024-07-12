@@ -137,7 +137,18 @@ func init() {
 	i2gw.ProviderConstructorByName[Name] = NewProvider
 }
 ```
-6. Import the new package at `cmd/print`.
+6. [optional] In order to use notification mechanism, create a `notify` function in a file named `notification.go`. This method is used to reduce the function signature for creating notifications during the conversion process.
+```go
+package examplegateway
+
+import "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+
+func notify(mType notifications.MessageType, message string) {
+	newNotification := notifications.Notification{Type: mType, Message: message}
+    notifications.CommonNotification.DispatchNotication(newNotification, string(ProviderName))
+}
+```
+7. Import the new package at `cmd/print`.
 ```go
 package cmd
 

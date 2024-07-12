@@ -36,6 +36,9 @@ import (
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/openapi3"
+
+	// Call init for notifications
+	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 )
 
 type PrintRunner struct {
@@ -82,9 +85,13 @@ func (pr *PrintRunner) PrintGatewayAPIObjects(cmd *cobra.Command, _ []string) er
 		return fmt.Errorf("failed to initialize namespace filter: %w", err)
 	}
 
-	gatewayResources, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers, pr.getProviderSpecificFlags())
+	gatewayResources, notificationTablesMap, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers, pr.getProviderSpecificFlags())
 	if err != nil {
 		return err
+	}
+
+	for _, table := range notificationTablesMap {
+		fmt.Println(table)
 	}
 
 	pr.outputResult(gatewayResources)

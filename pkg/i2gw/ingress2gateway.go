@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"maps"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -30,18 +31,18 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string, providers []string, providerSpecificFlags map[string]map[string]string) ([]GatewayResources, error) {
+func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string, providers []string, providerSpecificFlags map[string]map[string]string) ([]GatewayResources, map[string]string, error) {
 	var clusterClient client.Client
 
 	if inputFile == "" {
 		conf, err := config.GetConfig()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get client config: %w", err)
+			return nil, nil, fmt.Errorf("failed to get client config: %w", err)
 		}
 
 		cl, err := client.New(conf, client.Options{})
 		if err != nil {
-			return nil, fmt.Errorf("failed to create client: %w", err)
+			return nil, nil, fmt.Errorf("failed to create client: %w", err)
 		}
 		clusterClient = client.NewNamespacedClient(cl, namespace)
 	}
@@ -52,16 +53,16 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 		ProviderSpecificFlags: providerSpecificFlags,
 	}, providers)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if inputFile != "" {
 		if err = readProviderResourcesFromFile(ctx, providerByName, inputFile); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	} else {
 		if err = readProviderResourcesFromCluster(ctx, providerByName); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -74,11 +75,12 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 		errs = append(errs, conversionErrs...)
 		gatewayResources = append(gatewayResources, providerGatewayResources)
 	}
+	notificationTablesMap := notifications.NotificationAggr.CreateNotificationTables()
 	if len(errs) > 0 {
-		return nil, aggregatedErrs(errs)
+		return nil, notificationTablesMap, aggregatedErrs(errs)
 	}
 
-	return gatewayResources, nil
+	return gatewayResources, notificationTablesMap, nil
 }
 
 func readProviderResourcesFromFile(ctx context.Context, providerByName map[ProviderName]Provider, inputFile string) error {
