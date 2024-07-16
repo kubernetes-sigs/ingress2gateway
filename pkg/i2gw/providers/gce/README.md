@@ -22,9 +22,13 @@ Examples:
 | /v1/*                                 | /v1 Prefix                             |
 
 Note: For Ingress `ImplementationSpecific` path with `/v1/*`, it will map to
-`/v1/` or `/v1/v2` but not `/v1`. If you want to avoid such behavior,
-please consider switching to `Prefix`, `Exact`, or an `ImplementationSpecific`
-path without `*` before converting Ingress to Gateway.
+`/v1/` or `/v1/v2` but not `/v1`, but the translator will convert it to the
+most similar Gateway path `/v1` Prefix, which means while `/v1` path is not
+considered as a matching path for Ingress, it will be a matching path for
+Gateway.
+If you want to avoid such behavior, please consider switching to `Prefix`, 
+`Exact`, or an `ImplementationSpecific` path without `*` before converting
+an Ingress to a Gateway.
 
 ## Feature list
 Currently supported:
