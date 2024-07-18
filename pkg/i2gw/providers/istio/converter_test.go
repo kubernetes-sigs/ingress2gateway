@@ -52,6 +52,10 @@ func Test_converter_convertGateway(t *testing.T) {
 			name: "gateway with TLS and hosts",
 			args: args{
 				gw: &istioclientv1beta1.Gateway{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "Gateway",
+						APIVersion: "networking.istio.io/v1",
+					},
 					ObjectMeta: metav1.ObjectMeta{
 						Name:        "name",
 						Namespace:   "test",
@@ -255,6 +259,10 @@ func Test_converter_convertGateway(t *testing.T) {
 			name: "nil port -> gw with no listeners",
 			args: args{
 				gw: &istioclientv1beta1.Gateway{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "Gateway",
+						APIVersion: "networking.istio.io/v1",
+					},
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "name",
 						Namespace: "test",
@@ -285,6 +293,10 @@ func Test_converter_convertGateway(t *testing.T) {
 			name: "unknown istio server protocol returns an error",
 			args: args{
 				gw: &istioclientv1beta1.Gateway{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "Gateway",
+						APIVersion: "networking.istio.io/v1",
+					},
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "name",
 						Namespace: "test",

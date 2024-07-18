@@ -154,6 +154,7 @@ func (c *converter) convertGateway(gw *istioclientv1beta1.Gateway, fieldPath *fi
 
 		serverPort := server.GetPort()
 		if serverPort == nil {
+			notify(notifications.ErrorNotification, fmt.Sprintf("port is nil, path %v", serverFieldPath), gw)
 			klog.Error(field.Invalid(serverFieldPath, nil, "port is nil"))
 			continue
 		}
@@ -161,6 +162,7 @@ func (c *converter) convertGateway(gw *istioclientv1beta1.Gateway, fieldPath *fi
 		portFieldPath := serverFieldPath.Child("Port")
 
 		if serverPort.GetName() != "" {
+			notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", portFieldPath.Child("Name")), gw)
 			klog.Infof("ignoring field: %v", portFieldPath.Child("Name"))
 		}
 
@@ -191,6 +193,7 @@ func (c *converter) convertGateway(gw *istioclientv1beta1.Gateway, fieldPath *fi
 			case istiov1beta1.ServerTLSSettings_SIMPLE, istiov1beta1.ServerTLSSettings_MUTUAL:
 				tlsMode = gatewayv1.TLSModeTerminate
 			case istiov1beta1.ServerTLSSettings_ISTIO_MUTUAL, istiov1beta1.ServerTLSSettings_OPTIONAL_MUTUAL:
+				notify(notifications.WarningNotification, fmt.Sprintf("the istio server is ignored as there's no direct translation for this TLS istio protocol: %v", tlsFieldPath.Child("Mode").Key(serverTLSMode.String())), gw)
 				klog.Warningf("the istio server is ignored as there's no direct translation for this TLS istio protocol: %v", tlsFieldPath.Child("Mode").Key(serverTLSMode.String()))
 				continue
 			default:
@@ -198,41 +201,53 @@ func (c *converter) convertGateway(gw *istioclientv1beta1.Gateway, fieldPath *fi
 			}
 
 			if serverTLS.GetHttpsRedirect() {
+				notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("HttpsRedirect")), gw)
 				klog.Infof("ignoring field: %v", tlsFieldPath.Child("HttpsRedirect"))
 			}
 			if serverTLS.GetServerCertificate() != "" {
+				notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("ServerCertificate")), gw)
 				klog.Infof("ignoring field: %v", tlsFieldPath.Child("ServerCertificate"))
 			}
 			if serverTLS.GetPrivateKey() != "" {
+				notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("PrivateKey")), gw)
 				klog.Infof("ignoring field: %v", tlsFieldPath.Child("PrivateKey"))
 			}
 			if serverTLS.GetCaCertificates() != "" {
+				notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("CaCertificates")), gw)
 				klog.Infof("ignoring field: %v", tlsFieldPath.Child("CaCertificates"))
 			}
 			if len(serverTLS.GetSubjectAltNames()) > 0 {
+				notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("SubjectAltNames")), gw)
 				klog.Infof("ignoring field: %v", tlsFieldPath.Child("SubjectAltNames"))
 			}
 			if serverTLS.GetCredentialName() != "" {
+				notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("CredentialName")), gw)
 				klog.Infof("ignoring field: %v", tlsFieldPath.Child("CredentialName"))
 			}
 			if len(serverTLS.GetVerifyCertificateSpki()) > 0 {
+				notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("VerifyCertificateSpki")), gw)
 				klog.Infof("ignoring field: %v", tlsFieldPath.Child("VerifyCertificateSpki"))
 			}
 			if len(serverTLS.GetVerifyCertificateHash()) > 0 {
+				notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("VerifyCertificateHash")), gw)
 				klog.Infof("ignoring field: %v", tlsFieldPath.Child("VerifyCertificateHash"))
 			}
 			if serverTLS.GetMinProtocolVersion() != 0 {
+				notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("MinProtocolVersion")), gw)
 				klog.Infof("ignoring field: %v", tlsFieldPath.Child("MinProtocolVersion"))
 			}
 			if serverTLS.GetMaxProtocolVersion() != 0 {
+				notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("MaxProtocolVersion")), gw)
 				klog.Infof("ignoring field: %v", tlsFieldPath.Child("MaxProtocolVersion"))
 			}
 			if len(serverTLS.GetCipherSuites()) > 0 {
+				notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("CipherSuites")), gw)
 				klog.Infof("ignoring field: %v", tlsFieldPath.Child("CipherSuites"))
 			}
 		}
 
 		if server.GetBind() != "" {
+			notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", serverFieldPath.Child("Bind").Key(server.GetBind())), gw)
 			klog.Infof("ignoring field: %v", serverFieldPath.Child("Bind").Key(server.GetBind()))
 		}
 
@@ -250,6 +265,7 @@ func (c *converter) convertGateway(gw *istioclientv1beta1.Gateway, fieldPath *fi
 			namespace, dnsName, ok := strings.Cut(host, "/")
 			if !ok {
 				// The default, if no `namespace/` is specified, is `*/`, that is, select services from any namespace.
+				notify(notifications.InfoNotification, fmt.Sprintf("no namespace specified for host \"%v\", selecting services from all namespaces", host), gw)
 				namespace, dnsName = "*", host
 			}
 
@@ -285,7 +301,7 @@ func (c *converter) convertGateway(gw *istioclientv1beta1.Gateway, fieldPath *fi
 		Name:      gw.Name,
 	}] = gwAllowedHosts
 
-	return &gatewayv1.Gateway{
+	gateway := gatewayv1.Gateway{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: apiVersion,
 			Kind:       kind,
@@ -302,7 +318,11 @@ func (c *converter) convertGateway(gw *istioclientv1beta1.Gateway, fieldPath *fi
 			GatewayClassName: K8SGatewayClassName,
 			Listeners:        listeners,
 		},
-	}, nil
+	}
+
+	notify(notifications.InfoNotification, fmt.Sprintf("successfully converted to Kubernetes Gateway \"%v/%v\"", gateway.Namespace, gateway.Name), gw)
+
+	return &gateway, nil
 }
 
 var hostnameRegexp = regexp.MustCompile(`^(\*\.)?[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$`)
@@ -673,14 +693,14 @@ func (c *converter) convertVsHTTPRoutes(virtualService metav1.ObjectMeta, istioH
 			httpRoutesWithRewrites := c.createHTTPRoutesWithRewrite(createHTTPRouteParams, httpRoute.GetRewrite(), httpRouteFieldPath.Child("HTTPRewrite"))
 			resHTTPRoutes = append(resHTTPRoutes, httpRoutesWithRewrites...)
 			for _, httpRoute := range httpRoutesWithRewrites {
-				notify(notifications.InfoNotification, fmt.Sprintf("Virtual Service \"%v\"/\"%v\" successfully converted to HTTPRoute \"%v\"/\"%v\"", vs.Namespace, vs.Name, httpRoute.Namespace, httpRoute.Name))
+				notify(notifications.InfoNotification, fmt.Sprintf("successfully converted to HTTPRoute \"%v/%v\"", httpRoute.Namespace, httpRoute.Name), vs)
 			}
 			continue
 		}
 
 		httpRoute := c.createHTTPRoute(createHTTPRouteParams)
 		resHTTPRoutes = append(resHTTPRoutes, httpRoute)
-		notify(notifications.InfoNotification, fmt.Sprintf("Virtual Service \"%v/%v\" successfully converted to HTTPRoute \"%v\"/\"%v\"", vs.Namespace, vs.Name, httpRoute.Namespace, httpRoute.Name))
+		notify(notifications.InfoNotification, fmt.Sprintf("successfully converted to HTTPRoute \"%v/%v\"", httpRoute.Namespace, httpRoute.Name), vs)
 	}
 
 	if len(errList) > 0 {
@@ -881,7 +901,7 @@ func (c *converter) convertVsTLSRoutes(virtualService metav1.ObjectMeta, istioTL
 			},
 		}
 		resTLSRoutes = append(resTLSRoutes, tlsRoute)
-		notify(notifications.InfoNotification, fmt.Sprintf("Virtual Service \"%v/%v\" successfully converted to TLSRoute \"%v\"/\"%v\"", vs.Namespace, vs.Name, tlsRoute.Namespace, tlsRoute.Name))
+		notify(notifications.InfoNotification, fmt.Sprintf("successfully converted to TLSRoute \"%v/%v\"", tlsRoute.Namespace, tlsRoute.Name), vs)
 	}
 
 	return resTLSRoutes
@@ -960,7 +980,7 @@ func (c *converter) convertVsTCPRoutes(virtualService metav1.ObjectMeta, istioTC
 			},
 		}
 		resTCPRoutes = append(resTCPRoutes, tcpRoute)
-		notify(notifications.InfoNotification, fmt.Sprintf("Virtual Service \"%v/%v\" successfully converted to TCPRoute \"%v\"/\"%v\"", vs.Namespace, vs.Name, tcpRoute.Namespace, tcpRoute.Name))
+		notify(notifications.InfoNotification, fmt.Sprintf("successfully converted to TCPRoute \"%v/%v\"", tcpRoute.Namespace, tcpRoute.Name), vs)
 	}
 
 	return resTCPRoutes
