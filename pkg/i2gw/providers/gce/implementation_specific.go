@@ -17,8 +17,10 @@ limitations under the License.
 package gce
 
 import (
+	"fmt"
 	"strings"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"k8s.io/klog/v2"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -54,5 +56,6 @@ func implementationSpecificHTTPPathTypeMatch(path *gatewayv1.HTTPPathMatch) {
 	currentValue := *path.Value
 	path.Type = &pmPrefix
 	path.Value = common.PtrTo(strings.TrimSuffix(*path.Value, "/*"))
-	klog.Warningf("After conversion, ImplementationSpecific Path %s/* will additionally map to %s. See README.md for details.", currentValue, *path.Value)
+	notify(notifications.WarningNotification, fmt.Sprintf("After conversion, ImplementationSpecific Path %s/* will additionally map to %s. See https://github.com/kubernetes-sigs/ingress2gateway/blob/main/pkg/i2gw/providers/gce/README.md for details.", currentValue, *path.Value))
+	klog.Warningf("After conversion, ImplementationSpecific Path %s/* will additionally map to %s. See https://github.com/kubernetes-sigs/ingress2gateway/blob/main/pkg/i2gw/providers/gce/README.md for details.", currentValue, *path.Value)
 }
