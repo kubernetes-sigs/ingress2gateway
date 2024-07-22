@@ -20,6 +20,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
+	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -45,6 +46,12 @@ func newConverter(conf *i2gw.ProviderConf) converter {
 func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.ErrorList) {
 	ingressList := []networkingv1.Ingress{}
 	for _, ing := range storage.Ingresses {
+		if ing != nil && common.GetIngressClass(*ing) == "" {
+			if ing.Annotations == nil {
+				ing.Annotations = make(map[string]string)
+			}
+			ing.Annotations[networkingv1beta1.AnnotationIngressClass] = gceIngressClass
+		}
 		ingressList = append(ingressList, *ing)
 	}
 

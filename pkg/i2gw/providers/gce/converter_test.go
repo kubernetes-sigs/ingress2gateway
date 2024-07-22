@@ -224,13 +224,12 @@ func Test_ToGateway(t *testing.T) {
 			expectedErrors: field.ErrorList{},
 		},
 		{
-			name: "no ingress class, default to gce ingress class behavior",
+			name: "empty ingress class, default to gce ingress class",
 			ingresses: map[types.NamespacedName]*networkingv1.Ingress{
 				{Namespace: testNamespace, Name: noIngClassIngressName}: {
 					ObjectMeta: metav1.ObjectMeta{
-						Name:        noIngClassIngressName,
-						Namespace:   testNamespace,
-						Annotations: map[string]string{networkingv1beta1.AnnotationIngressClass: gceIngressClass},
+						Name:      noIngClassIngressName,
+						Namespace: testNamespace,
 					},
 					Spec: networkingv1.IngressSpec{
 						Rules: []networkingv1.IngressRule{{
