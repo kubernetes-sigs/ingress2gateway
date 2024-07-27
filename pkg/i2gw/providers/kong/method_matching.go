@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -68,12 +69,13 @@ func patchHTTPRouteMethodMatching(httpRoute *gatewayv1.HTTPRoute, methods []gate
 		}
 		if len(matches) > 0 {
 			httpRoute.Spec.Rules[i].Matches = matches
+			notify(notifications.InfoNotification, fmt.Sprintf("parsed \"%v\" annotations of ingress and patched %v fields", kongAnnotation(methodsKey), field.NewPath("httproute", "spec", "rules").Key("").Child("matches").Key("").Child("method")), httpRoute)
 		}
 	}
 }
 
 func parseMethodsAnnotation(ingressNamespace, ingressName string, annotations map[string]string) ([]gatewayv1.HTTPMethod, field.ErrorList) {
-	fieldPath := field.NewPath(fmt.Sprintf("%s/%s", ingressNamespace, ingressName)).Child("metadata").Child("annotations").Child("konghq.com/methods")
+	fieldPath := field.NewPath(fmt.Sprintf("%s/%s", ingressNamespace, ingressName)).Child("metadata").Child("annotations").Child(kongAnnotation(methodsKey))
 	errs := field.ErrorList{}
 	methods := make([]gatewayv1.HTTPMethod, 0)
 	mkey := kongAnnotation(methodsKey)
