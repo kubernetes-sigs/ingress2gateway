@@ -73,12 +73,14 @@ func getPathsByMatchGroups(rg common.IngressRuleGroup) (map[pathMatchKey][]ingre
 			return nil, errs
 		}
 
-		extraFeatures := extra{canary: &annotations}
+		if annotations.enable {
+			extraFeatures := extra{canary: &annotations}
 
-		for _, path := range ir.IngressRule.HTTP.Paths {
-			ip := ingressPath{ingress: ingress, ruleType: "http", path: path, extra: &extraFeatures}
-			pmKey := getPathMatchKey(ip)
-			ingressPathsByMatchKey[pmKey] = append(ingressPathsByMatchKey[pmKey], ip)
+			for _, path := range ir.IngressRule.HTTP.Paths {
+				ip := ingressPath{ingress: ingress, ruleType: "http", path: path, extra: &extraFeatures}
+				pmKey := getPathMatchKey(ip)
+				ingressPathsByMatchKey[pmKey] = append(ingressPathsByMatchKey[pmKey], ip)
+			}
 		}
 	}
 
