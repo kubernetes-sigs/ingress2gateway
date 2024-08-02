@@ -29,7 +29,7 @@ func newRootCmd() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "ingress2gateway",
 		Short: "Convert Ingress manifests to Gateway API manifests",
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		PersistentPreRun: func(_ *cobra.Command, _ []string) {
 			getKubeconfig()
 		},
 	}

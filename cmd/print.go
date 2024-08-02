@@ -245,7 +245,7 @@ func newPrintCommand() *cobra.Command {
 		Use:   "print",
 		Short: "Prints Gateway API objects generated from ingress and provider-specific resources.",
 		RunE:  pr.PrintGatewayAPIObjects,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
+		PreRunE: func(_ *cobra.Command, _ []string) error {
 			openAPIExist := slices.Contains(pr.providers, "openapi3")
 			if openAPIExist && len(pr.providers) != 1 {
 				return fmt.Errorf("openapi3 must be the only provider when specified")
