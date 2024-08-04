@@ -83,7 +83,7 @@ func patchHTTPRouteHeaderMatching(httpRoute *gatewayv1.HTTPRoute, headerNames []
 		}
 		httpRoute.Spec.Rules[i].Matches = newMatches
 		if len(newMatches) > 0 {
-			notify(notifications.InfoNotification, fmt.Sprintf("parsed \"%v\" annotations of ingress and patched %v fields", kongAnnotation(headersKey), field.NewPath("httproute", "spec", "rules").Key("").Child("matches")), httpRoute)
+			notify(notifications.InfoNotification, fmt.Sprintf("parsed \"%v\" annotation of ingress and patched %v fields", kongAnnotation(headersKey), field.NewPath("httproute", "spec", "rules").Key("").Child("matches")), httpRoute)
 		}
 	}
 }
