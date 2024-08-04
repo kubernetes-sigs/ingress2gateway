@@ -17,7 +17,10 @@ limitations under the License.
 package apisix
 
 import (
+	"fmt"
+
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -32,7 +35,7 @@ func httpToHTTPSFeature(ingresses []networkingv1.Ingress, gatewayResources *i2gw
 	ruleGroups := common.GetRuleGroups(ingresses)
 	for _, rg := range ruleGroups {
 		for _, rule := range rg.Rules {
-			if val := rule.Ingress.Annotations[httpToHTTPSAnnotation]; val == "true" {
+			if val, annotationFound := rule.Ingress.Annotations[httpToHTTPSAnnotation]; val == "true" {
 				if rule.Ingress.Spec.Rules == nil {
 					continue
 				}
@@ -51,6 +54,9 @@ func httpToHTTPSFeature(ingresses []networkingv1.Ingress, gatewayResources *i2gw
 						},
 					})
 					httpRoute.Spec.Rules[i] = rule
+				}
+				if annotationFound && ok {
+					notify(notifications.InfoNotification, fmt.Sprintf("parsed \"%v\" annotation of ingress and patched %v fields", httpToHTTPSAnnotation, field.NewPath("httproute", "spec", "rules").Key("").Child("filters")), &httpRoute)
 				}
 			}
 		}
