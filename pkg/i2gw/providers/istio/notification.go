@@ -22,6 +22,6 @@ import (
 )
 
 func notify(mType notifications.MessageType, message string, callingObject ...client.Object) {
-	newNotification := notifications.NotificationBuilder(mType, message, callingObject...)
+	newNotification := notifications.NewNotification(mType, message, callingObject...)
 	notifications.NotificationAggr.DispatchNotification(newNotification, string(ProviderName))
 }

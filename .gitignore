@@ -26,3 +26,6 @@ go.work
 
 # GolangCI-Lint cache
 /cache
+
+# VSCode files for debugging
+.vscode/

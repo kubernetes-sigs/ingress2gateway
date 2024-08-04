@@ -81,11 +81,11 @@ func (a *tcpIngressAggregator) addIngress(tcpIngress kongv1beta1.TCPIngress, not
 	var ingressClass string
 	if ingressClassAnnotation, ok := tcpIngress.Annotations[networkingv1beta1.AnnotationIngressClass]; ok {
 		ingressClass = tcpIngress.Annotations[networkingv1beta1.AnnotationIngressClass]
-		n := notifications.NotificationBuilder(notifications.InfoNotification, fmt.Sprintf("ingress class \"%v\" taken from %v annotation", ingressClassAnnotation, networkingv1beta1.AnnotationIngressClass), &tcpIngress)
+		n := notifications.NewNotification(notifications.InfoNotification, fmt.Sprintf("ingress class \"%v\" taken from %v annotation", ingressClassAnnotation, networkingv1beta1.AnnotationIngressClass), &tcpIngress)
 		*notificationsAggregator = append(*notificationsAggregator, n)
 	} else {
 		ingressClass = tcpIngress.Name
-		n := notifications.NotificationBuilder(notifications.InfoNotification, "ingress class taken from name of TCPIngress", &tcpIngress)
+		n := notifications.NewNotification(notifications.InfoNotification, "ingress class taken from name of TCPIngress", &tcpIngress)
 		*notificationsAggregator = append(*notificationsAggregator, n)
 	}
 	for _, rule := range tcpIngress.Spec.Rules {

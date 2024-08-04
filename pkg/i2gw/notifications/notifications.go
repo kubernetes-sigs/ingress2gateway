@@ -98,6 +98,6 @@ func convertObjectsToStr(ob []client.Object) string {
 	return sb.String()
 }
 
-func NotificationBuilder(mType MessageType, message string, callingObject ...client.Object) Notification {
+func NewNotification(mType MessageType, message string, callingObject ...client.Object) Notification {
 	return Notification{Type: mType, Message: message, CallingObjects: callingObject}
 }
