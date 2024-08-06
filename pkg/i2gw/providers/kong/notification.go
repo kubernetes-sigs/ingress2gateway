@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package istio
+package kong
 
 import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
@@ -23,5 +23,11 @@ import (
 
 func notify(mType notifications.MessageType, message string, callingObject ...client.Object) {
 	newNotification := notifications.NotificationBuilder(mType, message, callingObject...)
-	notifications.NotificationAggr.DispatchNotification(newNotification, string(ProviderName))
+	notifications.NotificationAggr.DispatchNotification(newNotification, string(Name))
+}
+
+func dispatchNotification(n []notifications.Notification) {
+	for _, v := range n {
+		notify(v.Type, v.Message, v.CallingObjects...)
+	}
 }

@@ -60,10 +60,12 @@ func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.Erro
 		errorList = append(errorList, errs...)
 	}
 
-	tcpGatewayResources, errs := crds.TCPIngressToGatewayAPI(storage.TCPIngresses)
+	tcpGatewayResources, notificationsAggregator, errs := crds.TCPIngressToGatewayAPI(storage.TCPIngresses)
 	if len(errs) > 0 {
 		errorList = append(errorList, errs...)
 	}
+
+	dispatchNotification(notificationsAggregator)
 
 	if len(errorList) > 0 {
 		return i2gw.GatewayResources{}, errorList
