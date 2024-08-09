@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,20 +35,21 @@ import (
 )
 
 // TCPIngressToGatewayAPI converts the received TCPingresses to i2gw.GatewayResources,
-func TCPIngressToGatewayAPI(ingresses []kongv1beta1.TCPIngress) (i2gw.GatewayResources, field.ErrorList) {
+func TCPIngressToGatewayAPI(ingresses []kongv1beta1.TCPIngress) (i2gw.GatewayResources, []notifications.Notification, field.ErrorList) {
 	aggregator := tcpIngressAggregator{ruleGroups: map[ruleGroupKey]*tcpIngressRuleGroup{}}
+	var notificationsAggregator []notifications.Notification
 
 	var errs field.ErrorList
 	for _, ingress := range ingresses {
-		aggregator.addIngress(ingress)
+		aggregator.addIngress(ingress, &notificationsAggregator)
 	}
 	if len(errs) > 0 {
-		return i2gw.GatewayResources{}, errs
+		return i2gw.GatewayResources{}, notificationsAggregator, errs
 	}
 
 	tcpRoutes, tlsRoutes, gateways, errs := aggregator.toRoutesAndGateways()
 	if len(errs) > 0 {
-		return i2gw.GatewayResources{}, errs
+		return i2gw.GatewayResources{}, notificationsAggregator, errs
 	}
 
 	tcpRouteByKey := make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute)
@@ -72,15 +74,19 @@ func TCPIngressToGatewayAPI(ingresses []kongv1beta1.TCPIngress) (i2gw.GatewayRes
 		Gateways:  gatewayByKey,
 		TCPRoutes: tcpRouteByKey,
 		TLSRoutes: tlsRouteByKey,
-	}, nil
+	}, notificationsAggregator, nil
 }
 
-func (a *tcpIngressAggregator) addIngress(tcpIngress kongv1beta1.TCPIngress) {
+func (a *tcpIngressAggregator) addIngress(tcpIngress kongv1beta1.TCPIngress, notificationsAggregator *[]notifications.Notification) {
 	var ingressClass string
-	if _, ok := tcpIngress.Annotations[networkingv1beta1.AnnotationIngressClass]; ok {
+	if ingressClassAnnotation, ok := tcpIngress.Annotations[networkingv1beta1.AnnotationIngressClass]; ok {
 		ingressClass = tcpIngress.Annotations[networkingv1beta1.AnnotationIngressClass]
+		n := notifications.NewNotification(notifications.InfoNotification, fmt.Sprintf("ingress class \"%v\" taken from %v annotation", ingressClassAnnotation, networkingv1beta1.AnnotationIngressClass), &tcpIngress)
+		*notificationsAggregator = append(*notificationsAggregator, n)
 	} else {
 		ingressClass = tcpIngress.Name
+		n := notifications.NewNotification(notifications.InfoNotification, "ingress class taken from name of TCPIngress", &tcpIngress)
+		*notificationsAggregator = append(*notificationsAggregator, n)
 	}
 	for _, rule := range tcpIngress.Spec.Rules {
 		a.addIngressRule(tcpIngress.Namespace, tcpIngress.Name, ingressClass, rule, tcpIngress.Spec)
