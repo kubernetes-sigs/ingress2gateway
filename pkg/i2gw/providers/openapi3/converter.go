@@ -36,6 +36,7 @@ import (
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
@@ -121,17 +122,21 @@ func (c *resourcesToIRConverter) Convert(storage Storage) (intermediate.IR, fiel
 		httpRoutes, gateways := c.toHTTPRoutesAndGateways(spec, resourcesNamePrefix, errors)
 		for _, httpRoute := range httpRoutes {
 			ir.HTTPRoutes[types.NamespacedName{Name: httpRoute.GetName(), Namespace: httpRoute.GetNamespace()}] = intermediate.HTTPRouteContext{HTTPRoute: httpRoute}
+			notify(notifications.InfoNotification, fmt.Sprintf("successfully created HTTPRoute \"%v/%v\" from OpenAPI spec \"%v\"", httpRoute.Namespace, httpRoute.Name, spec.Info.Title))
 		}
 
 		// build reference grants for the resources
 		if referenceGrant := c.buildHTTPRouteBackendReferenceGrant(); referenceGrant != nil {
 			ir.ReferenceGrants[types.NamespacedName{Name: referenceGrant.GetName(), Namespace: referenceGrant.GetNamespace()}] = *referenceGrant
+			notify(notifications.InfoNotification, fmt.Sprintf("successfully created ReferenceGrant \"%v/%v\" from OpenAPI spec \"%v\"", referenceGrant.Namespace, referenceGrant.Name, spec.Info.Title))
 		}
 		for _, gateway := range gateways {
 			ir.Gateways[types.NamespacedName{Name: gateway.GetName(), Namespace: gateway.GetNamespace()}] = intermediate.GatewayContext{Gateway: gateway}
 			if referenceGrant := c.buildGatewayTLSSecretReferenceGrant(gateway); referenceGrant != nil {
 				ir.ReferenceGrants[types.NamespacedName{Name: referenceGrant.GetName(), Namespace: referenceGrant.GetNamespace()}] = *referenceGrant
+				notify(notifications.InfoNotification, fmt.Sprintf("successfully created ReferenceGrant \"%v/%v\" from OpenAPI spec \"%v\"", referenceGrant.Namespace, referenceGrant.Name, spec.Info.Title))
 			}
+			notify(notifications.InfoNotification, fmt.Sprintf("successfully created Gateway \"%v/%v\" from OpenAPI spec \"%v\"", gateway.Namespace, gateway.Name, spec.Info.Title))
 		}
 	}
 
