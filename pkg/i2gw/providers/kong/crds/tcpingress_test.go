@@ -204,7 +204,7 @@ func TestTCPIngressToGatewayAPI(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			gatewayResources, errs := TCPIngressToGatewayAPI(tc.tcpIngresses)
+			gatewayResources, _, errs := TCPIngressToGatewayAPI(tc.tcpIngresses)
 
 			if len(gatewayResources.Gateways) != len(tc.expectedGatewayResources.Gateways) {
 				t.Errorf("Expected %d Gateways, got %d: %+v",

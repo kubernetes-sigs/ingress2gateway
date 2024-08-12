@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -81,6 +82,9 @@ func patchHTTPRouteHeaderMatching(httpRoute *gatewayv1.HTTPRoute, headerNames []
 			}
 		}
 		httpRoute.Spec.Rules[i].Matches = newMatches
+		if len(newMatches) > 0 {
+			notify(notifications.InfoNotification, fmt.Sprintf("parsed \"%v\" annotation of ingress and patched %v fields", kongAnnotation(headersKey), field.NewPath("httproute", "spec", "rules").Key("").Child("matches")), httpRoute)
+		}
 	}
 }
 
