@@ -71,6 +71,9 @@ type PrintRunner struct {
 
 	// Provider specific flags --<provider>-<flag>.
 	providerSpecificFlags map[string]*string
+
+	// notificationsOutputFile contains the path to the output file for notifications.
+	notificationsOutputFile string
 }
 
 // PrintGatewayAPIObjects performs necessary steps to digest and print
@@ -92,8 +95,16 @@ func (pr *PrintRunner) PrintGatewayAPIObjects(cmd *cobra.Command, _ []string) er
 		return err
 	}
 
-	for _, table := range notificationTablesMap {
-		fmt.Println(table)
+	if pr.notificationsOutputFile != "" {
+		err = pr.writeNotificationsToFile(notificationTablesMap)
+		if err != nil {
+			return fmt.Errorf("failed to write notifications to file: %w", err)
+		}
+	} else {
+		// If no file is specified, print notifications to stdout
+		for _, table := range notificationTablesMap {
+			fmt.Println(table)
+		}
 	}
 
 	pr.outputResult(gatewayResources)
@@ -307,6 +318,9 @@ if specified with --namespace.`)
 	cmd.Flags().StringSliceVar(&pr.providers, "providers", []string{},
 		fmt.Sprintf("If present, the tool will try to convert only resources related to the specified providers, supported values are %v.", i2gw.GetSupportedProviders()))
 
+	cmd.Flags().StringVar(&pr.notificationsOutputFile, "notifications-output-file", "",
+		"Path to the file where notifications will be written. If not specified, notifications will be printed to stdout.")
+
 	pr.providerSpecificFlags = make(map[string]*string)
 	for provider, flags := range i2gw.GetProviderSpecificFlagDefinitions() {
 		for _, flag := range flags {
@@ -363,5 +377,22 @@ func PrintUnstructuredAsYaml(obj *unstructured.Unstructured) error {
 		return err
 	}
 
+	return nil
+}
+
+// writeNotificationsToFile writes the notification tables to the specified file
+func (pr *PrintRunner) writeNotificationsToFile(notificationTablesMap map[string]string) error {
+	file, err := os.Create(pr.notificationsOutputFile)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	for _, table := range notificationTablesMap {
+		_, err := file.WriteString(table + "\n")
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
