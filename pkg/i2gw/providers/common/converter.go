@@ -24,6 +24,7 @@ import (
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -34,8 +35,20 @@ import (
 
 // ToIR converts the received ingresses to intermediate.IR without taking into
 // consideration any provider specific logic.
-func ToIR(ingresses []networkingv1.Ingress, options i2gw.ProviderImplementationSpecificOptions) (intermediate.IR, field.ErrorList) {
+//
+// If a provider wishes to recieve notifications from the common package,
+// it can pass a notifications.NotificationCallback function which can be used
+// to send notifications on behalf of the provider while keeping the logic of
+// ToGateway seperated from the provider.
+func ToIR(ingresses []networkingv1.Ingress, options i2gw.ProviderImplementationSpecificOptions, notifyOpts ...notifications.NotificationCallback) (intermediate.IR, field.ErrorList) {
 	aggregator := ingressAggregator{ruleGroups: map[ruleGroupKey]*ingressRuleGroup{}}
+
+	var notify notifications.NotificationCallback
+	if len(notifyOpts) > 0 {
+		notify = notifyOpts[0]
+	} else {
+		notify = noNotifications
+	}
 
 	var errs field.ErrorList
 	for _, ingress := range ingresses {
@@ -45,7 +58,7 @@ func ToIR(ingresses []networkingv1.Ingress, options i2gw.ProviderImplementationS
 		return intermediate.IR{}, errs
 	}
 
-	routes, gateways, errs := aggregator.toHTTPRoutesAndGateways(options)
+	routes, gateways, errs := aggregator.toHTTPRoutesAndGateways(options, notify)
 	if len(errs) > 0 {
 		return intermediate.IR{}, errs
 	}
@@ -169,7 +182,7 @@ func (a *ingressAggregator) addIngressRule(namespace, name, ingressClass string,
 	rg.rules = append(rg.rules, ingressRule{rule: rule})
 }
 
-func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImplementationSpecificOptions) ([]gatewayv1.HTTPRoute, []gatewayv1.Gateway, field.ErrorList) {
+func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImplementationSpecificOptions, notify notifications.NotificationCallback) ([]gatewayv1.HTTPRoute, []gatewayv1.Gateway, field.ErrorList) {
 	var httpRoutes []gatewayv1.HTTPRoute
 	var errors field.ErrorList
 	listenersByNamespacedGateway := map[string][]gatewayv1.Listener{}
@@ -201,7 +214,7 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImpleme
 		}
 		gwKey := fmt.Sprintf("%s/%s", rg.namespace, rg.ingressClass)
 		listenersByNamespacedGateway[gwKey] = append(listenersByNamespacedGateway[gwKey], listener)
-		httpRoute, errs := rg.toHTTPRoute(options)
+		httpRoute, errs := rg.toHTTPRoute(options, notify)
 		httpRoutes = append(httpRoutes, httpRoute)
 		errors = append(errors, errs...)
 	}
@@ -236,6 +249,7 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImpleme
 			})
 		}
 
+		notify(notifications.InfoNotification, fmt.Sprintf("successfully converted to HTTPRoute \"%v/%v\"", httpRoute.Namespace, httpRoute.Name), mockIngressFromDefaultBackend(db))
 		httpRoutes = append(httpRoutes, httpRoute)
 	}
 
@@ -287,12 +301,13 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImpleme
 	var gateways []gatewayv1.Gateway
 	for _, gw := range gatewaysByKey {
 		gateways = append(gateways, *gw)
+		notify(notifications.InfoNotification, fmt.Sprintf("successfully created Gateway \"%v/%v\"", gw.Namespace, gw.Name))
 	}
 
 	return httpRoutes, gateways, errors
 }
 
-func (rg *ingressRuleGroup) toHTTPRoute(options i2gw.ProviderImplementationSpecificOptions) (gatewayv1.HTTPRoute, field.ErrorList) {
+func (rg *ingressRuleGroup) toHTTPRoute(options i2gw.ProviderImplementationSpecificOptions, notify notifications.NotificationCallback) (gatewayv1.HTTPRoute, field.ErrorList) {
 	ingressPathsByMatchKey := groupIngressPathsByMatchKey(rg.rules)
 	httpRoute := gatewayv1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
@@ -336,6 +351,7 @@ func (rg *ingressRuleGroup) toHTTPRoute(options i2gw.ProviderImplementationSpeci
 		httpRoute.Spec.Rules = append(httpRoute.Spec.Rules, hrRule)
 	}
 
+	notify(notifications.InfoNotification, fmt.Sprintf("successfully converted to HTTPRoute \"%v/%v\"", httpRoute.Namespace, httpRoute.Name), mockIngressFromRuleGroup(rg))
 	return httpRoute, errors
 }
 

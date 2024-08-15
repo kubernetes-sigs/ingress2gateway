@@ -20,9 +20,12 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -199,4 +202,31 @@ func removeBackendRefsDuplicates(backendRefs []gatewayv1.HTTPBackendRef) []gatew
 		uniqueBackendRefs = append(uniqueBackendRefs, backendRef)
 	}
 	return uniqueBackendRefs
+}
+
+func noNotifications(mType notifications.MessageType, message string, callingObject ...client.Object) {
+}
+
+func mockIngressFromRuleGroup(rg *ingressRuleGroup) client.Object {
+	return &networkingv1.Ingress{
+		TypeMeta: v1.TypeMeta{
+			Kind: "Ingress",
+		},
+		ObjectMeta: v1.ObjectMeta{
+			Name:      rg.name,
+			Namespace: rg.namespace,
+		},
+	}
+}
+
+func mockIngressFromDefaultBackend(db ingressDefaultBackend) client.Object {
+	return &networkingv1.Ingress{
+		TypeMeta: v1.TypeMeta{
+			Kind: "Ingress",
+		},
+		ObjectMeta: v1.ObjectMeta{
+			Name:      db.name,
+			Namespace: db.namespace,
+		},
+	}
 }

@@ -435,8 +435,7 @@ func Test_ToIR(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			ir, errs := ToIR(tc.ingresses, i2gw.ProviderImplementationSpecificOptions{})
-
+			ir, errs := ToIR(tc.ingresses, i2gw.ProviderImplementationSpecificOptions{}, noNotifications)
 			if len(ir.HTTPRoutes) != len(tc.expectedIR.HTTPRoutes) {
 				t.Errorf("Expected %d HTTPRoutes, got %d: %+v",
 					len(tc.expectedIR.HTTPRoutes), len(ir.HTTPRoutes), ir.HTTPRoutes)
