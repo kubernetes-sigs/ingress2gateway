@@ -104,6 +104,7 @@ The above command will:
 | output         | yaml                    | No       | The output format, either yaml or json.                       |
 | providers      | all supported providers | Yes       | Comma-separated list of providers. |
 | kubeconfig     |                         | No       | The kubeconfig file to use when talking to the cluster. If the flag is not set, a set of standard locations can be searched for an existing kubeconfig file. |
+| notifications-output-file     |                         | No       | The path to the file where notifications will be written to. If the flag is not present, notifications will be printed to stdout. |
 
 ## Conversion of Ingress resources to Gateway API
 
