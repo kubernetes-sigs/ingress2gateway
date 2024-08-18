@@ -39,24 +39,35 @@ func canaryFeature(ingresses []networkingv1.Ingress, gatewayResources *i2gw.Gate
 			return errs
 		}
 
+		canaryEnabled := false
 		for _, paths := range ingressPathsByMatchKey {
-			path := paths[0]
-
-			backendRefs, calculationErrs := calculateBackendRefWeight(paths)
-			errs = append(errs, calculationErrs...)
-
-			key := types.NamespacedName{Namespace: path.ingress.Namespace, Name: common.RouteName(rg.Name, rg.Host)}
-			httpRoute, ok := gatewayResources.HTTPRoutes[key]
-			if !ok {
-				// If there wasn't an HTTPRoute for this Ingress, we can skip it as something is wrong.
-				// All the available errors will be returned at the end.
-				continue
+			for _, path := range paths {
+				if path.extra.canary.enable {
+					canaryEnabled = true
+				}
 			}
-
-			patchHTTPRouteWithBackendRefs(&httpRoute, backendRefs)
 		}
-		if len(errs) > 0 {
-			return errs
+
+		if canaryEnabled {
+			for _, paths := range ingressPathsByMatchKey {
+				path := paths[0]
+
+				backendRefs, calculationErrs := calculateBackendRefWeight(paths)
+				errs = append(errs, calculationErrs...)
+
+				key := types.NamespacedName{Namespace: path.ingress.Namespace, Name: common.RouteName(rg.Name, rg.Host)}
+				httpRoute, ok := gatewayResources.HTTPRoutes[key]
+				if !ok {
+					// If there wasn't an HTTPRoute for this Ingress, we can skip it as something is wrong.
+					// All the available errors will be returned at the end.
+					continue
+				}
+
+				patchHTTPRouteWithBackendRefs(&httpRoute, backendRefs)
+			}
+			if len(errs) > 0 {
+				return errs
+			}
 		}
 	}
 
