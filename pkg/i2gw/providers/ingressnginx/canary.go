@@ -103,19 +103,13 @@ func patchHTTPRouteWithBackendRefs(httpRoute *gatewayv1.HTTPRoute, backendRefs [
 
 		ruleExists = false
 
-		for j, rule := range httpRoute.Spec.Rules {
-			foundBackendRef := false
+		for _, rule := range httpRoute.Spec.Rules {
 			for i := range rule.BackendRefs {
 				if backendRef.Name == rule.BackendRefs[i].Name {
 					rule.BackendRefs[i].Weight = backendRef.Weight
-					foundBackendRef = true
 					ruleExists = true
 					break
 				}
-			}
-
-			if !foundBackendRef {
-				httpRoute.Spec.Rules[j].BackendRefs = append(rule.BackendRefs, backendRef)
 			}
 		}
 
