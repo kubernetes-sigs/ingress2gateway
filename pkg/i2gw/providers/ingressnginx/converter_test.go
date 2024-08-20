@@ -214,6 +214,420 @@ func Test_ToGateway(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "multiple rules with TLS",
+			ingresses: OrderedIngressMap{
+				ingressNames: []types.NamespacedName{{Namespace: "default", Name: "example-ingress"}},
+				ingressObjects: map[types.NamespacedName]*networkingv1.Ingress{
+					{Namespace: "default", Name: "example-ingress"}: {
+						ObjectMeta: metav1.ObjectMeta{Name: "example-ingress", Namespace: "default"},
+						Spec: networkingv1.IngressSpec{
+							IngressClassName: ptrTo("nginx"),
+							TLS: []networkingv1.IngressTLS{{
+								Hosts: []string{
+									"foo.example.com",
+									"bar.example.com",
+								},
+								SecretName: "example-com",
+							}},
+							Rules: []networkingv1.IngressRule{
+								{
+									Host: "foo.example.com",
+									IngressRuleValue: networkingv1.IngressRuleValue{
+										HTTP: &networkingv1.HTTPIngressRuleValue{
+											Paths: []networkingv1.HTTPIngressPath{
+												{
+													Path:     "/",
+													PathType: &iPrefix,
+													Backend: networkingv1.IngressBackend{
+														Service: &networkingv1.IngressServiceBackend{
+															Name: "foo-app",
+															Port: networkingv1.ServiceBackendPort{Number: 80},
+														},
+													},
+												},
+												{
+													Path:     "/orders",
+													PathType: &iPrefix,
+													Backend: networkingv1.IngressBackend{
+														Service: &networkingv1.IngressServiceBackend{
+															Name: "foo-orders-app",
+															Port: networkingv1.ServiceBackendPort{Number: 80},
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+								{
+									Host: "bar.example.com",
+									IngressRuleValue: networkingv1.IngressRuleValue{
+										HTTP: &networkingv1.HTTPIngressRuleValue{
+											Paths: []networkingv1.HTTPIngressPath{
+												{
+													Path:     "/",
+													PathType: &iPrefix,
+													Backend: networkingv1.IngressBackend{
+														Service: &networkingv1.IngressServiceBackend{
+															Name: "bar-app",
+															Port: networkingv1.ServiceBackendPort{Number: 80},
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedGatewayResources: i2gw.GatewayResources{
+				Gateways: map[types.NamespacedName]gatewayv1.Gateway{
+					{Namespace: "default", Name: "nginx"}: {
+						ObjectMeta: metav1.ObjectMeta{Name: "nginx", Namespace: "default"},
+						Spec: gatewayv1.GatewaySpec{
+							GatewayClassName: "nginx",
+							Listeners: []gatewayv1.Listener{
+								{
+									Name:     "foo-example-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: ptrTo(gatewayv1.Hostname("foo.example.com")),
+								},
+								{
+									Name:     "foo-example-com-https",
+									Port:     443,
+									Protocol: gatewayv1.HTTPSProtocolType,
+									Hostname: ptrTo(gatewayv1.Hostname("foo.example.com")),
+									TLS: &gatewayv1.GatewayTLSConfig{
+										CertificateRefs: []gatewayv1.SecretObjectReference{
+											{Name: "example-com"},
+										},
+									},
+								},
+								{
+									Name:     "bar-example-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: ptrTo(gatewayv1.Hostname("bar.example.com")),
+								},
+								{
+									Name:     "bar-example-com-https",
+									Port:     443,
+									Protocol: gatewayv1.HTTPSProtocolType,
+									Hostname: ptrTo(gatewayv1.Hostname("bar.example.com")),
+									TLS: &gatewayv1.GatewayTLSConfig{
+										CertificateRefs: []gatewayv1.SecretObjectReference{
+											{Name: "example-com"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]gatewayv1.HTTPRoute{
+					{Namespace: "default", Name: "example-ingress-bar-example-com"}: {
+						ObjectMeta: metav1.ObjectMeta{Name: "example-ingress-bar-example-com", Namespace: "default"},
+						Spec: gatewayv1.HTTPRouteSpec{
+							CommonRouteSpec: gatewayv1.CommonRouteSpec{
+								ParentRefs: []gatewayv1.ParentReference{{
+									Name: "nginx",
+								}},
+							},
+							Hostnames: []gatewayv1.Hostname{"bar.example.com"},
+							Rules: []gatewayv1.HTTPRouteRule{{
+								Matches: []gatewayv1.HTTPRouteMatch{{
+									Path: &gatewayv1.HTTPPathMatch{
+										Type:  &gPathPrefix,
+										Value: ptrTo("/"),
+									},
+								}},
+								BackendRefs: []gatewayv1.HTTPBackendRef{
+									{
+										BackendRef: gatewayv1.BackendRef{
+											BackendObjectReference: gatewayv1.BackendObjectReference{
+												Name: "bar-app",
+												Port: ptrTo(gatewayv1.PortNumber(80)),
+											},
+										},
+									},
+								},
+							}},
+						},
+					},
+					{Namespace: "default", Name: "example-ingress-foo-example-com"}: {
+						ObjectMeta: metav1.ObjectMeta{Name: "example-ingress-foo-example-com", Namespace: "default"},
+						Spec: gatewayv1.HTTPRouteSpec{
+							CommonRouteSpec: gatewayv1.CommonRouteSpec{
+								ParentRefs: []gatewayv1.ParentReference{{
+									Name: "nginx",
+								}},
+							},
+							Hostnames: []gatewayv1.Hostname{"foo.example.com"},
+							Rules: []gatewayv1.HTTPRouteRule{
+								{
+									Matches: []gatewayv1.HTTPRouteMatch{{
+										Path: &gatewayv1.HTTPPathMatch{
+											Type:  &gPathPrefix,
+											Value: ptrTo("/"),
+										},
+									}},
+									BackendRefs: []gatewayv1.HTTPBackendRef{
+										{
+											BackendRef: gatewayv1.BackendRef{
+												BackendObjectReference: gatewayv1.BackendObjectReference{
+													Name: "foo-app",
+													Port: ptrTo(gatewayv1.PortNumber(80)),
+												},
+											},
+										},
+									},
+								},
+								{
+									Matches: []gatewayv1.HTTPRouteMatch{{
+										Path: &gatewayv1.HTTPPathMatch{
+											Type:  &gPathPrefix,
+											Value: ptrTo("/orders"),
+										},
+									}},
+									BackendRefs: []gatewayv1.HTTPBackendRef{
+										{
+											BackendRef: gatewayv1.BackendRef{
+												BackendObjectReference: gatewayv1.BackendObjectReference{
+													Name: "foo-orders-app",
+													Port: ptrTo(gatewayv1.PortNumber(80)),
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
+		{
+			name: "multiple rules with canary",
+			ingresses: OrderedIngressMap{
+				ingressNames: []types.NamespacedName{
+					{Namespace: "default", Name: "example-ingress"},
+					{Namespace: "default", Name: "example-ingress-canary"},
+				},
+				ingressObjects: map[types.NamespacedName]*networkingv1.Ingress{
+					{Namespace: "default", Name: "example-ingress"}: {
+						ObjectMeta: metav1.ObjectMeta{Name: "example-ingress", Namespace: "default"},
+						Spec: networkingv1.IngressSpec{
+							IngressClassName: ptrTo("nginx"),
+							Rules: []networkingv1.IngressRule{
+								{
+									Host: "foo.example.com",
+									IngressRuleValue: networkingv1.IngressRuleValue{
+										HTTP: &networkingv1.HTTPIngressRuleValue{
+											Paths: []networkingv1.HTTPIngressPath{
+												{
+													Path:     "/",
+													PathType: &iPrefix,
+													Backend: networkingv1.IngressBackend{
+														Service: &networkingv1.IngressServiceBackend{
+															Name: "foo-app",
+															Port: networkingv1.ServiceBackendPort{Number: 80},
+														},
+													},
+												},
+												{
+													Path:     "/orders",
+													PathType: &iPrefix,
+													Backend: networkingv1.IngressBackend{
+														Service: &networkingv1.IngressServiceBackend{
+															Name: "foo-orders-app",
+															Port: networkingv1.ServiceBackendPort{Number: 80},
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+								{
+									Host: "bar.example.com",
+									IngressRuleValue: networkingv1.IngressRuleValue{
+										HTTP: &networkingv1.HTTPIngressRuleValue{
+											Paths: []networkingv1.HTTPIngressPath{
+												{
+													Path:     "/",
+													PathType: &iPrefix,
+													Backend: networkingv1.IngressBackend{
+														Service: &networkingv1.IngressServiceBackend{
+															Name: "bar-app",
+															Port: networkingv1.ServiceBackendPort{Number: 80},
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+					{Namespace: "default", Name: "example-ingress-canary"}: {
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "example-ingress-canary",
+							Namespace: "default",
+							Annotations: map[string]string{
+								"nginx.ingress.kubernetes.io/canary":        "true",
+								"nginx.ingress.kubernetes.io/canary-weight": "30",
+							},
+						},
+						Spec: networkingv1.IngressSpec{
+							IngressClassName: ptrTo("nginx"),
+							Rules: []networkingv1.IngressRule{
+								{
+									Host: "bar.example.com",
+									IngressRuleValue: networkingv1.IngressRuleValue{
+										HTTP: &networkingv1.HTTPIngressRuleValue{
+											Paths: []networkingv1.HTTPIngressPath{
+												{
+													Path:     "/",
+													PathType: &iPrefix,
+													Backend: networkingv1.IngressBackend{
+														Service: &networkingv1.IngressServiceBackend{
+															Name: "bar-app-canary",
+															Port: networkingv1.ServiceBackendPort{Number: 80},
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedGatewayResources: i2gw.GatewayResources{
+				Gateways: map[types.NamespacedName]gatewayv1.Gateway{
+					{Namespace: "default", Name: "nginx"}: {
+						ObjectMeta: metav1.ObjectMeta{Name: "nginx", Namespace: "default"},
+						Spec: gatewayv1.GatewaySpec{
+							GatewayClassName: "nginx",
+							Listeners: []gatewayv1.Listener{
+								{
+									Name:     "foo-example-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: ptrTo(gatewayv1.Hostname("foo.example.com")),
+								},
+								{
+									Name:     "bar-example-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: ptrTo(gatewayv1.Hostname("bar.example.com")),
+								},
+							},
+						},
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]gatewayv1.HTTPRoute{
+					{Namespace: "default", Name: "example-ingress-bar-example-com"}: {
+						ObjectMeta: metav1.ObjectMeta{Name: "example-ingress-bar-example-com", Namespace: "default"},
+						Spec: gatewayv1.HTTPRouteSpec{
+							CommonRouteSpec: gatewayv1.CommonRouteSpec{
+								ParentRefs: []gatewayv1.ParentReference{{
+									Name: "nginx",
+								}},
+							},
+							Hostnames: []gatewayv1.Hostname{"bar.example.com"},
+							Rules: []gatewayv1.HTTPRouteRule{{
+								Matches: []gatewayv1.HTTPRouteMatch{{
+									Path: &gatewayv1.HTTPPathMatch{
+										Type:  &gPathPrefix,
+										Value: ptrTo("/"),
+									},
+								}},
+								BackendRefs: []gatewayv1.HTTPBackendRef{
+									{
+										BackendRef: gatewayv1.BackendRef{
+											BackendObjectReference: gatewayv1.BackendObjectReference{
+												Name: "bar-app",
+												Port: ptrTo(gatewayv1.PortNumber(80)),
+											},
+											Weight: ptrTo[int32](70),
+										},
+									},
+									{
+										BackendRef: gatewayv1.BackendRef{
+											BackendObjectReference: gatewayv1.BackendObjectReference{
+												Name: "bar-app-canary",
+												Port: ptrTo(gatewayv1.PortNumber(80)),
+											},
+											Weight: ptrTo[int32](30),
+										},
+									},
+								},
+							}},
+						},
+					},
+					{Namespace: "default", Name: "example-ingress-foo-example-com"}: {
+						ObjectMeta: metav1.ObjectMeta{Name: "example-ingress-foo-example-com", Namespace: "default"},
+						Spec: gatewayv1.HTTPRouteSpec{
+							CommonRouteSpec: gatewayv1.CommonRouteSpec{
+								ParentRefs: []gatewayv1.ParentReference{{
+									Name: "nginx",
+								}},
+							},
+							Hostnames: []gatewayv1.Hostname{"foo.example.com"},
+							Rules: []gatewayv1.HTTPRouteRule{
+								{
+									Matches: []gatewayv1.HTTPRouteMatch{{
+										Path: &gatewayv1.HTTPPathMatch{
+											Type:  &gPathPrefix,
+											Value: ptrTo("/"),
+										},
+									}},
+									BackendRefs: []gatewayv1.HTTPBackendRef{
+										{
+											BackendRef: gatewayv1.BackendRef{
+												BackendObjectReference: gatewayv1.BackendObjectReference{
+													Name: "foo-app",
+													Port: ptrTo(gatewayv1.PortNumber(80)),
+												},
+											},
+										},
+									},
+								},
+								{
+									Matches: []gatewayv1.HTTPRouteMatch{{
+										Path: &gatewayv1.HTTPPathMatch{
+											Type:  &gPathPrefix,
+											Value: ptrTo("/orders"),
+										},
+									}},
+									BackendRefs: []gatewayv1.HTTPBackendRef{
+										{
+											BackendRef: gatewayv1.BackendRef{
+												BackendObjectReference: gatewayv1.BackendObjectReference{
+													Name: "foo-orders-app",
+													Port: ptrTo(gatewayv1.PortNumber(80)),
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
 	}
 
 	for _, tc := range testCases {

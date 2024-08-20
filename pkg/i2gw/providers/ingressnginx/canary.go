@@ -39,24 +39,38 @@ func canaryFeature(ingresses []networkingv1.Ingress, gatewayResources *i2gw.Gate
 			return errs
 		}
 
+		// We're dividing ingresses based on rule groups.  If any path within a
+		// rule group is associated with an ingress object containing canary annotations,
+		// the entire rule group is affected.
+		canaryEnabled := false
 		for _, paths := range ingressPathsByMatchKey {
-			path := paths[0]
-
-			backendRefs, calculationErrs := calculateBackendRefWeight(paths)
-			errs = append(errs, calculationErrs...)
-
-			key := types.NamespacedName{Namespace: path.ingress.Namespace, Name: common.RouteName(rg.Name, rg.Host)}
-			httpRoute, ok := gatewayResources.HTTPRoutes[key]
-			if !ok {
-				// If there wasn't an HTTPRoute for this Ingress, we can skip it as something is wrong.
-				// All the available errors will be returned at the end.
-				continue
+			for _, path := range paths {
+				if path.extra.canary.enable {
+					canaryEnabled = true
+				}
 			}
-
-			patchHTTPRouteWithBackendRefs(&httpRoute, backendRefs)
 		}
-		if len(errs) > 0 {
-			return errs
+
+		if canaryEnabled {
+			for _, paths := range ingressPathsByMatchKey {
+				path := paths[0]
+
+				backendRefs, calculationErrs := calculateBackendRefWeight(paths)
+				errs = append(errs, calculationErrs...)
+
+				key := types.NamespacedName{Namespace: path.ingress.Namespace, Name: common.RouteName(rg.Name, rg.Host)}
+				httpRoute, ok := gatewayResources.HTTPRoutes[key]
+				if !ok {
+					// If there wasn't an HTTPRoute for this Ingress, we can skip it as something is wrong.
+					// All the available errors will be returned at the end.
+					continue
+				}
+
+				patchHTTPRouteWithBackendRefs(&httpRoute, backendRefs)
+			}
+			if len(errs) > 0 {
+				return errs
+			}
 		}
 	}
 
@@ -92,19 +106,13 @@ func patchHTTPRouteWithBackendRefs(httpRoute *gatewayv1.HTTPRoute, backendRefs [
 
 		ruleExists = false
 
-		for j, rule := range httpRoute.Spec.Rules {
-			foundBackendRef := false
+		for _, rule := range httpRoute.Spec.Rules {
 			for i := range rule.BackendRefs {
 				if backendRef.Name == rule.BackendRefs[i].Name {
 					rule.BackendRefs[i].Weight = backendRef.Weight
-					foundBackendRef = true
 					ruleExists = true
 					break
 				}
-			}
-
-			if !foundBackendRef {
-				httpRoute.Spec.Rules[j].BackendRefs = append(rule.BackendRefs, backendRef)
 			}
 		}
 
