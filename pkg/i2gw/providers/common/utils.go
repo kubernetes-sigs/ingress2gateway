@@ -204,10 +204,11 @@ func removeBackendRefsDuplicates(backendRefs []gatewayv1.HTTPBackendRef) []gatew
 	return uniqueBackendRefs
 }
 
-func noNotifications(mType notifications.MessageType, message string, callingObject ...client.Object) {
-}
+// noNotifications is a callback function used when a provider does not want to use
+// notifications from the common package
+func noNotifications(_ notifications.MessageType, _ string, _ ...client.Object) {}
 
-func mockIngressFromRuleGroup(rg *ingressRuleGroup) client.Object {
+func buildIngressFromRuleGroup(rg *ingressRuleGroup) client.Object {
 	return &networkingv1.Ingress{
 		TypeMeta: v1.TypeMeta{
 			Kind: "Ingress",
@@ -219,7 +220,7 @@ func mockIngressFromRuleGroup(rg *ingressRuleGroup) client.Object {
 	}
 }
 
-func mockIngressFromDefaultBackend(db ingressDefaultBackend) client.Object {
+func buildIngressFromDefaultBackend(db ingressDefaultBackend) client.Object {
 	return &networkingv1.Ingress{
 		TypeMeta: v1.TypeMeta{
 			Kind: "Ingress",
