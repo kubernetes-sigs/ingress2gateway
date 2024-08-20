@@ -39,6 +39,9 @@ func canaryFeature(ingresses []networkingv1.Ingress, gatewayResources *i2gw.Gate
 			return errs
 		}
 
+		// We're dividing ingresses based on rule groups.  If any path within a
+		// rule group is associated with an ingress object containing canary annotations,
+		// the entire rule group is affected.
 		canaryEnabled := false
 		for _, paths := range ingressPathsByMatchKey {
 			for _, path := range paths {
