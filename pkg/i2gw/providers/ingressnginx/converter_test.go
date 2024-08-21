@@ -292,23 +292,6 @@ func Test_ToGateway(t *testing.T) {
 							GatewayClassName: "nginx",
 							Listeners: []gatewayv1.Listener{
 								{
-									Name:     "foo-example-com-http",
-									Port:     80,
-									Protocol: gatewayv1.HTTPProtocolType,
-									Hostname: ptrTo(gatewayv1.Hostname("foo.example.com")),
-								},
-								{
-									Name:     "foo-example-com-https",
-									Port:     443,
-									Protocol: gatewayv1.HTTPSProtocolType,
-									Hostname: ptrTo(gatewayv1.Hostname("foo.example.com")),
-									TLS: &gatewayv1.GatewayTLSConfig{
-										CertificateRefs: []gatewayv1.SecretObjectReference{
-											{Name: "example-com"},
-										},
-									},
-								},
-								{
 									Name:     "bar-example-com-http",
 									Port:     80,
 									Protocol: gatewayv1.HTTPProtocolType,
@@ -319,6 +302,23 @@ func Test_ToGateway(t *testing.T) {
 									Port:     443,
 									Protocol: gatewayv1.HTTPSProtocolType,
 									Hostname: ptrTo(gatewayv1.Hostname("bar.example.com")),
+									TLS: &gatewayv1.GatewayTLSConfig{
+										CertificateRefs: []gatewayv1.SecretObjectReference{
+											{Name: "example-com"},
+										},
+									},
+								},
+								{
+									Name:     "foo-example-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: ptrTo(gatewayv1.Hostname("foo.example.com")),
+								},
+								{
+									Name:     "foo-example-com-https",
+									Port:     443,
+									Protocol: gatewayv1.HTTPSProtocolType,
+									Hostname: ptrTo(gatewayv1.Hostname("foo.example.com")),
 									TLS: &gatewayv1.GatewayTLSConfig{
 										CertificateRefs: []gatewayv1.SecretObjectReference{
 											{Name: "example-com"},
@@ -520,16 +520,16 @@ func Test_ToGateway(t *testing.T) {
 							GatewayClassName: "nginx",
 							Listeners: []gatewayv1.Listener{
 								{
-									Name:     "foo-example-com-http",
-									Port:     80,
-									Protocol: gatewayv1.HTTPProtocolType,
-									Hostname: ptrTo(gatewayv1.Hostname("foo.example.com")),
-								},
-								{
 									Name:     "bar-example-com-http",
 									Port:     80,
 									Protocol: gatewayv1.HTTPProtocolType,
 									Hostname: ptrTo(gatewayv1.Hostname("bar.example.com")),
+								},
+								{
+									Name:     "foo-example-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: ptrTo(gatewayv1.Hostname("foo.example.com")),
 								},
 							},
 						},
