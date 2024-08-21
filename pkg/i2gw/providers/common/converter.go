@@ -51,7 +51,7 @@ func ToIR(ingresses []networkingv1.Ingress, options i2gw.ProviderImplementationS
 	case 1:
 		notify = notifyOpts[0]
 	default:
-		return i2gw.GatewayResources{}, field.ErrorList{field.Invalid(field.NewPath(""), "", "number of notification callbacks exceeded. only 0 or 1 callbacks are currently supported")}
+		return intermediate.IR{}, field.ErrorList{field.Invalid(field.NewPath(""), "", "number of notification callbacks exceeded. only 0 or 1 callbacks are currently supported")}
 	}
 
 	var errs field.ErrorList
@@ -190,6 +190,7 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImpleme
 	var httpRoutes []gatewayv1.HTTPRoute
 	var errors field.ErrorList
 	listenersByNamespacedGateway := map[string][]gatewayv1.Listener{}
+	ingressByNamespacedGateway := map[string][]client.Object{}
 
 	// Sort the rulegroups to iterate the map in a sorted order.
 	ruleGroupsKeys := make([]ruleGroupKey, 0, len(a.ruleGroups))

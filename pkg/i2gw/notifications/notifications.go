@@ -53,7 +53,7 @@ var NotificationAggr NotificationAggregator
 
 // NotificationCallback is a callback function used to send notifications from within the common
 // package without the common package having knowledge about which provider is making a call it
-type NotificationCallback func(mType MessageType, message string, callingObject ...client.Object)
+type NotificationCallback func(mType MessageType, message string, CallingObjects ...client.Object)
 
 // DispatchNotification is used to send a notification to the NotificationAggregator
 func (na *NotificationAggregator) DispatchNotification(notification Notification, ProviderName string) {
@@ -103,6 +103,6 @@ func convertObjectsToStr(ob []client.Object) string {
 	return sb.String()
 }
 
-func NewNotification(mType MessageType, message string, callingObject ...client.Object) Notification {
-	return Notification{Type: mType, Message: message, CallingObjects: callingObject}
+func NewNotification(mType MessageType, message string, callingObjects ...client.Object) Notification {
+	return Notification{Type: mType, Message: message, CallingObjects: callingObjects}
 }

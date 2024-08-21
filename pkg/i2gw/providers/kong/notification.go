@@ -21,8 +21,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func notify(mType notifications.MessageType, message string, callingObject ...client.Object) {
-	newNotification := notifications.NewNotification(mType, message, callingObject...)
+func notify(mType notifications.MessageType, message string, callingObjects ...client.Object) {
+	newNotification := notifications.NewNotification(mType, message, callingObjects...)
 	notifications.NotificationAggr.DispatchNotification(newNotification, string(Name))
 }
 
