@@ -17,7 +17,9 @@ limitations under the License.
 package common
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
@@ -171,7 +173,18 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImpleme
 	var errors field.ErrorList
 	listenersByNamespacedGateway := map[string][]gatewayv1.Listener{}
 
-	for _, rg := range a.ruleGroups {
+	// Sort the rulegroups to iterate the map in a sorted order.
+	ruleGroupsKeys := make([]ruleGroupKey, 0, len(a.ruleGroups))
+	for k := range a.ruleGroups {
+		ruleGroupsKeys = append(ruleGroupsKeys, k)
+	}
+
+	slices.SortFunc(ruleGroupsKeys, func(a, b ruleGroupKey) int {
+		return cmp.Compare(a, b)
+	})
+
+	for _, rgk := range ruleGroupsKeys {
+		rg := a.ruleGroups[rgk]
 		listener := gatewayv1.Listener{}
 		if rg.host != "" {
 			listener.Hostname = (*gatewayv1.Hostname)(&rg.host)
