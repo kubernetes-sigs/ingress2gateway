@@ -22,6 +22,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
 // The Name of the provider.
@@ -36,21 +38,25 @@ func init() {
 type Provider struct {
 	*storage
 	*resourceReader
-	*converter
+	*resourcesToIRConverter
 }
 
 // NewProvider constructs and returns the kong implementation of i2gw.Provider.
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 	return &Provider{
-		resourceReader: newResourceReader(conf),
-		converter:      newConverter(),
+		resourceReader:         newResourceReader(conf),
+		resourcesToIRConverter: newResourcesToIRConverter(),
 	}
 }
 
-// ToGatewayAPI converts stored Kong API entities to i2gw.GatewayResources
+// ToIR converts stored Kong API entities to intermediate.IR
 // including the kong specific features.
-func (p *Provider) ToGatewayAPI() (i2gw.GatewayResources, field.ErrorList) {
-	return p.converter.convert(p.storage)
+func (p *Provider) ToIR() (intermediate.IR, field.ErrorList) {
+	return p.resourcesToIRConverter.convert(p.storage)
+}
+
+func (p *Provider) ToGatewayResources(ir intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
+	return common.ToGatewayResources(ir)
 }
 
 func (p *Provider) ReadResourcesFromCluster(ctx context.Context) error {

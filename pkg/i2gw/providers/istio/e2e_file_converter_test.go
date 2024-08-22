@@ -56,9 +56,13 @@ func TestFileConversion(t *testing.T) {
 			t.Fatalf("Failed to read input from file %v: %v", d.Name(), err.Error())
 		}
 
-		gotGatewayResources, errList := istioProvider.ToGatewayAPI()
+		ir, errList := istioProvider.ToIR()
 		if len(errList) > 0 {
-			t.Fatalf("unexpected errors during input conversion for file %v: %v", d.Name(), errList.ToAggregate().Error())
+			t.Fatalf("unexpected errors during input conversion to ir for file %v: %v", d.Name(), errList.ToAggregate().Error())
+		}
+		gotGatewayResources, errList := istioProvider.ToGatewayResources(ir)
+		if len(errList) > 0 {
+			t.Fatalf("unexpected errors during ir conversion to Gateway for file %v: %v", d.Name(), errList.ToAggregate().Error())
 		}
 
 		outputFile := filepath.Join(fixturesDir, "output", d.Name())

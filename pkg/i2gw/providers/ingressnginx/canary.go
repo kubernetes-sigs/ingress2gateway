@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -30,7 +30,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-func canaryFeature(ingresses []networkingv1.Ingress, gatewayResources *i2gw.GatewayResources) field.ErrorList {
+func canaryFeature(ingresses []networkingv1.Ingress, ir *intermediate.IR) field.ErrorList {
 	ruleGroups := common.GetRuleGroups(ingresses)
 
 	for _, rg := range ruleGroups {
@@ -59,14 +59,14 @@ func canaryFeature(ingresses []networkingv1.Ingress, gatewayResources *i2gw.Gate
 				errs = append(errs, calculationErrs...)
 
 				key := types.NamespacedName{Namespace: path.ingress.Namespace, Name: common.RouteName(rg.Name, rg.Host)}
-				httpRoute, ok := gatewayResources.HTTPRoutes[key]
+				httpRouteContext, ok := ir.HTTPRoutes[key]
 				if !ok {
 					// If there wasn't an HTTPRoute for this Ingress, we can skip it as something is wrong.
 					// All the available errors will be returned at the end.
 					continue
 				}
 
-				patchHTTPRouteWithBackendRefs(&httpRoute, backendRefs)
+				patchHTTPRouteWithBackendRefs(&httpRouteContext.HTTPRoute, backendRefs)
 			}
 			if len(errs) > 0 {
 				return errs

@@ -204,41 +204,41 @@ func TestTCPIngressToGatewayAPI(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			gatewayResources, _, errs := TCPIngressToGatewayAPI(tc.tcpIngresses)
+			ir, _, errs := TCPIngressToGatewayIR(tc.tcpIngresses)
 
-			if len(gatewayResources.Gateways) != len(tc.expectedGatewayResources.Gateways) {
+			if len(ir.Gateways) != len(tc.expectedGatewayResources.Gateways) {
 				t.Errorf("Expected %d Gateways, got %d: %+v",
-					len(tc.expectedGatewayResources.Gateways), len(gatewayResources.Gateways), gatewayResources.Gateways)
+					len(tc.expectedGatewayResources.Gateways), len(ir.Gateways), ir.Gateways)
 			} else {
-				for i, got := range gatewayResources.Gateways {
-					key := types.NamespacedName{Namespace: got.Namespace, Name: got.Name}
+				for i, gotGatewayContext := range ir.Gateways {
+					key := types.NamespacedName{Namespace: gotGatewayContext.Gateway.Namespace, Name: gotGatewayContext.Gateway.Name}
 					want := tc.expectedGatewayResources.Gateways[key]
 					want.SetGroupVersionKind(common.GatewayGVK)
-					if !apiequality.Semantic.DeepEqual(got, want) {
-						t.Errorf("Expected Gateway %s to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))
+					if !apiequality.Semantic.DeepEqual(gotGatewayContext.Gateway, want) {
+						t.Errorf("Expected Gateway %s to be %+v\n Got: %+v\n Diff: %s", i, want, gotGatewayContext.Gateway, cmp.Diff(want, gotGatewayContext.Gateway))
 					}
 				}
 			}
 
-			if len(gatewayResources.HTTPRoutes) != len(tc.expectedGatewayResources.HTTPRoutes) {
+			if len(ir.HTTPRoutes) != len(tc.expectedGatewayResources.HTTPRoutes) {
 				t.Errorf("Expected %d HTTPRoutes, got %d: %+v",
-					len(tc.expectedGatewayResources.HTTPRoutes), len(gatewayResources.HTTPRoutes), gatewayResources.HTTPRoutes)
+					len(tc.expectedGatewayResources.HTTPRoutes), len(ir.HTTPRoutes), ir.HTTPRoutes)
 			} else {
-				for i, got := range gatewayResources.HTTPRoutes {
-					key := types.NamespacedName{Namespace: got.Namespace, Name: got.Name}
+				for i, gotHTTPRouteContext := range ir.HTTPRoutes {
+					key := types.NamespacedName{Namespace: gotHTTPRouteContext.HTTPRoute.Namespace, Name: gotHTTPRouteContext.HTTPRoute.Name}
 					want := tc.expectedGatewayResources.HTTPRoutes[key]
 					want.SetGroupVersionKind(common.HTTPRouteGVK)
-					if !apiequality.Semantic.DeepEqual(got, want) {
-						t.Errorf("Expected HTTPRoute %s to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))
+					if !apiequality.Semantic.DeepEqual(gotHTTPRouteContext.HTTPRoute, want) {
+						t.Errorf("Expected HTTPRoute %s to be %+v\n Got: %+v\n Diff: %s", i, want, gotHTTPRouteContext.HTTPRoute, cmp.Diff(want, gotHTTPRouteContext.HTTPRoute))
 					}
 				}
 			}
 
-			if len(gatewayResources.TCPRoutes) != len(tc.expectedGatewayResources.TCPRoutes) {
+			if len(ir.TCPRoutes) != len(tc.expectedGatewayResources.TCPRoutes) {
 				t.Errorf("Expected %d TCPRoutes, got %d: %+v",
-					len(tc.expectedGatewayResources.TCPRoutes), len(gatewayResources.TCPRoutes), gatewayResources.TCPRoutes)
+					len(tc.expectedGatewayResources.TCPRoutes), len(ir.TCPRoutes), ir.TCPRoutes)
 			} else {
-				for i, got := range gatewayResources.TCPRoutes {
+				for i, got := range ir.TCPRoutes {
 					key := types.NamespacedName{Namespace: got.Namespace, Name: got.Name}
 					want := tc.expectedGatewayResources.TCPRoutes[key]
 					want.SetGroupVersionKind(common.TCPRouteGVK)
@@ -248,11 +248,11 @@ func TestTCPIngressToGatewayAPI(t *testing.T) {
 				}
 			}
 
-			if len(gatewayResources.TLSRoutes) != len(tc.expectedGatewayResources.TLSRoutes) {
+			if len(ir.TLSRoutes) != len(tc.expectedGatewayResources.TLSRoutes) {
 				t.Errorf("Expected %d TLSRoutes, got %d: %+v",
-					len(tc.expectedGatewayResources.TLSRoutes), len(gatewayResources.TLSRoutes), gatewayResources.TLSRoutes)
+					len(tc.expectedGatewayResources.TLSRoutes), len(ir.TLSRoutes), ir.TLSRoutes)
 			} else {
-				for i, got := range gatewayResources.TLSRoutes {
+				for i, got := range ir.TLSRoutes {
 					key := types.NamespacedName{Namespace: got.Namespace, Name: got.Name}
 					want := tc.expectedGatewayResources.TLSRoutes[key]
 					want.SetGroupVersionKind(common.TLSRouteGVK)

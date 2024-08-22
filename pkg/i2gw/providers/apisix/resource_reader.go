@@ -24,7 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-// converter implements the i2gw.CustomResourceReader interface.
+// resourceReader implements the i2gw.CustomResourceReader interface.
 type resourceReader struct {
 	conf *i2gw.ProviderConf
 }

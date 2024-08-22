@@ -35,6 +35,7 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
@@ -58,13 +59,13 @@ const (
 //	4: path
 var uriRegexp = regexp.MustCompile(`^((https?)://([^/]+))?(/.*)?$`)
 
-type Converter interface {
-	Convert(Storage) (i2gw.GatewayResources, field.ErrorList)
+type ResourcesToIRConverter interface {
+	Convert(Storage) (intermediate.IR, field.ErrorList)
 }
 
-// NewConverter returns a converter of OpenAPI Specifications 3.x from a storage into Gateway API resources.
-func NewConverter(conf *i2gw.ProviderConf) Converter {
-	converter := &converter{
+// NewResourcesToIRConverter returns a resourcesToIRConverter of OpenAPI Specifications 3.x from a storage into Gateway API resources.
+func NewResourcesToIRConverter(conf *i2gw.ProviderConf) ResourcesToIRConverter {
+	converter := &resourcesToIRConverter{
 		namespace:    conf.Namespace,
 		tlsSecretRef: types.NamespacedName{},
 		backendRef:   toBackendRef(""),
@@ -84,19 +85,19 @@ type backendRef struct {
 	port *gatewayv1.PortNumber
 }
 
-type converter struct {
+type resourcesToIRConverter struct {
 	namespace        string
 	gatewayClassName string
 	tlsSecretRef     types.NamespacedName
 	backendRef       backendRef
 }
 
-var _ Converter = &converter{}
+var _ ResourcesToIRConverter = &resourcesToIRConverter{}
 
-func (c *converter) Convert(storage Storage) (i2gw.GatewayResources, field.ErrorList) {
-	gatewayResources := i2gw.GatewayResources{
-		Gateways:        make(map[types.NamespacedName]gatewayv1.Gateway),
-		HTTPRoutes:      make(map[types.NamespacedName]gatewayv1.HTTPRoute),
+func (c *resourcesToIRConverter) Convert(storage Storage) (intermediate.IR, field.ErrorList) {
+	ir := intermediate.IR{
+		Gateways:        make(map[types.NamespacedName]intermediate.GatewayContext),
+		HTTPRoutes:      make(map[types.NamespacedName]intermediate.HTTPRouteContext),
 		ReferenceGrants: make(map[types.NamespacedName]gatewayv1beta1.ReferenceGrant),
 	}
 
@@ -119,26 +120,26 @@ func (c *converter) Convert(storage Storage) (i2gw.GatewayResources, field.Error
 		// convert the spec to Gateway API resources
 		httpRoutes, gateways := c.toHTTPRoutesAndGateways(spec, resourcesNamePrefix, errors)
 		for _, httpRoute := range httpRoutes {
-			gatewayResources.HTTPRoutes[types.NamespacedName{Name: httpRoute.GetName(), Namespace: httpRoute.GetNamespace()}] = httpRoute
+			ir.HTTPRoutes[types.NamespacedName{Name: httpRoute.GetName(), Namespace: httpRoute.GetNamespace()}] = intermediate.HTTPRouteContext{HTTPRoute: httpRoute}
 		}
 
 		// build reference grants for the resources
 		if referenceGrant := c.buildHTTPRouteBackendReferenceGrant(); referenceGrant != nil {
-			gatewayResources.ReferenceGrants[types.NamespacedName{Name: referenceGrant.GetName(), Namespace: referenceGrant.GetNamespace()}] = *referenceGrant
+			ir.ReferenceGrants[types.NamespacedName{Name: referenceGrant.GetName(), Namespace: referenceGrant.GetNamespace()}] = *referenceGrant
 		}
 		for _, gateway := range gateways {
-			gatewayResources.Gateways[types.NamespacedName{Name: gateway.GetName(), Namespace: gateway.GetNamespace()}] = gateway
+			ir.Gateways[types.NamespacedName{Name: gateway.GetName(), Namespace: gateway.GetNamespace()}] = intermediate.GatewayContext{Gateway: gateway}
 			if referenceGrant := c.buildGatewayTLSSecretReferenceGrant(gateway); referenceGrant != nil {
-				gatewayResources.ReferenceGrants[types.NamespacedName{Name: referenceGrant.GetName(), Namespace: referenceGrant.GetNamespace()}] = *referenceGrant
+				ir.ReferenceGrants[types.NamespacedName{Name: referenceGrant.GetName(), Namespace: referenceGrant.GetNamespace()}] = *referenceGrant
 			}
 		}
 	}
 
-	return gatewayResources, errors
+	return ir, errors
 }
 
 // toHTTPRoutesAndGateways converts an OpenAPI Specification 3.x to Gateway API HTTPRoutes and Gateways.
-func (c *converter) toHTTPRoutesAndGateways(spec *openapi3.T, resourcesNamePrefix string, errors field.ErrorList) ([]gatewayv1.HTTPRoute, []gatewayv1.Gateway) {
+func (c *resourcesToIRConverter) toHTTPRoutesAndGateways(spec *openapi3.T, resourcesNamePrefix string, errors field.ErrorList) ([]gatewayv1.HTTPRoute, []gatewayv1.Gateway) {
 	var matchers []httpRouteMatcher
 
 	servers := spec.Servers
@@ -271,7 +272,7 @@ func (c *converter) toHTTPRoutesAndGateways(spec *openapi3.T, resourcesNamePrefi
 // The listener name is derived from the protocol and hostname.
 // The listener port is assumed 80 for http protocol and 443 for https.
 // If the protocol is https, the listener TLS configuration is set from the general TLS secret reference.
-func (c *converter) toListener(protocolAndHostname string, _ int) gatewayv1.Listener {
+func (c *resourcesToIRConverter) toListener(protocolAndHostname string, _ int) gatewayv1.Listener {
 	name, protocol, hostname := toListenerName(protocolAndHostname)
 
 	listener := gatewayv1.Listener{
@@ -328,7 +329,7 @@ func toListenerName(protocolAndHostname string) (listenerName gatewayv1.SectionN
 // toHTTPRoute builds a Gateway API HTTPRoute object with a given name, for a given gateway parent, set of hostnames,
 // and HTTP route matchers out of which HTTPRouteMatches are built for the rules.
 // All HTTPRouteRules in the HTTPRoute are built with the same set of backendRefs, provided as argument.
-func (c *converter) toHTTPRoute(name, gatewayName string, listenerName gatewayv1.SectionName, hostnames []string, matchers httpRouteRuleMatchers, backendRefs []gatewayv1.HTTPBackendRef) gatewayv1.HTTPRoute {
+func (c *resourcesToIRConverter) toHTTPRoute(name, gatewayName string, listenerName gatewayv1.SectionName, hostnames []string, matchers httpRouteRuleMatchers, backendRefs []gatewayv1.HTTPBackendRef) gatewayv1.HTTPRoute {
 	parentRef := gatewayv1.ParentReference{Name: gatewayv1.ObjectName(gatewayName)}
 	if listenerName != "" {
 		parentRef.SectionName = common.PtrTo(listenerName)
@@ -359,13 +360,13 @@ func (c *converter) toHTTPRoute(name, gatewayName string, listenerName gatewayv1
 
 // buildHTTPRouteBackendReferenceGrant builds a Gateway API ReferenceGrant object for the general backend reference
 // to be used in all HTTPRoute rules.
-func (c *converter) buildHTTPRouteBackendReferenceGrant() *gatewayv1beta1.ReferenceGrant {
+func (c *resourcesToIRConverter) buildHTTPRouteBackendReferenceGrant() *gatewayv1beta1.ReferenceGrant {
 	return c.buildReferenceGrant(common.HTTPRouteGVK, gatewayv1.Kind("Service"), c.backendRef.NamespacedName)
 }
 
 // buildGatewayTLSSecretReferenceGrant builds a Gateway API ReferenceGrant object for the general TLS secret
 // reference to be used in all https gateway listeners.
-func (c *converter) buildGatewayTLSSecretReferenceGrant(gateway gatewayv1.Gateway) *gatewayv1beta1.ReferenceGrant {
+func (c *resourcesToIRConverter) buildGatewayTLSSecretReferenceGrant(gateway gatewayv1.Gateway) *gatewayv1beta1.ReferenceGrant {
 	if slices.IndexFunc(gateway.Spec.Listeners, func(listener gatewayv1.Listener) bool { return listener.TLS != nil }) == -1 {
 		return nil
 	}
@@ -374,7 +375,7 @@ func (c *converter) buildGatewayTLSSecretReferenceGrant(gateway gatewayv1.Gatewa
 
 // buildReferenceGrant builds a Gateway API ReferenceGrant object for a given source and destination resource.
 // The name of the reference grant is derived from the source resource namespace and the destination resource kind and name.
-func (c *converter) buildReferenceGrant(fromGVK schema.GroupVersionKind, toKind gatewayv1.Kind, toRef types.NamespacedName) *gatewayv1beta1.ReferenceGrant {
+func (c *resourcesToIRConverter) buildReferenceGrant(fromGVK schema.GroupVersionKind, toKind gatewayv1.Kind, toRef types.NamespacedName) *gatewayv1beta1.ReferenceGrant {
 	if c.namespace == "" || toRef.Namespace == "" {
 		return nil
 	}

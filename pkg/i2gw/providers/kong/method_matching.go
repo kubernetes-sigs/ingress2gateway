@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -37,12 +37,12 @@ import (
 // konghq.com/methods: "GET,POST"
 //
 // All the values defined and separated by comma, MUST be ORed.
-func methodMatchingFeature(ingresses []networkingv1.Ingress, gatewayResources *i2gw.GatewayResources) field.ErrorList {
+func methodMatchingFeature(ingresses []networkingv1.Ingress, ir *intermediate.IR) field.ErrorList {
 	ruleGroups := common.GetRuleGroups(ingresses)
 	for _, rg := range ruleGroups {
 		for _, rule := range rg.Rules {
 			key := types.NamespacedName{Namespace: rule.Ingress.Namespace, Name: common.RouteName(rg.Name, rg.Host)}
-			httpRoute, ok := gatewayResources.HTTPRoutes[key]
+			httpRouteContext, ok := ir.HTTPRoutes[key]
 			if !ok {
 				return field.ErrorList{field.InternalError(nil, fmt.Errorf("HTTPRoute does not exist - this should never happen"))}
 			}
@@ -50,7 +50,7 @@ func methodMatchingFeature(ingresses []networkingv1.Ingress, gatewayResources *i
 			if len(errs) != 0 {
 				return errs
 			}
-			patchHTTPRouteMethodMatching(&httpRoute, methods)
+			patchHTTPRouteMethodMatching(&httpRouteContext.HTTPRoute, methods)
 		}
 	}
 	return nil

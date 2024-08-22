@@ -24,6 +24,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
 const (
@@ -55,8 +57,8 @@ func init() {
 }
 
 type Provider struct {
-	storage   Storage
-	converter Converter
+	storage                Storage
+	resourcesToIRConverter ResourcesToIRConverter
 }
 
 var _ i2gw.Provider = &Provider{}
@@ -64,8 +66,8 @@ var _ i2gw.Provider = &Provider{}
 // NewProvider returns an implementation of i2gw.Provider that converts OpenAPI specs to Gateway API resources.
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 	return &Provider{
-		storage:   NewResourceStorage(),
-		converter: NewConverter(conf),
+		storage:                NewResourceStorage(),
+		resourcesToIRConverter: NewResourcesToIRConverter(conf),
 	}
 }
 
@@ -89,9 +91,13 @@ func (p *Provider) ReadResourcesFromFile(ctx context.Context, filename string) e
 	return nil
 }
 
-// ToGatewayAPI converts stored OpenAPI specs to Gateway API resources.
-func (p *Provider) ToGatewayAPI() (i2gw.GatewayResources, field.ErrorList) {
-	return p.converter.Convert(p.storage)
+// ToIR converts stored OpenAPI specs to IR.
+func (p *Provider) ToIR() (intermediate.IR, field.ErrorList) {
+	return p.resourcesToIRConverter.Convert(p.storage)
+}
+
+func (p *Provider) ToGatewayResources(ir intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
+	return common.ToGatewayResources(ir)
 }
 
 func readSpecFromFile(ctx context.Context, filename string) (*openapi3.T, error) {

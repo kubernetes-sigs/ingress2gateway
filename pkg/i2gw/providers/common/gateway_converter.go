@@ -24,7 +24,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-// ToGatewayResources converts the received i2gw.IR to i2gw.GatewayResource
+// ToGatewayResources converts the received intermediate.IR to i2gw.GatewayResource
 // without taking into consideration any provider specific logic.
 func ToGatewayResources(ir intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
 	gatewayResources := i2gw.GatewayResources{
