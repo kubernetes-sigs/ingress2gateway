@@ -23,7 +23,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	istiov1beta1 "istio.io/api/networking/v1beta1"
@@ -44,25 +44,25 @@ const (
 	virtualServiceKey contextKey = iota
 )
 
-type converter struct {
+type resourcesToIRConverter struct {
 	// gw -> namespace -> hosts; stores hosts allowed by each Gateway
 	gwAllowedHosts map[types.NamespacedName]map[string]sets.Set[string]
 	ctx            context.Context
 }
 
-func newConverter() converter {
-	return converter{
+func newResourcesToIRConverter() resourcesToIRConverter {
+	return resourcesToIRConverter{
 		gwAllowedHosts: make(map[types.NamespacedName]map[string]sets.Set[string]),
 		ctx:            context.Background(),
 	}
 }
 
-func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.ErrorList) {
+func (c *resourcesToIRConverter) convertToIR(storage *storage) (intermediate.IR, field.ErrorList) {
 	var errList field.ErrorList
 
-	gatewayResources := i2gw.GatewayResources{
-		Gateways:        make(map[types.NamespacedName]gatewayv1.Gateway),
-		HTTPRoutes:      make(map[types.NamespacedName]gatewayv1.HTTPRoute),
+	gatewayResources := intermediate.IR{
+		Gateways:        make(map[types.NamespacedName]intermediate.GatewayContext),
+		HTTPRoutes:      make(map[types.NamespacedName]intermediate.HTTPRouteContext),
 		TLSRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
 		TCPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
 		ReferenceGrants: make(map[types.NamespacedName]gatewayv1beta1.ReferenceGrant),
@@ -80,7 +80,7 @@ func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.Erro
 		gatewayResources.Gateways[types.NamespacedName{
 			Namespace: gw.Namespace,
 			Name:      gw.Name,
-		}] = *gw
+		}] = intermediate.GatewayContext{Gateway: *gw}
 	}
 
 	for _, vs := range storage.VirtualServices {
@@ -104,7 +104,7 @@ func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.Erro
 				gatewayResources.HTTPRoutes[types.NamespacedName{
 					Namespace: httpRoute.Namespace,
 					Name:      httpRoute.Name,
-				}] = *httpRoute
+				}] = intermediate.HTTPRouteContext{HTTPRoute: *httpRoute}
 			}
 		}
 
@@ -132,10 +132,10 @@ func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.Erro
 		}
 	}
 
-	return gatewayResources, nil
+	return gatewayResources, errList
 }
 
-func (c *converter) convertGateway(gw *istioclientv1beta1.Gateway, fieldPath *field.Path) (*gatewayv1.Gateway, field.ErrorList) {
+func (c *resourcesToIRConverter) convertGateway(gw *istioclientv1beta1.Gateway, fieldPath *field.Path) (*gatewayv1.Gateway, field.ErrorList) {
 	var errList field.ErrorList
 	apiVersion, kind := common.GatewayGVK.ToAPIVersionAndKind()
 	gwPath := fieldPath.Child("Gateway").Key(gw.Name)
@@ -353,7 +353,7 @@ func convertHostnames(ctx context.Context, hosts []string, fieldPath *field.Path
 	return resHostnames
 }
 
-func (c *converter) convertVsHTTPRoutes(virtualService metav1.ObjectMeta, istioHTTPRoutes []*istiov1beta1.HTTPRoute, istioHTTPHosts []string, fieldPath *field.Path) ([]*gatewayv1.HTTPRoute, field.ErrorList) {
+func (c *resourcesToIRConverter) convertVsHTTPRoutes(virtualService metav1.ObjectMeta, istioHTTPRoutes []*istiov1beta1.HTTPRoute, istioHTTPHosts []string, fieldPath *field.Path) ([]*gatewayv1.HTTPRoute, field.ErrorList) {
 	var errList field.ErrorList
 	var resHTTPRoutes []*gatewayv1.HTTPRoute
 
@@ -719,7 +719,7 @@ type createHTTPRouteParams struct {
 	timeouts    *gatewayv1.HTTPRouteTimeouts
 }
 
-func (c *converter) createHTTPRoute(params createHTTPRouteParams) *gatewayv1.HTTPRoute {
+func (c *resourcesToIRConverter) createHTTPRoute(params createHTTPRouteParams) *gatewayv1.HTTPRoute {
 	apiVersion, kind := common.HTTPRouteGVK.ToAPIVersionAndKind()
 
 	return &gatewayv1.HTTPRoute{
@@ -754,7 +754,7 @@ func (c *converter) createHTTPRoute(params createHTTPRouteParams) *gatewayv1.HTT
 // And generates max 2 HTTPRoutes (one with prefix matches and ReplacePrefixMatch filter and the other if non-prefix matches and ReplaceFullPath filter).
 // If any of the match group is empty, the corresponding HTTPRoute won't be generated.
 // If all URI matches are empty, there would be HTTPRoute with HTTPRouteFilterURLRewrite of ReplaceFullPath type.
-func (c *converter) createHTTPRoutesWithRewrite(params createHTTPRouteParams, rewrite *istiov1beta1.HTTPRewrite, fieldPath *field.Path) []*gatewayv1.HTTPRoute {
+func (c *resourcesToIRConverter) createHTTPRoutesWithRewrite(params createHTTPRouteParams, rewrite *istiov1beta1.HTTPRewrite, fieldPath *field.Path) []*gatewayv1.HTTPRoute {
 	vs := c.ctx.Value(virtualServiceKey).(*istioclientv1beta1.VirtualService)
 	if rewrite == nil {
 		return nil
@@ -825,7 +825,7 @@ func (c *converter) createHTTPRoutesWithRewrite(params createHTTPRouteParams, re
 	return resHTTPRoutes
 }
 
-func (c *converter) convertVsTLSRoutes(virtualService metav1.ObjectMeta, istioTLSRoutes []*istiov1beta1.TLSRoute, fieldPath *field.Path) []*gatewayv1alpha2.TLSRoute {
+func (c *resourcesToIRConverter) convertVsTLSRoutes(virtualService metav1.ObjectMeta, istioTLSRoutes []*istiov1beta1.TLSRoute, fieldPath *field.Path) []*gatewayv1alpha2.TLSRoute {
 	var resTLSRoutes []*gatewayv1alpha2.TLSRoute
 	vs := c.ctx.Value(virtualServiceKey).(*istioclientv1beta1.VirtualService)
 
@@ -907,7 +907,7 @@ func (c *converter) convertVsTLSRoutes(virtualService metav1.ObjectMeta, istioTL
 	return resTLSRoutes
 }
 
-func (c *converter) convertVsTCPRoutes(virtualService metav1.ObjectMeta, istioTCPRoutes []*istiov1beta1.TCPRoute, fieldPath *field.Path) []*gatewayv1alpha2.TCPRoute {
+func (c *resourcesToIRConverter) convertVsTCPRoutes(virtualService metav1.ObjectMeta, istioTCPRoutes []*istiov1beta1.TCPRoute, fieldPath *field.Path) []*gatewayv1alpha2.TCPRoute {
 	var resTCPRoutes []*gatewayv1alpha2.TCPRoute
 	vs := c.ctx.Value(virtualServiceKey).(*istioclientv1beta1.VirtualService)
 
@@ -986,7 +986,7 @@ func (c *converter) convertVsTCPRoutes(virtualService metav1.ObjectMeta, istioTC
 	return resTCPRoutes
 }
 
-func (c *converter) isVirtualServiceAllowedForGateway(gateway types.NamespacedName, vs *istioclientv1beta1.VirtualService, fieldPath *field.Path) bool {
+func (c *resourcesToIRConverter) isVirtualServiceAllowedForGateway(gateway types.NamespacedName, vs *istioclientv1beta1.VirtualService, fieldPath *field.Path) bool {
 	// by default, if ExportTo is empty it allowes export of the VirtualService to all namespaces
 	vsAllowedNamespaces := sets.New("*")
 	if len(vs.Spec.GetExportTo()) > 0 {
@@ -1034,7 +1034,7 @@ func (c *converter) isVirtualServiceAllowedForGateway(gateway types.NamespacedNa
 
 // Generate parentRefs and optionally ReferenceGrants for the given VirtualService and all required Gateways
 // We consider fields: vs.Spec.Gateways; gateway.Server[i].Hosts
-func (c *converter) generateReferences(vs *istioclientv1beta1.VirtualService, fieldPath *field.Path) ([]gatewayv1.ParentReference, []*gatewayv1beta1.ReferenceGrant) {
+func (c *resourcesToIRConverter) generateReferences(vs *istioclientv1beta1.VirtualService, fieldPath *field.Path) ([]gatewayv1.ParentReference, []*gatewayv1beta1.ReferenceGrant) {
 	var (
 		parentRefs      []gatewayv1.ParentReference
 		referenceGrants []*gatewayv1beta1.ReferenceGrant
@@ -1097,7 +1097,7 @@ type generateReferenceGrantsParams struct {
 	forHTTPRoute, forTLSRoute, forTCPRoute bool
 }
 
-func (c *converter) generateReferenceGrant(params generateReferenceGrantsParams) *gatewayv1beta1.ReferenceGrant {
+func (c *resourcesToIRConverter) generateReferenceGrant(params generateReferenceGrantsParams) *gatewayv1beta1.ReferenceGrant {
 	var fromGrants []gatewayv1beta1.ReferenceGrantFrom
 
 	if params.forHTTPRoute {

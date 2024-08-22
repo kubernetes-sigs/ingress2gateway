@@ -33,7 +33,7 @@ const (
 	serviceKey contextKey = iota
 )
 
-// converter implements the ToGatewayAPI function of i2gw.ResourceConverter interface.
+// resourcesToIRConverter implements the ToIR function of i2gw.ResourcesToIRConverter interface.
 type resourcesToIRConverter struct {
 	conf *i2gw.ProviderConf
 
@@ -41,8 +41,8 @@ type resourcesToIRConverter struct {
 	ctx                           context.Context
 }
 
-// newConverter returns an ingress-gce resourcesToIRConverter instance.
-func newResourceToIRConverter(conf *i2gw.ProviderConf) resourcesToIRConverter {
+// newResourcesToIRConverter returns an ingress-gce resourcesToIRConverter instance.
+func newResourcesToIRConverter(conf *i2gw.ProviderConf) resourcesToIRConverter {
 	return resourcesToIRConverter{
 		conf: conf,
 		implementationSpecificOptions: i2gw.ProviderImplementationSpecificOptions{

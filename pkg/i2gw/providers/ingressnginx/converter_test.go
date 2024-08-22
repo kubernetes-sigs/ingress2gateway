@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -33,7 +34,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-func Test_ToGateway(t *testing.T) {
+func Test_ToIR(t *testing.T) {
 	iPrefix := networkingv1.PathTypePrefix
 	//iExact := networkingv1.PathTypeExact
 	isPathType := networkingv1.PathTypeImplementationSpecific
@@ -41,10 +42,10 @@ func Test_ToGateway(t *testing.T) {
 	//gExact := gatewayv1.PathMatchExact
 
 	testCases := []struct {
-		name                     string
-		ingresses                OrderedIngressMap
-		expectedGatewayResources i2gw.GatewayResources
-		expectedErrors           field.ErrorList
+		name           string
+		ingresses      OrderedIngressMap
+		expectedIR     intermediate.IR
+		expectedErrors field.ErrorList
 	}{
 		{
 			name: "canary deployment",
@@ -108,61 +109,65 @@ func Test_ToGateway(t *testing.T) {
 					},
 				},
 			},
-			expectedGatewayResources: i2gw.GatewayResources{
-				Gateways: map[types.NamespacedName]gatewayv1.Gateway{
+			expectedIR: intermediate.IR{
+				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
 					{Namespace: "default", Name: "ingress-nginx"}: {
-						ObjectMeta: metav1.ObjectMeta{Name: "ingress-nginx", Namespace: "default"},
-						Spec: gatewayv1.GatewaySpec{
-							GatewayClassName: "ingress-nginx",
-							Listeners: []gatewayv1.Listener{{
-								Name:     "echo-prod-mydomain-com-http",
-								Port:     80,
-								Protocol: gatewayv1.HTTPProtocolType,
-								Hostname: ptrTo(gatewayv1.Hostname("echo.prod.mydomain.com")),
-							}},
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: "ingress-nginx", Namespace: "default"},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: "ingress-nginx",
+								Listeners: []gatewayv1.Listener{{
+									Name:     "echo-prod-mydomain-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: ptrTo(gatewayv1.Hostname("echo.prod.mydomain.com")),
+								}},
+							},
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]gatewayv1.HTTPRoute{
+				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
 					{Namespace: "default", Name: "production-echo-prod-mydomain-com"}: {
-						ObjectMeta: metav1.ObjectMeta{Name: "production-echo-prod-mydomain-com", Namespace: "default"},
-						Spec: gatewayv1.HTTPRouteSpec{
-							CommonRouteSpec: gatewayv1.CommonRouteSpec{
-								ParentRefs: []gatewayv1.ParentReference{{
-									Name: "ingress-nginx",
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: "production-echo-prod-mydomain-com", Namespace: "default"},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: "ingress-nginx",
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{"echo.prod.mydomain.com"},
+								Rules: []gatewayv1.HTTPRouteRule{{
+									Matches: []gatewayv1.HTTPRouteMatch{{
+										Path: &gatewayv1.HTTPPathMatch{
+											Type:  &gPathPrefix,
+											Value: ptrTo("/"),
+										},
+									}},
+									BackendRefs: []gatewayv1.HTTPBackendRef{
+										{
+											BackendRef: gatewayv1.BackendRef{
+												BackendObjectReference: gatewayv1.BackendObjectReference{
+													Name:  "production",
+													Group: ptrTo(gatewayv1.Group("vendor.example.com")),
+													Kind:  ptrTo(gatewayv1.Kind("StorageBucket")),
+												},
+												Weight: ptrTo(int32(80)),
+											},
+										},
+										{
+											BackendRef: gatewayv1.BackendRef{
+												BackendObjectReference: gatewayv1.BackendObjectReference{
+													Name:  "canary",
+													Group: ptrTo(gatewayv1.Group("vendor.example.com")),
+													Kind:  ptrTo(gatewayv1.Kind("StorageBucket")),
+												},
+												Weight: ptrTo(int32(20)),
+											},
+										},
+									},
 								}},
 							},
-							Hostnames: []gatewayv1.Hostname{"echo.prod.mydomain.com"},
-							Rules: []gatewayv1.HTTPRouteRule{{
-								Matches: []gatewayv1.HTTPRouteMatch{{
-									Path: &gatewayv1.HTTPPathMatch{
-										Type:  &gPathPrefix,
-										Value: ptrTo("/"),
-									},
-								}},
-								BackendRefs: []gatewayv1.HTTPBackendRef{
-									{
-										BackendRef: gatewayv1.BackendRef{
-											BackendObjectReference: gatewayv1.BackendObjectReference{
-												Name:  "production",
-												Group: ptrTo(gatewayv1.Group("vendor.example.com")),
-												Kind:  ptrTo(gatewayv1.Kind("StorageBucket")),
-											},
-											Weight: ptrTo(int32(80)),
-										},
-									},
-									{
-										BackendRef: gatewayv1.BackendRef{
-											BackendObjectReference: gatewayv1.BackendObjectReference{
-												Name:  "canary",
-												Group: ptrTo(gatewayv1.Group("vendor.example.com")),
-												Kind:  ptrTo(gatewayv1.Kind("StorageBucket")),
-											},
-											Weight: ptrTo(int32(20)),
-										},
-									},
-								},
-							}},
 						},
 					},
 				},
@@ -204,7 +209,7 @@ func Test_ToGateway(t *testing.T) {
 					},
 				},
 			},
-			expectedGatewayResources: i2gw.GatewayResources{},
+			expectedIR: intermediate.IR{},
 			expectedErrors: field.ErrorList{
 				{
 					Type:     field.ErrorTypeInvalid,
@@ -284,44 +289,46 @@ func Test_ToGateway(t *testing.T) {
 					},
 				},
 			},
-			expectedGatewayResources: i2gw.GatewayResources{
-				Gateways: map[types.NamespacedName]gatewayv1.Gateway{
+			expectedIR: intermediate.IR{
+				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
 					{Namespace: "default", Name: "nginx"}: {
-						ObjectMeta: metav1.ObjectMeta{Name: "nginx", Namespace: "default"},
-						Spec: gatewayv1.GatewaySpec{
-							GatewayClassName: "nginx",
-							Listeners: []gatewayv1.Listener{
-								{
-									Name:     "bar-example-com-http",
-									Port:     80,
-									Protocol: gatewayv1.HTTPProtocolType,
-									Hostname: ptrTo(gatewayv1.Hostname("bar.example.com")),
-								},
-								{
-									Name:     "bar-example-com-https",
-									Port:     443,
-									Protocol: gatewayv1.HTTPSProtocolType,
-									Hostname: ptrTo(gatewayv1.Hostname("bar.example.com")),
-									TLS: &gatewayv1.GatewayTLSConfig{
-										CertificateRefs: []gatewayv1.SecretObjectReference{
-											{Name: "example-com"},
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: "nginx", Namespace: "default"},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: "nginx",
+								Listeners: []gatewayv1.Listener{
+									{
+										Name:     "bar-example-com-http",
+										Port:     80,
+										Protocol: gatewayv1.HTTPProtocolType,
+										Hostname: ptrTo(gatewayv1.Hostname("bar.example.com")),
+									},
+									{
+										Name:     "bar-example-com-https",
+										Port:     443,
+										Protocol: gatewayv1.HTTPSProtocolType,
+										Hostname: ptrTo(gatewayv1.Hostname("bar.example.com")),
+										TLS: &gatewayv1.GatewayTLSConfig{
+											CertificateRefs: []gatewayv1.SecretObjectReference{
+												{Name: "example-com"},
+											},
 										},
 									},
-								},
-								{
-									Name:     "foo-example-com-http",
-									Port:     80,
-									Protocol: gatewayv1.HTTPProtocolType,
-									Hostname: ptrTo(gatewayv1.Hostname("foo.example.com")),
-								},
-								{
-									Name:     "foo-example-com-https",
-									Port:     443,
-									Protocol: gatewayv1.HTTPSProtocolType,
-									Hostname: ptrTo(gatewayv1.Hostname("foo.example.com")),
-									TLS: &gatewayv1.GatewayTLSConfig{
-										CertificateRefs: []gatewayv1.SecretObjectReference{
-											{Name: "example-com"},
+									{
+										Name:     "foo-example-com-http",
+										Port:     80,
+										Protocol: gatewayv1.HTTPProtocolType,
+										Hostname: ptrTo(gatewayv1.Hostname("foo.example.com")),
+									},
+									{
+										Name:     "foo-example-com-https",
+										Port:     443,
+										Protocol: gatewayv1.HTTPSProtocolType,
+										Hostname: ptrTo(gatewayv1.Hostname("foo.example.com")),
+										TLS: &gatewayv1.GatewayTLSConfig{
+											CertificateRefs: []gatewayv1.SecretObjectReference{
+												{Name: "example-com"},
+											},
 										},
 									},
 								},
@@ -329,47 +336,18 @@ func Test_ToGateway(t *testing.T) {
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]gatewayv1.HTTPRoute{
+				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
 					{Namespace: "default", Name: "example-ingress-bar-example-com"}: {
-						ObjectMeta: metav1.ObjectMeta{Name: "example-ingress-bar-example-com", Namespace: "default"},
-						Spec: gatewayv1.HTTPRouteSpec{
-							CommonRouteSpec: gatewayv1.CommonRouteSpec{
-								ParentRefs: []gatewayv1.ParentReference{{
-									Name: "nginx",
-								}},
-							},
-							Hostnames: []gatewayv1.Hostname{"bar.example.com"},
-							Rules: []gatewayv1.HTTPRouteRule{{
-								Matches: []gatewayv1.HTTPRouteMatch{{
-									Path: &gatewayv1.HTTPPathMatch{
-										Type:  &gPathPrefix,
-										Value: ptrTo("/"),
-									},
-								}},
-								BackendRefs: []gatewayv1.HTTPBackendRef{
-									{
-										BackendRef: gatewayv1.BackendRef{
-											BackendObjectReference: gatewayv1.BackendObjectReference{
-												Name: "bar-app",
-												Port: ptrTo(gatewayv1.PortNumber(80)),
-											},
-										},
-									},
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: "example-ingress-bar-example-com", Namespace: "default"},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: "nginx",
+									}},
 								},
-							}},
-						},
-					},
-					{Namespace: "default", Name: "example-ingress-foo-example-com"}: {
-						ObjectMeta: metav1.ObjectMeta{Name: "example-ingress-foo-example-com", Namespace: "default"},
-						Spec: gatewayv1.HTTPRouteSpec{
-							CommonRouteSpec: gatewayv1.CommonRouteSpec{
-								ParentRefs: []gatewayv1.ParentReference{{
-									Name: "nginx",
-								}},
-							},
-							Hostnames: []gatewayv1.Hostname{"foo.example.com"},
-							Rules: []gatewayv1.HTTPRouteRule{
-								{
+								Hostnames: []gatewayv1.Hostname{"bar.example.com"},
+								Rules: []gatewayv1.HTTPRouteRule{{
 									Matches: []gatewayv1.HTTPRouteMatch{{
 										Path: &gatewayv1.HTTPPathMatch{
 											Type:  &gPathPrefix,
@@ -380,26 +358,59 @@ func Test_ToGateway(t *testing.T) {
 										{
 											BackendRef: gatewayv1.BackendRef{
 												BackendObjectReference: gatewayv1.BackendObjectReference{
-													Name: "foo-app",
+													Name: "bar-app",
 													Port: ptrTo(gatewayv1.PortNumber(80)),
 												},
 											},
 										},
 									},
-								},
-								{
-									Matches: []gatewayv1.HTTPRouteMatch{{
-										Path: &gatewayv1.HTTPPathMatch{
-											Type:  &gPathPrefix,
-											Value: ptrTo("/orders"),
-										},
+								}},
+							},
+						},
+					},
+					{Namespace: "default", Name: "example-ingress-foo-example-com"}: {
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: "example-ingress-foo-example-com", Namespace: "default"},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: "nginx",
 									}},
-									BackendRefs: []gatewayv1.HTTPBackendRef{
-										{
-											BackendRef: gatewayv1.BackendRef{
-												BackendObjectReference: gatewayv1.BackendObjectReference{
-													Name: "foo-orders-app",
-													Port: ptrTo(gatewayv1.PortNumber(80)),
+								},
+								Hostnames: []gatewayv1.Hostname{"foo.example.com"},
+								Rules: []gatewayv1.HTTPRouteRule{
+									{
+										Matches: []gatewayv1.HTTPRouteMatch{{
+											Path: &gatewayv1.HTTPPathMatch{
+												Type:  &gPathPrefix,
+												Value: ptrTo("/"),
+											},
+										}},
+										BackendRefs: []gatewayv1.HTTPBackendRef{
+											{
+												BackendRef: gatewayv1.BackendRef{
+													BackendObjectReference: gatewayv1.BackendObjectReference{
+														Name: "foo-app",
+														Port: ptrTo(gatewayv1.PortNumber(80)),
+													},
+												},
+											},
+										},
+									},
+									{
+										Matches: []gatewayv1.HTTPRouteMatch{{
+											Path: &gatewayv1.HTTPPathMatch{
+												Type:  &gPathPrefix,
+												Value: ptrTo("/orders"),
+											},
+										}},
+										BackendRefs: []gatewayv1.HTTPBackendRef{
+											{
+												BackendRef: gatewayv1.BackendRef{
+													BackendObjectReference: gatewayv1.BackendObjectReference{
+														Name: "foo-orders-app",
+														Port: ptrTo(gatewayv1.PortNumber(80)),
+													},
 												},
 											},
 										},
@@ -512,80 +523,43 @@ func Test_ToGateway(t *testing.T) {
 					},
 				},
 			},
-			expectedGatewayResources: i2gw.GatewayResources{
-				Gateways: map[types.NamespacedName]gatewayv1.Gateway{
+			expectedIR: intermediate.IR{
+				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
 					{Namespace: "default", Name: "nginx"}: {
-						ObjectMeta: metav1.ObjectMeta{Name: "nginx", Namespace: "default"},
-						Spec: gatewayv1.GatewaySpec{
-							GatewayClassName: "nginx",
-							Listeners: []gatewayv1.Listener{
-								{
-									Name:     "bar-example-com-http",
-									Port:     80,
-									Protocol: gatewayv1.HTTPProtocolType,
-									Hostname: ptrTo(gatewayv1.Hostname("bar.example.com")),
-								},
-								{
-									Name:     "foo-example-com-http",
-									Port:     80,
-									Protocol: gatewayv1.HTTPProtocolType,
-									Hostname: ptrTo(gatewayv1.Hostname("foo.example.com")),
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: "nginx", Namespace: "default"},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: "nginx",
+								Listeners: []gatewayv1.Listener{
+									{
+										Name:     "bar-example-com-http",
+										Port:     80,
+										Protocol: gatewayv1.HTTPProtocolType,
+										Hostname: ptrTo(gatewayv1.Hostname("bar.example.com")),
+									},
+									{
+										Name:     "foo-example-com-http",
+										Port:     80,
+										Protocol: gatewayv1.HTTPProtocolType,
+										Hostname: ptrTo(gatewayv1.Hostname("foo.example.com")),
+									},
 								},
 							},
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]gatewayv1.HTTPRoute{
+				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
 					{Namespace: "default", Name: "example-ingress-bar-example-com"}: {
-						ObjectMeta: metav1.ObjectMeta{Name: "example-ingress-bar-example-com", Namespace: "default"},
-						Spec: gatewayv1.HTTPRouteSpec{
-							CommonRouteSpec: gatewayv1.CommonRouteSpec{
-								ParentRefs: []gatewayv1.ParentReference{{
-									Name: "nginx",
-								}},
-							},
-							Hostnames: []gatewayv1.Hostname{"bar.example.com"},
-							Rules: []gatewayv1.HTTPRouteRule{{
-								Matches: []gatewayv1.HTTPRouteMatch{{
-									Path: &gatewayv1.HTTPPathMatch{
-										Type:  &gPathPrefix,
-										Value: ptrTo("/"),
-									},
-								}},
-								BackendRefs: []gatewayv1.HTTPBackendRef{
-									{
-										BackendRef: gatewayv1.BackendRef{
-											BackendObjectReference: gatewayv1.BackendObjectReference{
-												Name: "bar-app",
-												Port: ptrTo(gatewayv1.PortNumber(80)),
-											},
-											Weight: ptrTo[int32](70),
-										},
-									},
-									{
-										BackendRef: gatewayv1.BackendRef{
-											BackendObjectReference: gatewayv1.BackendObjectReference{
-												Name: "bar-app-canary",
-												Port: ptrTo(gatewayv1.PortNumber(80)),
-											},
-											Weight: ptrTo[int32](30),
-										},
-									},
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: "example-ingress-bar-example-com", Namespace: "default"},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: "nginx",
+									}},
 								},
-							}},
-						},
-					},
-					{Namespace: "default", Name: "example-ingress-foo-example-com"}: {
-						ObjectMeta: metav1.ObjectMeta{Name: "example-ingress-foo-example-com", Namespace: "default"},
-						Spec: gatewayv1.HTTPRouteSpec{
-							CommonRouteSpec: gatewayv1.CommonRouteSpec{
-								ParentRefs: []gatewayv1.ParentReference{{
-									Name: "nginx",
-								}},
-							},
-							Hostnames: []gatewayv1.Hostname{"foo.example.com"},
-							Rules: []gatewayv1.HTTPRouteRule{
-								{
+								Hostnames: []gatewayv1.Hostname{"bar.example.com"},
+								Rules: []gatewayv1.HTTPRouteRule{{
 									Matches: []gatewayv1.HTTPRouteMatch{{
 										Path: &gatewayv1.HTTPPathMatch{
 											Type:  &gPathPrefix,
@@ -596,26 +570,69 @@ func Test_ToGateway(t *testing.T) {
 										{
 											BackendRef: gatewayv1.BackendRef{
 												BackendObjectReference: gatewayv1.BackendObjectReference{
-													Name: "foo-app",
+													Name: "bar-app",
 													Port: ptrTo(gatewayv1.PortNumber(80)),
+												},
+												Weight: ptrTo[int32](70),
+											},
+										},
+										{
+											BackendRef: gatewayv1.BackendRef{
+												BackendObjectReference: gatewayv1.BackendObjectReference{
+													Name: "bar-app-canary",
+													Port: ptrTo(gatewayv1.PortNumber(80)),
+												},
+												Weight: ptrTo[int32](30),
+											},
+										},
+									},
+								}},
+							},
+						},
+					},
+					{Namespace: "default", Name: "example-ingress-foo-example-com"}: {
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: "example-ingress-foo-example-com", Namespace: "default"},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: "nginx",
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{"foo.example.com"},
+								Rules: []gatewayv1.HTTPRouteRule{
+									{
+										Matches: []gatewayv1.HTTPRouteMatch{{
+											Path: &gatewayv1.HTTPPathMatch{
+												Type:  &gPathPrefix,
+												Value: ptrTo("/"),
+											},
+										}},
+										BackendRefs: []gatewayv1.HTTPBackendRef{
+											{
+												BackendRef: gatewayv1.BackendRef{
+													BackendObjectReference: gatewayv1.BackendObjectReference{
+														Name: "foo-app",
+														Port: ptrTo(gatewayv1.PortNumber(80)),
+													},
 												},
 											},
 										},
 									},
-								},
-								{
-									Matches: []gatewayv1.HTTPRouteMatch{{
-										Path: &gatewayv1.HTTPPathMatch{
-											Type:  &gPathPrefix,
-											Value: ptrTo("/orders"),
-										},
-									}},
-									BackendRefs: []gatewayv1.HTTPBackendRef{
-										{
-											BackendRef: gatewayv1.BackendRef{
-												BackendObjectReference: gatewayv1.BackendObjectReference{
-													Name: "foo-orders-app",
-													Port: ptrTo(gatewayv1.PortNumber(80)),
+									{
+										Matches: []gatewayv1.HTTPRouteMatch{{
+											Path: &gatewayv1.HTTPPathMatch{
+												Type:  &gPathPrefix,
+												Value: ptrTo("/orders"),
+											},
+										}},
+										BackendRefs: []gatewayv1.HTTPBackendRef{
+											{
+												BackendRef: gatewayv1.BackendRef{
+													BackendObjectReference: gatewayv1.BackendObjectReference{
+														Name: "foo-orders-app",
+														Port: ptrTo(gatewayv1.PortNumber(80)),
+													},
 												},
 											},
 										},
@@ -638,7 +655,7 @@ func Test_ToGateway(t *testing.T) {
 			nginxProvider := provider.(*Provider)
 			nginxProvider.storage.Ingresses = tc.ingresses
 
-			gatewayResources, errs := provider.ToGatewayAPI()
+			ir, errs := provider.ToIR()
 
 			if len(errs) != len(tc.expectedErrors) {
 				t.Errorf("Expected %d errors, got %d: %+v", len(tc.expectedErrors), len(errs), errs)
@@ -650,30 +667,30 @@ func Test_ToGateway(t *testing.T) {
 				}
 			}
 
-			if len(gatewayResources.HTTPRoutes) != len(tc.expectedGatewayResources.HTTPRoutes) {
+			if len(ir.HTTPRoutes) != len(tc.expectedIR.HTTPRoutes) {
 				t.Errorf("Expected %d HTTPRoutes, got %d: %+v",
-					len(tc.expectedGatewayResources.HTTPRoutes), len(gatewayResources.HTTPRoutes), gatewayResources.HTTPRoutes)
+					len(tc.expectedIR.HTTPRoutes), len(ir.HTTPRoutes), ir.HTTPRoutes)
 			} else {
-				for i, got := range gatewayResources.HTTPRoutes {
-					key := types.NamespacedName{Namespace: got.Namespace, Name: got.Name}
-					want := tc.expectedGatewayResources.HTTPRoutes[key]
-					want.SetGroupVersionKind(common.HTTPRouteGVK)
-					if !apiequality.Semantic.DeepEqual(got, want) {
-						t.Errorf("Expected HTTPRoute %s to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))
+				for i, gotHTTPRouteContext := range ir.HTTPRoutes {
+					key := types.NamespacedName{Namespace: gotHTTPRouteContext.HTTPRoute.Namespace, Name: gotHTTPRouteContext.HTTPRoute.Name}
+					wantHTTPRouteContext := tc.expectedIR.HTTPRoutes[key]
+					wantHTTPRouteContext.HTTPRoute.SetGroupVersionKind(common.HTTPRouteGVK)
+					if !apiequality.Semantic.DeepEqual(gotHTTPRouteContext.HTTPRoute, wantHTTPRouteContext.HTTPRoute) {
+						t.Errorf("Expected HTTPRoute %s to be %+v\n Got: %+v\n Diff: %s", i, wantHTTPRouteContext.HTTPRoute, gotHTTPRouteContext.HTTPRoute, cmp.Diff(wantHTTPRouteContext.HTTPRoute, gotHTTPRouteContext.HTTPRoute))
 					}
 				}
 			}
 
-			if len(gatewayResources.Gateways) != len(tc.expectedGatewayResources.Gateways) {
+			if len(ir.Gateways) != len(tc.expectedIR.Gateways) {
 				t.Errorf("Expected %d Gateways, got %d: %+v",
-					len(tc.expectedGatewayResources.Gateways), len(gatewayResources.Gateways), gatewayResources.Gateways)
+					len(tc.expectedIR.Gateways), len(ir.Gateways), ir.Gateways)
 			} else {
-				for i, got := range gatewayResources.Gateways {
-					key := types.NamespacedName{Namespace: got.Namespace, Name: got.Name}
-					want := tc.expectedGatewayResources.Gateways[key]
-					want.SetGroupVersionKind(common.GatewayGVK)
-					if !apiequality.Semantic.DeepEqual(got, want) {
-						t.Errorf("Expected Gateway %s to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))
+				for i, gotGatewayContext := range ir.Gateways {
+					key := types.NamespacedName{Namespace: gotGatewayContext.Gateway.Namespace, Name: gotGatewayContext.Gateway.Name}
+					wantGatewayContext := tc.expectedIR.Gateways[key]
+					wantGatewayContext.Gateway.SetGroupVersionKind(common.GatewayGVK)
+					if !apiequality.Semantic.DeepEqual(gotGatewayContext.Gateway, wantGatewayContext.Gateway) {
+						t.Errorf("Expected Gateway %s to be %+v\n Got: %+v\n Diff: %s", i, wantGatewayContext.Gateway, gotGatewayContext.Gateway, cmp.Diff(wantGatewayContext.Gateway, gotGatewayContext.Gateway))
 					}
 				}
 			}

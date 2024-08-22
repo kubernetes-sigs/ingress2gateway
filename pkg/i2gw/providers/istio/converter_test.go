@@ -37,7 +37,7 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-func Test_converter_convertGateway(t *testing.T) {
+func Test_resourcesToIRConverter_convertGateway(t *testing.T) {
 	type args struct {
 		gw *istioclientv1beta1.Gateway
 	}
@@ -326,14 +326,14 @@ func Test_converter_convertGateway(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := newConverter()
+			c := newResourcesToIRConverter()
 			got, errList := c.convertGateway(tt.args.gw, field.NewPath(""))
 			if tt.wantError && len(errList) == 0 {
-				t.Errorf("converter.convertGateway().errList = %+v, wantError %+v", errList, tt.wantError)
+				t.Errorf("resourcesToIRConverter.convertGateway().errList = %+v, wantError %+v", errList, tt.wantError)
 			}
 
 			if !apiequality.Semantic.DeepEqual(got, tt.wantGateway) {
-				t.Errorf("converter.convertGateway().gateway = %+v, want %+v, diff (-want +got): %s", got, tt.wantGateway, cmp.Diff(tt.wantGateway, got))
+				t.Errorf("resourcesToIRConverter.convertGateway().gateway = %+v, want %+v, diff (-want +got): %s", got, tt.wantGateway, cmp.Diff(tt.wantGateway, got))
 			}
 
 			if got := c.gwAllowedHosts; !apiequality.Semantic.DeepEqual(got, tt.wantAllowedHosts) {
@@ -343,7 +343,7 @@ func Test_converter_convertGateway(t *testing.T) {
 	}
 }
 
-func Test_converter_convertVsHTTPRoutes(t *testing.T) {
+func Test_resourcesToIRConverter_convertVsHTTPRoutes(t *testing.T) {
 	type args struct {
 		virtualService   *istioclientv1beta1.VirtualService
 		istioHTTPRoutes  []*istiov1beta1.HTTPRoute
@@ -1378,20 +1378,20 @@ func Test_converter_convertVsHTTPRoutes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &converter{ctx: context.Background()}
+			c := &resourcesToIRConverter{ctx: context.Background()}
 			c.ctx = context.WithValue(c.ctx, virtualServiceKey, tt.args.virtualService)
 			httpRoutes, errList := c.convertVsHTTPRoutes(tt.args.virtualService.ObjectMeta, tt.args.istioHTTPRoutes, tt.args.allowedHostnames, field.NewPath(""))
 			if tt.wantError && len(errList) == 0 {
-				t.Errorf("converter.convertVsHTTPRoutes().errList = %+v, wantError %+v", errList, tt.wantError)
+				t.Errorf("resourcesToIRConverter.convertVsHTTPRoutes().errList = %+v, wantError %+v", errList, tt.wantError)
 			}
 			if !apiequality.Semantic.DeepEqual(httpRoutes, tt.want) {
-				t.Errorf("converter.convertVsHTTPRoutes().httpRoutes = %v, want %v, diff (-want +got): %s", httpRoutes, tt.want, cmp.Diff(tt.want, httpRoutes))
+				t.Errorf("resourcesToIRConverter.convertVsHTTPRoutes().httpRoutes = %v, want %v, diff (-want +got): %s", httpRoutes, tt.want, cmp.Diff(tt.want, httpRoutes))
 			}
 		})
 	}
 }
 
-func Test_converter_convertVsTLSRoutes(t *testing.T) {
+func Test_resourcesToIRConverter_convertVsTLSRoutes(t *testing.T) {
 	type args struct {
 		virtualService *istioclientv1beta1.VirtualService
 		istioTLSRoutes []*istiov1beta1.TLSRoute
@@ -1507,16 +1507,16 @@ func Test_converter_convertVsTLSRoutes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &converter{ctx: context.Background()}
+			c := &resourcesToIRConverter{ctx: context.Background()}
 			c.ctx = context.WithValue(c.ctx, virtualServiceKey, tt.args.virtualService)
 			if got := c.convertVsTLSRoutes(tt.args.virtualService.ObjectMeta, tt.args.istioTLSRoutes, field.NewPath("")); !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("converter.convertVsTLSRoutes() = %+v, want %+v, diff (-want +got): %s", got, tt.want, cmp.Diff(tt.want, got))
+				t.Errorf("resourcesToIRConverter.convertVsTLSRoutes() = %+v, want %+v, diff (-want +got): %s", got, tt.want, cmp.Diff(tt.want, got))
 			}
 		})
 	}
 }
 
-func Test_converter_convertVsTCPRoutes(t *testing.T) {
+func Test_resourcesToIRConverter_convertVsTCPRoutes(t *testing.T) {
 	type args struct {
 		virtualService *istioclientv1beta1.VirtualService
 		istioTCPRoutes []*istiov1beta1.TCPRoute
@@ -1619,10 +1619,10 @@ func Test_converter_convertVsTCPRoutes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &converter{ctx: context.Background()}
+			c := &resourcesToIRConverter{ctx: context.Background()}
 			c.ctx = context.WithValue(c.ctx, virtualServiceKey, tt.args.virtualService)
 			if got := c.convertVsTCPRoutes(tt.args.virtualService.ObjectMeta, tt.args.istioTCPRoutes, field.NewPath("")); !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("converter.convertVsTCPRoutes() = %+v, want %+v, diff (-want +got): %s", got, tt.want, cmp.Diff(tt.want, got))
+				t.Errorf("resourcesToIRConverter.convertVsTCPRoutes() = %+v, want %+v, diff (-want +got): %s", got, tt.want, cmp.Diff(tt.want, got))
 			}
 		})
 	}
@@ -1702,7 +1702,7 @@ func TestNameMatches(t *testing.T) {
 	}
 }
 
-func Test_converter_generateReferenceGrants(t *testing.T) {
+func Test_resourcesToIRConverter_generateReferenceGrants(t *testing.T) {
 	type args struct {
 		params generateReferenceGrantsParams
 	}
@@ -1765,15 +1765,15 @@ func Test_converter_generateReferenceGrants(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &converter{}
+			c := &resourcesToIRConverter{}
 			if got := c.generateReferenceGrant(tt.args.params); !apiequality.Semantic.DeepEqual(got, tt.want) {
-				t.Errorf("converter.generateReferenceGrant() = %+v, want %+v, diff (-want +got): %s", got, tt.want, cmp.Diff(tt.want, got))
+				t.Errorf("resourcesToIRConverter.generateReferenceGrant() = %+v, want %+v, diff (-want +got): %s", got, tt.want, cmp.Diff(tt.want, got))
 			}
 		})
 	}
 }
 
-func Test_converter_isGatewayAllowedForVirtualService(t *testing.T) {
+func Test_resourcesToIRConverter_isGatewayAllowedForVirtualService(t *testing.T) {
 	type fields struct {
 		gwAllowedHosts map[types.NamespacedName]map[string]sets.Set[string]
 	}
@@ -1947,17 +1947,17 @@ func Test_converter_isGatewayAllowedForVirtualService(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &converter{
+			c := &resourcesToIRConverter{
 				gwAllowedHosts: tt.fields.gwAllowedHosts,
 			}
 			if got := c.isVirtualServiceAllowedForGateway(tt.args.gateway, tt.args.vs, field.NewPath("")); got != tt.want {
-				t.Errorf("converter.isVirtualServiceAllowedForGateway() = %v, want %v", got, tt.want)
+				t.Errorf("resourcesToIRConverter.isVirtualServiceAllowedForGateway() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test_converter_generateReferences(t *testing.T) {
+func Test_resourcesToIRConverter_generateReferences(t *testing.T) {
 	type fields struct {
 		gwAllowedHosts map[types.NamespacedName]map[string]sets.Set[string]
 	}
@@ -2084,15 +2084,15 @@ func Test_converter_generateReferences(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &converter{
+			c := &resourcesToIRConverter{
 				gwAllowedHosts: tt.fields.gwAllowedHosts,
 			}
 			gotParentReferences, gotReferenceGrants := c.generateReferences(tt.args.vs, field.NewPath(""))
 			if !apiequality.Semantic.DeepEqual(gotParentReferences, tt.wantParentReferences) {
-				t.Errorf("converter.generateReferences() gotParentReferences = %v, want %v, diff (-want +got): %s", gotParentReferences, tt.wantParentReferences, cmp.Diff(tt.wantParentReferences, gotParentReferences))
+				t.Errorf("resourcesToIRConverter.generateReferences() gotParentReferences = %v, want %v, diff (-want +got): %s", gotParentReferences, tt.wantParentReferences, cmp.Diff(tt.wantParentReferences, gotParentReferences))
 			}
 			if !apiequality.Semantic.DeepEqual(gotReferenceGrants, tt.wantReferenceGrants) {
-				t.Errorf("converter.generateReferences() gotReferenceGrants = %v, want %v, diff (-want +got): %s", gotReferenceGrants, tt.wantReferenceGrants, cmp.Diff(tt.wantReferenceGrants, gotReferenceGrants))
+				t.Errorf("resourcesToIRConverter.generateReferences() gotReferenceGrants = %v, want %v, diff (-want +got): %s", gotReferenceGrants, tt.wantReferenceGrants, cmp.Diff(tt.wantReferenceGrants, gotReferenceGrants))
 			}
 		})
 	}

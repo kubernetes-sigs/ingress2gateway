@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -258,13 +258,15 @@ func Test_httpToHttpsFeature(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ingresses := []networkingv1.Ingress{tc.ingress}
-			gatewayResources := &i2gw.GatewayResources{
-				HTTPRoutes: map[types.NamespacedName]gatewayv1.HTTPRoute{
-					{Name: tc.expectedHTTPRoute.Name, Namespace: tc.expectedHTTPRoute.Namespace}: *tc.initialHTTPRoute,
+			ir := &intermediate.IR{
+				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+					{Name: tc.expectedHTTPRoute.Name, Namespace: tc.expectedHTTPRoute.Namespace}: {
+						HTTPRoute: *tc.initialHTTPRoute,
+					},
 				},
 			}
 
-			errs := httpToHTTPSFeature(ingresses, gatewayResources)
+			errs := httpToHTTPSFeature(ingresses, ir)
 
 			if len(errs) != len(tc.expectedError) {
 				t.Errorf("expected %d errors, got %d", len(tc.expectedError), len(errs))
@@ -272,13 +274,13 @@ func Test_httpToHttpsFeature(t *testing.T) {
 
 			key := types.NamespacedName{Namespace: tc.ingress.Namespace, Name: common.RouteName(tc.ingress.Name, tc.ingress.Spec.Rules[0].Host)}
 
-			actualHTTPRoute, ok := gatewayResources.HTTPRoutes[key]
+			actualHTTPRouteContext, ok := ir.HTTPRoutes[key]
 			if !ok {
 				t.Errorf("HTTPRoute not found: %v", key)
 			}
 
-			if diff := cmp.Diff(*tc.expectedHTTPRoute, actualHTTPRoute); diff != "" {
-				t.Errorf("Unexpected HTTPRoute resource found, \n want: %+v\n got: %+v\n diff (-want +got):\n%s", *tc.expectedHTTPRoute, actualHTTPRoute, diff)
+			if diff := cmp.Diff(*tc.expectedHTTPRoute, actualHTTPRouteContext.HTTPRoute); diff != "" {
+				t.Errorf("Unexpected HTTPRoute resource found, \n want: %+v\n got: %+v\n diff (-want +got):\n%s", *tc.expectedHTTPRoute, actualHTTPRouteContext.HTTPRoute, diff)
 			}
 		})
 	}
