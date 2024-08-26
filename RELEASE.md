@@ -23,6 +23,9 @@ a PR. This must go through the regular PR review process and get merged into the
 `main` branch. Approval of the PR indicates community consensus for a new
 release.
 
+### Update ingress2gateway version in annotation
+1. Once the new release version is determined, update `CurrentVersion` in [pkg/i2gw/ingress2gateway.go](pkg/i2gw/ingress2gateway.go) so the translated Gateways will reflect the correct ingress2gateway tool version that generated them.
+
 ### Patch a release
 
 1. Create a new branch in your fork named something like `<githubuser>/release-x.x.x`. Use the new branch
