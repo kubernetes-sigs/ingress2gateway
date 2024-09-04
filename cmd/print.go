@@ -117,6 +117,10 @@ func (pr *PrintRunner) outputResult(gatewayResources []i2gw.GatewayResources) {
 		resourceCount += len(r.Gateways)
 		for _, gateway := range r.Gateways {
 			gateway := gateway
+			if gateway.Annotations == nil {
+				gateway.Annotations = make(map[string]string)
+			}
+			gateway.Annotations[i2gw.GeneratorAnnotationKey] = fmt.Sprintf("ingress2gateway-%s", i2gw.CurrentVersion)
 			err := pr.resourcePrinter.PrintObj(&gateway, os.Stdout)
 			if err != nil {
 				fmt.Printf("# Error printing %s Gateway: %v\n", gateway.Name, err)
@@ -128,6 +132,10 @@ func (pr *PrintRunner) outputResult(gatewayResources []i2gw.GatewayResources) {
 		resourceCount += len(r.HTTPRoutes)
 		for _, httpRoute := range r.HTTPRoutes {
 			httpRoute := httpRoute
+			if httpRoute.Annotations == nil {
+				httpRoute.Annotations = make(map[string]string)
+			}
+			httpRoute.Annotations[i2gw.GeneratorAnnotationKey] = fmt.Sprintf("ingress2gateway-%s", i2gw.CurrentVersion)
 			err := pr.resourcePrinter.PrintObj(&httpRoute, os.Stdout)
 			if err != nil {
 				fmt.Printf("# Error printing %s HTTPRoute: %v\n", httpRoute.Name, err)
@@ -139,6 +147,10 @@ func (pr *PrintRunner) outputResult(gatewayResources []i2gw.GatewayResources) {
 		resourceCount += len(r.TLSRoutes)
 		for _, tlsRoute := range r.TLSRoutes {
 			tlsRoute := tlsRoute
+			if tlsRoute.Annotations == nil {
+				tlsRoute.Annotations = make(map[string]string)
+			}
+			tlsRoute.Annotations[i2gw.GeneratorAnnotationKey] = fmt.Sprintf("ingress2gateway-%s", i2gw.CurrentVersion)
 			err := pr.resourcePrinter.PrintObj(&tlsRoute, os.Stdout)
 			if err != nil {
 				fmt.Printf("# Error printing %s TLSRoute: %v\n", tlsRoute.Name, err)
@@ -150,6 +162,10 @@ func (pr *PrintRunner) outputResult(gatewayResources []i2gw.GatewayResources) {
 		resourceCount += len(r.TCPRoutes)
 		for _, tcpRoute := range r.TCPRoutes {
 			tcpRoute := tcpRoute
+			if tcpRoute.Annotations == nil {
+				tcpRoute.Annotations = make(map[string]string)
+			}
+			tcpRoute.Annotations[i2gw.GeneratorAnnotationKey] = fmt.Sprintf("ingress2gateway-%s", i2gw.CurrentVersion)
 			err := pr.resourcePrinter.PrintObj(&tcpRoute, os.Stdout)
 			if err != nil {
 				fmt.Printf("# Error printing %s TCPRoute: %v\n", tcpRoute.Name, err)
@@ -161,6 +177,10 @@ func (pr *PrintRunner) outputResult(gatewayResources []i2gw.GatewayResources) {
 		resourceCount += len(r.UDPRoutes)
 		for _, udpRoute := range r.UDPRoutes {
 			udpRoute := udpRoute
+			if udpRoute.Annotations == nil {
+				udpRoute.Annotations = make(map[string]string)
+			}
+			udpRoute.Annotations[i2gw.GeneratorAnnotationKey] = fmt.Sprintf("ingress2gateway-%s", i2gw.CurrentVersion)
 			err := pr.resourcePrinter.PrintObj(&udpRoute, os.Stdout)
 			if err != nil {
 				fmt.Printf("# Error printing %s UDPRoute: %v\n", udpRoute.Name, err)
@@ -172,6 +192,10 @@ func (pr *PrintRunner) outputResult(gatewayResources []i2gw.GatewayResources) {
 		resourceCount += len(r.ReferenceGrants)
 		for _, referenceGrant := range r.ReferenceGrants {
 			referenceGrant := referenceGrant
+			if referenceGrant.Annotations == nil {
+				referenceGrant.Annotations = make(map[string]string)
+			}
+			referenceGrant.Annotations[i2gw.GeneratorAnnotationKey] = fmt.Sprintf("ingress2gateway-%s", i2gw.CurrentVersion)
 			err := pr.resourcePrinter.PrintObj(&referenceGrant, os.Stdout)
 			if err != nil {
 				fmt.Printf("# Error printing %s ReferenceGrant: %v\n", referenceGrant.Name, err)
