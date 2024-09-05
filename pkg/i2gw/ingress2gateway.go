@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"maps"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/ir"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -197,4 +198,75 @@ func mergeGateways(gatewaResources []GatewayResources) (map[types.NamespacedName
 	}
 
 	return newGateways, errs
+}
+
+// MergeIRs accepts multiple IRs and creatse a unique IR struct built
+// as follows:
+//   - GatewayClasses, Routes, and ReferenceGrants are grouped into the same maps
+//   - Gateways may have the same NamespaceName even if they come from different
+//     ingresses, as they have a their GatewayClass' name as name. For this reason,
+//     if there are mutiple gateways named the same, their listeners are merged into
+//     a unique Gateway.
+//
+// This behavior is likely to change after https://github.com/kubernetes-sigs/gateway-api/pull/1863 takes place.
+func MergeIRs(irs ...IR) (IR, field.ErrorList) {
+	mergedIRs := IR{
+		Gateways:        make(map[types.NamespacedName]GatewayContext),
+		GatewayClasses:  make(map[types.NamespacedName]gatewayv1.GatewayClass),
+		HTTPRoutes:      make(map[types.NamespacedName]HTTPRouteContext),
+		Services:        make(map[types.NamespacedName]*ServiceIR),
+		TLSRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
+		TCPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
+		UDPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.UDPRoute),
+		ReferenceGrants: make(map[types.NamespacedName]gatewayv1beta1.ReferenceGrant),
+	}
+	var errs field.ErrorList
+	mergedIRs.Gateways, errs = mergeGatewayContexts(irs)
+	if len(errs) > 0 {
+		return IR{}, errs
+	}
+	for _, gr := range irs {
+		maps.Copy(mergedIRs.GatewayClasses, gr.GatewayClasses)
+		maps.Copy(mergedIRs.HTTPRoutes, gr.HTTPRoutes)
+		maps.Copy(mergedIRs.TLSRoutes, gr.TLSRoutes)
+		maps.Copy(mergedIRs.TCPRoutes, gr.TCPRoutes)
+		maps.Copy(mergedIRs.UDPRoutes, gr.UDPRoutes)
+		maps.Copy(mergedIRs.ReferenceGrants, gr.ReferenceGrants)
+	}
+	return mergedIRs, errs
+}
+
+func mergeGatewayContexts(irs []IR) (map[types.NamespacedName]GatewayContext, field.ErrorList) {
+	newGatewayContexts := make(map[types.NamespacedName]GatewayContext)
+	errs := field.ErrorList{}
+
+	for _, ir := range irs {
+		for _, g := range ir.Gateways {
+			nn := types.NamespacedName{Namespace: g.Gateway.Namespace, Name: g.Gateway.Name}
+			if existingGatewayContext, ok := newGatewayContexts[nn]; ok {
+				g.Gateway.Spec.Listeners = append(g.Gateway.Spec.Listeners, existingGatewayContext.Gateway.Spec.Listeners...)
+				g.Gateway.Spec.Addresses = append(g.Gateway.Spec.Addresses, existingGatewayContext.Gateway.Spec.Addresses...)
+				g.GatewayIR = mergedGatewayIR(g.GatewayIR, existingGatewayContext.GatewayIR)
+			}
+			newGatewayContexts[nn] = GatewayContext{Gateway: g.Gateway}
+			// 64 is the maximum number of listeners a Gateway can have
+			if len(g.Spec.Listeners) > 64 {
+				fieldPath := field.NewPath(fmt.Sprintf("%s/%s", nn.Namespace, nn.Name)).Child("spec").Child("listeners")
+				errs = append(errs, field.Invalid(fieldPath, g, "error while merging gateway listeners: a gateway cannot have more than 64 listeners"))
+			}
+			// 16 is the maximum number of addresses a Gateway can have
+			if len(g.Spec.Addresses) > 16 {
+				fieldPath := field.NewPath(fmt.Sprintf("%s/%s", nn.Namespace, nn.Name)).Child("spec").Child("addresses")
+				errs = append(errs, field.Invalid(fieldPath, g, "error while merging gateway listeners: a gateway cannot have more than 16 addresses"))
+			}
+		}
+	}
+	return newGatewayContexts, errs
+}
+
+func mergedGatewayIR(current, existing GatewayIR) GatewayIR {
+	var mergedGatewayIR GatewayIR
+	// TODO: Add merge functions for other providers once their respective GatewayIRs exist.
+	mergedGatewayIR.Gce = ir.MergeGceGatewayIR(current.Gce, existing.Gce)
+	return mergedGatewayIR
 }

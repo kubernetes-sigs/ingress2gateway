@@ -16,6 +16,23 @@ limitations under the License.
 
 package ir
 
-type GceGatewayIR struct{}
+type GceGatewayIR struct {
+	EnableHTTPSRedirect bool
+}
 type GceHTTPRouteIR struct{}
 type GceServiceIR struct{}
+
+func MergeGceGatewayIR(current, existing *GceGatewayIR) *GceGatewayIR {
+	// If either GceGatewayIR is nil, return the other one as the merged result.
+	if current == nil {
+		return existing
+	}
+	if existing == nil {
+		return current
+	}
+
+	// If both GceGatewayIRs are not nil, merge their fields.
+	var mergedGatewayIR GceGatewayIR
+	mergedGatewayIR.EnableHTTPSRedirect = current.EnableHTTPSRedirect || existing.EnableHTTPSRedirect
+	return &mergedGatewayIR
+}
