@@ -200,7 +200,7 @@ func mergeGateways(gatewaResources []GatewayResources) (map[types.NamespacedName
 	return newGateways, errs
 }
 
-// MergeIRs accepts multiple IRs and creatse a unique IR struct built
+// MergeIRs accepts multiple IRs and creates a unique IR struct built
 // as follows:
 //   - GatewayClasses, Routes, and ReferenceGrants are grouped into the same maps
 //   - Gateways may have the same NamespaceName even if they come from different
@@ -225,9 +225,11 @@ func MergeIRs(irs ...ir.IR) (ir.IR, field.ErrorList) {
 	if len(errs) > 0 {
 		return ir.IR{}, errs
 	}
+	// TODO(issue #189): Perform merge on HTTPRoute and Service like Gateway.
 	for _, gr := range irs {
 		maps.Copy(mergedIRs.GatewayClasses, gr.GatewayClasses)
 		maps.Copy(mergedIRs.HTTPRoutes, gr.HTTPRoutes)
+		maps.Copy(mergedIRs.Services, gr.Services)
 		maps.Copy(mergedIRs.TLSRoutes, gr.TLSRoutes)
 		maps.Copy(mergedIRs.TCPRoutes, gr.TCPRoutes)
 		maps.Copy(mergedIRs.UDPRoutes, gr.UDPRoutes)
@@ -266,7 +268,8 @@ func mergeGatewayContexts(irs []ir.IR) (map[types.NamespacedName]ir.GatewayConte
 
 func mergedGatewayIR(current, existing ir.ProviderSpecificGatewayIR) ir.ProviderSpecificGatewayIR {
 	var mergedGatewayIR ir.ProviderSpecificGatewayIR
-	// TODO: Add merge functions for other providers once their respective GatewayIRs exist.
+	// TODO(issue #190): Find a different way to merge GatewayIR, instead of
+	// delegating them to each provider.
 	mergedGatewayIR.Gce = ir.MergeGceGatewayIR(current.Gce, existing.Gce)
 	return mergedGatewayIR
 }
