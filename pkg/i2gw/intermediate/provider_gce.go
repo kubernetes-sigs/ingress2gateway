@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package ir
+package intermediate
 
 type GceGatewayIR struct {
 	EnableHTTPSRedirect bool
@@ -22,7 +22,7 @@ type GceGatewayIR struct {
 type GceHTTPRouteIR struct{}
 type GceServiceIR struct{}
 
-func MergeGceGatewayIR(current, existing *GceGatewayIR) *GceGatewayIR {
+func mergeGceGatewayIR(current, existing *GceGatewayIR) *GceGatewayIR {
 	// If either GceGatewayIR is nil, return the other one as the merged result.
 	if current == nil {
 		return existing

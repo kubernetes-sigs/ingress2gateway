@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package ir
+package intermediate
 
 type Openapi3GatewayIR struct{}
 type Openapi3HTTPRouteIR struct{}
