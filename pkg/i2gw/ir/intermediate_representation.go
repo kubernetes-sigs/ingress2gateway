@@ -30,7 +30,7 @@ import (
 type IR struct {
 	Gateways   map[types.NamespacedName]GatewayContext
 	HTTPRoutes map[types.NamespacedName]HTTPRouteContext
-	Services   map[types.NamespacedName]*ServiceIR
+	Services   map[types.NamespacedName]ProviderSpecificServiceIR
 
 	GatewayClasses map[types.NamespacedName]gatewayv1.GatewayClass
 	TLSRoutes      map[types.NamespacedName]gatewayv1alpha2.TLSRoute
@@ -47,10 +47,10 @@ type IR struct {
 // extensions, but not the extensions themselves.
 type GatewayContext struct {
 	gatewayv1.Gateway
-	GatewayIR
+	ProviderSpecificIR ProviderSpecificGatewayIR
 }
 
-type GatewayIR struct {
+type ProviderSpecificGatewayIR struct {
 	Apisix       *ApisixGatewayIR
 	Gce          *GceGatewayIR
 	IngressNginx *IngressNginxGatewayIR
@@ -66,10 +66,10 @@ type GatewayIR struct {
 // extensions, but not the extensions themselves.
 type HTTPRouteContext struct {
 	gatewayv1.HTTPRoute
-	HTTPRouteIR
+	ProviderSpecificIR ProviderSpecificHTTPRouteIR
 }
 
-type HTTPRouteIR struct {
+type ProviderSpecificHTTPRouteIR struct {
 	Apisix       *ApisixHTTPRouteIR
 	Gce          *GceHTTPRouteIR
 	IngressNginx *IngressNginxHTTPRouteIR
@@ -80,7 +80,7 @@ type HTTPRouteIR struct {
 
 // ServiceIR contains a dedicated field for each provider to specify their
 // extension features on Service.
-type ServiceIR struct {
+type ProviderSpecificServiceIR struct {
 	Apisix       *ApisixServiceIR
 	Gce          *GceServiceIR
 	IngressNginx *IngressNginxServiceIR

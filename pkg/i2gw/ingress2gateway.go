@@ -214,7 +214,7 @@ func MergeIRs(irs ...ir.IR) (ir.IR, field.ErrorList) {
 		Gateways:        make(map[types.NamespacedName]ir.GatewayContext),
 		GatewayClasses:  make(map[types.NamespacedName]gatewayv1.GatewayClass),
 		HTTPRoutes:      make(map[types.NamespacedName]ir.HTTPRouteContext),
-		Services:        make(map[types.NamespacedName]*ir.ServiceIR),
+		Services:        make(map[types.NamespacedName]ir.ProviderSpecificServiceIR),
 		TLSRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
 		TCPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
 		UDPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.UDPRoute),
@@ -246,7 +246,7 @@ func mergeGatewayContexts(irs []ir.IR) (map[types.NamespacedName]ir.GatewayConte
 			if existingGatewayContext, ok := newGatewayContexts[nn]; ok {
 				g.Gateway.Spec.Listeners = append(g.Gateway.Spec.Listeners, existingGatewayContext.Gateway.Spec.Listeners...)
 				g.Gateway.Spec.Addresses = append(g.Gateway.Spec.Addresses, existingGatewayContext.Gateway.Spec.Addresses...)
-				g.GatewayIR = mergedGatewayIR(g.GatewayIR, existingGatewayContext.GatewayIR)
+				g.ProviderSpecificIR = mergedGatewayIR(g.ProviderSpecificIR, existingGatewayContext.ProviderSpecificIR)
 			}
 			newGatewayContexts[nn] = ir.GatewayContext{Gateway: g.Gateway}
 			// 64 is the maximum number of listeners a Gateway can have
@@ -264,8 +264,8 @@ func mergeGatewayContexts(irs []ir.IR) (map[types.NamespacedName]ir.GatewayConte
 	return newGatewayContexts, errs
 }
 
-func mergedGatewayIR(current, existing ir.GatewayIR) ir.GatewayIR {
-	var mergedGatewayIR ir.GatewayIR
+func mergedGatewayIR(current, existing ir.ProviderSpecificGatewayIR) ir.ProviderSpecificGatewayIR {
+	var mergedGatewayIR ir.ProviderSpecificGatewayIR
 	// TODO: Add merge functions for other providers once their respective GatewayIRs exist.
 	mergedGatewayIR.Gce = ir.MergeGceGatewayIR(current.Gce, existing.Gce)
 	return mergedGatewayIR
