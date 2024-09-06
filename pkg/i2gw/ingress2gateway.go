@@ -209,12 +209,12 @@ func mergeGateways(gatewaResources []GatewayResources) (map[types.NamespacedName
 //     a unique Gateway.
 //
 // This behavior is likely to change after https://github.com/kubernetes-sigs/gateway-api/pull/1863 takes place.
-func MergeIRs(irs ...IR) (IR, field.ErrorList) {
-	mergedIRs := IR{
-		Gateways:        make(map[types.NamespacedName]GatewayContext),
+func MergeIRs(irs ...ir.IR) (ir.IR, field.ErrorList) {
+	mergedIRs := ir.IR{
+		Gateways:        make(map[types.NamespacedName]ir.GatewayContext),
 		GatewayClasses:  make(map[types.NamespacedName]gatewayv1.GatewayClass),
-		HTTPRoutes:      make(map[types.NamespacedName]HTTPRouteContext),
-		Services:        make(map[types.NamespacedName]*ServiceIR),
+		HTTPRoutes:      make(map[types.NamespacedName]ir.HTTPRouteContext),
+		Services:        make(map[types.NamespacedName]*ir.ServiceIR),
 		TLSRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
 		TCPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
 		UDPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.UDPRoute),
@@ -223,7 +223,7 @@ func MergeIRs(irs ...IR) (IR, field.ErrorList) {
 	var errs field.ErrorList
 	mergedIRs.Gateways, errs = mergeGatewayContexts(irs)
 	if len(errs) > 0 {
-		return IR{}, errs
+		return ir.IR{}, errs
 	}
 	for _, gr := range irs {
 		maps.Copy(mergedIRs.GatewayClasses, gr.GatewayClasses)
@@ -236,19 +236,19 @@ func MergeIRs(irs ...IR) (IR, field.ErrorList) {
 	return mergedIRs, errs
 }
 
-func mergeGatewayContexts(irs []IR) (map[types.NamespacedName]GatewayContext, field.ErrorList) {
-	newGatewayContexts := make(map[types.NamespacedName]GatewayContext)
+func mergeGatewayContexts(irs []ir.IR) (map[types.NamespacedName]ir.GatewayContext, field.ErrorList) {
+	newGatewayContexts := make(map[types.NamespacedName]ir.GatewayContext)
 	errs := field.ErrorList{}
 
-	for _, ir := range irs {
-		for _, g := range ir.Gateways {
+	for _, currentIR := range irs {
+		for _, g := range currentIR.Gateways {
 			nn := types.NamespacedName{Namespace: g.Gateway.Namespace, Name: g.Gateway.Name}
 			if existingGatewayContext, ok := newGatewayContexts[nn]; ok {
 				g.Gateway.Spec.Listeners = append(g.Gateway.Spec.Listeners, existingGatewayContext.Gateway.Spec.Listeners...)
 				g.Gateway.Spec.Addresses = append(g.Gateway.Spec.Addresses, existingGatewayContext.Gateway.Spec.Addresses...)
 				g.GatewayIR = mergedGatewayIR(g.GatewayIR, existingGatewayContext.GatewayIR)
 			}
-			newGatewayContexts[nn] = GatewayContext{Gateway: g.Gateway}
+			newGatewayContexts[nn] = ir.GatewayContext{Gateway: g.Gateway}
 			// 64 is the maximum number of listeners a Gateway can have
 			if len(g.Spec.Listeners) > 64 {
 				fieldPath := field.NewPath(fmt.Sprintf("%s/%s", nn.Namespace, nn.Name)).Child("spec").Child("listeners")
@@ -264,8 +264,8 @@ func mergeGatewayContexts(irs []IR) (map[types.NamespacedName]GatewayContext, fi
 	return newGatewayContexts, errs
 }
 
-func mergedGatewayIR(current, existing GatewayIR) GatewayIR {
-	var mergedGatewayIR GatewayIR
+func mergedGatewayIR(current, existing ir.GatewayIR) ir.GatewayIR {
+	var mergedGatewayIR ir.GatewayIR
 	// TODO: Add merge functions for other providers once their respective GatewayIRs exist.
 	mergedGatewayIR.Gce = ir.MergeGceGatewayIR(current.Gce, existing.Gce)
 	return mergedGatewayIR
