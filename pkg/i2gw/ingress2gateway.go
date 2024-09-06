@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"maps"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/ir"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -209,12 +209,12 @@ func mergeGateways(gatewaResources []GatewayResources) (map[types.NamespacedName
 //     a unique Gateway.
 //
 // This behavior is likely to change after https://github.com/kubernetes-sigs/gateway-api/pull/1863 takes place.
-func MergeIRs(irs ...ir.IR) (ir.IR, field.ErrorList) {
-	mergedIRs := ir.IR{
-		Gateways:        make(map[types.NamespacedName]ir.GatewayContext),
+func MergeIRs(irs ...intermediate.IR) (intermediate.IR, field.ErrorList) {
+	mergedIRs := intermediate.IR{
+		Gateways:        make(map[types.NamespacedName]intermediate.GatewayContext),
 		GatewayClasses:  make(map[types.NamespacedName]gatewayv1.GatewayClass),
-		HTTPRoutes:      make(map[types.NamespacedName]ir.HTTPRouteContext),
-		Services:        make(map[types.NamespacedName]ir.ProviderSpecificServiceIR),
+		HTTPRoutes:      make(map[types.NamespacedName]intermediate.HTTPRouteContext),
+		Services:        make(map[types.NamespacedName]intermediate.ProviderSpecificServiceIR),
 		TLSRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
 		TCPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
 		UDPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.UDPRoute),
@@ -223,7 +223,7 @@ func MergeIRs(irs ...ir.IR) (ir.IR, field.ErrorList) {
 	var errs field.ErrorList
 	mergedIRs.Gateways, errs = mergeGatewayContexts(irs)
 	if len(errs) > 0 {
-		return ir.IR{}, errs
+		return intermediate.IR{}, errs
 	}
 	// TODO(issue #189): Perform merge on HTTPRoute and Service like Gateway.
 	for _, gr := range irs {
@@ -238,8 +238,8 @@ func MergeIRs(irs ...ir.IR) (ir.IR, field.ErrorList) {
 	return mergedIRs, errs
 }
 
-func mergeGatewayContexts(irs []ir.IR) (map[types.NamespacedName]ir.GatewayContext, field.ErrorList) {
-	newGatewayContexts := make(map[types.NamespacedName]ir.GatewayContext)
+func mergeGatewayContexts(irs []intermediate.IR) (map[types.NamespacedName]intermediate.GatewayContext, field.ErrorList) {
+	newGatewayContexts := make(map[types.NamespacedName]intermediate.GatewayContext)
 	errs := field.ErrorList{}
 
 	for _, currentIR := range irs {
@@ -250,7 +250,7 @@ func mergeGatewayContexts(irs []ir.IR) (map[types.NamespacedName]ir.GatewayConte
 				g.Gateway.Spec.Addresses = append(g.Gateway.Spec.Addresses, existingGatewayContext.Gateway.Spec.Addresses...)
 				g.ProviderSpecificIR = mergedGatewayIR(g.ProviderSpecificIR, existingGatewayContext.ProviderSpecificIR)
 			}
-			newGatewayContexts[nn] = ir.GatewayContext{Gateway: g.Gateway}
+			newGatewayContexts[nn] = intermediate.GatewayContext{Gateway: g.Gateway}
 			// 64 is the maximum number of listeners a Gateway can have
 			if len(g.Spec.Listeners) > 64 {
 				fieldPath := field.NewPath(fmt.Sprintf("%s/%s", nn.Namespace, nn.Name)).Child("spec").Child("listeners")
@@ -266,10 +266,10 @@ func mergeGatewayContexts(irs []ir.IR) (map[types.NamespacedName]ir.GatewayConte
 	return newGatewayContexts, errs
 }
 
-func mergedGatewayIR(current, existing ir.ProviderSpecificGatewayIR) ir.ProviderSpecificGatewayIR {
-	var mergedGatewayIR ir.ProviderSpecificGatewayIR
+func mergedGatewayIR(current, existing intermediate.ProviderSpecificGatewayIR) intermediate.ProviderSpecificGatewayIR {
+	var mergedGatewayIR intermediate.ProviderSpecificGatewayIR
 	// TODO(issue #190): Find a different way to merge GatewayIR, instead of
 	// delegating them to each provider.
-	mergedGatewayIR.Gce = ir.MergeGceGatewayIR(current.Gce, existing.Gce)
+	mergedGatewayIR.Gce = intermediate.MergeGceGatewayIR(current.Gce, existing.Gce)
 	return mergedGatewayIR
 }
