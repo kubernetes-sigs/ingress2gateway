@@ -25,12 +25,12 @@ import (
 
 type storage struct {
 	Ingresses map[types.NamespacedName]*networkingv1.Ingress
+	Services  map[types.NamespacedName]*apiv1.Service
 
 	// BackendConfig is a GKE Ingress extension, and it is associated to an GKE
 	// Ingress through specifying `cloud.google.com/backend-config` or
-	// `beta.cloud.google.com/backend-config` annotation on its Backend Services.
-
-	Services       map[types.NamespacedName]*apiv1.Service
+	// `beta.cloud.google.com/backend-config` annotation on its Services.
+	// BackendConfig map is keyed by the namespaced name of the BackendConfig.
 	BackendConfigs map[types.NamespacedName]*backendconfigv1.BackendConfig
 }
 

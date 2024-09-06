@@ -20,7 +20,13 @@ type GceGatewayIR struct {
 	EnableHTTPSRedirect bool
 }
 type GceHTTPRouteIR struct{}
-type GceServiceIR struct{}
+type GceServiceIR struct {
+	SessionAffinity *SessionAffinityConfig
+}
+type SessionAffinityConfig struct {
+	AffinityType string
+	CookieTTLSec *int64
+}
 
 func mergeGceGatewayIR(current, existing *GceGatewayIR) *GceGatewayIR {
 	// If either GceGatewayIR is nil, return the other one as the merged result.

@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -62,6 +63,42 @@ func ToGateway(ingresses []networkingv1.Ingress, options i2gw.ProviderImplementa
 	}
 
 	return i2gw.GatewayResources{
+		Gateways:   gatewayByKey,
+		HTTPRoutes: routeByKey,
+	}, nil
+}
+
+// ToIR converts the received ingresses to i2gw.IR without taking into
+// consideration any provider specific logic.
+func ToIR(ingresses []networkingv1.Ingress, options i2gw.ProviderImplementationSpecificOptions) (intermediate.IR, field.ErrorList) {
+	aggregator := ingressAggregator{ruleGroups: map[ruleGroupKey]*ingressRuleGroup{}}
+
+	var errs field.ErrorList
+	for _, ingress := range ingresses {
+		aggregator.addIngress(ingress)
+	}
+	if len(errs) > 0 {
+		return intermediate.IR{}, errs
+	}
+
+	routes, gateways, errs := aggregator.toHTTPRoutesAndGateways(options)
+	if len(errs) > 0 {
+		return intermediate.IR{}, errs
+	}
+
+	routeByKey := make(map[types.NamespacedName]intermediate.HTTPRouteContext)
+	for _, route := range routes {
+		key := types.NamespacedName{Namespace: route.Namespace, Name: route.Name}
+		routeByKey[key] = intermediate.HTTPRouteContext{HTTPRoute: route}
+	}
+
+	gatewayByKey := make(map[types.NamespacedName]intermediate.GatewayContext)
+	for _, gateway := range gateways {
+		key := types.NamespacedName{Namespace: gateway.Namespace, Name: gateway.Name}
+		gatewayByKey[key] = intermediate.GatewayContext{Gateway: gateway}
+	}
+
+	return intermediate.IR{
 		Gateways:   gatewayByKey,
 		HTTPRoutes: routeByKey,
 	}, nil
