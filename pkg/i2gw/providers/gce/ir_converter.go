@@ -17,33 +17,42 @@ limitations under the License.
 package gce
 
 import (
+	"context"
+
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
+type contextKey int
+
+const (
+	serviceKey contextKey = iota
+)
+
 // converter implements the ToGatewayAPI function of i2gw.ResourceConverter interface.
-type converter struct {
+type resourcesToIRConverter struct {
 	conf *i2gw.ProviderConf
 
-	featureParsers                []i2gw.FeatureParser
 	implementationSpecificOptions i2gw.ProviderImplementationSpecificOptions
+	ctx                           context.Context
 }
 
-// newConverter returns an ingress-gce converter instance.
-func newConverter(conf *i2gw.ProviderConf) converter {
-	return converter{
-		conf:           conf,
-		featureParsers: []i2gw.FeatureParser{},
+// newConverter returns an ingress-gce resourcesToIRConverter instance.
+func newResourceToIRConverter(conf *i2gw.ProviderConf) resourcesToIRConverter {
+	return resourcesToIRConverter{
+		conf: conf,
 		implementationSpecificOptions: i2gw.ProviderImplementationSpecificOptions{
 			ToImplementationSpecificHTTPPathTypeMatch: implementationSpecificHTTPPathTypeMatch,
 		},
+		ctx: context.Background(),
 	}
 }
 
-func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.ErrorList) {
+func (c *resourcesToIRConverter) convertToIR(storage *storage) (intermediate.IR, field.ErrorList) {
 	ingressList := []networkingv1.Ingress{}
 	for _, ing := range storage.Ingresses {
 		if ing != nil && common.GetIngressClass(*ing) == "" {
@@ -57,22 +66,15 @@ func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.Erro
 
 	// Convert plain ingress resources to gateway resources, ignoring all
 	// provider-specific features.
-	gatewayResources, errs := common.ToGateway(ingressList, c.implementationSpecificOptions)
+	ir, errs := common.ToIR(ingressList, c.implementationSpecificOptions)
 	if len(errs) > 0 {
-		return i2gw.GatewayResources{}, errs
+		return intermediate.IR{}, errs
 	}
 
-	errs = setGCEGatewayClasses(ingressList, &gatewayResources)
+	errs = setGCEGatewayClasses(ingressList, ir.Gateways)
 	if len(errs) > 0 {
-		return i2gw.GatewayResources{}, errs
+		return intermediate.IR{}, errs
 	}
-
-	for _, parseFeatureFunc := range c.featureParsers {
-		// Apply the feature parsing function to the gateway resources, one by one.
-		parseErrs := parseFeatureFunc(ingressList, &gatewayResources)
-		// Append the parsing errors to the error list.
-		errs = append(errs, parseErrs...)
-	}
-
-	return gatewayResources, errs
+	buildGceServiceIR(c.ctx, storage, &ir)
+	return ir, errs
 }

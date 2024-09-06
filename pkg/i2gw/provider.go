@@ -21,6 +21,7 @@ import (
 	"sync"
 
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -88,7 +89,8 @@ type ProviderImplementationSpecificOptions struct {
 	ToImplementationSpecificHTTPPathTypeMatch ImplementationSpecificHTTPPathTypeMatchConverter
 }
 
-// GatewayResources contains all Gateway-API objects.
+// GatewayResources contains all Gateway-API objects and provider Gateway
+// extensions.
 type GatewayResources struct {
 	Gateways       map[types.NamespacedName]gatewayv1.Gateway
 	GatewayClasses map[types.NamespacedName]gatewayv1.GatewayClass
@@ -99,6 +101,8 @@ type GatewayResources struct {
 	UDPRoutes  map[types.NamespacedName]gatewayv1alpha2.UDPRoute
 
 	ReferenceGrants map[types.NamespacedName]gatewayv1beta1.ReferenceGrant
+
+	GatewayExtensions []unstructured.Unstructured
 }
 
 // FeatureParser is a function that reads the Ingresses, and applies
