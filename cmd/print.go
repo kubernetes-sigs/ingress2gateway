@@ -25,6 +25,8 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/samber/lo"
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/client-go/tools/clientcmd"
@@ -203,6 +205,17 @@ func (pr *PrintRunner) outputResult(gatewayResources []i2gw.GatewayResources) {
 		}
 	}
 
+	for _, r := range gatewayResources {
+		resourceCount += len(r.GatewayExtensions)
+		for _, gatewayExtension := range r.GatewayExtensions {
+			gatewayExtension := gatewayExtension
+			fmt.Println("---")
+			if err := PrintUnstructuredAsYaml(&gatewayExtension); err != nil {
+				fmt.Printf("# Error printing %s gatewayExtension: %v\n", gatewayExtension.GetName(), err)
+			}
+		}
+	}
+
 	if resourceCount == 0 {
 		msg := "No resources found"
 		if pr.namespaceFilter != "" {
@@ -269,7 +282,7 @@ func newPrintCommand() *cobra.Command {
 		Use:   "print",
 		Short: "Prints Gateway API objects generated from ingress and provider-specific resources.",
 		RunE:  pr.PrintGatewayAPIObjects,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
+		PreRunE: func(_ *cobra.Command, _ []string) error {
 			openAPIExist := slices.Contains(pr.providers, "openapi3")
 			if openAPIExist && len(pr.providers) != 1 {
 				return fmt.Errorf("openapi3 must be the only provider when specified")
@@ -333,4 +346,22 @@ func (pr *PrintRunner) getProviderSpecificFlags() map[string]map[string]string {
 		providerSpecificFlags[provider][flagNameWithoutProvider] = *value
 	}
 	return providerSpecificFlags
+}
+
+func PrintUnstructuredAsYaml(obj *unstructured.Unstructured) error {
+	// Create a YAML serializer
+	serializer := json.NewSerializerWithOptions(json.DefaultMetaFactory, nil, nil,
+		json.SerializerOptions{
+			Yaml:   true,
+			Pretty: true, // Optional: for better readability
+			Strict: true,
+		})
+
+	// Encode the unstructured object to YAML
+	err := serializer.Encode(obj, os.Stdout)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

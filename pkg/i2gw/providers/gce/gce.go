@@ -21,7 +21,10 @@ import (
 	"fmt"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
 )
 
 const ProviderName = "gce"
@@ -32,16 +35,25 @@ func init() {
 
 // Provider implements the i2gw.Provider interface.
 type Provider struct {
-	storage   *storage
-	reader    reader
-	converter converter
+	storage          *storage
+	reader           reader
+	irConverter      resourcesToIRConverter
+	gatewayConverter irToGatewayResourcesConverter
 }
 
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
+	// Add BackendConfig to Schema when reading in-cluster so these resources
+	// can be recognized.
+	if conf.Client != nil {
+		if err := backendconfigv1.AddToScheme(conf.Client.Scheme()); err != nil {
+			notify(notifications.ErrorNotification, "Failed to add v1 BackendConfig Scheme")
+		}
+	}
 	return &Provider{
-		storage:   newResourcesStorage(),
-		reader:    newResourceReader(conf),
-		converter: newConverter(conf),
+		storage:          newResourcesStorage(),
+		reader:           newResourceReader(conf),
+		irConverter:      newResourcesToIRConverter(conf),
+		gatewayConverter: newIRToGatewayResourcesConverter(),
 	}
 }
 
@@ -64,8 +76,12 @@ func (p *Provider) ReadResourcesFromFile(_ context.Context, filename string) err
 	return nil
 }
 
-// ToGatewayAPI converts stored Ingress GCE API entities to
-// i2gw.GatewayResources including the ingress-gce specific features.
-func (p *Provider) ToGatewayAPI() (i2gw.GatewayResources, field.ErrorList) {
-	return p.converter.convert(p.storage)
+// ToIR converts stored Ingress GCE API entities to intermediate.IR including the
+// ingress-gce specific features.
+func (p *Provider) ToIR() (intermediate.IR, field.ErrorList) {
+	return p.irConverter.convertToIR(p.storage)
+}
+
+func (p *Provider) ToGatewayResources(ir intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
+	return p.gatewayConverter.irToGateway(ir)
 }

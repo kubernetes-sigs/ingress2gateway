@@ -21,19 +21,20 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong/crds"
 )
 
-// converter implements the ToGatewayAPI function of i2gw.ResourceConverter interface.
-type converter struct {
+// resourcesToIRConverter implements the ToIR function of i2gw.ResourcesToIRConverter interface.
+type resourcesToIRConverter struct {
 	featureParsers                []i2gw.FeatureParser
 	implementationSpecificOptions i2gw.ProviderImplementationSpecificOptions
 }
 
-// newConverter returns an kong converter instance.
-func newConverter() *converter {
-	return &converter{
+// newResourcesToIRConverter returns an kong converter instance.
+func newResourcesToIRConverter() *resourcesToIRConverter {
+	return &resourcesToIRConverter{
 		featureParsers: []i2gw.FeatureParser{
 			headerMatchingFeature,
 			methodMatchingFeature,
@@ -45,22 +46,20 @@ func newConverter() *converter {
 	}
 }
 
-func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.ErrorList) {
+func (c *resourcesToIRConverter) convert(storage *storage) (intermediate.IR, field.ErrorList) {
 	ingressList := []networkingv1.Ingress{}
 	for _, ingress := range storage.Ingresses {
 		ingressList = append(ingressList, *ingress)
 	}
 
-	errorList := field.ErrorList{}
-
 	// Convert plain ingress resources to gateway resources, ignoring all
 	// provider-specific features.
-	gatewayResources, errs := common.ToGateway(ingressList, c.implementationSpecificOptions)
-	if len(errs) > 0 {
-		errorList = append(errorList, errs...)
+	ir, errorList := common.ToIR(ingressList, c.implementationSpecificOptions)
+	if len(errorList) > 0 {
+		return intermediate.IR{}, errorList
 	}
 
-	tcpGatewayResources, notificationsAggregator, errs := crds.TCPIngressToGatewayAPI(storage.TCPIngresses)
+	tcpGatewayIR, notificationsAggregator, errs := crds.TCPIngressToGatewayIR(storage.TCPIngresses)
 	if len(errs) > 0 {
 		errorList = append(errorList, errs...)
 	}
@@ -68,20 +67,21 @@ func (c *converter) convert(storage *storage) (i2gw.GatewayResources, field.Erro
 	dispatchNotification(notificationsAggregator)
 
 	if len(errorList) > 0 {
-		return i2gw.GatewayResources{}, errorList
+		return intermediate.IR{}, errorList
 	}
 
-	gatewayResources, errs = i2gw.MergeGatewayResources(gatewayResources, tcpGatewayResources)
+	ir, errs = intermediate.MergeIRs(ir, tcpGatewayIR)
+
 	if len(errs) > 0 {
-		return i2gw.GatewayResources{}, errs
+		return intermediate.IR{}, errs
 	}
 
 	for _, parseFeatureFunc := range c.featureParsers {
 		// Apply the feature parsing function to the gateway resources, one by one.
-		errs = parseFeatureFunc(ingressList, &gatewayResources)
+		errs = parseFeatureFunc(ingressList, &ir)
 		// Append the parsing errors to the error list.
 		errorList = append(errorList, errs...)
 	}
 
-	return gatewayResources, errorList
+	return ir, errorList
 }

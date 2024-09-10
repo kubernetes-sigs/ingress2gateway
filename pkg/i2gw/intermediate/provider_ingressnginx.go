@@ -14,22 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package gce
+package intermediate
 
-import "k8s.io/apimachinery/pkg/runtime/schema"
-
-const (
-	gceIngressClass      = "gce"
-	gceL7ILBIngressClass = "gce-internal"
-
-	gceL7GlobalExternalManagedGatewayClass = "gke-l7-global-external-managed"
-	gceL7RegionalInternalGatewayClass      = "gke-l7-rilb"
-	backendConfigKey                       = "cloud.google.com/backend-config"
-	betaBackendConfigKey                   = "beta.cloud.google.com/backend-config"
-)
-
-var GCPBackendPolicyGVK = schema.GroupVersionKind{
-	Group:   "networking.gke.io",
-	Version: "v1",
-	Kind:    "GCPBackendPolicy",
-}
+type IngressNginxGatewayIR struct{}
+type IngressNginxHTTPRouteIR struct{}
+type IngressNginxServiceIR struct{}

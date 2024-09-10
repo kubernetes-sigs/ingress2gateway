@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -38,18 +38,18 @@ import (
 //
 // All the values defined for each annotation name, and separated by comma, MUST be ORed.
 // All the annotation names MUST be ANDed, with the respective values.
-func headerMatchingFeature(ingresses []networkingv1.Ingress, gatewayResources *i2gw.GatewayResources) field.ErrorList {
+func headerMatchingFeature(ingresses []networkingv1.Ingress, ir *intermediate.IR) field.ErrorList {
 	ruleGroups := common.GetRuleGroups(ingresses)
 	for _, rg := range ruleGroups {
 		for _, rule := range rg.Rules {
 			headerskeys, headersValues := parseHeadersAnnotations(rule.Ingress.Annotations)
 			key := types.NamespacedName{Namespace: rule.Ingress.Namespace, Name: common.RouteName(rg.Name, rg.Host)}
-			httpRoute, ok := gatewayResources.HTTPRoutes[key]
+			httpRouteContext, ok := ir.HTTPRoutes[key]
 			if !ok {
 				return field.ErrorList{field.InternalError(nil, fmt.Errorf("HTTPRoute does not exist - this should never happen"))}
 			}
 
-			patchHTTPRouteHeaderMatching(&httpRoute, headerskeys, headersValues)
+			patchHTTPRouteHeaderMatching(&httpRouteContext.HTTPRoute, headerskeys, headersValues)
 		}
 
 	}

@@ -21,7 +21,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
@@ -34,8 +34,8 @@ import (
 	kongv1beta1 "github.com/kong/kubernetes-ingress-controller/v2/pkg/apis/configuration/v1beta1"
 )
 
-// TCPIngressToGatewayAPI converts the received TCPingresses to i2gw.GatewayResources,
-func TCPIngressToGatewayAPI(ingresses []kongv1beta1.TCPIngress) (i2gw.GatewayResources, []notifications.Notification, field.ErrorList) {
+// TCPIngressToGatewayIR converts the received TCPingresses to intermediate.IR,
+func TCPIngressToGatewayIR(ingresses []kongv1beta1.TCPIngress) (intermediate.IR, []notifications.Notification, field.ErrorList) {
 	aggregator := tcpIngressAggregator{ruleGroups: map[ruleGroupKey]*tcpIngressRuleGroup{}}
 	var notificationsAggregator []notifications.Notification
 
@@ -44,12 +44,12 @@ func TCPIngressToGatewayAPI(ingresses []kongv1beta1.TCPIngress) (i2gw.GatewayRes
 		aggregator.addIngress(ingress, &notificationsAggregator)
 	}
 	if len(errs) > 0 {
-		return i2gw.GatewayResources{}, notificationsAggregator, errs
+		return intermediate.IR{}, notificationsAggregator, errs
 	}
 
 	tcpRoutes, tlsRoutes, gateways, errs := aggregator.toRoutesAndGateways()
 	if len(errs) > 0 {
-		return i2gw.GatewayResources{}, notificationsAggregator, errs
+		return intermediate.IR{}, notificationsAggregator, errs
 	}
 
 	tcpRouteByKey := make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute)
@@ -64,13 +64,13 @@ func TCPIngressToGatewayAPI(ingresses []kongv1beta1.TCPIngress) (i2gw.GatewayRes
 		tlsRouteByKey[key] = route
 	}
 
-	gatewayByKey := make(map[types.NamespacedName]gatewayv1.Gateway)
+	gatewayByKey := make(map[types.NamespacedName]intermediate.GatewayContext)
 	for _, gateway := range gateways {
 		key := types.NamespacedName{Namespace: gateway.Namespace, Name: gateway.Name}
-		gatewayByKey[key] = gateway
+		gatewayByKey[key] = intermediate.GatewayContext{Gateway: gateway}
 	}
 
-	return i2gw.GatewayResources{
+	return intermediate.IR{
 		Gateways:  gatewayByKey,
 		TCPRoutes: tcpRouteByKey,
 		TLSRoutes: tlsRouteByKey,
