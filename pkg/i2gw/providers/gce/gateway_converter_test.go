@@ -46,6 +46,7 @@ func Test_irToGateway(t *testing.T) {
 	saTypeClientIP := "CLIENT_IP"
 	testCookieTTLSec := int64(10)
 	saTypeCookie := "GENERATED_COOKIE"
+	testSecurityPolicy := "test-security-policy"
 
 	testGateway := gatewayv1.Gateway{
 		ObjectMeta: metav1.ObjectMeta{Name: testGatewayName, Namespace: testNamespace},
@@ -143,6 +144,28 @@ func Test_irToGateway(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to generate unstructured GCP Backend Policy with ClientIP-based session affinity feature: %v", err)
 	}
+
+	testSpGCPBackendPolicy := gkegatewayv1.GCPBackendPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: testNamespace,
+			Name:      testSaBackendPolicyName,
+		},
+		Spec: gkegatewayv1.GCPBackendPolicySpec{
+			Default: &gkegatewayv1.GCPBackendPolicyConfig{
+				SecurityPolicy: &testSecurityPolicy,
+			},
+			TargetRef: v1alpha2.NamespacedPolicyTargetReference{
+				Group: "",
+				Kind:  "Service",
+				Name:  gatewayv1.ObjectName(testServiceName),
+			},
+		},
+	}
+	testSpGCPBackendPolicy.SetGroupVersionKind(GCPBackendPolicyGVK)
+	testSpGCPBackendPolicyUnstructured, err := i2gw.CastToUnstructured(&testSpGCPBackendPolicy)
+	if err != nil {
+		t.Errorf("Failed to generate unstructured GCP Backend Policy with Security Policy feature: %v", err)
+	}
 	testCases := []struct {
 		name                     string
 		ir                       intermediate.IR
@@ -218,6 +241,42 @@ func Test_irToGateway(t *testing.T) {
 				},
 				GatewayExtensions: []unstructured.Unstructured{
 					*testSaGCPBackendPolicyCookieUnstructured,
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
+		{
+			name: "ingress with a Backend Config specifying Security Policy",
+			ir: intermediate.IR{
+				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+					{Namespace: testNamespace, Name: testGatewayName}: {
+						Gateway: testGateway,
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+					{Namespace: testNamespace, Name: testHTTPRouteName}: {
+						HTTPRoute: testHTTPRoute,
+					},
+				},
+				Services: map[types.NamespacedName]intermediate.ProviderSpecificServiceIR{
+					{Namespace: testNamespace, Name: testServiceName}: {
+						Gce: &intermediate.GceServiceIR{
+							SecurityPolicy: &intermediate.SecurityPolicyConfig{
+								Name: testSecurityPolicy,
+							},
+						},
+					},
+				},
+			},
+			expectedGatewayResources: i2gw.GatewayResources{
+				Gateways: map[types.NamespacedName]gatewayv1.Gateway{
+					{Namespace: testNamespace, Name: testGatewayName}: testGateway,
+				},
+				HTTPRoutes: map[types.NamespacedName]gatewayv1.HTTPRoute{
+					{Namespace: testNamespace, Name: testHTTPRouteName}: testHTTPRoute,
+				},
+				GatewayExtensions: []unstructured.Unstructured{
+					*testSpGCPBackendPolicyUnstructured,
 				},
 			},
 			expectedErrors: field.ErrorList{},

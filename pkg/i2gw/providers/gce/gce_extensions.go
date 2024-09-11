@@ -193,6 +193,9 @@ func addBackendPolicyIfConfigured(serviceNamespacedName types.NamespacedName, se
 	if serviceIR.Gce.SessionAffinity != nil {
 		backendPolicy.Spec.Default.SessionAffinity = extensions.BuildBackendPolicySessionAffinityConfig(serviceIR)
 	}
+	if serviceIR.Gce.SecurityPolicy != nil {
+		backendPolicy.Spec.Default.SecurityPolicy = extensions.BuildBackendPolicySecurityPolicyConfig(serviceIR)
+	}
 
 	return &backendPolicy
 }

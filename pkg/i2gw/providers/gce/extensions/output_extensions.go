@@ -31,3 +31,8 @@ func BuildBackendPolicySessionAffinityConfig(serviceIR intermediate.ProviderSpec
 	}
 	return &saConfig
 }
+
+func BuildBackendPolicySecurityPolicyConfig(serviceIR intermediate.ProviderSpecificServiceIR) *string {
+	securityPolicy := serviceIR.Gce.SecurityPolicy.Name
+	return &securityPolicy
+}
