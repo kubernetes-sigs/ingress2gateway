@@ -24,6 +24,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/gce/extensions"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -141,11 +142,7 @@ func parseBackendConfigName(ctx context.Context, val string) (string, bool) {
 func beConfigToGceServiceIR(beConfig *backendconfigv1.BackendConfig) intermediate.GceServiceIR {
 	var gceServiceIR intermediate.GceServiceIR
 	if beConfig.Spec.SessionAffinity != nil {
-		saConfig := intermediate.SessionAffinityConfig{
-			AffinityType: beConfig.Spec.SessionAffinity.AffinityType,
-			CookieTTLSec: beConfig.Spec.SessionAffinity.AffinityCookieTtlSec,
-		}
-		gceServiceIR.SessionAffinity = &saConfig
+		gceServiceIR.SessionAffinity = extensions.BuildIRSessionAffinityConfig(beConfig)
 	}
 
 	return gceServiceIR
@@ -167,21 +164,16 @@ func buildGceServiceExtensions(ir intermediate.IR, gatewayResources *i2gw.Gatewa
 }
 
 func addBackendPolicyIfConfigured(serviceNamespacedName types.NamespacedName, serviceIR intermediate.ProviderSpecificServiceIR) *gkegatewayv1.GCPBackendPolicy {
-	if serviceIR.Gce == nil || serviceIR.Gce.SessionAffinity == nil {
+	if serviceIR.Gce == nil {
 		return nil
 	}
-	affinityType := serviceIR.Gce.SessionAffinity.AffinityType
 	backendPolicy := gkegatewayv1.GCPBackendPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: serviceNamespacedName.Namespace,
 			Name:      serviceNamespacedName.Name,
 		},
 		Spec: gkegatewayv1.GCPBackendPolicySpec{
-			Default: &gkegatewayv1.GCPBackendPolicyConfig{
-				SessionAffinity: &gkegatewayv1.SessionAffinityConfig{
-					Type: &affinityType,
-				},
-			},
+			Default: &gkegatewayv1.GCPBackendPolicyConfig{},
 			TargetRef: gatewayv1alpha2.NamespacedPolicyTargetReference{
 				Group: "",
 				Kind:  "Service",
@@ -189,10 +181,11 @@ func addBackendPolicyIfConfigured(serviceNamespacedName types.NamespacedName, se
 			},
 		},
 	}
-	if affinityType == "GENERATED_COOKIE" {
-		backendPolicy.Spec.Default.SessionAffinity.CookieTTLSec = serviceIR.Gce.SessionAffinity.CookieTTLSec
+	backendPolicy.SetGroupVersionKind(GCPBackendPolicyGVK)
+
+	if serviceIR.Gce.SessionAffinity != nil {
+		backendPolicy.Spec.Default.SessionAffinity = extensions.BuildBackendPolicySessionAffinityConfig(serviceIR)
 	}
 
-	backendPolicy.SetGroupVersionKind(GCPBackendPolicyGVK)
 	return &backendPolicy
 }
