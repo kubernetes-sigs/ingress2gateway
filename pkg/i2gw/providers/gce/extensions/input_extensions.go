@@ -46,3 +46,9 @@ func BuildIRSessionAffinityConfig(beConfig *backendconfigv1.BackendConfig) *inte
 		CookieTTLSec: beConfig.Spec.SessionAffinity.AffinityCookieTtlSec,
 	}
 }
+
+func BuildIRSecurityPolicyConfig(beConfig *backendconfigv1.BackendConfig) *intermediate.SecurityPolicyConfig {
+	return &intermediate.SecurityPolicyConfig{
+		Name: beConfig.Spec.SecurityPolicy.Name,
+	}
+}
