@@ -17,9 +17,28 @@ limitations under the License.
 package extensions
 
 import (
+	"fmt"
+
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
 )
+
+func ValidateBeConfig(beConfig *backendconfigv1.BackendConfig) error {
+	if beConfig.Spec.SessionAffinity != nil {
+		if err := validateSessionAffinity(beConfig); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func validateSessionAffinity(beConfig *backendconfigv1.BackendConfig) error {
+	if beConfig.Spec.SessionAffinity.AffinityCookieTtlSec != nil && beConfig.Spec.SessionAffinity.AffinityType != "GENERATED_COOKIE" {
+		return fmt.Errorf("BackendConfig has affinityCookieTtlSec set, but affinityType is not GENERATED_COOKIE")
+	}
+	return nil
+}
 
 func BuildIRSessionAffinityConfig(beConfig *backendconfigv1.BackendConfig) *intermediate.SessionAffinityConfig {
 	return &intermediate.SessionAffinityConfig{

@@ -45,6 +45,10 @@ func buildGceServiceIR(ctx context.Context, storage *storage, ir *intermediate.I
 		if beConfig == nil {
 			continue
 		}
+		if err := extensions.ValidateBeConfig(beConfig); err != nil {
+			notify(notifications.ErrorNotification, err.Error(), beConfig)
+			continue
+		}
 		gceServiceIR := beConfigToGceServiceIR(beConfig)
 		services := beConfigToSvcs[beConfigKey]
 		for _, svcKey := range services {
