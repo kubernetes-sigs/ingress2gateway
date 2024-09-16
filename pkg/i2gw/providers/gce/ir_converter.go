@@ -266,6 +266,9 @@ func beConfigToGceServiceIR(beConfig *backendconfigv1.BackendConfig) intermediat
 	if beConfig.Spec.SecurityPolicy != nil {
 		gceServiceIR.SecurityPolicy = extensions.BuildIRSecurityPolicyConfig(beConfig)
 	}
+	if beConfig.Spec.HealthCheck != nil {
+		gceServiceIR.HealthCheck = extensions.BuildIRHealthCheckConfig(beConfig)
+	}
 
 	return gceServiceIR
 }

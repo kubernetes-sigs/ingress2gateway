@@ -30,13 +30,28 @@ func ValidateBeConfig(beConfig *backendconfigv1.BackendConfig) error {
 			return err
 		}
 	}
-
+	if beConfig.Spec.HealthCheck != nil {
+		if err := validateHealthCheck(beConfig); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 func validateSessionAffinity(beConfig *backendconfigv1.BackendConfig) error {
 	if beConfig.Spec.SessionAffinity.AffinityCookieTtlSec != nil && beConfig.Spec.SessionAffinity.AffinityType != "GENERATED_COOKIE" {
 		return fmt.Errorf("BackendConfig has affinityCookieTtlSec set, but affinityType is not GENERATED_COOKIE")
+	}
+	return nil
+}
+
+func validateHealthCheck(beConfig *backendconfigv1.BackendConfig) error {
+	hcType := beConfig.Spec.HealthCheck.Type
+	if hcType == nil {
+		return fmt.Errorf("HealthCheck Protocol type is not specified")
+	}
+	if *hcType != "HTTP" && *hcType != "HTTPS" && *hcType != "HTTP2" {
+		return fmt.Errorf("Protocol %q is not valid, must be one of [HTTP,HTTPS,HTTP2]", *hcType)
 	}
 	return nil
 }
@@ -57,5 +72,17 @@ func BuildIRSecurityPolicyConfig(beConfig *backendconfigv1.BackendConfig) *inter
 func BuildIRSslPolicyConfig(feConfig *frontendconfigv1beta1.FrontendConfig) *intermediate.SslPolicyConfig {
 	return &intermediate.SslPolicyConfig{
 		Name: *feConfig.Spec.SslPolicy,
+	}
+}
+
+func BuildIRHealthCheckConfig(beConfig *backendconfigv1.BackendConfig) *intermediate.HealthCheckConfig {
+	return &intermediate.HealthCheckConfig{
+		CheckIntervalSec:   beConfig.Spec.HealthCheck.CheckIntervalSec,
+		TimeoutSec:         beConfig.Spec.HealthCheck.TimeoutSec,
+		HealthyThreshold:   beConfig.Spec.HealthCheck.HealthyThreshold,
+		UnhealthyThreshold: beConfig.Spec.HealthCheck.UnhealthyThreshold,
+		Type:               beConfig.Spec.HealthCheck.Type,
+		Port:               beConfig.Spec.HealthCheck.Port,
+		RequestPath:        beConfig.Spec.HealthCheck.RequestPath,
 	}
 }
