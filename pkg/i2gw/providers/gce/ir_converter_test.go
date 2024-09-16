@@ -17,8 +17,10 @@ limitations under the License.
 package gce
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -990,4 +992,228 @@ func getTestIngress(ingressNamespace, ingressName, serviceName string, isExterna
 	}
 
 	return &ing
+}
+
+func TestGetBackendConfigMapping(t *testing.T) {
+	t.Parallel()
+	testNamespace := "test-namespace"
+
+	testServiceName := "test-service"
+	testBeConfigName1 := "backendconfig-1"
+	testBeConfigName2 := "backendconfig-2"
+	testBeConfigName3 := "backendconfig-3"
+	backendConfigs := map[types.NamespacedName]*backendconfigv1.BackendConfig{
+		{Namespace: testNamespace, Name: testBeConfigName1}: {},
+		{Namespace: testNamespace, Name: testBeConfigName2}: {},
+		{Namespace: testNamespace, Name: testBeConfigName3}: {},
+	}
+
+	testCases := []struct {
+		desc                   string
+		serviceAnnotations     map[string]string
+		expectedBeConfigToSvcs map[types.NamespacedName]serviceNames
+	}{
+		{
+			desc:                   "No BackendConfig Annotation on Service",
+			serviceAnnotations:     map[string]string{},
+			expectedBeConfigToSvcs: map[types.NamespacedName]serviceNames{},
+		},
+		{
+			desc: "Specify BackendConfig with cloud.google.com/backend-config annotation, using the same BackendConfig for all ports",
+			serviceAnnotations: map[string]string{
+				backendConfigKey: `{"default":"backendconfig-1"}`,
+			},
+			expectedBeConfigToSvcs: map[types.NamespacedName]serviceNames{
+				{Namespace: testNamespace, Name: testBeConfigName1}: {
+					{Namespace: testNamespace, Name: testServiceName},
+				},
+			},
+		},
+		{
+			desc: "Specify BackendConfig with beta.cloud.google.com/backend-config annotation, using the same BackendConfig for all ports",
+			serviceAnnotations: map[string]string{
+				betaBackendConfigKey: `{"default":"backendconfig-1"}`,
+			},
+			expectedBeConfigToSvcs: map[types.NamespacedName]serviceNames{
+				{Namespace: testNamespace, Name: testBeConfigName1}: {
+					{Namespace: testNamespace, Name: testServiceName},
+				},
+			},
+		},
+		{
+			desc: "Specify BackendConfig with cloud.google.com/backend-config annotation, using different BackendConfigs for each port, service will be associated with the BackendConfig for the alphabetically smallest port",
+			serviceAnnotations: map[string]string{
+				backendConfigKey: `{"ports": {"port1": "backendconfig-2", "port2": "backendconfig-3"}}`,
+			},
+			expectedBeConfigToSvcs: map[types.NamespacedName]serviceNames{
+				// backendconfig-2 has precedence since port1 is alphabetically smaller than port2
+				{Namespace: testNamespace, Name: testBeConfigName2}: {
+					{Namespace: testNamespace, Name: testServiceName},
+				},
+			},
+		},
+		{
+			desc: "Specify BackendConfig with beta.cloud.google.com/backend-config annotation, using different BackendConfigs for each port, service will be associated with the BackendConfig for the alphabetically smallest port",
+			serviceAnnotations: map[string]string{
+				betaBackendConfigKey: `{"ports": {"port1": "backendconfig-2", "port2": "backendconfig-3"}}`,
+			},
+			expectedBeConfigToSvcs: map[types.NamespacedName]serviceNames{
+				// backendconfig-2 has precedence since port1 is alphabetically smaller than port2
+				{Namespace: testNamespace, Name: testBeConfigName2}: {
+					{Namespace: testNamespace, Name: testServiceName},
+				},
+			},
+		},
+		{
+			desc: "Specify BackendConfig with both annotations, using the same BackendConfig for all ports, cloud.google.com/backend-config should have precedence over the beta one",
+			serviceAnnotations: map[string]string{
+				backendConfigKey:     `{"default":"backendconfig-1"}`,
+				betaBackendConfigKey: `{"ports": {"port1": "backendconfig-2", "port2": "backendconfig-3"}}`,
+			},
+			expectedBeConfigToSvcs: map[types.NamespacedName]serviceNames{
+				// BackendConfigs in betaBackendConfigKey should be ignored.
+				{Namespace: testNamespace, Name: testBeConfigName1}: {
+					{Namespace: testNamespace, Name: testServiceName},
+				},
+			},
+		},
+		{
+			desc: "Specify BackendConfig with both annotations, cloud.google.com/backend-config should have precedence over the beta one, using different BackendConfigs for each port, service will be associated with the BackendConfig for the alphabetically smallest port",
+			serviceAnnotations: map[string]string{
+				backendConfigKey:     `{"ports": {"port1": "backendconfig-1", "port2": "backendconfig-2"}}`,
+				betaBackendConfigKey: `{"default":"backendconfig-3"}`,
+			},
+			expectedBeConfigToSvcs: map[types.NamespacedName]serviceNames{
+				// BackendConfigs in betaBackendConfigKey should be ignored,
+				// and backendconfig-1 has precedence since port1 is alphabetically
+				// smaller than port2.
+				{Namespace: testNamespace, Name: testBeConfigName1}: {
+					{Namespace: testNamespace, Name: testServiceName},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			provider := NewProvider(&i2gw.ProviderConf{})
+			gceProvider := provider.(*Provider)
+			gceProvider.storage = newResourcesStorage()
+			testService := apiv1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testServiceName,
+					Namespace: testNamespace,
+				},
+			}
+			testService.Annotations = tc.serviceAnnotations
+			gceProvider.storage.Services = map[types.NamespacedName]*apiv1.Service{
+				{Namespace: testNamespace, Name: testServiceName}: &testService,
+			}
+			gceProvider.storage.BackendConfigs = backendConfigs
+
+			beConfigToSvcs := getBackendConfigMapping(context.TODO(), gceProvider.storage)
+			if !reflect.DeepEqual(beConfigToSvcs, tc.expectedBeConfigToSvcs) {
+				t.Errorf("Got BackendConfig mapping %v, expected %v", beConfigToSvcs, tc.expectedBeConfigToSvcs)
+			}
+		})
+	}
+}
+
+func TestGetBackendConfigName(t *testing.T) {
+	t.Parallel()
+
+	testNamespace := "test-namespace"
+	testServiceName := "test-service"
+	testBeConfigName := "backendconfig-1"
+
+	testCases := []struct {
+		desc           string
+		service        *apiv1.Service
+		beConfigKey    string
+		expectedName   string
+		expectedExists bool
+	}{
+		{
+			desc: "Service without BackendConfig annotation, indexing with cloud.google.com/backend-config",
+			service: &apiv1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testServiceName,
+					Namespace: testNamespace,
+				},
+			},
+			beConfigKey:    backendConfigKey,
+			expectedName:   "",
+			expectedExists: false,
+		},
+		{
+			desc: "Service without BackendConfig annotation, indexing with beta.cloud.google.com/backend-config",
+			service: &apiv1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testServiceName,
+					Namespace: testNamespace,
+				},
+			},
+			beConfigKey:    betaBackendConfigKey,
+			expectedName:   "",
+			expectedExists: false,
+		},
+		{
+			desc: "Service using cloud.google.com/backend-config, using default Config over all ports",
+			service: &apiv1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testServiceName,
+					Namespace: testNamespace,
+					Annotations: map[string]string{
+						backendConfigKey: `{"default":"backendconfig-1"}`,
+					},
+				},
+			},
+			beConfigKey:    backendConfigKey,
+			expectedName:   testBeConfigName,
+			expectedExists: true,
+		},
+		{
+			desc: "Service using beta.cloud.google.com/backend-config annotation, using default Config over all ports",
+			service: &apiv1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testServiceName,
+					Namespace: testNamespace,
+					Annotations: map[string]string{
+						betaBackendConfigKey: `{"default":"backendconfig-1"}`,
+					},
+				},
+			},
+			beConfigKey:    betaBackendConfigKey,
+			expectedName:   testBeConfigName,
+			expectedExists: true,
+		},
+		{
+			desc: "Service using cloud.google.com/backend-config, using Port Config, pick the BackendConfig with the alphabetically smallest port",
+			service: &apiv1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      testServiceName,
+					Namespace: testNamespace,
+					Annotations: map[string]string{
+						backendConfigKey: `{"ports": {"port1": "backendconfig-1", "port2": "backendconfig-2"}}`,
+					},
+				},
+			},
+			beConfigKey:    backendConfigKey,
+			expectedName:   "backendconfig-1",
+			expectedExists: true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			ctx := context.TODO()
+			ctx = context.WithValue(ctx, serviceKey, tc.service)
+			gotName, gotExists := getBackendConfigName(ctx, tc.service, tc.beConfigKey)
+			if gotExists != tc.expectedExists {
+				t.Errorf("getBackendConfigName() got exist = %v, expected %v", gotExists, tc.expectedExists)
+			}
+			if gotName != tc.expectedName {
+				t.Errorf("getBackendConfigName() got exist = %v, expected %v", gotName, tc.expectedName)
+			}
+		})
+	}
 }
