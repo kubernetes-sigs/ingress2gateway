@@ -56,6 +56,9 @@ func Test_convertToIR(t *testing.T) {
 	saTypeCookie := "GENERATED_COOKIE"
 	testSecurityPolicy := "test-security-policy"
 
+	testExtIngress := getTestIngress(testNamespace, extIngClassIngressName, testServiceName, true)
+	testIntIngress := getTestIngress(testNamespace, intIngClassIngressName, testServiceName, false)
+
 	testCases := []struct {
 		name           string
 		ingresses      map[types.NamespacedName]*networkingv1.Ingress
@@ -67,34 +70,7 @@ func Test_convertToIR(t *testing.T) {
 		{
 			name: "gce ingress class",
 			ingresses: map[types.NamespacedName]*networkingv1.Ingress{
-				{Namespace: testNamespace, Name: extIngClassIngressName}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Name:        extIngClassIngressName,
-						Namespace:   testNamespace,
-						Annotations: map[string]string{networkingv1beta1.AnnotationIngressClass: gceIngressClass},
-					},
-					Spec: networkingv1.IngressSpec{
-						Rules: []networkingv1.IngressRule{{
-							Host: testHost,
-							IngressRuleValue: networkingv1.IngressRuleValue{
-								HTTP: &networkingv1.HTTPIngressRuleValue{
-									Paths: []networkingv1.HTTPIngressPath{{
-										Path:     "/",
-										PathType: &iPrefix,
-										Backend: networkingv1.IngressBackend{
-											Service: &networkingv1.IngressServiceBackend{
-												Name: testServiceName,
-												Port: networkingv1.ServiceBackendPort{
-													Number: 80,
-												},
-											},
-										},
-									}},
-								},
-							},
-						}},
-					},
-				},
+				{Namespace: testNamespace, Name: extIngClassIngressName}: testExtIngress,
 			},
 			services: map[types.NamespacedName]*apiv1.Service{
 				{Namespace: testNamespace, Name: testServiceName}: {
@@ -163,34 +139,7 @@ func Test_convertToIR(t *testing.T) {
 		{
 			name: "gce-internal ingress class",
 			ingresses: map[types.NamespacedName]*networkingv1.Ingress{
-				{Namespace: testNamespace, Name: intIngClassIngressName}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Name:        intIngClassIngressName,
-						Namespace:   testNamespace,
-						Annotations: map[string]string{networkingv1beta1.AnnotationIngressClass: gceL7ILBIngressClass},
-					},
-					Spec: networkingv1.IngressSpec{
-						Rules: []networkingv1.IngressRule{{
-							Host: testHost,
-							IngressRuleValue: networkingv1.IngressRuleValue{
-								HTTP: &networkingv1.HTTPIngressRuleValue{
-									Paths: []networkingv1.HTTPIngressPath{{
-										Path:     "/",
-										PathType: &iPrefix,
-										Backend: networkingv1.IngressBackend{
-											Service: &networkingv1.IngressServiceBackend{
-												Name: testServiceName,
-												Port: networkingv1.ServiceBackendPort{
-													Number: 80,
-												},
-											},
-										},
-									}},
-								},
-							},
-						}},
-					},
-				},
+				{Namespace: testNamespace, Name: intIngClassIngressName}: testIntIngress,
 			},
 			services: map[types.NamespacedName]*apiv1.Service{
 				{Namespace: testNamespace, Name: testServiceName}: {
@@ -647,34 +596,7 @@ func Test_convertToIR(t *testing.T) {
 		{
 			name: "ingress with a Backend Config specifying CLIENT_IP type session affinity config",
 			ingresses: map[types.NamespacedName]*networkingv1.Ingress{
-				{Namespace: testNamespace, Name: extIngClassIngressName}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Name:        extIngClassIngressName,
-						Namespace:   testNamespace,
-						Annotations: map[string]string{networkingv1beta1.AnnotationIngressClass: gceIngressClass},
-					},
-					Spec: networkingv1.IngressSpec{
-						Rules: []networkingv1.IngressRule{{
-							Host: testHost,
-							IngressRuleValue: networkingv1.IngressRuleValue{
-								HTTP: &networkingv1.HTTPIngressRuleValue{
-									Paths: []networkingv1.HTTPIngressPath{{
-										Path:     "/",
-										PathType: &iPrefix,
-										Backend: networkingv1.IngressBackend{
-											Service: &networkingv1.IngressServiceBackend{
-												Name: testServiceName,
-												Port: networkingv1.ServiceBackendPort{
-													Number: 80,
-												},
-											},
-										},
-									}},
-								},
-							},
-						}},
-					},
-				},
+				{Namespace: testNamespace, Name: extIngClassIngressName}: testExtIngress,
 			},
 			services: map[types.NamespacedName]*apiv1.Service{
 				{Namespace: testNamespace, Name: testServiceName}: {
@@ -769,34 +691,7 @@ func Test_convertToIR(t *testing.T) {
 		{
 			name: "ingress with a Backend Config specifying GENERATED_COOKIE type session affinity config",
 			ingresses: map[types.NamespacedName]*networkingv1.Ingress{
-				{Namespace: testNamespace, Name: extIngClassIngressName}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Name:        extIngClassIngressName,
-						Namespace:   testNamespace,
-						Annotations: map[string]string{networkingv1beta1.AnnotationIngressClass: gceIngressClass},
-					},
-					Spec: networkingv1.IngressSpec{
-						Rules: []networkingv1.IngressRule{{
-							Host: testHost,
-							IngressRuleValue: networkingv1.IngressRuleValue{
-								HTTP: &networkingv1.HTTPIngressRuleValue{
-									Paths: []networkingv1.HTTPIngressPath{{
-										Path:     "/",
-										PathType: &iPrefix,
-										Backend: networkingv1.IngressBackend{
-											Service: &networkingv1.IngressServiceBackend{
-												Name: testServiceName,
-												Port: networkingv1.ServiceBackendPort{
-													Number: 80,
-												},
-											},
-										},
-									}},
-								},
-							},
-						}},
-					},
-				},
+				{Namespace: testNamespace, Name: extIngClassIngressName}: testExtIngress,
 			},
 			services: map[types.NamespacedName]*apiv1.Service{
 				{Namespace: testNamespace, Name: testServiceName}: {
@@ -893,34 +788,7 @@ func Test_convertToIR(t *testing.T) {
 		{
 			name: "ingress with a Backend Config specifying Security Policy",
 			ingresses: map[types.NamespacedName]*networkingv1.Ingress{
-				{Namespace: testNamespace, Name: extIngClassIngressName}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Name:        extIngClassIngressName,
-						Namespace:   testNamespace,
-						Annotations: map[string]string{networkingv1beta1.AnnotationIngressClass: gceIngressClass},
-					},
-					Spec: networkingv1.IngressSpec{
-						Rules: []networkingv1.IngressRule{{
-							Host: testHost,
-							IngressRuleValue: networkingv1.IngressRuleValue{
-								HTTP: &networkingv1.HTTPIngressRuleValue{
-									Paths: []networkingv1.HTTPIngressPath{{
-										Path:     "/",
-										PathType: &iPrefix,
-										Backend: networkingv1.IngressBackend{
-											Service: &networkingv1.IngressServiceBackend{
-												Name: testServiceName,
-												Port: networkingv1.ServiceBackendPort{
-													Number: 80,
-												},
-											},
-										},
-									}},
-								},
-							},
-						}},
-					},
-				},
+				{Namespace: testNamespace, Name: extIngClassIngressName}: testExtIngress,
 			},
 			services: map[types.NamespacedName]*apiv1.Service{
 				{Namespace: testNamespace, Name: testServiceName}: {
@@ -1083,4 +951,43 @@ func Test_convertToIR(t *testing.T) {
 
 func ptrTo[T any](a T) *T {
 	return &a
+}
+
+func getTestIngress(ingressNamespace, ingressName, serviceName string, isExternalIngress bool) *networkingv1.Ingress {
+	iPrefix := networkingv1.PathTypePrefix
+
+	ing := networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      ingressName,
+			Namespace: ingressNamespace,
+		},
+		Spec: networkingv1.IngressSpec{
+			Rules: []networkingv1.IngressRule{{
+				Host: "test.mydomain.com",
+				IngressRuleValue: networkingv1.IngressRuleValue{
+					HTTP: &networkingv1.HTTPIngressRuleValue{
+						Paths: []networkingv1.HTTPIngressPath{{
+							Path:     "/",
+							PathType: &iPrefix,
+							Backend: networkingv1.IngressBackend{
+								Service: &networkingv1.IngressServiceBackend{
+									Name: serviceName,
+									Port: networkingv1.ServiceBackendPort{
+										Number: 80,
+									},
+								},
+							},
+						}},
+					},
+				},
+			}},
+		},
+	}
+	if isExternalIngress {
+		ing.Annotations = map[string]string{networkingv1beta1.AnnotationIngressClass: gceIngressClass}
+	} else {
+		ing.Annotations = map[string]string{networkingv1beta1.AnnotationIngressClass: gceL7ILBIngressClass}
+	}
+
+	return &ing
 }
