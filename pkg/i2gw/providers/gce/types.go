@@ -41,4 +41,10 @@ var (
 		Version: "v1",
 		Kind:    "GCPGatewayPolicy",
 	}
+
+	HealthCheckPolicyGVK = schema.GroupVersionKind{
+		Group:   "networking.gke.io",
+		Version: "v1",
+		Kind:    "HealthCheckPolicy",
+	}
 )

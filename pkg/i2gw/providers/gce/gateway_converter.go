@@ -94,15 +94,24 @@ func addGatewayPolicyIfConfigured(gatewayNamespacedName types.NamespacedName, ga
 func buildGceServiceExtensions(ir intermediate.IR, gatewayResources *i2gw.GatewayResources) {
 	for svcKey, serviceIR := range ir.Services {
 		bePolicy := addGCPBackendPolicyIfConfigured(svcKey, serviceIR)
-		if bePolicy == nil {
-			continue
+		if bePolicy != nil {
+			obj, err := i2gw.CastToUnstructured(bePolicy)
+			if err != nil {
+				notify(notifications.ErrorNotification, "Failed to cast GCPBackendPolicy to unstructured", bePolicy)
+				continue
+			}
+			gatewayResources.GatewayExtensions = append(gatewayResources.GatewayExtensions, *obj)
 		}
-		obj, err := i2gw.CastToUnstructured(bePolicy)
-		if err != nil {
-			notify(notifications.ErrorNotification, "Failed to cast GCPBackendPolicy to unstructured", bePolicy)
-			continue
+
+		hcPolicy := addHealthCheckPolicyIfConfigured(svcKey, serviceIR)
+		if hcPolicy != nil {
+			obj, err := i2gw.CastToUnstructured(hcPolicy)
+			if err != nil {
+				notify(notifications.ErrorNotification, "Failed to cast HealthCheckPolicy to unstructured", hcPolicy)
+				continue
+			}
+			gatewayResources.GatewayExtensions = append(gatewayResources.GatewayExtensions, *obj)
 		}
-		gatewayResources.GatewayExtensions = append(gatewayResources.GatewayExtensions, *obj)
 	}
 }
 
@@ -110,6 +119,11 @@ func addGCPBackendPolicyIfConfigured(serviceNamespacedName types.NamespacedName,
 	if serviceIR.Gce == nil {
 		return nil
 	}
+	// If there is no specification related to GCPBackendPolicy feature, return nil.
+	if serviceIR.Gce.SessionAffinity == nil && serviceIR.Gce.SecurityPolicy == nil {
+		return nil
+	}
+
 	gcpBackendPolicy := gkegatewayv1.GCPBackendPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: serviceNamespacedName.Namespace,
@@ -134,4 +148,31 @@ func addGCPBackendPolicyIfConfigured(serviceNamespacedName types.NamespacedName,
 	}
 
 	return &gcpBackendPolicy
+}
+
+func addHealthCheckPolicyIfConfigured(serviceNamespacedName types.NamespacedName, serviceIR intermediate.ProviderSpecificServiceIR) *gkegatewayv1.HealthCheckPolicy {
+	if serviceIR.Gce == nil {
+		return nil
+	}
+	// If there is no specification related to HealthCheckPolicy feature, return nil.
+	if serviceIR.Gce.HealthCheck == nil {
+		return nil
+	}
+
+	healthCheckPolicy := gkegatewayv1.HealthCheckPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: serviceNamespacedName.Namespace,
+			Name:      serviceNamespacedName.Name,
+		},
+		Spec: gkegatewayv1.HealthCheckPolicySpec{
+			Default: extensions.BuildHealthCheckPolicyConfig(serviceIR),
+			TargetRef: gatewayv1alpha2.NamespacedPolicyTargetReference{
+				Group: "",
+				Kind:  "Service",
+				Name:  gatewayv1.ObjectName(serviceNamespacedName.Name),
+			},
+		},
+	}
+	healthCheckPolicy.SetGroupVersionKind(HealthCheckPolicyGVK)
+	return &healthCheckPolicy
 }

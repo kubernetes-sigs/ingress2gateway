@@ -56,6 +56,15 @@ const (
 	testSecurityPolicy     = "test-security-policy"
 	testCookieTTLSec       = int64(10)
 	testSslPolicy          = "test-ssl-policy"
+	testCheckIntervalSec   = int64(5)
+	testTimeoutSec         = int64(10)
+	testHealthyThreshold   = int64(2)
+	testUnhealthyThreshold = int64(3)
+	protocolHTTP           = "HTTP"
+	protocolHTTPS          = "HTTPS"
+	protocolHTTP2          = "HTTP2"
+	testPort               = int64(8081)
+	testRequestPath        = "/foo"
 )
 
 func Test_convertToIR(t *testing.T) {
@@ -467,7 +476,7 @@ func Test_convertToIR(t *testing.T) {
 					},
 				}
 				storage.BackendConfigs = map[types.NamespacedName]*backendconfigv1.BackendConfig{
-					{Namespace: testNamespace, Name: testBackendConfigName}: getTestBackendConfig(testNamespace, testBackendConfigName, beConfigSpec),
+					{Namespace: testNamespace, Name: testBackendConfigName}: getTestBackendConfig(beConfigSpec),
 				}
 			},
 			expectedIR: intermediate.IR{
@@ -552,7 +561,7 @@ func Test_convertToIR(t *testing.T) {
 					},
 				}
 				storage.BackendConfigs = map[types.NamespacedName]*backendconfigv1.BackendConfig{
-					{Namespace: testNamespace, Name: testBackendConfigName}: getTestBackendConfig(testNamespace, testBackendConfigName, beConfigSpec),
+					{Namespace: testNamespace, Name: testBackendConfigName}: getTestBackendConfig(beConfigSpec),
 				}
 			},
 			expectedIR: intermediate.IR{
@@ -637,7 +646,7 @@ func Test_convertToIR(t *testing.T) {
 					},
 				}
 				storage.BackendConfigs = map[types.NamespacedName]*backendconfigv1.BackendConfig{
-					{Namespace: testNamespace, Name: testBackendConfigName}: getTestBackendConfig(testNamespace, testBackendConfigName, beConfigSpec),
+					{Namespace: testNamespace, Name: testBackendConfigName}: getTestBackendConfig(beConfigSpec),
 				}
 			},
 			expectedIR: intermediate.IR{
@@ -699,6 +708,102 @@ func Test_convertToIR(t *testing.T) {
 						Gce: &intermediate.GceServiceIR{
 							SecurityPolicy: &intermediate.SecurityPolicyConfig{
 								Name: testSecurityPolicy,
+							},
+						},
+					},
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
+		{
+			name: "ingress with a Backend Config specifying custom HTTP Health Check",
+			modify: func(storage *storage) {
+				testService := storage.Services[types.NamespacedName{Namespace: testNamespace, Name: testServiceName}]
+				testService.Annotations = map[string]string{
+					backendConfigKey: `{"default":"test-backendconfig"}`,
+				}
+				storage.Services[types.NamespacedName{Namespace: testNamespace, Name: testServiceName}] = testService
+
+				beConfigSpec := backendconfigv1.BackendConfigSpec{
+					HealthCheck: &backendconfigv1.HealthCheckConfig{
+						CheckIntervalSec:   common.PtrTo(testCheckIntervalSec),
+						TimeoutSec:         common.PtrTo(testTimeoutSec),
+						HealthyThreshold:   common.PtrTo(testHealthyThreshold),
+						UnhealthyThreshold: common.PtrTo(testUnhealthyThreshold),
+						Type:               common.PtrTo(protocolHTTP),
+						Port:               common.PtrTo(testPort),
+						RequestPath:        common.PtrTo(testRequestPath),
+					},
+				}
+				storage.BackendConfigs = map[types.NamespacedName]*backendconfigv1.BackendConfig{
+					{Namespace: testNamespace, Name: testBackendConfigName}: getTestBackendConfig(beConfigSpec),
+				}
+			},
+			expectedIR: intermediate.IR{
+				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+					{Namespace: testNamespace, Name: gceIngressClass}: {
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: gceL7GlobalExternalManagedGatewayClass,
+								Listeners: []gatewayv1.Listener{{
+									Name:     "test-mydomain-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: common.PtrTo(gatewayv1.Hostname(testHost)),
+								}},
+							},
+						},
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName)}: {
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName), Namespace: testNamespace},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: gceIngressClass,
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
+								Rules: []gatewayv1.HTTPRouteRule{
+									{
+										Matches: []gatewayv1.HTTPRouteMatch{
+											{
+												Path: &gatewayv1.HTTPPathMatch{
+													Type:  common.PtrTo(gPathPrefix),
+													Value: common.PtrTo("/"),
+												},
+											},
+										},
+										BackendRefs: []gatewayv1.HTTPBackendRef{
+											{
+												BackendRef: gatewayv1.BackendRef{
+													BackendObjectReference: gatewayv1.BackendObjectReference{
+														Name: gatewayv1.ObjectName(testServiceName),
+														Port: common.PtrTo(gatewayv1.PortNumber(80)),
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				Services: map[types.NamespacedName]intermediate.ProviderSpecificServiceIR{
+					{Namespace: testNamespace, Name: testServiceName}: {
+						Gce: &intermediate.GceServiceIR{
+							HealthCheck: &intermediate.HealthCheckConfig{
+								CheckIntervalSec:   common.PtrTo(testCheckIntervalSec),
+								TimeoutSec:         common.PtrTo(testTimeoutSec),
+								HealthyThreshold:   common.PtrTo(testHealthyThreshold),
+								UnhealthyThreshold: common.PtrTo(testUnhealthyThreshold),
+								Type:               common.PtrTo(protocolHTTP),
+								Port:               common.PtrTo(testPort),
+								RequestPath:        common.PtrTo(testRequestPath),
 							},
 						},
 					},
@@ -894,11 +999,11 @@ func getTestIngress(namespace, name, serviceName string) *networkingv1.Ingress {
 	}
 }
 
-func getTestBackendConfig(namespace, name string, spec backendconfigv1.BackendConfigSpec) *backendconfigv1.BackendConfig {
+func getTestBackendConfig(spec backendconfigv1.BackendConfigSpec) *backendconfigv1.BackendConfig {
 	return &backendconfigv1.BackendConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      name,
+			Namespace: testNamespace,
+			Name:      testBackendConfigName,
 		},
 		Spec: spec,
 	}
