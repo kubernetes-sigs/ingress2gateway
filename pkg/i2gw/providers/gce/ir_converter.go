@@ -139,7 +139,11 @@ func getFrontendConfigAnnotation(ing *networkingv1.Ingress) (string, bool) {
 }
 
 func feConfigToGceGatewayIR(feConfig *frontendconfigv1beta1.FrontendConfig) intermediate.GceGatewayIR {
-	return intermediate.GceGatewayIR{}
+	var gceGatewayIR intermediate.GceGatewayIR
+	if feConfig.Spec.SslPolicy != nil {
+		gceGatewayIR.SslPolicy = extensions.BuildIRSslPolicyConfig(feConfig)
+	}
+	return gceGatewayIR
 }
 
 type serviceNames []types.NamespacedName

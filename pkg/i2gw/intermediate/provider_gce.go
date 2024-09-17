@@ -18,6 +18,10 @@ package intermediate
 
 type GceGatewayIR struct {
 	EnableHTTPSRedirect bool
+	SslPolicy           *SslPolicyConfig
+}
+type SslPolicyConfig struct {
+	Name string
 }
 type GceHTTPRouteIR struct{}
 type GceServiceIR struct {

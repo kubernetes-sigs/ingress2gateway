@@ -21,6 +21,7 @@ import (
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
+	frontendconfigv1beta1 "k8s.io/ingress-gce/pkg/apis/frontendconfig/v1beta1"
 )
 
 func ValidateBeConfig(beConfig *backendconfigv1.BackendConfig) error {
@@ -50,5 +51,11 @@ func BuildIRSessionAffinityConfig(beConfig *backendconfigv1.BackendConfig) *inte
 func BuildIRSecurityPolicyConfig(beConfig *backendconfigv1.BackendConfig) *intermediate.SecurityPolicyConfig {
 	return &intermediate.SecurityPolicyConfig{
 		Name: beConfig.Spec.SecurityPolicy.Name,
+	}
+}
+
+func BuildIRSslPolicyConfig(feConfig *frontendconfigv1beta1.FrontendConfig) *intermediate.SslPolicyConfig {
+	return &intermediate.SslPolicyConfig{
+		Name: *feConfig.Spec.SslPolicy,
 	}
 }
