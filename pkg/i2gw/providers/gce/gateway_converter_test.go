@@ -35,20 +35,14 @@ import (
 	"sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
-func Test_irToGateway(t *testing.T) {
-	testNamespace := "default"
-	testHost := "test.mydomain.com"
-	testServiceName := "test-service"
-	testGatewayName := "test-gateway"
-	testHTTPRouteName := "test-http-route"
+const (
+	testGatewayName         = "test-gateway"
+	testHTTPRouteName       = "test-http-route"
+	testSaBackendPolicyName = testServiceName
+)
 
-	gPathPrefix := gatewayv1.PathMatchPathPrefix
-	saTypeClientIP := "CLIENT_IP"
-	testCookieTTLSec := int64(10)
-	saTypeCookie := "GENERATED_COOKIE"
-	testSecurityPolicy := "test-security-policy"
-
-	testGateway := gatewayv1.Gateway{
+var (
+	testGateway = gatewayv1.Gateway{
 		ObjectMeta: metav1.ObjectMeta{Name: testGatewayName, Namespace: testNamespace},
 		Spec: gatewayv1.GatewaySpec{
 			GatewayClassName: gceL7GlobalExternalManagedGatewayClass,
@@ -56,12 +50,12 @@ func Test_irToGateway(t *testing.T) {
 				Name:     "test-mydomain-com-http",
 				Port:     80,
 				Protocol: gatewayv1.HTTPProtocolType,
-				Hostname: ptrTo(gatewayv1.Hostname(testHost)),
+				Hostname: common.PtrTo(gatewayv1.Hostname(testHost)),
 			}},
 		},
 	}
 
-	testHTTPRoute := gatewayv1.HTTPRoute{
+	testHTTPRoute = gatewayv1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{Name: testHTTPRouteName, Namespace: testNamespace},
 		Spec: gatewayv1.HTTPRouteSpec{
 			CommonRouteSpec: gatewayv1.CommonRouteSpec{
@@ -75,8 +69,8 @@ func Test_irToGateway(t *testing.T) {
 					Matches: []gatewayv1.HTTPRouteMatch{
 						{
 							Path: &gatewayv1.HTTPPathMatch{
-								Type:  &gPathPrefix,
-								Value: ptrTo("/"),
+								Type:  common.PtrTo(gPathPrefix),
+								Value: common.PtrTo("/"),
 							},
 						},
 					},
@@ -85,7 +79,7 @@ func Test_irToGateway(t *testing.T) {
 							BackendRef: gatewayv1.BackendRef{
 								BackendObjectReference: gatewayv1.BackendObjectReference{
 									Name: gatewayv1.ObjectName(testServiceName),
-									Port: ptrTo(gatewayv1.PortNumber(80)),
+									Port: common.PtrTo(gatewayv1.PortNumber(80)),
 								},
 							},
 						},
@@ -95,8 +89,11 @@ func Test_irToGateway(t *testing.T) {
 		},
 	}
 
-	testSaBackendPolicyName := testServiceName
-	testSaGCPBackendPolicyCookie := gkegatewayv1.GCPBackendPolicy{
+	testSaGCPBackendPolicyCookie = gkegatewayv1.GCPBackendPolicy{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "networking.gke.io/v1",
+			Kind:       "GCPBackendPolicy",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: testNamespace,
 			Name:      testSaBackendPolicyName,
@@ -104,8 +101,8 @@ func Test_irToGateway(t *testing.T) {
 		Spec: gkegatewayv1.GCPBackendPolicySpec{
 			Default: &gkegatewayv1.GCPBackendPolicyConfig{
 				SessionAffinity: &gkegatewayv1.SessionAffinityConfig{
-					Type:         ptrTo("GENERATED_COOKIE"),
-					CookieTTLSec: &testCookieTTLSec,
+					Type:         common.PtrTo("GENERATED_COOKIE"),
+					CookieTTLSec: common.PtrTo(testCookieTTLSec),
 				},
 			},
 			TargetRef: v1alpha2.NamespacedPolicyTargetReference{
@@ -115,57 +112,66 @@ func Test_irToGateway(t *testing.T) {
 			},
 		},
 	}
-	testSaGCPBackendPolicyCookie.SetGroupVersionKind(GCPBackendPolicyGVK)
+
+	testSaGCPBackendPolicyClientIP = gkegatewayv1.GCPBackendPolicy{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "networking.gke.io/v1",
+			Kind:       "GCPBackendPolicy",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: testNamespace,
+			Name:      testSaBackendPolicyName,
+		},
+		Spec: gkegatewayv1.GCPBackendPolicySpec{
+			Default: &gkegatewayv1.GCPBackendPolicyConfig{
+				SessionAffinity: &gkegatewayv1.SessionAffinityConfig{
+					Type: common.PtrTo("CLIENT_IP"),
+				},
+			},
+			TargetRef: v1alpha2.NamespacedPolicyTargetReference{
+				Group: "",
+				Kind:  "Service",
+				Name:  gatewayv1.ObjectName(testServiceName),
+			},
+		},
+	}
+
+	testSpGCPBackendPolicy = gkegatewayv1.GCPBackendPolicy{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "networking.gke.io/v1",
+			Kind:       "GCPBackendPolicy",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: testNamespace,
+			Name:      testSaBackendPolicyName,
+		},
+		Spec: gkegatewayv1.GCPBackendPolicySpec{
+			Default: &gkegatewayv1.GCPBackendPolicyConfig{
+				SecurityPolicy: common.PtrTo(testSecurityPolicy),
+			},
+			TargetRef: v1alpha2.NamespacedPolicyTargetReference{
+				Group: "",
+				Kind:  "Service",
+				Name:  gatewayv1.ObjectName(testServiceName),
+			},
+		},
+	}
+)
+
+func Test_irToGateway(t *testing.T) {
 	testSaGCPBackendPolicyCookieUnstructured, err := i2gw.CastToUnstructured(&testSaGCPBackendPolicyCookie)
 	if err != nil {
 		t.Errorf("Failed to generate unstructured GCP Backend Policy with Cookie-based session affinity feature: %v", err)
 	}
-
-	testSaGCPBackendPolicyClientIP := gkegatewayv1.GCPBackendPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: testNamespace,
-			Name:      testSaBackendPolicyName,
-		},
-		Spec: gkegatewayv1.GCPBackendPolicySpec{
-			Default: &gkegatewayv1.GCPBackendPolicyConfig{
-				SessionAffinity: &gkegatewayv1.SessionAffinityConfig{
-					Type: ptrTo("CLIENT_IP"),
-				},
-			},
-			TargetRef: v1alpha2.NamespacedPolicyTargetReference{
-				Group: "",
-				Kind:  "Service",
-				Name:  gatewayv1.ObjectName(testServiceName),
-			},
-		},
-	}
-	testSaGCPBackendPolicyClientIP.SetGroupVersionKind(GCPBackendPolicyGVK)
 	testSaGCPBackendPolicyClientIPUnstructured, err := i2gw.CastToUnstructured(&testSaGCPBackendPolicyClientIP)
 	if err != nil {
 		t.Errorf("Failed to generate unstructured GCP Backend Policy with ClientIP-based session affinity feature: %v", err)
 	}
-
-	testSpGCPBackendPolicy := gkegatewayv1.GCPBackendPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: testNamespace,
-			Name:      testSaBackendPolicyName,
-		},
-		Spec: gkegatewayv1.GCPBackendPolicySpec{
-			Default: &gkegatewayv1.GCPBackendPolicyConfig{
-				SecurityPolicy: &testSecurityPolicy,
-			},
-			TargetRef: v1alpha2.NamespacedPolicyTargetReference{
-				Group: "",
-				Kind:  "Service",
-				Name:  gatewayv1.ObjectName(testServiceName),
-			},
-		},
-	}
-	testSpGCPBackendPolicy.SetGroupVersionKind(GCPBackendPolicyGVK)
 	testSpGCPBackendPolicyUnstructured, err := i2gw.CastToUnstructured(&testSpGCPBackendPolicy)
 	if err != nil {
 		t.Errorf("Failed to generate unstructured GCP Backend Policy with Security Policy feature: %v", err)
 	}
+
 	testCases := []struct {
 		name                     string
 		ir                       intermediate.IR
@@ -226,7 +232,7 @@ func Test_irToGateway(t *testing.T) {
 						Gce: &intermediate.GceServiceIR{
 							SessionAffinity: &intermediate.SessionAffinityConfig{
 								AffinityType: saTypeCookie,
-								CookieTTLSec: &testCookieTTLSec,
+								CookieTTLSec: common.PtrTo(testCookieTTLSec),
 							},
 						},
 					},

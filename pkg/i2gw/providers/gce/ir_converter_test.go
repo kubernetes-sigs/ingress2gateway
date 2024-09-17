@@ -38,25 +38,26 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
+const (
+	saTypeClientIP       = "CLIENT_IP"
+	saTypeCookie         = "GENERATED_COOKIE"
+	iPrefix              = networkingv1.PathTypePrefix
+	gPathPrefix          = gatewayv1.PathMatchPathPrefix
+	gExact               = gatewayv1.PathMatchExact
+	implSpecificPathType = networkingv1.PathTypeImplementationSpecific
+
+	testNamespace         = "default"
+	testHost              = "test.mydomain.com"
+	testServiceName       = "test-service"
+	testBackendConfigName = "test-backendconfig"
+	testSecurityPolicy    = "test-security-policy"
+	testCookieTTLSec      = int64(10)
+)
+
 func Test_convertToIR(t *testing.T) {
-	testNamespace := "default"
-	testHost := "test.mydomain.com"
-	testServiceName := "test-service"
-	testBackendConfigName := "test-backendconfig"
-	iPrefix := networkingv1.PathTypePrefix
-	implSpecificPathType := networkingv1.PathTypeImplementationSpecific
-
-	gPathPrefix := gatewayv1.PathMatchPathPrefix
-	gExact := gatewayv1.PathMatchExact
-
 	extIngClassIngressName := "gce-ingress-class"
 	intIngClassIngressName := "gce-internal-ingress-class"
 	noIngClassIngressName := "no-ingress-class"
-
-	saTypeClientIP := "CLIENT_IP"
-	testCookieTTLSec := int64(10)
-	saTypeCookie := "GENERATED_COOKIE"
-	testSecurityPolicy := "test-security-policy"
 
 	testExtIngress := getTestIngress(testNamespace, extIngClassIngressName, testServiceName, true)
 	testIntIngress := getTestIngress(testNamespace, intIngClassIngressName, testServiceName, false)
@@ -93,7 +94,7 @@ func Test_convertToIR(t *testing.T) {
 									Name:     "test-mydomain-com-http",
 									Port:     80,
 									Protocol: gatewayv1.HTTPProtocolType,
-									Hostname: ptrTo(gatewayv1.Hostname(testHost)),
+									Hostname: common.PtrTo(gatewayv1.Hostname(testHost)),
 								}},
 							}},
 					},
@@ -114,8 +115,8 @@ func Test_convertToIR(t *testing.T) {
 										Matches: []gatewayv1.HTTPRouteMatch{
 											{
 												Path: &gatewayv1.HTTPPathMatch{
-													Type:  &gPathPrefix,
-													Value: ptrTo("/"),
+													Type:  common.PtrTo(gPathPrefix),
+													Value: common.PtrTo("/"),
 												},
 											},
 										},
@@ -124,7 +125,7 @@ func Test_convertToIR(t *testing.T) {
 												BackendRef: gatewayv1.BackendRef{
 													BackendObjectReference: gatewayv1.BackendObjectReference{
 														Name: gatewayv1.ObjectName(testServiceName),
-														Port: ptrTo(gatewayv1.PortNumber(80)),
+														Port: common.PtrTo(gatewayv1.PortNumber(80)),
 													},
 												},
 											},
@@ -162,7 +163,7 @@ func Test_convertToIR(t *testing.T) {
 									Name:     "test-mydomain-com-http",
 									Port:     80,
 									Protocol: gatewayv1.HTTPProtocolType,
-									Hostname: ptrTo(gatewayv1.Hostname(testHost)),
+									Hostname: common.PtrTo(gatewayv1.Hostname(testHost)),
 								}},
 							},
 						},
@@ -184,8 +185,8 @@ func Test_convertToIR(t *testing.T) {
 										Matches: []gatewayv1.HTTPRouteMatch{
 											{
 												Path: &gatewayv1.HTTPPathMatch{
-													Type:  &gPathPrefix,
-													Value: ptrTo("/"),
+													Type:  common.PtrTo(gPathPrefix),
+													Value: common.PtrTo("/"),
 												},
 											},
 										},
@@ -194,7 +195,7 @@ func Test_convertToIR(t *testing.T) {
 												BackendRef: gatewayv1.BackendRef{
 													BackendObjectReference: gatewayv1.BackendObjectReference{
 														Name: gatewayv1.ObjectName(testServiceName),
-														Port: ptrTo(gatewayv1.PortNumber(80)),
+														Port: common.PtrTo(gatewayv1.PortNumber(80)),
 													},
 												},
 											},
@@ -223,7 +224,7 @@ func Test_convertToIR(t *testing.T) {
 								HTTP: &networkingv1.HTTPIngressRuleValue{
 									Paths: []networkingv1.HTTPIngressPath{{
 										Path:     "/",
-										PathType: &iPrefix,
+										PathType: common.PtrTo(iPrefix),
 										Backend: networkingv1.IngressBackend{
 											Service: &networkingv1.IngressServiceBackend{
 												Name: testServiceName,
@@ -258,7 +259,7 @@ func Test_convertToIR(t *testing.T) {
 									Name:     "test-mydomain-com-http",
 									Port:     80,
 									Protocol: gatewayv1.HTTPProtocolType,
-									Hostname: ptrTo(gatewayv1.Hostname(testHost)),
+									Hostname: common.PtrTo(gatewayv1.Hostname(testHost)),
 								}},
 							},
 						},
@@ -280,8 +281,8 @@ func Test_convertToIR(t *testing.T) {
 										Matches: []gatewayv1.HTTPRouteMatch{
 											{
 												Path: &gatewayv1.HTTPPathMatch{
-													Type:  &gPathPrefix,
-													Value: ptrTo("/"),
+													Type:  common.PtrTo(gPathPrefix),
+													Value: common.PtrTo("/"),
 												},
 											},
 										},
@@ -290,7 +291,7 @@ func Test_convertToIR(t *testing.T) {
 												BackendRef: gatewayv1.BackendRef{
 													BackendObjectReference: gatewayv1.BackendObjectReference{
 														Name: gatewayv1.ObjectName(testServiceName),
-														Port: ptrTo(gatewayv1.PortNumber(80)),
+														Port: common.PtrTo(gatewayv1.PortNumber(80)),
 													},
 												},
 											},
@@ -320,7 +321,7 @@ func Test_convertToIR(t *testing.T) {
 								HTTP: &networkingv1.HTTPIngressRuleValue{
 									Paths: []networkingv1.HTTPIngressPath{{
 										Path:     "/*",
-										PathType: &implSpecificPathType,
+										PathType: common.PtrTo(implSpecificPathType),
 										Backend: networkingv1.IngressBackend{
 											Service: &networkingv1.IngressServiceBackend{
 												Name: testServiceName,
@@ -355,7 +356,7 @@ func Test_convertToIR(t *testing.T) {
 									Name:     "test-mydomain-com-http",
 									Port:     80,
 									Protocol: gatewayv1.HTTPProtocolType,
-									Hostname: ptrTo(gatewayv1.Hostname(testHost)),
+									Hostname: common.PtrTo(gatewayv1.Hostname(testHost)),
 								}},
 							},
 						},
@@ -377,8 +378,8 @@ func Test_convertToIR(t *testing.T) {
 										Matches: []gatewayv1.HTTPRouteMatch{
 											{
 												Path: &gatewayv1.HTTPPathMatch{
-													Type:  &gPathPrefix,
-													Value: ptrTo("/"),
+													Type:  common.PtrTo(gPathPrefix),
+													Value: common.PtrTo("/"),
 												},
 											},
 										},
@@ -387,7 +388,7 @@ func Test_convertToIR(t *testing.T) {
 												BackendRef: gatewayv1.BackendRef{
 													BackendObjectReference: gatewayv1.BackendObjectReference{
 														Name: gatewayv1.ObjectName(testServiceName),
-														Port: ptrTo(gatewayv1.PortNumber(80)),
+														Port: common.PtrTo(gatewayv1.PortNumber(80)),
 													},
 												},
 											},
@@ -417,7 +418,7 @@ func Test_convertToIR(t *testing.T) {
 								HTTP: &networkingv1.HTTPIngressRuleValue{
 									Paths: []networkingv1.HTTPIngressPath{{
 										Path:     "/foo/*",
-										PathType: &implSpecificPathType,
+										PathType: common.PtrTo(implSpecificPathType),
 										Backend: networkingv1.IngressBackend{
 											Service: &networkingv1.IngressServiceBackend{
 												Name: testServiceName,
@@ -452,7 +453,7 @@ func Test_convertToIR(t *testing.T) {
 									Name:     "test-mydomain-com-http",
 									Port:     80,
 									Protocol: gatewayv1.HTTPProtocolType,
-									Hostname: ptrTo(gatewayv1.Hostname(testHost)),
+									Hostname: common.PtrTo(gatewayv1.Hostname(testHost)),
 								}},
 							},
 						},
@@ -474,8 +475,8 @@ func Test_convertToIR(t *testing.T) {
 										Matches: []gatewayv1.HTTPRouteMatch{
 											{
 												Path: &gatewayv1.HTTPPathMatch{
-													Type:  &gPathPrefix,
-													Value: ptrTo("/foo"),
+													Type:  common.PtrTo(gPathPrefix),
+													Value: common.PtrTo("/foo"),
 												},
 											},
 										},
@@ -484,7 +485,7 @@ func Test_convertToIR(t *testing.T) {
 												BackendRef: gatewayv1.BackendRef{
 													BackendObjectReference: gatewayv1.BackendObjectReference{
 														Name: gatewayv1.ObjectName(testServiceName),
-														Port: ptrTo(gatewayv1.PortNumber(80)),
+														Port: common.PtrTo(gatewayv1.PortNumber(80)),
 													},
 												},
 											},
@@ -514,7 +515,7 @@ func Test_convertToIR(t *testing.T) {
 								HTTP: &networkingv1.HTTPIngressRuleValue{
 									Paths: []networkingv1.HTTPIngressPath{{
 										Path:     "/foo",
-										PathType: &implSpecificPathType,
+										PathType: common.PtrTo(implSpecificPathType),
 										Backend: networkingv1.IngressBackend{
 											Service: &networkingv1.IngressServiceBackend{
 												Name: testServiceName,
@@ -549,7 +550,7 @@ func Test_convertToIR(t *testing.T) {
 									Name:     "test-mydomain-com-http",
 									Port:     80,
 									Protocol: gatewayv1.HTTPProtocolType,
-									Hostname: ptrTo(gatewayv1.Hostname(testHost)),
+									Hostname: common.PtrTo(gatewayv1.Hostname(testHost)),
 								}},
 							},
 						},
@@ -571,8 +572,8 @@ func Test_convertToIR(t *testing.T) {
 										Matches: []gatewayv1.HTTPRouteMatch{
 											{
 												Path: &gatewayv1.HTTPPathMatch{
-													Type:  &gExact,
-													Value: ptrTo("/foo"),
+													Type:  common.PtrTo(gExact),
+													Value: common.PtrTo("/foo"),
 												},
 											},
 										},
@@ -581,7 +582,7 @@ func Test_convertToIR(t *testing.T) {
 												BackendRef: gatewayv1.BackendRef{
 													BackendObjectReference: gatewayv1.BackendObjectReference{
 														Name: gatewayv1.ObjectName(testServiceName),
-														Port: ptrTo(gatewayv1.PortNumber(80)),
+														Port: common.PtrTo(gatewayv1.PortNumber(80)),
 													},
 												},
 											},
@@ -635,7 +636,7 @@ func Test_convertToIR(t *testing.T) {
 									Name:     "test-mydomain-com-http",
 									Port:     80,
 									Protocol: gatewayv1.HTTPProtocolType,
-									Hostname: ptrTo(gatewayv1.Hostname(testHost)),
+									Hostname: common.PtrTo(gatewayv1.Hostname(testHost)),
 								}},
 							},
 						},
@@ -657,8 +658,8 @@ func Test_convertToIR(t *testing.T) {
 										Matches: []gatewayv1.HTTPRouteMatch{
 											{
 												Path: &gatewayv1.HTTPPathMatch{
-													Type:  &gPathPrefix,
-													Value: ptrTo("/"),
+													Type:  common.PtrTo(gPathPrefix),
+													Value: common.PtrTo("/"),
 												},
 											},
 										},
@@ -667,7 +668,7 @@ func Test_convertToIR(t *testing.T) {
 												BackendRef: gatewayv1.BackendRef{
 													BackendObjectReference: gatewayv1.BackendObjectReference{
 														Name: gatewayv1.ObjectName(testServiceName),
-														Port: ptrTo(gatewayv1.PortNumber(80)),
+														Port: common.PtrTo(gatewayv1.PortNumber(80)),
 													},
 												},
 											},
@@ -715,7 +716,7 @@ func Test_convertToIR(t *testing.T) {
 					Spec: backendconfigv1.BackendConfigSpec{
 						SessionAffinity: &backendconfigv1.SessionAffinityConfig{
 							AffinityType:         saTypeCookie,
-							AffinityCookieTtlSec: &testCookieTTLSec,
+							AffinityCookieTtlSec: common.PtrTo(testCookieTTLSec),
 						},
 					},
 				},
@@ -731,7 +732,7 @@ func Test_convertToIR(t *testing.T) {
 									Name:     "test-mydomain-com-http",
 									Port:     80,
 									Protocol: gatewayv1.HTTPProtocolType,
-									Hostname: ptrTo(gatewayv1.Hostname(testHost)),
+									Hostname: common.PtrTo(gatewayv1.Hostname(testHost)),
 								}},
 							},
 						},
@@ -753,8 +754,8 @@ func Test_convertToIR(t *testing.T) {
 										Matches: []gatewayv1.HTTPRouteMatch{
 											{
 												Path: &gatewayv1.HTTPPathMatch{
-													Type:  &gPathPrefix,
-													Value: ptrTo("/"),
+													Type:  common.PtrTo(gPathPrefix),
+													Value: common.PtrTo("/"),
 												},
 											},
 										},
@@ -763,7 +764,7 @@ func Test_convertToIR(t *testing.T) {
 												BackendRef: gatewayv1.BackendRef{
 													BackendObjectReference: gatewayv1.BackendObjectReference{
 														Name: gatewayv1.ObjectName(testServiceName),
-														Port: ptrTo(gatewayv1.PortNumber(80)),
+														Port: common.PtrTo(gatewayv1.PortNumber(80)),
 													},
 												},
 											},
@@ -779,7 +780,7 @@ func Test_convertToIR(t *testing.T) {
 						Gce: &intermediate.GceServiceIR{
 							SessionAffinity: &intermediate.SessionAffinityConfig{
 								AffinityType: saTypeCookie,
-								CookieTTLSec: &testCookieTTLSec,
+								CookieTTLSec: common.PtrTo(testCookieTTLSec),
 							},
 						},
 					},
@@ -827,7 +828,7 @@ func Test_convertToIR(t *testing.T) {
 									Name:     "test-mydomain-com-http",
 									Port:     80,
 									Protocol: gatewayv1.HTTPProtocolType,
-									Hostname: ptrTo(gatewayv1.Hostname(testHost)),
+									Hostname: common.PtrTo(gatewayv1.Hostname(testHost)),
 								}},
 							},
 						},
@@ -849,8 +850,8 @@ func Test_convertToIR(t *testing.T) {
 										Matches: []gatewayv1.HTTPRouteMatch{
 											{
 												Path: &gatewayv1.HTTPPathMatch{
-													Type:  &gPathPrefix,
-													Value: ptrTo("/"),
+													Type:  common.PtrTo(gPathPrefix),
+													Value: common.PtrTo("/"),
 												},
 											},
 										},
@@ -859,7 +860,7 @@ func Test_convertToIR(t *testing.T) {
 												BackendRef: gatewayv1.BackendRef{
 													BackendObjectReference: gatewayv1.BackendObjectReference{
 														Name: gatewayv1.ObjectName(testServiceName),
-														Port: ptrTo(gatewayv1.PortNumber(80)),
+														Port: common.PtrTo(gatewayv1.PortNumber(80)),
 													},
 												},
 											},
@@ -949,10 +950,6 @@ func Test_convertToIR(t *testing.T) {
 			}
 		})
 	}
-}
-
-func ptrTo[T any](a T) *T {
-	return &a
 }
 
 func getTestIngress(ingressNamespace, ingressName, serviceName string, isExternalIngress bool) *networkingv1.Ingress {
