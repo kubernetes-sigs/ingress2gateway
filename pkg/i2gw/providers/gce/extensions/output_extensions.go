@@ -21,7 +21,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 )
 
-func BuildBackendPolicySessionAffinityConfig(serviceIR intermediate.ProviderSpecificServiceIR) *gkegatewayv1.SessionAffinityConfig {
+func BuildGCPBackendPolicySessionAffinityConfig(serviceIR intermediate.ProviderSpecificServiceIR) *gkegatewayv1.SessionAffinityConfig {
 	affinityType := serviceIR.Gce.SessionAffinity.AffinityType
 	saConfig := gkegatewayv1.SessionAffinityConfig{
 		Type: &affinityType,
@@ -32,7 +32,11 @@ func BuildBackendPolicySessionAffinityConfig(serviceIR intermediate.ProviderSpec
 	return &saConfig
 }
 
-func BuildBackendPolicySecurityPolicyConfig(serviceIR intermediate.ProviderSpecificServiceIR) *string {
+func BuildGCPBackendPolicySecurityPolicyConfig(serviceIR intermediate.ProviderSpecificServiceIR) *string {
 	securityPolicy := serviceIR.Gce.SecurityPolicy.Name
 	return &securityPolicy
+}
+
+func BuildGCPGatewayPolicySecurityPolicyConfig(gatewayIR intermediate.ProviderSpecificGatewayIR) string {
+	return gatewayIR.Gce.SslPolicy.Name
 }
