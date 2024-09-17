@@ -22,10 +22,14 @@ type GceGatewayIR struct {
 type GceHTTPRouteIR struct{}
 type GceServiceIR struct {
 	SessionAffinity *SessionAffinityConfig
+	SecurityPolicy  *SecurityPolicyConfig
 }
 type SessionAffinityConfig struct {
 	AffinityType string
 	CookieTTLSec *int64
+}
+type SecurityPolicyConfig struct {
+	Name string
 }
 
 func mergeGceGatewayIR(current, existing *GceGatewayIR) *GceGatewayIR {

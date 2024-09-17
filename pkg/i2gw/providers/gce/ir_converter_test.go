@@ -54,6 +54,7 @@ func Test_convertToIR(t *testing.T) {
 	saTypeClientIP := "CLIENT_IP"
 	testCookieTTLSec := int64(10)
 	saTypeCookie := "GENERATED_COOKIE"
+	testSecurityPolicy := "test-security-policy"
 
 	testCases := []struct {
 		name           string
@@ -882,6 +883,128 @@ func Test_convertToIR(t *testing.T) {
 							SessionAffinity: &intermediate.SessionAffinityConfig{
 								AffinityType: saTypeCookie,
 								CookieTTLSec: &testCookieTTLSec,
+							},
+						},
+					},
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
+		{
+			name: "ingress with a Backend Config specifying Security Policy",
+			ingresses: map[types.NamespacedName]*networkingv1.Ingress{
+				{Namespace: testNamespace, Name: extIngClassIngressName}: {
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        extIngClassIngressName,
+						Namespace:   testNamespace,
+						Annotations: map[string]string{networkingv1beta1.AnnotationIngressClass: gceIngressClass},
+					},
+					Spec: networkingv1.IngressSpec{
+						Rules: []networkingv1.IngressRule{{
+							Host: testHost,
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{{
+										Path:     "/",
+										PathType: &iPrefix,
+										Backend: networkingv1.IngressBackend{
+											Service: &networkingv1.IngressServiceBackend{
+												Name: testServiceName,
+												Port: networkingv1.ServiceBackendPort{
+													Number: 80,
+												},
+											},
+										},
+									}},
+								},
+							},
+						}},
+					},
+				},
+			},
+			services: map[types.NamespacedName]*apiv1.Service{
+				{Namespace: testNamespace, Name: testServiceName}: {
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: testNamespace,
+						Name:      testServiceName,
+						Annotations: map[string]string{
+							backendConfigKey: `{"default":"test-backendconfig"}`,
+						},
+					},
+				},
+			},
+			backendConfigs: map[types.NamespacedName]*backendconfigv1.BackendConfig{
+				{Namespace: testNamespace, Name: testBackendConfigName}: {
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: testNamespace,
+						Name:      testBackendConfigName,
+					},
+					Spec: backendconfigv1.BackendConfigSpec{
+						SecurityPolicy: &backendconfigv1.SecurityPolicyConfig{
+							Name: testSecurityPolicy,
+						},
+					},
+				},
+			},
+			expectedIR: intermediate.IR{
+				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+					{Namespace: testNamespace, Name: gceIngressClass}: {
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: gceL7GlobalExternalManagedGatewayClass,
+								Listeners: []gatewayv1.Listener{{
+									Name:     "test-mydomain-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: ptrTo(gatewayv1.Hostname(testHost)),
+								}},
+							},
+						},
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName)}: {
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName), Namespace: testNamespace},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: gceIngressClass,
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
+								Rules: []gatewayv1.HTTPRouteRule{
+									{
+										Matches: []gatewayv1.HTTPRouteMatch{
+											{
+												Path: &gatewayv1.HTTPPathMatch{
+													Type:  &gPathPrefix,
+													Value: ptrTo("/"),
+												},
+											},
+										},
+										BackendRefs: []gatewayv1.HTTPBackendRef{
+											{
+												BackendRef: gatewayv1.BackendRef{
+													BackendObjectReference: gatewayv1.BackendObjectReference{
+														Name: gatewayv1.ObjectName(testServiceName),
+														Port: ptrTo(gatewayv1.PortNumber(80)),
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				Services: map[types.NamespacedName]intermediate.ProviderSpecificServiceIR{
+					{Namespace: testNamespace, Name: testServiceName}: {
+						Gce: &intermediate.GceServiceIR{
+							SecurityPolicy: &intermediate.SecurityPolicyConfig{
+								Name: testSecurityPolicy,
 							},
 						},
 					},
