@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
+	frontendconfigv1beta1 "k8s.io/ingress-gce/pkg/apis/frontendconfig/v1beta1"
 )
 
 type contextKey int
@@ -82,8 +83,63 @@ func (c *resourcesToIRConverter) convertToIR(storage *storage) (intermediate.IR,
 	if len(errs) > 0 {
 		return intermediate.IR{}, errs
 	}
+	buildGceGatewayIR(c.ctx, storage, &ir)
 	buildGceServiceIR(c.ctx, storage, &ir)
 	return ir, errs
+}
+
+func buildGceGatewayIR(ctx context.Context, storage *storage, ir *intermediate.IR) {
+	if ir.Gateways == nil {
+		ir.Gateways = make(map[types.NamespacedName]intermediate.GatewayContext)
+	}
+
+	feConfigToIngs := getFrontendConfigMapping(ctx, storage)
+	for feConfigKey, feConfig := range storage.FrontendConfigs {
+		if feConfig == nil {
+			continue
+		}
+		gceGatewayIR := feConfigToGceGatewayIR(feConfig)
+		gateways := feConfigToIngs[feConfigKey]
+		for _, gwyKey := range gateways {
+			gatewayContext := ir.Gateways[gwyKey]
+			gatewayContext.ProviderSpecificIR.Gce = &gceGatewayIR
+			ir.Gateways[gwyKey] = gatewayContext
+		}
+	}
+}
+
+type ingressNames []types.NamespacedName
+
+func getFrontendConfigMapping(ctx context.Context, storage *storage) map[types.NamespacedName]ingressNames {
+	feConfigToIngs := make(map[types.NamespacedName]ingressNames)
+
+	for _, ingress := range storage.Ingresses {
+		ing := types.NamespacedName{Namespace: ingress.Namespace, Name: ingress.Name}
+		ctx = context.WithValue(ctx, serviceKey, ingress)
+
+		feConfigName, exists := getFrontendConfigAnnotation(ingress)
+		if exists {
+			feConfigKey := types.NamespacedName{Namespace: ingress.Namespace, Name: feConfigName}
+			feConfigToIngs[feConfigKey] = append(feConfigToIngs[feConfigKey], ing)
+			continue
+		}
+
+	}
+	return feConfigToIngs
+}
+
+// Get names of the FrontendConfig in the cluster based on the FrontendConfig
+// annotation on k8s Services.
+func getFrontendConfigAnnotation(ing *networkingv1.Ingress) (string, bool) {
+	val, ok := ing.ObjectMeta.Annotations[frontendConfigKey]
+	if !ok {
+		return "", false
+	}
+	return val, true
+}
+
+func feConfigToGceGatewayIR(feConfig *frontendconfigv1beta1.FrontendConfig) intermediate.GceGatewayIR {
+	return intermediate.GceGatewayIR{}
 }
 
 type serviceNames []types.NamespacedName
