@@ -35,6 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
+	frontendconfigv1beta1 "k8s.io/ingress-gce/pkg/apis/frontendconfig/v1beta1"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -54,6 +55,7 @@ const (
 	testFrontendConfigName = "test-frontendconfig"
 	testSecurityPolicy     = "test-security-policy"
 	testCookieTTLSec       = int64(10)
+	testSslPolicy          = "test-ssl-policy"
 )
 
 func Test_convertToIR(t *testing.T) {
@@ -704,6 +706,85 @@ func Test_convertToIR(t *testing.T) {
 			},
 			expectedErrors: field.ErrorList{},
 		},
+		{
+			name: "ingress with a Frontend Config specifying Ssl Policy",
+			modify: func(storage *storage) {
+				testIngress := storage.Ingresses[types.NamespacedName{Namespace: testNamespace, Name: testIngressName}]
+				if testIngress.Annotations == nil {
+					testIngress.Annotations = map[string]string{}
+				}
+				testIngress.Annotations[frontendConfigKey] = testFrontendConfigName
+				storage.Ingresses[types.NamespacedName{Namespace: testNamespace, Name: testIngressName}] = testIngress
+
+				feConfigSpec := frontendconfigv1beta1.FrontendConfigSpec{
+					SslPolicy: common.PtrTo(testSslPolicy),
+				}
+				storage.FrontendConfigs = map[types.NamespacedName]*frontendconfigv1beta1.FrontendConfig{
+					{Namespace: testNamespace, Name: testFrontendConfigName}: getTestFrontendConfig(testNamespace, testFrontendConfigName, feConfigSpec),
+				}
+			},
+			expectedIR: intermediate.IR{
+				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+					{Namespace: testNamespace, Name: gceIngressClass}: {
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: gceL7GlobalExternalManagedGatewayClass,
+								Listeners: []gatewayv1.Listener{{
+									Name:     "test-mydomain-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: common.PtrTo(gatewayv1.Hostname(testHost)),
+								}},
+							},
+						},
+						ProviderSpecificIR: intermediate.ProviderSpecificGatewayIR{
+							Gce: &intermediate.GceGatewayIR{
+								SslPolicy: &intermediate.SslPolicyConfig{Name: testSslPolicy},
+							},
+						},
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName)}: {
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName), Namespace: testNamespace},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: gceIngressClass,
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
+								Rules: []gatewayv1.HTTPRouteRule{
+									{
+										Matches: []gatewayv1.HTTPRouteMatch{
+											{
+												Path: &gatewayv1.HTTPPathMatch{
+													Type:  common.PtrTo(gPathPrefix),
+													Value: common.PtrTo("/"),
+												},
+											},
+										},
+										BackendRefs: []gatewayv1.HTTPBackendRef{
+											{
+												BackendRef: gatewayv1.BackendRef{
+													BackendObjectReference: gatewayv1.BackendObjectReference{
+														Name: gatewayv1.ObjectName(testServiceName),
+														Port: common.PtrTo(gatewayv1.PortNumber(80)),
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -815,6 +896,16 @@ func getTestIngress(namespace, name, serviceName string) *networkingv1.Ingress {
 
 func getTestBackendConfig(namespace, name string, spec backendconfigv1.BackendConfigSpec) *backendconfigv1.BackendConfig {
 	return &backendconfigv1.BackendConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      name,
+		},
+		Spec: spec,
+	}
+}
+
+func getTestFrontendConfig(namespace, name string, spec frontendconfigv1beta1.FrontendConfigSpec) *frontendconfigv1beta1.FrontendConfig {
+	return &frontendconfigv1beta1.FrontendConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      name,

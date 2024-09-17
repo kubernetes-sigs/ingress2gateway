@@ -93,13 +93,14 @@ func buildGceGatewayIR(ctx context.Context, storage *storage, ir *intermediate.I
 		ir.Gateways = make(map[types.NamespacedName]intermediate.GatewayContext)
 	}
 
-	feConfigToIngs := getFrontendConfigMapping(ctx, storage)
+	feConfigToGwys := getFrontendConfigMapping(ctx, storage)
 	for feConfigKey, feConfig := range storage.FrontendConfigs {
 		if feConfig == nil {
 			continue
 		}
 		gceGatewayIR := feConfigToGceGatewayIR(feConfig)
-		gateways := feConfigToIngs[feConfigKey]
+		gateways := feConfigToGwys[feConfigKey]
+
 		for _, gwyKey := range gateways {
 			gatewayContext := ir.Gateways[gwyKey]
 			gatewayContext.ProviderSpecificIR.Gce = &gceGatewayIR
@@ -108,24 +109,25 @@ func buildGceGatewayIR(ctx context.Context, storage *storage, ir *intermediate.I
 	}
 }
 
-type ingressNames []types.NamespacedName
+type gatewayNames []types.NamespacedName
 
-func getFrontendConfigMapping(ctx context.Context, storage *storage) map[types.NamespacedName]ingressNames {
-	feConfigToIngs := make(map[types.NamespacedName]ingressNames)
+func getFrontendConfigMapping(ctx context.Context, storage *storage) map[types.NamespacedName]gatewayNames {
+	feConfigToGwys := make(map[types.NamespacedName]gatewayNames)
 
 	for _, ingress := range storage.Ingresses {
-		ing := types.NamespacedName{Namespace: ingress.Namespace, Name: ingress.Name}
+		gwyKey := types.NamespacedName{Namespace: ingress.Namespace, Name: common.GetIngressClass(*ingress)}
+		// ing := types.NamespacedName{Namespace: ingress.Namespace, Name: ingress.Name}
 		ctx = context.WithValue(ctx, serviceKey, ingress)
 
 		feConfigName, exists := getFrontendConfigAnnotation(ingress)
 		if exists {
 			feConfigKey := types.NamespacedName{Namespace: ingress.Namespace, Name: feConfigName}
-			feConfigToIngs[feConfigKey] = append(feConfigToIngs[feConfigKey], ing)
+			feConfigToGwys[feConfigKey] = append(feConfigToGwys[feConfigKey], gwyKey)
 			continue
 		}
 
 	}
-	return feConfigToIngs
+	return feConfigToGwys
 }
 
 // Get names of the FrontendConfig in the cluster based on the FrontendConfig

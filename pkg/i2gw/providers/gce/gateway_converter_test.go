@@ -36,9 +36,10 @@ import (
 )
 
 const (
-	testGatewayName         = "test-gateway"
-	testHTTPRouteName       = "test-http-route"
-	testSaBackendPolicyName = testServiceName
+	testGatewayName             = "test-gateway"
+	testHTTPRouteName           = "test-http-route"
+	testSaGCPBackendPolicyName  = testServiceName
+	testSslGCPGatewayPolicyName = testGatewayName
 )
 
 var (
@@ -96,7 +97,7 @@ var (
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: testNamespace,
-			Name:      testSaBackendPolicyName,
+			Name:      testSaGCPBackendPolicyName,
 		},
 		Spec: gkegatewayv1.GCPBackendPolicySpec{
 			Default: &gkegatewayv1.GCPBackendPolicyConfig{
@@ -120,7 +121,7 @@ var (
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: testNamespace,
-			Name:      testSaBackendPolicyName,
+			Name:      testSaGCPBackendPolicyName,
 		},
 		Spec: gkegatewayv1.GCPBackendPolicySpec{
 			Default: &gkegatewayv1.GCPBackendPolicyConfig{
@@ -143,7 +144,7 @@ var (
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: testNamespace,
-			Name:      testSaBackendPolicyName,
+			Name:      testSaGCPBackendPolicyName,
 		},
 		Spec: gkegatewayv1.GCPBackendPolicySpec{
 			Default: &gkegatewayv1.GCPBackendPolicyConfig{
@@ -153,6 +154,27 @@ var (
 				Group: "",
 				Kind:  "Service",
 				Name:  gatewayv1.ObjectName(testServiceName),
+			},
+		},
+	}
+
+	testSslGCPGatewayPolicy = gkegatewayv1.GCPGatewayPolicy{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "networking.gke.io/v1",
+			Kind:       "GCPGatewayPolicy",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: testNamespace,
+			Name:      testSslGCPGatewayPolicyName,
+		},
+		Spec: gkegatewayv1.GCPGatewayPolicySpec{
+			Default: &gkegatewayv1.GCPGatewayPolicyConfig{
+				SslPolicy: testSslPolicy,
+			},
+			TargetRef: v1alpha2.NamespacedPolicyTargetReference{
+				Group: "gateway.networking.k8s.io",
+				Kind:  "Gateway",
+				Name:  gatewayv1.ObjectName(testGatewayName),
 			},
 		},
 	}
@@ -170,6 +192,10 @@ func Test_irToGateway(t *testing.T) {
 	testSpGCPBackendPolicyUnstructured, err := i2gw.CastToUnstructured(&testSpGCPBackendPolicy)
 	if err != nil {
 		t.Errorf("Failed to generate unstructured GCP Backend Policy with Security Policy feature: %v", err)
+	}
+	testSslGCPGatewayPolicyUnstructured, err := i2gw.CastToUnstructured(&testSslGCPGatewayPolicy)
+	if err != nil {
+		t.Errorf("Failed to generate unstructured GCP Gateway Policy with Ssl Policy feature: %v", err)
 	}
 
 	testCases := []struct {
@@ -283,6 +309,38 @@ func Test_irToGateway(t *testing.T) {
 				},
 				GatewayExtensions: []unstructured.Unstructured{
 					*testSpGCPBackendPolicyUnstructured,
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
+		{
+			name: "ingress with a Frontend Config specifying Ssl Policy",
+			ir: intermediate.IR{
+				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+					{Namespace: testNamespace, Name: testGatewayName}: {
+						Gateway: testGateway,
+						ProviderSpecificIR: intermediate.ProviderSpecificGatewayIR{
+							Gce: &intermediate.GceGatewayIR{
+								SslPolicy: &intermediate.SslPolicyConfig{Name: testSslPolicy},
+							},
+						},
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+					{Namespace: testNamespace, Name: testHTTPRouteName}: {
+						HTTPRoute: testHTTPRoute,
+					},
+				},
+			},
+			expectedGatewayResources: i2gw.GatewayResources{
+				Gateways: map[types.NamespacedName]gatewayv1.Gateway{
+					{Namespace: testNamespace, Name: testGatewayName}: testGateway,
+				},
+				HTTPRoutes: map[types.NamespacedName]gatewayv1.HTTPRoute{
+					{Namespace: testNamespace, Name: testHTTPRouteName}: testHTTPRoute,
+				},
+				GatewayExtensions: []unstructured.Unstructured{
+					*testSslGCPGatewayPolicyUnstructured,
 				},
 			},
 			expectedErrors: field.ErrorList{},
