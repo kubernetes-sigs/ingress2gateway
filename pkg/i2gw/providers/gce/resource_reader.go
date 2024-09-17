@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
+	frontendconfigv1beta1 "k8s.io/ingress-gce/pkg/apis/frontendconfig/v1beta1"
 )
 
 // GCE supports the following Ingress Class values:
@@ -75,6 +76,12 @@ func (r *reader) readResourcesFromCluster(ctx context.Context) (*storage, error)
 		return nil, err
 	}
 	storage.BackendConfigs = backendConfigs
+
+	frontConfigs, err := r.readFrontendConfigsFromCluster(ctx)
+	if err != nil {
+		return nil, err
+	}
+	storage.FrontendConfigs = frontConfigs
 	return storage, nil
 }
 
@@ -123,12 +130,26 @@ func (r *reader) readBackendConfigsFromCluster(ctx context.Context) (map[types.N
 	return backendConfigs, nil
 }
 
+func (r *reader) readFrontendConfigsFromCluster(ctx context.Context) (map[types.NamespacedName]*frontendconfigv1beta1.FrontendConfig, error) {
+	var frontendConfigList frontendconfigv1beta1.FrontendConfigList
+	err := r.conf.Client.List(ctx, &frontendConfigList)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get frontendConfigs from the cluster: %w", err)
+	}
+	frontendConfigs := make(map[types.NamespacedName]*frontendconfigv1beta1.FrontendConfig)
+	for i, frontendConfig := range frontendConfigList.Items {
+		frontendConfigs[types.NamespacedName{Namespace: frontendConfig.Namespace, Name: frontendConfig.Name}] = &frontendConfigList.Items[i]
+	}
+	return frontendConfigs, nil
+}
+
 func (r *reader) readUnstructuredObjects(objects []*unstructured.Unstructured) (*storage, error) {
 	res := newResourcesStorage()
 
 	ingresses := make(map[types.NamespacedName]*networkingv1.Ingress)
 	services := make(map[types.NamespacedName]*apiv1.Service)
 	backendConfigs := make(map[types.NamespacedName]*backendconfigv1.BackendConfig)
+	frontendConfigs := make(map[types.NamespacedName]*frontendconfigv1beta1.FrontendConfig)
 
 	for _, f := range objects {
 		if f.GroupVersionKind().Empty() {
@@ -164,6 +185,15 @@ func (r *reader) readUnstructuredObjects(objects []*unstructured.Unstructured) (
 				return nil, err
 			}
 			backendConfigs[types.NamespacedName{Namespace: backendConfig.Namespace, Name: backendConfig.Name}] = &backendConfig
+		}
+		if f.GetAPIVersion() == "networking.gke.io/v1beta1" && f.GetKind() == "FrontendConfig" {
+			var frontendConfig frontendconfigv1beta1.FrontendConfig
+			err := runtime.DefaultUnstructuredConverter.
+				FromUnstructured(f.UnstructuredContent(), &frontendConfig)
+			if err != nil {
+				return nil, err
+			}
+			frontendConfigs[types.NamespacedName{Namespace: frontendConfig.Namespace, Name: frontendConfig.Name}] = &frontendConfig
 		}
 	}
 	res.Ingresses = ingresses
