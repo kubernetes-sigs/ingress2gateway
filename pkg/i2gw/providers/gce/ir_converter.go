@@ -19,12 +19,19 @@ package gce
 import (
 	"context"
 
+	"encoding/json"
+
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/gce/extensions"
+	apiv1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
 )
 
 type contextKey int
@@ -77,4 +84,126 @@ func (c *resourcesToIRConverter) convertToIR(storage *storage) (intermediate.IR,
 	}
 	buildGceServiceIR(c.ctx, storage, &ir)
 	return ir, errs
+}
+
+type serviceNames []types.NamespacedName
+
+func buildGceServiceIR(ctx context.Context, storage *storage, ir *intermediate.IR) {
+	if ir.Services == nil {
+		ir.Services = make(map[types.NamespacedName]intermediate.ProviderSpecificServiceIR)
+	}
+
+	beConfigToSvcs := getBackendConfigMapping(ctx, storage)
+	for beConfigKey, beConfig := range storage.BackendConfigs {
+		if beConfig == nil {
+			continue
+		}
+		if err := extensions.ValidateBeConfig(beConfig); err != nil {
+			notify(notifications.ErrorNotification, err.Error(), beConfig)
+			continue
+		}
+		gceServiceIR := beConfigToGceServiceIR(beConfig)
+		services := beConfigToSvcs[beConfigKey]
+		for _, svcKey := range services {
+			serviceIR := ir.Services[svcKey]
+			serviceIR.Gce = &gceServiceIR
+			ir.Services[svcKey] = serviceIR
+		}
+	}
+}
+
+func getBackendConfigMapping(ctx context.Context, storage *storage) map[types.NamespacedName]serviceNames {
+	beConfigToSvcs := make(map[types.NamespacedName]serviceNames)
+
+	for _, service := range storage.Services {
+		svc := types.NamespacedName{Namespace: service.Namespace, Name: service.Name}
+		ctx = context.WithValue(ctx, serviceKey, service)
+
+		// Read BackendConfig based on v1 BackendConfigKey.
+		beConfigName, exists := getBackendConfigName(ctx, service, backendConfigKey)
+		if exists {
+			beConfigKey := types.NamespacedName{Namespace: service.Namespace, Name: beConfigName}
+			beConfigToSvcs[beConfigKey] = append(beConfigToSvcs[beConfigKey], svc)
+			continue
+		}
+
+		// Read BackendConfig based on v1beta1 BackendConfigKey.
+		beConfigName, exists = getBackendConfigName(ctx, service, betaBackendConfigKey)
+		if exists {
+			beConfigKey := types.NamespacedName{Namespace: service.Namespace, Name: beConfigName}
+			beConfigToSvcs[beConfigKey] = append(beConfigToSvcs[beConfigKey], svc)
+			continue
+		}
+	}
+	return beConfigToSvcs
+}
+
+// Get names of the BackendConfig in the cluster based on the BackendConfig
+// annotation on k8s Services.
+func getBackendConfigName(ctx context.Context, service *apiv1.Service, backendConfigKey string) (string, bool) {
+	val, exists := getBackendConfigAnnotation(service, backendConfigKey)
+	if !exists {
+		return "", false
+	}
+
+	return parseBackendConfigName(ctx, val)
+}
+
+// Get the backend config annotation from the K8s service if it exists.
+func getBackendConfigAnnotation(service *apiv1.Service, backendConfigKey string) (string, bool) {
+	val, ok := service.Annotations[backendConfigKey]
+	if ok {
+		return val, ok
+	}
+	return "", false
+}
+
+type backendConfigs struct {
+	Default string            `json:"default,omitempty"`
+	Ports   map[string]string `json:"ports,omitempty"`
+}
+
+// Parse the name of the BackendConfig based on the annotation.
+// If different BackendConfigs are used on the same service, pick the one with
+// the alphabetically smallest name.
+func parseBackendConfigName(ctx context.Context, val string) (string, bool) {
+	service := ctx.Value(serviceKey).(*apiv1.Service)
+
+	var configs backendConfigs
+	if err := json.Unmarshal([]byte(val), &configs); err != nil {
+		notify(notifications.ErrorNotification, "BackendConfig annotation is invalid json", service)
+		return "", false
+	}
+
+	if configs.Default == "" && len(configs.Ports) == 0 {
+		notify(notifications.ErrorNotification, "No BackendConfig's found in annotation", service)
+		return "", false
+	}
+
+	if len(configs.Ports) != 0 {
+		notify(notifications.ErrorNotification, "HealthCheckPolicy and GCPBackendPolicy can only be attached on the whole service, so having a dedicate policy for each port is not yet supported. Picking the first BackendConfig to translate to corresponding Gateway policy.", service)
+		// Return the BackendConfig associated with the alphabetically smallest port.
+		var backendConfigName string
+		var lowestPort string
+		for p, name := range configs.Ports {
+			if lowestPort == "" || p < lowestPort {
+				backendConfigName = name
+				lowestPort = p
+			}
+		}
+		return backendConfigName, true
+	}
+	return configs.Default, true
+}
+
+func beConfigToGceServiceIR(beConfig *backendconfigv1.BackendConfig) intermediate.GceServiceIR {
+	var gceServiceIR intermediate.GceServiceIR
+	if beConfig.Spec.SessionAffinity != nil {
+		gceServiceIR.SessionAffinity = extensions.BuildIRSessionAffinityConfig(beConfig)
+	}
+	if beConfig.Spec.SecurityPolicy != nil {
+		gceServiceIR.SecurityPolicy = extensions.BuildIRSecurityPolicyConfig(beConfig)
+	}
+
+	return gceServiceIR
 }
