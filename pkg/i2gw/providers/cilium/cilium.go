@@ -41,7 +41,7 @@ type Provider struct {
 	resourcesToIRConverter *resourcesToIRConverter
 }
 
-// NewProvider constructs and returns the ingress-nginx implementation of i2gw.Provider.
+// NewProvider constructs and returns the apisix implementation of i2gw.Provider.
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 	return &Provider{
 		storage:                newResourcesStorage(),
@@ -50,15 +50,14 @@ func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 	}
 }
 
-// ToIR converts stored Ingress-Nginx API entities to intermediate.IR
-// including the ingress-nginx specific features.
+// ToIR converts stored Cilium API entities to intermediate.IR
+// including the cilium specific features.
 func (p *Provider) ToIR() (intermediate.IR, field.ErrorList) {
-	return p.resourcesToIRConverter.convert(p.storage)
+	return p.resourcesToIRConverter.convertToIR(p.storage)
 }
 
 func (p *Provider) ToGatewayResources(ir intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
 	return common.ToGatewayResources(ir)
-
 }
 
 func (p *Provider) ReadResourcesFromCluster(ctx context.Context) error {
