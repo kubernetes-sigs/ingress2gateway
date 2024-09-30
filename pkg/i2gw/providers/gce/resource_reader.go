@@ -199,5 +199,6 @@ func (r *reader) readUnstructuredObjects(objects []*unstructured.Unstructured) (
 	res.Ingresses = ingresses
 	res.Services = services
 	res.BackendConfigs = backendConfigs
+	res.FrontendConfigs = frontendConfigs
 	return res, nil
 }
