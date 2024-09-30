@@ -40,3 +40,52 @@ func BuildGCPBackendPolicySecurityPolicyConfig(serviceIR intermediate.ProviderSp
 func BuildGCPGatewayPolicySecurityPolicyConfig(gatewayIR intermediate.ProviderSpecificGatewayIR) string {
 	return gatewayIR.Gce.SslPolicy.Name
 }
+
+func BuildHealthCheckPolicyConfig(serviceIR intermediate.ProviderSpecificServiceIR) *gkegatewayv1.HealthCheckPolicyConfig {
+	hcConfig := gkegatewayv1.HealthCheckPolicyConfig{
+		CheckIntervalSec:   serviceIR.Gce.HealthCheck.CheckIntervalSec,
+		TimeoutSec:         serviceIR.Gce.HealthCheck.TimeoutSec,
+		HealthyThreshold:   serviceIR.Gce.HealthCheck.HealthyThreshold,
+		UnhealthyThreshold: serviceIR.Gce.HealthCheck.UnhealthyThreshold,
+	}
+	commonHc := gkegatewayv1.CommonHealthCheck{
+		Port: serviceIR.Gce.HealthCheck.Port,
+	}
+	commonHTTPHc := gkegatewayv1.CommonHTTPHealthCheck{
+		RequestPath: serviceIR.Gce.HealthCheck.RequestPath,
+	}
+
+	switch *serviceIR.Gce.HealthCheck.Type {
+	case "HTTP":
+		hcConfig.Config = &gkegatewayv1.HealthCheck{
+			Type: gkegatewayv1.HTTP,
+			HTTP: &gkegatewayv1.HTTPHealthCheck{
+				CommonHealthCheck:     commonHc,
+				CommonHTTPHealthCheck: commonHTTPHc,
+			},
+		}
+
+	case "HTTPS":
+		hcConfig.Config = &gkegatewayv1.HealthCheck{
+			Type: gkegatewayv1.HTTPS,
+			HTTPS: &gkegatewayv1.HTTPSHealthCheck{
+				CommonHealthCheck:     commonHc,
+				CommonHTTPHealthCheck: commonHTTPHc,
+			},
+		}
+
+	case "HTTP2":
+		hcConfig.Config = &gkegatewayv1.HealthCheck{
+			Type: gkegatewayv1.HTTP2,
+			HTTP2: &gkegatewayv1.HTTP2HealthCheck{
+				CommonHealthCheck:     commonHc,
+				CommonHTTPHealthCheck: commonHTTPHc,
+			},
+		}
+
+	default:
+		return nil
+	}
+
+	return &hcConfig
+}

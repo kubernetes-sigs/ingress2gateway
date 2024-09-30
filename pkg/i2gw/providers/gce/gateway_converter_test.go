@@ -345,6 +345,132 @@ func Test_irToGateway(t *testing.T) {
 			},
 			expectedErrors: field.ErrorList{},
 		},
+		{
+			name: "ingress with a Backend Config specifying custom HTTP health check",
+			ir: intermediate.IR{
+				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+					{Namespace: testNamespace, Name: testGatewayName}: {
+						Gateway: testGateway,
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+					{Namespace: testNamespace, Name: testHTTPRouteName}: {
+						HTTPRoute: testHTTPRoute,
+					},
+				},
+				Services: map[types.NamespacedName]intermediate.ProviderSpecificServiceIR{
+					{Namespace: testNamespace, Name: testServiceName}: {
+						Gce: &intermediate.GceServiceIR{
+							HealthCheck: &intermediate.HealthCheckConfig{
+								CheckIntervalSec:   common.PtrTo(testCheckIntervalSec),
+								TimeoutSec:         common.PtrTo(testTimeoutSec),
+								HealthyThreshold:   common.PtrTo(testHealthyThreshold),
+								UnhealthyThreshold: common.PtrTo(testUnhealthyThreshold),
+								Type:               common.PtrTo(protocolHTTP),
+								Port:               common.PtrTo(testPort),
+								RequestPath:        common.PtrTo(testRequestPath),
+							},
+						},
+					},
+				},
+			},
+			expectedGatewayResources: i2gw.GatewayResources{
+				Gateways: map[types.NamespacedName]gatewayv1.Gateway{
+					{Namespace: testNamespace, Name: testGatewayName}: testGateway,
+				},
+				HTTPRoutes: map[types.NamespacedName]gatewayv1.HTTPRoute{
+					{Namespace: testNamespace, Name: testHTTPRouteName}: testHTTPRoute,
+				},
+				GatewayExtensions: []unstructured.Unstructured{
+					getTestHealthCheckPolicyUnstrctured(testNamespace, testServiceName, protocolHTTP),
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
+		{
+			name: "ingress with a Backend Config specifying custom HTTPS health check",
+			ir: intermediate.IR{
+				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+					{Namespace: testNamespace, Name: testGatewayName}: {
+						Gateway: testGateway,
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+					{Namespace: testNamespace, Name: testHTTPRouteName}: {
+						HTTPRoute: testHTTPRoute,
+					},
+				},
+				Services: map[types.NamespacedName]intermediate.ProviderSpecificServiceIR{
+					{Namespace: testNamespace, Name: testServiceName}: {
+						Gce: &intermediate.GceServiceIR{
+							HealthCheck: &intermediate.HealthCheckConfig{
+								CheckIntervalSec:   common.PtrTo(testCheckIntervalSec),
+								TimeoutSec:         common.PtrTo(testTimeoutSec),
+								HealthyThreshold:   common.PtrTo(testHealthyThreshold),
+								UnhealthyThreshold: common.PtrTo(testUnhealthyThreshold),
+								Type:               common.PtrTo(protocolHTTPS),
+								Port:               common.PtrTo(testPort),
+								RequestPath:        common.PtrTo(testRequestPath),
+							},
+						},
+					},
+				},
+			},
+			expectedGatewayResources: i2gw.GatewayResources{
+				Gateways: map[types.NamespacedName]gatewayv1.Gateway{
+					{Namespace: testNamespace, Name: testGatewayName}: testGateway,
+				},
+				HTTPRoutes: map[types.NamespacedName]gatewayv1.HTTPRoute{
+					{Namespace: testNamespace, Name: testHTTPRouteName}: testHTTPRoute,
+				},
+				GatewayExtensions: []unstructured.Unstructured{
+					getTestHealthCheckPolicyUnstrctured(testNamespace, testServiceName, protocolHTTPS),
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
+		{
+			name: "ingress with a Backend Config specifying custom HTTP2 health check",
+			ir: intermediate.IR{
+				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+					{Namespace: testNamespace, Name: testGatewayName}: {
+						Gateway: testGateway,
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+					{Namespace: testNamespace, Name: testHTTPRouteName}: {
+						HTTPRoute: testHTTPRoute,
+					},
+				},
+				Services: map[types.NamespacedName]intermediate.ProviderSpecificServiceIR{
+					{Namespace: testNamespace, Name: testServiceName}: {
+						Gce: &intermediate.GceServiceIR{
+							HealthCheck: &intermediate.HealthCheckConfig{
+								CheckIntervalSec:   common.PtrTo(testCheckIntervalSec),
+								TimeoutSec:         common.PtrTo(testTimeoutSec),
+								HealthyThreshold:   common.PtrTo(testHealthyThreshold),
+								UnhealthyThreshold: common.PtrTo(testUnhealthyThreshold),
+								Type:               common.PtrTo(protocolHTTP2),
+								Port:               common.PtrTo(testPort),
+								RequestPath:        common.PtrTo(testRequestPath),
+							},
+						},
+					},
+				},
+			},
+			expectedGatewayResources: i2gw.GatewayResources{
+				Gateways: map[types.NamespacedName]gatewayv1.Gateway{
+					{Namespace: testNamespace, Name: testGatewayName}: testGateway,
+				},
+				HTTPRoutes: map[types.NamespacedName]gatewayv1.HTTPRoute{
+					{Namespace: testNamespace, Name: testHTTPRouteName}: testHTTPRoute,
+				},
+				GatewayExtensions: []unstructured.Unstructured{
+					getTestHealthCheckPolicyUnstrctured(testNamespace, testServiceName, protocolHTTP2),
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -411,4 +537,72 @@ func Test_irToGateway(t *testing.T) {
 			}
 		})
 	}
+}
+
+// getTestHealthCheckPolicyUnstrctured returns the template HealthCheckPolicy
+// based on the protocol and the service it attaches to.
+func getTestHealthCheckPolicyUnstrctured(serviceNamespace, serviceName, protocol string) unstructured.Unstructured {
+	commonHc := gkegatewayv1.CommonHealthCheck{
+		Port: common.PtrTo(testPort),
+	}
+	commonHTTPHc := gkegatewayv1.CommonHTTPHealthCheck{
+		RequestPath: common.PtrTo(testRequestPath),
+	}
+
+	hcPolicy := gkegatewayv1.HealthCheckPolicy{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "networking.gke.io/v1",
+			Kind:       "HealthCheckPolicy",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: serviceNamespace,
+			Name:      serviceName, // Converted Health Check Policy will share the name of the service it attaches to.
+		},
+		Spec: gkegatewayv1.HealthCheckPolicySpec{
+			Default: &gkegatewayv1.HealthCheckPolicyConfig{
+				CheckIntervalSec:   common.PtrTo(testCheckIntervalSec),
+				TimeoutSec:         common.PtrTo(testTimeoutSec),
+				HealthyThreshold:   common.PtrTo(testHealthyThreshold),
+				UnhealthyThreshold: common.PtrTo(testUnhealthyThreshold),
+			},
+			TargetRef: v1alpha2.NamespacedPolicyTargetReference{
+				Group: "",
+				Kind:  "Service",
+				Name:  gatewayv1.ObjectName(serviceName),
+			},
+		},
+	}
+	if protocol == protocolHTTP {
+		hcPolicy.Spec.Default.Config = &gkegatewayv1.HealthCheck{
+			Type: gkegatewayv1.HTTP,
+			HTTP: &gkegatewayv1.HTTPHealthCheck{
+				CommonHealthCheck:     commonHc,
+				CommonHTTPHealthCheck: commonHTTPHc,
+			},
+		}
+	} else if protocol == protocolHTTPS {
+		hcPolicy.Spec.Default.Config = &gkegatewayv1.HealthCheck{
+			Type: gkegatewayv1.HTTPS,
+			HTTPS: &gkegatewayv1.HTTPSHealthCheck{
+				CommonHealthCheck:     commonHc,
+				CommonHTTPHealthCheck: commonHTTPHc,
+			},
+		}
+	} else if protocol == protocolHTTP2 {
+		hcPolicy.Spec.Default.Config = &gkegatewayv1.HealthCheck{
+			Type: gkegatewayv1.HTTP2,
+			HTTP2: &gkegatewayv1.HTTP2HealthCheck{
+				CommonHealthCheck:     commonHc,
+				CommonHTTPHealthCheck: commonHTTPHc,
+			},
+		}
+	} else {
+		return unstructured.Unstructured{}
+	}
+	hcPolicyUnstructured, err := i2gw.CastToUnstructured(&hcPolicy)
+	if err != nil {
+		return unstructured.Unstructured{}
+	}
+
+	return *hcPolicyUnstructured
 }
