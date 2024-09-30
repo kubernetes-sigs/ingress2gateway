@@ -20,9 +20,12 @@ import (
 	"fmt"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"k8s.io/apimachinery/pkg/util/sets"
 	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
 	frontendconfigv1beta1 "k8s.io/ingress-gce/pkg/apis/frontendconfig/v1beta1"
 )
+
+var supportedHcProtocol = sets.NewString("HTTP", "HTTPS", "HTTP2")
 
 func ValidateBeConfig(beConfig *backendconfigv1.BackendConfig) error {
 	if beConfig.Spec.SessionAffinity != nil {
@@ -50,8 +53,9 @@ func validateHealthCheck(beConfig *backendconfigv1.BackendConfig) error {
 	if hcType == nil {
 		return fmt.Errorf("HealthCheck Protocol type is not specified")
 	}
-	if *hcType != "HTTP" && *hcType != "HTTPS" && *hcType != "HTTP2" {
-		return fmt.Errorf("Protocol %q is not valid, must be one of [HTTP,HTTPS,HTTP2]", *hcType)
+
+	if !supportedHcProtocol.Has(*hcType) {
+		return fmt.Errorf("Protocol %q is not valid, must be one of %v", *hcType, supportedHcProtocol)
 	}
 	return nil
 }
