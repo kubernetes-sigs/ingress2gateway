@@ -42,13 +42,58 @@ func (c *irToGatewayResourcesConverter) irToGateway(ir intermediate.IR) (i2gw.Ga
 	if len(errs) != 0 {
 		return i2gw.GatewayResources{}, errs
 	}
+	buildGceGatewayExtensions(ir, &gatewayResources)
 	buildGceServiceExtensions(ir, &gatewayResources)
 	return gatewayResources, nil
 }
 
+func buildGceGatewayExtensions(ir intermediate.IR, gatewayResources *i2gw.GatewayResources) {
+	for gwyKey, gatewayContext := range ir.Gateways {
+		gwyPolicy := addGatewayPolicyIfConfigured(gwyKey, gatewayContext.ProviderSpecificIR)
+		if gwyPolicy == nil {
+			continue
+		}
+		obj, err := i2gw.CastToUnstructured(gwyPolicy)
+		if err != nil {
+			notify(notifications.ErrorNotification, "Failed to cast GCPGatewayPolicy to unstructured", gwyPolicy)
+			continue
+		}
+		gatewayResources.GatewayExtensions = append(gatewayResources.GatewayExtensions, *obj)
+	}
+}
+
+func addGatewayPolicyIfConfigured(gatewayNamespacedName types.NamespacedName, gatewayIR intermediate.ProviderSpecificGatewayIR) *gkegatewayv1.GCPGatewayPolicy {
+	if gatewayIR.Gce == nil {
+		return nil
+	}
+	// If there is no specification related to GCPGatewayPolicy feature, return nil.
+	if gatewayIR.Gce.SslPolicy == nil {
+		return nil
+	}
+	gcpGatewayPolicy := gkegatewayv1.GCPGatewayPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: gatewayNamespacedName.Namespace,
+			Name:      gatewayNamespacedName.Name,
+		},
+		Spec: gkegatewayv1.GCPGatewayPolicySpec{
+			Default: &gkegatewayv1.GCPGatewayPolicyConfig{},
+			TargetRef: gatewayv1alpha2.NamespacedPolicyTargetReference{
+				Group: "gateway.networking.k8s.io",
+				Kind:  "Gateway",
+				Name:  gatewayv1.ObjectName(gatewayNamespacedName.Name),
+			},
+		},
+	}
+	gcpGatewayPolicy.SetGroupVersionKind(GCPGatewayPolicyGVK)
+	if gatewayIR.Gce.SslPolicy != nil {
+		gcpGatewayPolicy.Spec.Default.SslPolicy = extensions.BuildGCPGatewayPolicySecurityPolicyConfig(gatewayIR)
+	}
+	return &gcpGatewayPolicy
+}
+
 func buildGceServiceExtensions(ir intermediate.IR, gatewayResources *i2gw.GatewayResources) {
 	for svcKey, serviceIR := range ir.Services {
-		bePolicy := addBackendPolicyIfConfigured(svcKey, serviceIR)
+		bePolicy := addGCPBackendPolicyIfConfigured(svcKey, serviceIR)
 		if bePolicy == nil {
 			continue
 		}
@@ -61,11 +106,11 @@ func buildGceServiceExtensions(ir intermediate.IR, gatewayResources *i2gw.Gatewa
 	}
 }
 
-func addBackendPolicyIfConfigured(serviceNamespacedName types.NamespacedName, serviceIR intermediate.ProviderSpecificServiceIR) *gkegatewayv1.GCPBackendPolicy {
+func addGCPBackendPolicyIfConfigured(serviceNamespacedName types.NamespacedName, serviceIR intermediate.ProviderSpecificServiceIR) *gkegatewayv1.GCPBackendPolicy {
 	if serviceIR.Gce == nil {
 		return nil
 	}
-	backendPolicy := gkegatewayv1.GCPBackendPolicy{
+	gcpBackendPolicy := gkegatewayv1.GCPBackendPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: serviceNamespacedName.Namespace,
 			Name:      serviceNamespacedName.Name,
@@ -79,14 +124,14 @@ func addBackendPolicyIfConfigured(serviceNamespacedName types.NamespacedName, se
 			},
 		},
 	}
-	backendPolicy.SetGroupVersionKind(GCPBackendPolicyGVK)
+	gcpBackendPolicy.SetGroupVersionKind(GCPBackendPolicyGVK)
 
 	if serviceIR.Gce.SessionAffinity != nil {
-		backendPolicy.Spec.Default.SessionAffinity = extensions.BuildBackendPolicySessionAffinityConfig(serviceIR)
+		gcpBackendPolicy.Spec.Default.SessionAffinity = extensions.BuildGCPBackendPolicySessionAffinityConfig(serviceIR)
 	}
 	if serviceIR.Gce.SecurityPolicy != nil {
-		backendPolicy.Spec.Default.SecurityPolicy = extensions.BuildBackendPolicySecurityPolicyConfig(serviceIR)
+		gcpBackendPolicy.Spec.Default.SecurityPolicy = extensions.BuildGCPBackendPolicySecurityPolicyConfig(serviceIR)
 	}
 
-	return &backendPolicy
+	return &gcpBackendPolicy
 }

@@ -26,10 +26,19 @@ const (
 	gceL7RegionalInternalGatewayClass      = "gke-l7-rilb"
 	backendConfigKey                       = "cloud.google.com/backend-config"
 	betaBackendConfigKey                   = "beta.cloud.google.com/backend-config"
+	frontendConfigKey                      = "networking.gke.io/v1beta1.FrontendConfig"
 )
 
-var GCPBackendPolicyGVK = schema.GroupVersionKind{
-	Group:   "networking.gke.io",
-	Version: "v1",
-	Kind:    "GCPBackendPolicy",
-}
+var (
+	GCPBackendPolicyGVK = schema.GroupVersionKind{
+		Group:   "networking.gke.io",
+		Version: "v1",
+		Kind:    "GCPBackendPolicy",
+	}
+
+	GCPGatewayPolicyGVK = schema.GroupVersionKind{
+		Group:   "networking.gke.io",
+		Version: "v1",
+		Kind:    "GCPGatewayPolicy",
+	}
+)

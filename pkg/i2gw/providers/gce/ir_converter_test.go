@@ -35,6 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
+	frontendconfigv1beta1 "k8s.io/ingress-gce/pkg/apis/frontendconfig/v1beta1"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -46,43 +47,28 @@ const (
 	gExact               = gatewayv1.PathMatchExact
 	implSpecificPathType = networkingv1.PathTypeImplementationSpecific
 
-	testNamespace         = "default"
-	testHost              = "test.mydomain.com"
-	testServiceName       = "test-service"
-	testBackendConfigName = "test-backendconfig"
-	testSecurityPolicy    = "test-security-policy"
-	testCookieTTLSec      = int64(10)
+	testNamespace          = "default"
+	testHost               = "test.mydomain.com"
+	testIngressName        = "test-ingress"
+	testServiceName        = "test-service"
+	testBackendConfigName  = "test-backendconfig"
+	testFrontendConfigName = "test-frontendconfig"
+	testSecurityPolicy     = "test-security-policy"
+	testCookieTTLSec       = int64(10)
+	testSslPolicy          = "test-ssl-policy"
 )
 
 func Test_convertToIR(t *testing.T) {
-	extIngClassIngressName := "gce-ingress-class"
-	intIngClassIngressName := "gce-internal-ingress-class"
-	noIngClassIngressName := "no-ingress-class"
-
-	testExtIngress := getTestIngress(testNamespace, extIngClassIngressName, testServiceName, true)
-	testIntIngress := getTestIngress(testNamespace, intIngClassIngressName, testServiceName, false)
-
 	testCases := []struct {
-		name           string
-		ingresses      map[types.NamespacedName]*networkingv1.Ingress
-		services       map[types.NamespacedName]*apiv1.Service
-		backendConfigs map[types.NamespacedName]*backendconfigv1.BackendConfig
+		name string
+
+		modify         func(storage *storage)
 		expectedIR     intermediate.IR
 		expectedErrors field.ErrorList
 	}{
 		{
-			name: "gce ingress class",
-			ingresses: map[types.NamespacedName]*networkingv1.Ingress{
-				{Namespace: testNamespace, Name: extIngClassIngressName}: testExtIngress,
-			},
-			services: map[types.NamespacedName]*apiv1.Service{
-				{Namespace: testNamespace, Name: testServiceName}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: testNamespace,
-						Name:      testServiceName,
-					},
-				},
-			},
+			name:   "gce ingress class",
+			modify: func(_ *storage) {},
 			expectedIR: intermediate.IR{
 				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
 					{Namespace: testNamespace, Name: gceIngressClass}: {
@@ -100,9 +86,9 @@ func Test_convertToIR(t *testing.T) {
 					},
 				},
 				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
-					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName)}: {
+					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName)}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
-							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName), Namespace: testNamespace},
+							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName), Namespace: testNamespace},
 							Spec: gatewayv1.HTTPRouteSpec{
 								CommonRouteSpec: gatewayv1.CommonRouteSpec{
 									ParentRefs: []gatewayv1.ParentReference{{
@@ -141,16 +127,11 @@ func Test_convertToIR(t *testing.T) {
 		},
 		{
 			name: "gce-internal ingress class",
-			ingresses: map[types.NamespacedName]*networkingv1.Ingress{
-				{Namespace: testNamespace, Name: intIngClassIngressName}: testIntIngress,
-			},
-			services: map[types.NamespacedName]*apiv1.Service{
-				{Namespace: testNamespace, Name: testServiceName}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: testNamespace,
-						Name:      testServiceName,
-					},
-				},
+			modify: func(storage *storage) {
+				// Update Ingress class to be gceL7ILBIngressClass.
+				testIngress := storage.Ingresses[types.NamespacedName{Namespace: testNamespace, Name: testIngressName}]
+				testIngress.Annotations = map[string]string{networkingv1beta1.AnnotationIngressClass: gceL7ILBIngressClass}
+				storage.Ingresses[types.NamespacedName{Namespace: testNamespace, Name: testIngressName}] = testIngress
 			},
 			expectedIR: intermediate.IR{
 				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
@@ -165,14 +146,13 @@ func Test_convertToIR(t *testing.T) {
 									Protocol: gatewayv1.HTTPProtocolType,
 									Hostname: common.PtrTo(gatewayv1.Hostname(testHost)),
 								}},
-							},
-						},
+							}},
 					},
 				},
 				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
-					{Namespace: testNamespace, Name: "gce-internal-ingress-class-test-mydomain-com"}: {
+					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName)}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
-							ObjectMeta: metav1.ObjectMeta{Name: "gce-internal-ingress-class-test-mydomain-com", Namespace: testNamespace},
+							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName), Namespace: testNamespace},
 							Spec: gatewayv1.HTTPRouteSpec{
 								CommonRouteSpec: gatewayv1.CommonRouteSpec{
 									ParentRefs: []gatewayv1.ParentReference{{
@@ -211,42 +191,11 @@ func Test_convertToIR(t *testing.T) {
 		},
 		{
 			name: "empty ingress class, default to gce ingress class",
-			ingresses: map[types.NamespacedName]*networkingv1.Ingress{
-				{Namespace: testNamespace, Name: noIngClassIngressName}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      noIngClassIngressName,
-						Namespace: testNamespace,
-					},
-					Spec: networkingv1.IngressSpec{
-						Rules: []networkingv1.IngressRule{{
-							Host: testHost,
-							IngressRuleValue: networkingv1.IngressRuleValue{
-								HTTP: &networkingv1.HTTPIngressRuleValue{
-									Paths: []networkingv1.HTTPIngressPath{{
-										Path:     "/",
-										PathType: common.PtrTo(iPrefix),
-										Backend: networkingv1.IngressBackend{
-											Service: &networkingv1.IngressServiceBackend{
-												Name: testServiceName,
-												Port: networkingv1.ServiceBackendPort{
-													Number: 80,
-												},
-											},
-										},
-									}},
-								},
-							},
-						}},
-					},
-				},
-			},
-			services: map[types.NamespacedName]*apiv1.Service{
-				{Namespace: testNamespace, Name: testServiceName}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: testNamespace,
-						Name:      testServiceName,
-					},
-				},
+			modify: func(storage *storage) {
+				// Update Ingress class to be "".
+				testIngress := storage.Ingresses[types.NamespacedName{Namespace: testNamespace, Name: testIngressName}]
+				testIngress.Annotations = map[string]string{}
+				storage.Ingresses[types.NamespacedName{Namespace: testNamespace, Name: testIngressName}] = testIngress
 			},
 			expectedIR: intermediate.IR{
 				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
@@ -266,9 +215,9 @@ func Test_convertToIR(t *testing.T) {
 					},
 				},
 				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
-					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", noIngClassIngressName)}: {
+					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName)}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
-							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", noIngClassIngressName), Namespace: testNamespace},
+							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName), Namespace: testNamespace},
 							Spec: gatewayv1.HTTPRouteSpec{
 								CommonRouteSpec: gatewayv1.CommonRouteSpec{
 									ParentRefs: []gatewayv1.ParentReference{{
@@ -307,43 +256,12 @@ func Test_convertToIR(t *testing.T) {
 		},
 		{
 			name: "gce implementation-specific with /*, map to / Prefix",
-			ingresses: map[types.NamespacedName]*networkingv1.Ingress{
-				{Namespace: testNamespace, Name: extIngClassIngressName}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Name:        extIngClassIngressName,
-						Namespace:   testNamespace,
-						Annotations: map[string]string{networkingv1beta1.AnnotationIngressClass: gceIngressClass},
-					},
-					Spec: networkingv1.IngressSpec{
-						Rules: []networkingv1.IngressRule{{
-							Host: testHost,
-							IngressRuleValue: networkingv1.IngressRuleValue{
-								HTTP: &networkingv1.HTTPIngressRuleValue{
-									Paths: []networkingv1.HTTPIngressPath{{
-										Path:     "/*",
-										PathType: common.PtrTo(implSpecificPathType),
-										Backend: networkingv1.IngressBackend{
-											Service: &networkingv1.IngressServiceBackend{
-												Name: testServiceName,
-												Port: networkingv1.ServiceBackendPort{
-													Number: 80,
-												},
-											},
-										},
-									}},
-								},
-							},
-						}},
-					},
-				},
-			},
-			services: map[types.NamespacedName]*apiv1.Service{
-				{Namespace: testNamespace, Name: testServiceName}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: testNamespace,
-						Name:      testServiceName,
-					},
-				},
+			modify: func(storage *storage) {
+				testIngress := storage.Ingresses[types.NamespacedName{Namespace: testNamespace, Name: testIngressName}]
+				pathToModify := &testIngress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0]
+				pathToModify.Path = "/*"
+				pathToModify.PathType = common.PtrTo(implSpecificPathType)
+				storage.Ingresses[types.NamespacedName{Namespace: testNamespace, Name: testIngressName}] = testIngress
 			},
 			expectedIR: intermediate.IR{
 				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
@@ -363,9 +281,9 @@ func Test_convertToIR(t *testing.T) {
 					},
 				},
 				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
-					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName)}: {
+					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName)}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
-							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName), Namespace: testNamespace},
+							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName), Namespace: testNamespace},
 							Spec: gatewayv1.HTTPRouteSpec{
 								CommonRouteSpec: gatewayv1.CommonRouteSpec{
 									ParentRefs: []gatewayv1.ParentReference{{
@@ -404,43 +322,12 @@ func Test_convertToIR(t *testing.T) {
 		},
 		{
 			name: "gce implementation-specific with /foo/*, converted to /foo",
-			ingresses: map[types.NamespacedName]*networkingv1.Ingress{
-				{Namespace: testNamespace, Name: extIngClassIngressName}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Name:        extIngClassIngressName,
-						Namespace:   testNamespace,
-						Annotations: map[string]string{networkingv1beta1.AnnotationIngressClass: gceIngressClass},
-					},
-					Spec: networkingv1.IngressSpec{
-						Rules: []networkingv1.IngressRule{{
-							Host: testHost,
-							IngressRuleValue: networkingv1.IngressRuleValue{
-								HTTP: &networkingv1.HTTPIngressRuleValue{
-									Paths: []networkingv1.HTTPIngressPath{{
-										Path:     "/foo/*",
-										PathType: common.PtrTo(implSpecificPathType),
-										Backend: networkingv1.IngressBackend{
-											Service: &networkingv1.IngressServiceBackend{
-												Name: testServiceName,
-												Port: networkingv1.ServiceBackendPort{
-													Number: 80,
-												},
-											},
-										},
-									}},
-								},
-							},
-						}},
-					},
-				},
-			},
-			services: map[types.NamespacedName]*apiv1.Service{
-				{Namespace: testNamespace, Name: testServiceName}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: testNamespace,
-						Name:      testServiceName,
-					},
-				},
+			modify: func(storage *storage) {
+				testIngress := storage.Ingresses[types.NamespacedName{Namespace: testNamespace, Name: testIngressName}]
+				pathToModify := &testIngress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0]
+				pathToModify.Path = "/foo/*"
+				pathToModify.PathType = common.PtrTo(implSpecificPathType)
+				storage.Ingresses[types.NamespacedName{Namespace: testNamespace, Name: testIngressName}] = testIngress
 			},
 			expectedIR: intermediate.IR{
 				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
@@ -460,9 +347,9 @@ func Test_convertToIR(t *testing.T) {
 					},
 				},
 				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
-					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName)}: {
+					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName)}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
-							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName), Namespace: testNamespace},
+							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName), Namespace: testNamespace},
 							Spec: gatewayv1.HTTPRouteSpec{
 								CommonRouteSpec: gatewayv1.CommonRouteSpec{
 									ParentRefs: []gatewayv1.ParentReference{{
@@ -501,43 +388,12 @@ func Test_convertToIR(t *testing.T) {
 		},
 		{
 			name: "gce implementation-specific without wildcard path, map to Prefix",
-			ingresses: map[types.NamespacedName]*networkingv1.Ingress{
-				{Namespace: testNamespace, Name: extIngClassIngressName}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Name:        extIngClassIngressName,
-						Namespace:   testNamespace,
-						Annotations: map[string]string{networkingv1beta1.AnnotationIngressClass: gceIngressClass},
-					},
-					Spec: networkingv1.IngressSpec{
-						Rules: []networkingv1.IngressRule{{
-							Host: testHost,
-							IngressRuleValue: networkingv1.IngressRuleValue{
-								HTTP: &networkingv1.HTTPIngressRuleValue{
-									Paths: []networkingv1.HTTPIngressPath{{
-										Path:     "/foo",
-										PathType: common.PtrTo(implSpecificPathType),
-										Backend: networkingv1.IngressBackend{
-											Service: &networkingv1.IngressServiceBackend{
-												Name: testServiceName,
-												Port: networkingv1.ServiceBackendPort{
-													Number: 80,
-												},
-											},
-										},
-									}},
-								},
-							},
-						}},
-					},
-				},
-			},
-			services: map[types.NamespacedName]*apiv1.Service{
-				{Namespace: testNamespace, Name: testServiceName}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: testNamespace,
-						Name:      testServiceName,
-					},
-				},
+			modify: func(storage *storage) {
+				testIngress := storage.Ingresses[types.NamespacedName{Namespace: testNamespace, Name: testIngressName}]
+				pathToModify := &testIngress.Spec.Rules[0].IngressRuleValue.HTTP.Paths[0]
+				pathToModify.Path = "/foo"
+				pathToModify.PathType = common.PtrTo(implSpecificPathType)
+				storage.Ingresses[types.NamespacedName{Namespace: testNamespace, Name: testIngressName}] = testIngress
 			},
 			expectedIR: intermediate.IR{
 				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
@@ -557,9 +413,9 @@ func Test_convertToIR(t *testing.T) {
 					},
 				},
 				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
-					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName)}: {
+					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName)}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
-							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName), Namespace: testNamespace},
+							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName), Namespace: testNamespace},
 							Spec: gatewayv1.HTTPRouteSpec{
 								CommonRouteSpec: gatewayv1.CommonRouteSpec{
 									ParentRefs: []gatewayv1.ParentReference{{
@@ -598,32 +454,21 @@ func Test_convertToIR(t *testing.T) {
 		},
 		{
 			name: "ingress with a Backend Config specifying CLIENT_IP type session affinity config",
-			ingresses: map[types.NamespacedName]*networkingv1.Ingress{
-				{Namespace: testNamespace, Name: extIngClassIngressName}: testExtIngress,
-			},
-			services: map[types.NamespacedName]*apiv1.Service{
-				{Namespace: testNamespace, Name: testServiceName}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: testNamespace,
-						Name:      testServiceName,
-						Annotations: map[string]string{
-							backendConfigKey: `{"default":"test-backendconfig"}`,
-						},
+			modify: func(storage *storage) {
+				testService := storage.Services[types.NamespacedName{Namespace: testNamespace, Name: testServiceName}]
+				testService.Annotations = map[string]string{
+					backendConfigKey: `{"default":"test-backendconfig"}`,
+				}
+				storage.Services[types.NamespacedName{Namespace: testNamespace, Name: testServiceName}] = testService
+
+				beConfigSpec := backendconfigv1.BackendConfigSpec{
+					SessionAffinity: &backendconfigv1.SessionAffinityConfig{
+						AffinityType: saTypeClientIP,
 					},
-				},
-			},
-			backendConfigs: map[types.NamespacedName]*backendconfigv1.BackendConfig{
-				{Namespace: testNamespace, Name: testBackendConfigName}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: testNamespace,
-						Name:      testBackendConfigName,
-					},
-					Spec: backendconfigv1.BackendConfigSpec{
-						SessionAffinity: &backendconfigv1.SessionAffinityConfig{
-							AffinityType: saTypeClientIP,
-						},
-					},
-				},
+				}
+				storage.BackendConfigs = map[types.NamespacedName]*backendconfigv1.BackendConfig{
+					{Namespace: testNamespace, Name: testBackendConfigName}: getTestBackendConfig(testNamespace, testBackendConfigName, beConfigSpec),
+				}
 			},
 			expectedIR: intermediate.IR{
 				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
@@ -643,9 +488,9 @@ func Test_convertToIR(t *testing.T) {
 					},
 				},
 				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
-					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName)}: {
+					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName)}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
-							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName), Namespace: testNamespace},
+							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName), Namespace: testNamespace},
 							Spec: gatewayv1.HTTPRouteSpec{
 								CommonRouteSpec: gatewayv1.CommonRouteSpec{
 									ParentRefs: []gatewayv1.ParentReference{{
@@ -693,33 +538,22 @@ func Test_convertToIR(t *testing.T) {
 		},
 		{
 			name: "ingress with a Backend Config specifying GENERATED_COOKIE type session affinity config",
-			ingresses: map[types.NamespacedName]*networkingv1.Ingress{
-				{Namespace: testNamespace, Name: extIngClassIngressName}: testExtIngress,
-			},
-			services: map[types.NamespacedName]*apiv1.Service{
-				{Namespace: testNamespace, Name: testServiceName}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: testNamespace,
-						Name:      testServiceName,
-						Annotations: map[string]string{
-							backendConfigKey: `{"default":"test-backendconfig"}`,
-						},
+			modify: func(storage *storage) {
+				testService := storage.Services[types.NamespacedName{Namespace: testNamespace, Name: testServiceName}]
+				testService.Annotations = map[string]string{
+					backendConfigKey: `{"default":"test-backendconfig"}`,
+				}
+				storage.Services[types.NamespacedName{Namespace: testNamespace, Name: testServiceName}] = testService
+
+				beConfigSpec := backendconfigv1.BackendConfigSpec{
+					SessionAffinity: &backendconfigv1.SessionAffinityConfig{
+						AffinityType:         saTypeCookie,
+						AffinityCookieTtlSec: common.PtrTo(testCookieTTLSec),
 					},
-				},
-			},
-			backendConfigs: map[types.NamespacedName]*backendconfigv1.BackendConfig{
-				{Namespace: testNamespace, Name: testBackendConfigName}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: testNamespace,
-						Name:      testBackendConfigName,
-					},
-					Spec: backendconfigv1.BackendConfigSpec{
-						SessionAffinity: &backendconfigv1.SessionAffinityConfig{
-							AffinityType:         saTypeCookie,
-							AffinityCookieTtlSec: common.PtrTo(testCookieTTLSec),
-						},
-					},
-				},
+				}
+				storage.BackendConfigs = map[types.NamespacedName]*backendconfigv1.BackendConfig{
+					{Namespace: testNamespace, Name: testBackendConfigName}: getTestBackendConfig(testNamespace, testBackendConfigName, beConfigSpec),
+				}
 			},
 			expectedIR: intermediate.IR{
 				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
@@ -739,9 +573,9 @@ func Test_convertToIR(t *testing.T) {
 					},
 				},
 				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
-					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName)}: {
+					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName)}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
-							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName), Namespace: testNamespace},
+							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName), Namespace: testNamespace},
 							Spec: gatewayv1.HTTPRouteSpec{
 								CommonRouteSpec: gatewayv1.CommonRouteSpec{
 									ParentRefs: []gatewayv1.ParentReference{{
@@ -790,32 +624,21 @@ func Test_convertToIR(t *testing.T) {
 		},
 		{
 			name: "ingress with a Backend Config specifying Security Policy",
-			ingresses: map[types.NamespacedName]*networkingv1.Ingress{
-				{Namespace: testNamespace, Name: extIngClassIngressName}: testExtIngress,
-			},
-			services: map[types.NamespacedName]*apiv1.Service{
-				{Namespace: testNamespace, Name: testServiceName}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: testNamespace,
-						Name:      testServiceName,
-						Annotations: map[string]string{
-							backendConfigKey: `{"default":"test-backendconfig"}`,
-						},
+			modify: func(storage *storage) {
+				testService := storage.Services[types.NamespacedName{Namespace: testNamespace, Name: testServiceName}]
+				testService.Annotations = map[string]string{
+					backendConfigKey: `{"default":"test-backendconfig"}`,
+				}
+				storage.Services[types.NamespacedName{Namespace: testNamespace, Name: testServiceName}] = testService
+
+				beConfigSpec := backendconfigv1.BackendConfigSpec{
+					SecurityPolicy: &backendconfigv1.SecurityPolicyConfig{
+						Name: testSecurityPolicy,
 					},
-				},
-			},
-			backendConfigs: map[types.NamespacedName]*backendconfigv1.BackendConfig{
-				{Namespace: testNamespace, Name: testBackendConfigName}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: testNamespace,
-						Name:      testBackendConfigName,
-					},
-					Spec: backendconfigv1.BackendConfigSpec{
-						SecurityPolicy: &backendconfigv1.SecurityPolicyConfig{
-							Name: testSecurityPolicy,
-						},
-					},
-				},
+				}
+				storage.BackendConfigs = map[types.NamespacedName]*backendconfigv1.BackendConfig{
+					{Namespace: testNamespace, Name: testBackendConfigName}: getTestBackendConfig(testNamespace, testBackendConfigName, beConfigSpec),
+				}
 			},
 			expectedIR: intermediate.IR{
 				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
@@ -835,9 +658,9 @@ func Test_convertToIR(t *testing.T) {
 					},
 				},
 				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
-					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName)}: {
+					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName)}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
-							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", extIngClassIngressName), Namespace: testNamespace},
+							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName), Namespace: testNamespace},
 							Spec: gatewayv1.HTTPRouteSpec{
 								CommonRouteSpec: gatewayv1.CommonRouteSpec{
 									ParentRefs: []gatewayv1.ParentReference{{
@@ -883,17 +706,104 @@ func Test_convertToIR(t *testing.T) {
 			},
 			expectedErrors: field.ErrorList{},
 		},
+		{
+			name: "ingress with a Frontend Config specifying Ssl Policy",
+			modify: func(storage *storage) {
+				testIngress := storage.Ingresses[types.NamespacedName{Namespace: testNamespace, Name: testIngressName}]
+				if testIngress.Annotations == nil {
+					testIngress.Annotations = map[string]string{}
+				}
+				testIngress.Annotations[frontendConfigKey] = testFrontendConfigName
+				storage.Ingresses[types.NamespacedName{Namespace: testNamespace, Name: testIngressName}] = testIngress
+
+				feConfigSpec := frontendconfigv1beta1.FrontendConfigSpec{
+					SslPolicy: common.PtrTo(testSslPolicy),
+				}
+				storage.FrontendConfigs = map[types.NamespacedName]*frontendconfigv1beta1.FrontendConfig{
+					{Namespace: testNamespace, Name: testFrontendConfigName}: getTestFrontendConfig(testNamespace, testFrontendConfigName, feConfigSpec),
+				}
+			},
+			expectedIR: intermediate.IR{
+				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+					{Namespace: testNamespace, Name: gceIngressClass}: {
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: gceL7GlobalExternalManagedGatewayClass,
+								Listeners: []gatewayv1.Listener{{
+									Name:     "test-mydomain-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: common.PtrTo(gatewayv1.Hostname(testHost)),
+								}},
+							},
+						},
+						ProviderSpecificIR: intermediate.ProviderSpecificGatewayIR{
+							Gce: &intermediate.GceGatewayIR{
+								SslPolicy: &intermediate.SslPolicyConfig{Name: testSslPolicy},
+							},
+						},
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName)}: {
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName), Namespace: testNamespace},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: gceIngressClass,
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
+								Rules: []gatewayv1.HTTPRouteRule{
+									{
+										Matches: []gatewayv1.HTTPRouteMatch{
+											{
+												Path: &gatewayv1.HTTPPathMatch{
+													Type:  common.PtrTo(gPathPrefix),
+													Value: common.PtrTo("/"),
+												},
+											},
+										},
+										BackendRefs: []gatewayv1.HTTPBackendRef{
+											{
+												BackendRef: gatewayv1.BackendRef{
+													BackendObjectReference: gatewayv1.BackendObjectReference{
+														Name: gatewayv1.ObjectName(testServiceName),
+														Port: common.PtrTo(gatewayv1.PortNumber(80)),
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-
 			provider := NewProvider(&i2gw.ProviderConf{})
 			gceProvider := provider.(*Provider)
 			gceProvider.storage = newResourcesStorage()
-			gceProvider.storage.Ingresses = tc.ingresses
-			gceProvider.storage.Services = tc.services
-			gceProvider.storage.BackendConfigs = tc.backendConfigs
+			gceProvider.storage.Ingresses = map[types.NamespacedName]*networkingv1.Ingress{
+				{Namespace: testNamespace, Name: testIngressName}: getTestIngress(testNamespace, testIngressName, testServiceName),
+			}
+			gceProvider.storage.Services = map[types.NamespacedName]*apiv1.Service{
+				{Namespace: testNamespace, Name: testServiceName}: {
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: testNamespace,
+						Name:      testServiceName,
+					},
+				},
+			}
+			tc.modify(gceProvider.storage)
 
 			// TODO(#113) we pass an empty i2gw.InputResources temporarily until we change ToIR function on the interface
 			ir, errs := gceProvider.irConverter.convertToIR(gceProvider.storage)
@@ -952,13 +862,13 @@ func Test_convertToIR(t *testing.T) {
 	}
 }
 
-func getTestIngress(ingressNamespace, ingressName, serviceName string, isExternalIngress bool) *networkingv1.Ingress {
-	iPrefix := networkingv1.PathTypePrefix
-
-	ing := networkingv1.Ingress{
+// getTestIngress returns a template GKE External Ingress.
+func getTestIngress(namespace, name, serviceName string) *networkingv1.Ingress {
+	return &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ingressName,
-			Namespace: ingressNamespace,
+			Namespace:   namespace,
+			Name:        name,
+			Annotations: map[string]string{networkingv1beta1.AnnotationIngressClass: gceIngressClass},
 		},
 		Spec: networkingv1.IngressSpec{
 			Rules: []networkingv1.IngressRule{{
@@ -967,7 +877,7 @@ func getTestIngress(ingressNamespace, ingressName, serviceName string, isExterna
 					HTTP: &networkingv1.HTTPIngressRuleValue{
 						Paths: []networkingv1.HTTPIngressPath{{
 							Path:     "/",
-							PathType: &iPrefix,
+							PathType: common.PtrTo(iPrefix),
 							Backend: networkingv1.IngressBackend{
 								Service: &networkingv1.IngressServiceBackend{
 									Name: serviceName,
@@ -982,13 +892,26 @@ func getTestIngress(ingressNamespace, ingressName, serviceName string, isExterna
 			}},
 		},
 	}
-	if isExternalIngress {
-		ing.Annotations = map[string]string{networkingv1beta1.AnnotationIngressClass: gceIngressClass}
-	} else {
-		ing.Annotations = map[string]string{networkingv1beta1.AnnotationIngressClass: gceL7ILBIngressClass}
-	}
+}
 
-	return &ing
+func getTestBackendConfig(namespace, name string, spec backendconfigv1.BackendConfigSpec) *backendconfigv1.BackendConfig {
+	return &backendconfigv1.BackendConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      name,
+		},
+		Spec: spec,
+	}
+}
+
+func getTestFrontendConfig(namespace, name string, spec frontendconfigv1beta1.FrontendConfigSpec) *frontendconfigv1beta1.FrontendConfig {
+	return &frontendconfigv1beta1.FrontendConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      name,
+		},
+		Spec: spec,
+	}
 }
 
 func TestGetBackendConfigMapping(t *testing.T) {

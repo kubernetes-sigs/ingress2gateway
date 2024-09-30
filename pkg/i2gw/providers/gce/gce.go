@@ -25,6 +25,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
+	frontendconfigv1beta1 "k8s.io/ingress-gce/pkg/apis/frontendconfig/v1beta1"
 )
 
 const ProviderName = "gce"
@@ -42,11 +43,14 @@ type Provider struct {
 }
 
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
-	// Add BackendConfig to Schema when reading in-cluster so these resources
-	// can be recognized.
+	// Add BackendConfig and FrontendConfig to Schema when reading in-cluster
+	// so these resources can be recognized.
 	if conf.Client != nil {
 		if err := backendconfigv1.AddToScheme(conf.Client.Scheme()); err != nil {
 			notify(notifications.ErrorNotification, "Failed to add v1 BackendConfig Scheme")
+		}
+		if err := frontendconfigv1beta1.AddToScheme(conf.Client.Scheme()); err != nil {
+			notify(notifications.ErrorNotification, "Failed to add v1beta1 FrontendConfig Scheme")
 		}
 	}
 	return &Provider{

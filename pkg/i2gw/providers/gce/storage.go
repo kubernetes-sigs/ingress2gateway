@@ -21,6 +21,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
 	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
+	frontendconfigv1beta1 "k8s.io/ingress-gce/pkg/apis/frontendconfig/v1beta1"
 )
 
 type storage struct {
@@ -32,12 +33,18 @@ type storage struct {
 	// `beta.cloud.google.com/backend-config` annotation on its Services.
 	// BackendConfig map is keyed by the namespaced name of the BackendConfig.
 	BackendConfigs map[types.NamespacedName]*backendconfigv1.BackendConfig
+	// FrontendConfigs is a GKE Ingress extension, and it is associated to an
+	// GKE Ingress through specifying `networking.gke.io/v1beta1.FrontendConfig`
+	// on an Ingress.
+	// FrontendConfig map is keyed by the namespaced name of the FrontendConfig.
+	FrontendConfigs map[types.NamespacedName]*frontendconfigv1beta1.FrontendConfig
 }
 
 func newResourcesStorage() *storage {
 	return &storage{
-		Ingresses:      make(map[types.NamespacedName]*networkingv1.Ingress),
-		Services:       make(map[types.NamespacedName]*apiv1.Service),
-		BackendConfigs: make(map[types.NamespacedName]*backendconfigv1.BackendConfig),
+		Ingresses:       make(map[types.NamespacedName]*networkingv1.Ingress),
+		Services:        make(map[types.NamespacedName]*apiv1.Service),
+		BackendConfigs:  make(map[types.NamespacedName]*backendconfigv1.BackendConfig),
+		FrontendConfigs: make(map[types.NamespacedName]*frontendconfigv1beta1.FrontendConfig),
 	}
 }

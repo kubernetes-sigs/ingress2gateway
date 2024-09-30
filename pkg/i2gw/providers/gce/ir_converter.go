@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
+	frontendconfigv1beta1 "k8s.io/ingress-gce/pkg/apis/frontendconfig/v1beta1"
 )
 
 type contextKey int
@@ -82,8 +83,69 @@ func (c *resourcesToIRConverter) convertToIR(storage *storage) (intermediate.IR,
 	if len(errs) > 0 {
 		return intermediate.IR{}, errs
 	}
+	buildGceGatewayIR(c.ctx, storage, &ir)
 	buildGceServiceIR(c.ctx, storage, &ir)
 	return ir, errs
+}
+
+func buildGceGatewayIR(ctx context.Context, storage *storage, ir *intermediate.IR) {
+	if ir.Gateways == nil {
+		ir.Gateways = make(map[types.NamespacedName]intermediate.GatewayContext)
+	}
+
+	feConfigToGwys := getFrontendConfigMapping(ctx, storage)
+	for feConfigKey, feConfig := range storage.FrontendConfigs {
+		if feConfig == nil {
+			continue
+		}
+		gceGatewayIR := feConfigToGceGatewayIR(feConfig)
+		gateways := feConfigToGwys[feConfigKey]
+
+		for _, gwyKey := range gateways {
+			gatewayContext := ir.Gateways[gwyKey]
+			gatewayContext.ProviderSpecificIR.Gce = &gceGatewayIR
+			ir.Gateways[gwyKey] = gatewayContext
+		}
+	}
+}
+
+type gatewayNames []types.NamespacedName
+
+func getFrontendConfigMapping(ctx context.Context, storage *storage) map[types.NamespacedName]gatewayNames {
+	feConfigToGwys := make(map[types.NamespacedName]gatewayNames)
+
+	for _, ingress := range storage.Ingresses {
+		gwyKey := types.NamespacedName{Namespace: ingress.Namespace, Name: common.GetIngressClass(*ingress)}
+		// ing := types.NamespacedName{Namespace: ingress.Namespace, Name: ingress.Name}
+		ctx = context.WithValue(ctx, serviceKey, ingress)
+
+		feConfigName, exists := getFrontendConfigAnnotation(ingress)
+		if exists {
+			feConfigKey := types.NamespacedName{Namespace: ingress.Namespace, Name: feConfigName}
+			feConfigToGwys[feConfigKey] = append(feConfigToGwys[feConfigKey], gwyKey)
+			continue
+		}
+
+	}
+	return feConfigToGwys
+}
+
+// Get names of the FrontendConfig in the cluster based on the FrontendConfig
+// annotation on k8s Services.
+func getFrontendConfigAnnotation(ing *networkingv1.Ingress) (string, bool) {
+	val, ok := ing.ObjectMeta.Annotations[frontendConfigKey]
+	if !ok {
+		return "", false
+	}
+	return val, true
+}
+
+func feConfigToGceGatewayIR(feConfig *frontendconfigv1beta1.FrontendConfig) intermediate.GceGatewayIR {
+	var gceGatewayIR intermediate.GceGatewayIR
+	if feConfig.Spec.SslPolicy != nil {
+		gceGatewayIR.SslPolicy = extensions.BuildIRSslPolicyConfig(feConfig)
+	}
+	return gceGatewayIR
 }
 
 type serviceNames []types.NamespacedName
