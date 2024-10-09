@@ -18,17 +18,21 @@ package common
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -38,45 +42,188 @@ func Test_ToIR(t *testing.T) {
 	gPathPrefix := gatewayv1.PathMatchPathPrefix
 	gExact := gatewayv1.PathMatchExact
 
+	mockNotificationAggr := notifications.BuildNotificationAggregator()
+
+	ingressList := []networkingv1.Ingress{
+		{
+			TypeMeta:   metav1.TypeMeta{Kind: "Ingress"},
+			ObjectMeta: metav1.ObjectMeta{Name: "simple", Namespace: "test"},
+			Spec: networkingv1.IngressSpec{
+				Rules: []networkingv1.IngressRule{{
+					Host: "example.com",
+					IngressRuleValue: networkingv1.IngressRuleValue{
+						HTTP: &networkingv1.HTTPIngressRuleValue{
+							Paths: []networkingv1.HTTPIngressPath{{
+								Path:     "/foo",
+								PathType: &iPrefix,
+								Backend: networkingv1.IngressBackend{
+									Service: &networkingv1.IngressServiceBackend{
+										Name: "example",
+										Port: networkingv1.ServiceBackendPort{
+											Number: 3000,
+										},
+									},
+								},
+							}},
+						},
+					},
+				}},
+				IngressClassName: PtrTo("simple"),
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "with-tls", Namespace: "test"},
+			Spec: networkingv1.IngressSpec{
+				TLS: []networkingv1.IngressTLS{{
+					Hosts:      []string{"example.com"},
+					SecretName: "example-cert",
+				}},
+				Rules: []networkingv1.IngressRule{{
+					Host: "example.com",
+					IngressRuleValue: networkingv1.IngressRuleValue{
+						HTTP: &networkingv1.HTTPIngressRuleValue{
+							Paths: []networkingv1.HTTPIngressPath{{
+								Path:     "/foo",
+								PathType: &iPrefix,
+								Backend: networkingv1.IngressBackend{
+									Service: &networkingv1.IngressServiceBackend{
+										Name: "example",
+										Port: networkingv1.ServiceBackendPort{
+											Number: 3000,
+										},
+									},
+								},
+							}},
+						},
+					},
+				}},
+				IngressClassName: PtrTo("with-tls"),
+			},
+		}, {
+			ObjectMeta: metav1.ObjectMeta{Name: "net", Namespace: "different"},
+			Spec: networkingv1.IngressSpec{
+				IngressClassName: PtrTo("example-proxy"),
+				Rules: []networkingv1.IngressRule{{
+					Host: "example.net",
+					IngressRuleValue: networkingv1.IngressRuleValue{
+						HTTP: &networkingv1.HTTPIngressRuleValue{
+							Paths: []networkingv1.HTTPIngressPath{{
+								Path:     "/bar",
+								PathType: &iExact,
+								Backend: networkingv1.IngressBackend{
+									Resource: &corev1.TypedLocalObjectReference{
+										Name:     "custom",
+										Kind:     "StorageBucket",
+										APIGroup: PtrTo("vendor.example.com"),
+									},
+								},
+							}},
+						},
+					},
+				}},
+				DefaultBackend: &networkingv1.IngressBackend{
+					Service: &networkingv1.IngressServiceBackend{
+						Name: "default",
+						Port: networkingv1.ServiceBackendPort{
+							Number: 8080,
+						},
+					},
+				},
+			},
+		}, {
+			ObjectMeta: metav1.ObjectMeta{Name: "duplicate-a", Namespace: "test"},
+			Spec: networkingv1.IngressSpec{
+				IngressClassName: PtrTo("example-proxy"),
+				Rules: []networkingv1.IngressRule{{
+					Host: "example.com",
+					IngressRuleValue: networkingv1.IngressRuleValue{
+						HTTP: &networkingv1.HTTPIngressRuleValue{
+							Paths: []networkingv1.HTTPIngressPath{{
+								Path:     "/foo",
+								PathType: &iPrefix,
+								Backend: networkingv1.IngressBackend{
+									Service: &networkingv1.IngressServiceBackend{
+										Name: "example",
+										Port: networkingv1.ServiceBackendPort{
+											Number: 3000,
+										},
+									},
+								},
+							}},
+						},
+					},
+				}},
+			},
+		}, {
+			ObjectMeta: metav1.ObjectMeta{Name: "duplicate-b", Namespace: "test"},
+			Spec: networkingv1.IngressSpec{
+				IngressClassName: PtrTo("example-proxy"),
+				Rules: []networkingv1.IngressRule{{
+					Host: "example.com",
+					IngressRuleValue: networkingv1.IngressRuleValue{
+						HTTP: &networkingv1.HTTPIngressRuleValue{
+							Paths: []networkingv1.HTTPIngressPath{{
+								Path:     "/foo",
+								PathType: &iPrefix,
+								Backend: networkingv1.IngressBackend{
+									Service: &networkingv1.IngressServiceBackend{
+										Name: "example",
+										Port: networkingv1.ServiceBackendPort{
+											Number: 3000,
+										},
+									},
+								},
+							}},
+						},
+					},
+				}},
+			},
+		},
+	}
+
 	testCases := []struct {
-		name           string
-		ingresses      []networkingv1.Ingress
-		expectedIR     intermediate.IR
-		expectedErrors field.ErrorList
+		name                  string
+		ingresses             []networkingv1.Ingress
+		callback              notifications.NotificationCallback
+		expectedNotifications map[string][]notifications.Notification
+		expectedIR            intermediate.IR
+		expectedErrors        field.ErrorList
 	}{
 		{
-			name:           "empty",
-			ingresses:      []networkingv1.Ingress{},
-			expectedIR:     intermediate.IR{},
-			expectedErrors: field.ErrorList{},
+			name:                  "empty",
+			ingresses:             []networkingv1.Ingress{},
+			callback:              noNotifications,
+			expectedNotifications: map[string][]notifications.Notification{},
+			expectedIR:            intermediate.IR{},
+			expectedErrors:        field.ErrorList{},
 		},
 		{
 			name: "simple ingress",
-			ingresses: []networkingv1.Ingress{{
-				ObjectMeta: metav1.ObjectMeta{Name: "simple", Namespace: "test"},
-				Spec: networkingv1.IngressSpec{
-					Rules: []networkingv1.IngressRule{{
-						Host: "example.com",
-						IngressRuleValue: networkingv1.IngressRuleValue{
-							HTTP: &networkingv1.HTTPIngressRuleValue{
-								Paths: []networkingv1.HTTPIngressPath{{
-									Path:     "/foo",
-									PathType: &iPrefix,
-									Backend: networkingv1.IngressBackend{
-										Service: &networkingv1.IngressServiceBackend{
-											Name: "example",
-											Port: networkingv1.ServiceBackendPort{
-												Number: 3000,
-											},
-										},
-									},
-								}},
-							},
+			ingresses: []networkingv1.Ingress{
+				ingressList[0],
+			},
+			callback: func(mType notifications.MessageType, message string, callingObjects ...client.Object) {
+				newNotification := notifications.NewNotification(mType, message, callingObjects...)
+				mockNotificationAggr.DispatchNotification(newNotification, "simple-provider")
+			},
+			expectedNotifications: map[string][]notifications.Notification{
+				"simple-provider": {
+					notifications.Notification{
+						Type:    notifications.InfoNotification,
+						Message: `successfully converted to HTTPRoute "test/simple-example-com"`,
+						CallingObjects: []client.Object{
+							buildMockIngress(ingressList[0]),
 						},
-					}},
-					IngressClassName: PtrTo("simple"),
+					},
+					notifications.Notification{
+						Type:    notifications.InfoNotification,
+						Message: `successfully created Gateway "test/simple"`,
+						CallingObjects: []client.Object{
+							buildMockIngress(ingressList[0]),
+						},
+					},
 				},
-			}},
+			},
 			expectedIR: intermediate.IR{
 				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
 					{Namespace: "test", Name: "simple"}: {
@@ -130,35 +277,31 @@ func Test_ToIR(t *testing.T) {
 		},
 		{
 			name: "ingress with TLS",
-			ingresses: []networkingv1.Ingress{{
-				ObjectMeta: metav1.ObjectMeta{Name: "with-tls", Namespace: "test"},
-				Spec: networkingv1.IngressSpec{
-					TLS: []networkingv1.IngressTLS{{
-						Hosts:      []string{"example.com"},
-						SecretName: "example-cert",
-					}},
-					Rules: []networkingv1.IngressRule{{
-						Host: "example.com",
-						IngressRuleValue: networkingv1.IngressRuleValue{
-							HTTP: &networkingv1.HTTPIngressRuleValue{
-								Paths: []networkingv1.HTTPIngressPath{{
-									Path:     "/foo",
-									PathType: &iPrefix,
-									Backend: networkingv1.IngressBackend{
-										Service: &networkingv1.IngressServiceBackend{
-											Name: "example",
-											Port: networkingv1.ServiceBackendPort{
-												Number: 3000,
-											},
-										},
-									},
-								}},
-							},
+			ingresses: []networkingv1.Ingress{
+				ingressList[1],
+			},
+			callback: func(mType notifications.MessageType, message string, callingObjects ...client.Object) {
+				newNotification := notifications.NewNotification(mType, message, callingObjects...)
+				mockNotificationAggr.DispatchNotification(newNotification, "tls-provider")
+			},
+			expectedNotifications: map[string][]notifications.Notification{
+				"tls-provider": {
+					notifications.Notification{
+						Type:    notifications.InfoNotification,
+						Message: `successfully converted to HTTPRoute "test/with-tls-example-com"`,
+						CallingObjects: []client.Object{
+							buildMockIngress(ingressList[1]),
 						},
-					}},
-					IngressClassName: PtrTo("with-tls"),
+					},
+					notifications.Notification{
+						Type:    notifications.InfoNotification,
+						Message: `successfully created Gateway "test/with-tls"`,
+						CallingObjects: []client.Object{
+							buildMockIngress(ingressList[1]),
+						},
+					},
 				},
-			}},
+			},
 			expectedIR: intermediate.IR{
 				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
 					{Namespace: "test", Name: "with-tls"}: {
@@ -222,38 +365,38 @@ func Test_ToIR(t *testing.T) {
 		},
 		{
 			name: "ingress with custom and default backend",
-			ingresses: []networkingv1.Ingress{{
-				ObjectMeta: metav1.ObjectMeta{Name: "net", Namespace: "different"},
-				Spec: networkingv1.IngressSpec{
-					IngressClassName: PtrTo("example-proxy"),
-					Rules: []networkingv1.IngressRule{{
-						Host: "example.net",
-						IngressRuleValue: networkingv1.IngressRuleValue{
-							HTTP: &networkingv1.HTTPIngressRuleValue{
-								Paths: []networkingv1.HTTPIngressPath{{
-									Path:     "/bar",
-									PathType: &iExact,
-									Backend: networkingv1.IngressBackend{
-										Resource: &corev1.TypedLocalObjectReference{
-											Name:     "custom",
-											Kind:     "StorageBucket",
-											APIGroup: PtrTo("vendor.example.com"),
-										},
-									},
-								}},
-							},
+			ingresses: []networkingv1.Ingress{
+				ingressList[2],
+			},
+			callback: func(mType notifications.MessageType, message string, callingObjects ...client.Object) {
+				newNotification := notifications.NewNotification(mType, message, callingObjects...)
+				mockNotificationAggr.DispatchNotification(newNotification, "custom-default-backend-provider")
+			},
+			expectedNotifications: map[string][]notifications.Notification{
+				"custom-default-backend-provider": {
+					notifications.Notification{
+						Type:    notifications.InfoNotification,
+						Message: `successfully converted to HTTPRoute "different/net-example-net"`,
+						CallingObjects: []client.Object{
+							buildMockIngress(ingressList[2]),
 						},
-					}},
-					DefaultBackend: &networkingv1.IngressBackend{
-						Service: &networkingv1.IngressServiceBackend{
-							Name: "default",
-							Port: networkingv1.ServiceBackendPort{
-								Number: 8080,
-							},
+					},
+					notifications.Notification{
+						Type:    notifications.InfoNotification,
+						Message: `successfully converted to HTTPRoute "different/net-default-backend"`,
+						CallingObjects: []client.Object{
+							buildMockIngress(ingressList[2]),
+						},
+					},
+					notifications.Notification{
+						Type:    notifications.InfoNotification,
+						Message: `successfully created Gateway "different/example-proxy"`,
+						CallingObjects: []client.Object{
+							buildMockIngress(ingressList[2]),
 						},
 					},
 				},
-			}},
+			},
 			expectedIR: intermediate.IR{
 				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
 					{Namespace: "different", Name: "example-proxy"}: {
@@ -330,55 +473,32 @@ func Test_ToIR(t *testing.T) {
 		},
 		{
 			name: "duplicated backends",
-			ingresses: []networkingv1.Ingress{{
-				ObjectMeta: metav1.ObjectMeta{Name: "duplicate-a", Namespace: "test"},
-				Spec: networkingv1.IngressSpec{
-					IngressClassName: PtrTo("example-proxy"),
-					Rules: []networkingv1.IngressRule{{
-						Host: "example.com",
-						IngressRuleValue: networkingv1.IngressRuleValue{
-							HTTP: &networkingv1.HTTPIngressRuleValue{
-								Paths: []networkingv1.HTTPIngressPath{{
-									Path:     "/foo",
-									PathType: &iPrefix,
-									Backend: networkingv1.IngressBackend{
-										Service: &networkingv1.IngressServiceBackend{
-											Name: "example",
-											Port: networkingv1.ServiceBackendPort{
-												Number: 3000,
-											},
-										},
-									},
-								}},
-							},
+			ingresses: []networkingv1.Ingress{
+				ingressList[3],
+				ingressList[4],
+			},
+			callback: func(mType notifications.MessageType, message string, callingObjects ...client.Object) {
+				newNotification := notifications.NewNotification(mType, message, callingObjects...)
+				mockNotificationAggr.DispatchNotification(newNotification, "duplicate-backend-provider")
+			},
+			expectedNotifications: map[string][]notifications.Notification{
+				"duplicate-backend-provider": {
+					notifications.Notification{
+						Type:    notifications.InfoNotification,
+						Message: `successfully converted to HTTPRoute "test/duplicate-a-example-com"`,
+						CallingObjects: []client.Object{
+							buildMockIngress(ingressList[3]),
 						},
-					}},
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{Name: "duplicate-b", Namespace: "test"},
-				Spec: networkingv1.IngressSpec{
-					IngressClassName: PtrTo("example-proxy"),
-					Rules: []networkingv1.IngressRule{{
-						Host: "example.com",
-						IngressRuleValue: networkingv1.IngressRuleValue{
-							HTTP: &networkingv1.HTTPIngressRuleValue{
-								Paths: []networkingv1.HTTPIngressPath{{
-									Path:     "/foo",
-									PathType: &iPrefix,
-									Backend: networkingv1.IngressBackend{
-										Service: &networkingv1.IngressServiceBackend{
-											Name: "example",
-											Port: networkingv1.ServiceBackendPort{
-												Number: 3000,
-											},
-										},
-									},
-								}},
-							},
+					},
+					notifications.Notification{
+						Type:    notifications.InfoNotification,
+						Message: `successfully created Gateway "test/example-proxy"`,
+						CallingObjects: []client.Object{
+							buildMockIngress(ingressList[3]),
 						},
-					}},
+					},
 				},
-			}},
+			},
 			expectedIR: intermediate.IR{
 				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
 					{Namespace: "test", Name: "example-proxy"}: {
@@ -435,7 +555,8 @@ func Test_ToIR(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			ir, errs := ToIR(tc.ingresses, i2gw.ProviderImplementationSpecificOptions{}, noNotifications)
+			ir, errs := ToIR(tc.ingresses, i2gw.ProviderImplementationSpecificOptions{}, tc.callback)
+
 			if len(ir.HTTPRoutes) != len(tc.expectedIR.HTTPRoutes) {
 				t.Errorf("Expected %d HTTPRoutes, got %d: %+v",
 					len(tc.expectedIR.HTTPRoutes), len(ir.HTTPRoutes), ir.HTTPRoutes)
@@ -473,6 +594,23 @@ func Test_ToIR(t *testing.T) {
 					}
 				}
 			}
+
+			if !reflect.DeepEqual(tc.expectedNotifications, mockNotificationAggr.Notifications) {
+				t.Errorf("Expected Notifications to be %+v\n Got: %+v\n Diff: %s", tc.expectedNotifications, mockNotificationAggr.Notifications, cmp.Diff(tc.expectedNotifications, mockNotificationAggr.Notifications))
+			}
 		})
+		mockNotificationAggr.Notifications = map[string][]notifications.Notification{}
+	}
+}
+
+func buildMockIngress(ingress networkingv1.Ingress) client.Object {
+	return &networkingv1.Ingress{
+		TypeMeta: metav1.TypeMeta{
+			Kind: "Ingress",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      ingress.Name,
+			Namespace: ingress.Namespace,
+		},
 	}
 }

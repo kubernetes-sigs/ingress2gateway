@@ -27,7 +27,7 @@ import (
 )
 
 func init() {
-	NotificationAggr = NotificationAggregator{Notifications: map[string][]Notification{}}
+	NotificationAggr = BuildNotificationAggregator()
 }
 
 const (
@@ -54,6 +54,11 @@ var NotificationAggr NotificationAggregator
 // NotificationCallback is a callback function used to send notifications from within the common
 // package without the common package having knowledge about which provider is making a call it
 type NotificationCallback func(mType MessageType, message string, CallingObjects ...client.Object)
+
+// BuildNotificationAggregator returns an instance of initialized NotificationAggregator
+func BuildNotificationAggregator() NotificationAggregator {
+	return NotificationAggregator{Notifications: map[string][]Notification{}}
+}
 
 // DispatchNotification is used to send a notification to the NotificationAggregator
 func (na *NotificationAggregator) DispatchNotification(notification Notification, ProviderName string) {
