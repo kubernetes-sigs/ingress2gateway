@@ -14,10 +14,12 @@ type resourcesToIRConverter struct {
 	implementationSpecificOptions i2gw.ProviderImplementationSpecificOptions
 }
 
-// newResourcesToIRConverter returns an apisix resourcesToIRConverter instance.
+// newResourcesToIRConverter returns a cilium resourcesToIRConverter instance.
 func newResourcesToIRConverter() *resourcesToIRConverter {
 	return &resourcesToIRConverter{
-		featureParsers:                []i2gw.FeatureParser{},
+		featureParsers: []i2gw.FeatureParser{
+			forceHTTPSFeature,
+		},
 		implementationSpecificOptions: i2gw.ProviderImplementationSpecificOptions{
 			// The list of the implementationSpecific ingress fields options comes here.
 		},
