@@ -41,7 +41,7 @@ type Provider struct {
 	resourcesToIRConverter *resourcesToIRConverter
 }
 
-// NewProvider constructs and returns the apisix implementation of i2gw.Provider.
+// NewProvider constructs and returns the cilium implementation of i2gw.Provider.
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 	return &Provider{
 		storage:                newResourcesStorage(),

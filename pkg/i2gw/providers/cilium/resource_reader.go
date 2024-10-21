@@ -37,7 +37,7 @@ func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
 }
 
 func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage, error) {
-	// read apisix related resources from cluster.
+	// read cilium related resources from cluster.
 	storage := newResourcesStorage()
 
 	ingresses, err := common.ReadIngressesFromCluster(ctx, r.conf.Client, sets.New(CiliumIngressClass))
@@ -49,7 +49,7 @@ func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage
 }
 
 func (r *resourceReader) readResourcesFromFile(filename string) (*storage, error) {
-	// read apisix related resources from file.
+	// read cilium related resources from file.
 	storage := newResourcesStorage()
 
 	ingresses, err := common.ReadIngressesFromFile(filename, r.conf.Namespace, sets.New[string](CiliumIngressClass))
