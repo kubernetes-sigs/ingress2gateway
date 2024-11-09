@@ -102,7 +102,7 @@ The above command will:
 | openapi3-gateway-class-name     |                         | No       | Provider-specific: openapi3. The name of the gateway class to use in the Gateways. |
 | openapi3-gateway-tls-secret     |                         | No       | Provider-specific: openapi3. The name of the secret for the TLS certificate references in the Gateways. |
 | output         | yaml                    | No       | The output format, either yaml or json.                       |
-| providers      | all supported providers | No       | Comma-separated list of providers. If present, the tool will try to convert only resources related to the specified providers. Otherwise it will default to all the supported providers. |
+| providers      | all supported providers | Yes       | Comma-separated list of providers. |
 | kubeconfig     |                         | No       | The kubeconfig file to use when talking to the cluster. If the flag is not set, a set of standard locations can be searched for an existing kubeconfig file. |
 
 ## Conversion of Ingress resources to Gateway API
