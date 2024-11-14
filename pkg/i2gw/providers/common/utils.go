@@ -20,9 +20,12 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -199,4 +202,32 @@ func removeBackendRefsDuplicates(backendRefs []gatewayv1.HTTPBackendRef) []gatew
 		uniqueBackendRefs = append(uniqueBackendRefs, backendRef)
 	}
 	return uniqueBackendRefs
+}
+
+// noNotifications is a callback function used when a provider does not want to use
+// notifications from the common package
+func noNotifications(_ notifications.MessageType, _ string, _ ...client.Object) {}
+
+func buildIngressFromRuleGroup(rg *ingressRuleGroup) client.Object {
+	return &networkingv1.Ingress{
+		TypeMeta: v1.TypeMeta{
+			Kind: "Ingress",
+		},
+		ObjectMeta: v1.ObjectMeta{
+			Name:      rg.name,
+			Namespace: rg.namespace,
+		},
+	}
+}
+
+func buildIngressFromDefaultBackend(db ingressDefaultBackend) client.Object {
+	return &networkingv1.Ingress{
+		TypeMeta: v1.TypeMeta{
+			Kind: "Ingress",
+		},
+		ObjectMeta: v1.ObjectMeta{
+			Name:      db.name,
+			Namespace: db.namespace,
+		},
+	}
 }
