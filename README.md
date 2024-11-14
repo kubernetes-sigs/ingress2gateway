@@ -20,6 +20,7 @@ API.
 ## Supported providers
 
 * [apisix](pkg/i2gw/providers/apisix/README.md)
+* [cilium](pkg./i2gw/providers/cilium/README.md)
 * [ingress-nginx](pkg/i2gw/providers/ingressnginx/README.md)
 * [istio](pkg/i2gw/providers/istio/README.md)
 * [gce](pkg/i2gw/providers/gce/README.md)
