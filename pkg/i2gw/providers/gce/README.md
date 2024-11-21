@@ -32,15 +32,23 @@ an Ingress to a Gateway.
 
 ## Feature list
 Currently supported:
-- [Basic Internal Ingress](https://github.com/GoogleCloudPlatform/gke-networking-recipes/tree/main/ingress/single-cluster/ingress-internal-basic)
-- [Basic external Ingress](https://github.com/GoogleCloudPlatform/gke-networking-recipes/tree/main/ingress/single-cluster/ingress-external-basic)
-- [Ingress with custom default backend](https://github.com/GoogleCloudPlatform/gke-networking-recipes/tree/main/ingress/single-cluster/ingress-custom-default-backend)
+ - [Internal Ingress](https://cloud.google.com/kubernetes-engine/docs/how-to/internal-load-balance-ingress)
+ - [External Ingress](https://cloud.google.com/kubernetes-engine/docs/how-to/load-balance-ingress)
+ - [Custom default backend](https://cloud.google.com/kubernetes-engine/docs/concepts/ingress#default_backend)
+ - [Google Cloud Armor Ingress security policy](https://cloud.google.com/kubernetes-engine/docs/how-to/ingress-configuration#cloud_armor)
+ - [SSL Policy](https://cloud.google.com/kubernetes-engine/docs/how-to/ingress-configuration#ssl) 
+ - [Custom health check configuration](https://cloud.google.com/kubernetes-engine/docs/how-to/ingress-configuration#direct_health)
 
 To be supported:
- - [Ingress with custom HTTP health check](https://github.com/GoogleCloudPlatform/gke-networking-recipes/tree/main/ingress/single-cluster/ingress-custom-http-health-check)
- - [IAP enabled ingress](https://github.com/GoogleCloudPlatform/gke-networking-recipes/tree/main/ingress/single-cluster/ingress-iap)
- - [Google Cloud Armor enabled ingress](https://github.com/GoogleCloudPlatform/gke-networking-recipes/blob/main/ingress/single-cluster/ingress-cloudarmor/README.md)
- - [Ingress with HTTPS redirect](https://github.com/GoogleCloudPlatform/gke-networking-recipes/tree/main/ingress/single-cluster/ingress-https)
+ - [HTTP-to-HTTPS redirect](https://cloud.google.com/kubernetes-engine/docs/how-to/ingress-configuration#https_redirect)
+ - [Backend Service Timeout](https://cloud.google.com/kubernetes-engine/docs/how-to/ingress-configuration#timeout)
+ - [Cloud CDN](https://cloud.google.com/kubernetes-engine/docs/how-to/ingress-configuration#cloud_cdn)
+ - [Connection Drain Timeout](https://cloud.google.com/kubernetes-engine/docs/how-to/ingress-configuration#draining_timeout)
+ - [HTTP Access Logging](https://cloud.google.com/kubernetes-engine/docs/how-to/ingress-configuration#http_logging)
+ - [Identity-Aware Proxy](https://cloud.google.com/kubernetes-engine/docs/how-to/ingress-configuration#iap)
+ - [Session affinity](https://cloud.google.com/kubernetes-engine/docs/how-to/ingress-configuration#session_affinity)
+ - [User-defined request headers](https://cloud.google.com/kubernetes-engine/docs/how-to/ingress-configuration#request_headers)
+ - [Custom Response header](https://cloud.google.com/kubernetes-engine/docs/how-to/ingress-configuration#response_headers) 
 
 ## Summary of GKE Ingress annotation
 External Ingress:
