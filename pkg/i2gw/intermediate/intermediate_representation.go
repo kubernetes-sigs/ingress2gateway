@@ -52,6 +52,7 @@ type GatewayContext struct {
 
 type ProviderSpecificGatewayIR struct {
 	Apisix       *ApisixGatewayIR
+	Cilium       *CiliumGatewayIR
 	Gce          *GceGatewayIR
 	IngressNginx *IngressNginxGatewayIR
 	Istio        *IstioGatewayIR
@@ -71,6 +72,7 @@ type HTTPRouteContext struct {
 
 type ProviderSpecificHTTPRouteIR struct {
 	Apisix       *ApisixHTTPRouteIR
+	Cilium       *CiliumHTTPRouteIR
 	Gce          *GceHTTPRouteIR
 	IngressNginx *IngressNginxHTTPRouteIR
 	Istio        *IstioHTTPRouteIR
@@ -82,6 +84,7 @@ type ProviderSpecificHTTPRouteIR struct {
 // extension features on Service.
 type ProviderSpecificServiceIR struct {
 	Apisix       *ApisixServiceIR
+	Cilium       *CiliumServiceIR
 	Gce          *GceServiceIR
 	IngressNginx *IngressNginxServiceIR
 	Istio        *IstioServiceIR
