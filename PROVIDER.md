@@ -143,9 +143,9 @@ package examplegateway
 
 import "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 
-func notify(mType notifications.MessageType, message string) {
-	newNotification := notifications.Notification{Type: mType, Message: message}
-    notifications.CommonNotification.DispatchNotication(newNotification, string(ProviderName))
+func notify(mType notifications.MessageType, message string, callingObjects ...client.Object){
+	newNotification := notifications.NewNotification(mType, message, callingObjects...)
+	notifications.NotificationAggr.DispatchNotification(newNotification, string(ProviderName))
 }
 ```
 7. Import the new package at `cmd/print`.
