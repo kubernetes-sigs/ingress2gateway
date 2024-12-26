@@ -9,6 +9,27 @@
 - [v0.1.0](#v010)
 - [v0.1.0-rc1](#v010-rc1)
 
+## v0.4.0-rc1
+
+## Major Themes
+
+### New Cilium support
+Added support for translating Cilium Ingress to Gateway API 
+
+### Enhanced GKE support
+GKE translation now supports translating Cloud Armor, Custom HealthChecks, and SSL Policies to their GKE Gateway equivalents (by @sawsa307)
+
+## Changes by Kind
+
+### Feature
+
+- Added support for Cilium Ingress to Gateway API (#199, @xtineskim)
+- Added notifications for OpenAPI3 (#178, @Devaansh-Kumar)
+- Gateways translated via ingress2gateway will be attached with a new annotation `gateway.networking.k8s.io/generator` to track resources generated with ingress2gateway tool and its version. (#187, @sawsa307)
+- Added support for translating Cloud Armor security policy on GKE Ingress to GCPBackendPolicy on GKE Gateway. (#191, @sawsa307)
+- Added support for translating Custom Health Check on GKE Ingress to HealthCheckPolicy on GKE Gateway. (#194, @sawsa307)
+- Added support for translating SSL Policy on GKE Ingress to GCPGatewayPolicy on GKE Gateway. (#195, @sawsa307)
+
 ## v0.3.0
 
 ## Major Themes
