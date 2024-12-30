@@ -54,7 +54,7 @@ func (c *resourcesToIRConverter) convert(storage *storage) (intermediate.IR, fie
 
 	// Convert plain ingress resources to gateway resources, ignoring all
 	// provider-specific features.
-	ir, errorList := common.ToIR(ingressList, c.implementationSpecificOptions)
+	ir, errorList := common.ToIR(ingressList, c.implementationSpecificOptions, notify)
 	if len(errorList) > 0 {
 		return intermediate.IR{}, errorList
 	}
