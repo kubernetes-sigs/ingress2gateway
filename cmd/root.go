@@ -48,6 +48,7 @@ func getKubeconfig() {
 func Execute() {
 	rootCmd := newRootCmd()
 	rootCmd.AddCommand(newPrintCommand())
+	rootCmd.AddCommand(newListFlagsCommand(rootCmd))
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
