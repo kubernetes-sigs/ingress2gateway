@@ -30,7 +30,7 @@ import (
 
 const GeneratorAnnotationKey = "gateway.networking.k8s.io/generator"
 
-var CurrentVersion = "0.3.0"
+var CurrentVersion = "0.4.0"
 
 func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string, providers []string, providerSpecificFlags map[string]map[string]string) ([]GatewayResources, map[string]string, error) {
 	var clusterClient client.Client

@@ -37,7 +37,7 @@ To contribute a new provider support - please read [PROVIDER.md](PROVIDER.md).
 ### Via go install
 
 If you have a Go development environment locally, you can install ingress2gateway
-with `go install github.com/kubernetes-sigs/ingress2gateway@v0.3.0`
+with `go install github.com/kubernetes-sigs/ingress2gateway@v0.4.0`
 
 This will put `ingress2gateway` binary in `$(go env GOPATH)/bin`
 

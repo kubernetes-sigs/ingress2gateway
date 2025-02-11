@@ -2,12 +2,22 @@
 
 ## Table of Contents
 
+- [v0.4.0](#v040)
+- [v0.4.0-rc1](#v040-rc1)
 - [v0.3.0](#v030)
 - [v0.3.0-rc1](#v030-rc1)
 - [v0.2.0](#v020)
 - [v0.2.0-rc1](#v020-rc1)
 - [v0.1.0](#v010)
 - [v0.1.0-rc1](#v010-rc1)
+
+## v0.4.0
+No changes since [v0.4.0-rc1](#v040-rc1)
+## Changes by Kind
+
+### Other (Cleanup or Flake)
+
+Fix goreleaser (#207, @subrajeet-maharana)
 
 ## v0.4.0-rc1
 
