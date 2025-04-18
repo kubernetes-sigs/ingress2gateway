@@ -20,13 +20,9 @@ import (
 	"fmt"
 	"runtime/debug"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/spf13/cobra"
 )
-
-// Version holds the version string (injected by ldflags during build).
-// It will be populated by `git describe --tags --always --dirty`.
-// Examples: "v0.4.0", "v0.4.0-5-gabcdef", "v0.4.0-5-gabcdef-dirty"
-var Version = "dev" // Default value if not built with linker flags
 
 // versionCmd represents the version command
 var versionCmd = &cobra.Command{
@@ -40,7 +36,7 @@ var versionCmd = &cobra.Command{
 
 // printVersion formats and prints the version information.
 func printVersion() {
-	fmt.Printf("ingress2gateway version: %s\n", Version)
+	fmt.Printf("ingress2gateway version: %s\n", i2gw.Version)
 
 	// Print the golang version if it's available
 	buildInfo, ok := debug.ReadBuildInfo()

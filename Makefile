@@ -18,9 +18,9 @@
 # Enable Go modules.
 export GO111MODULE=on
 
-# CMDPKG is the package path for cmd.  This allows us to propogate the git info
+# I2GWPKG is the package path for i2gw.  This allows us to propogate the git info
 # to the binary via LDFLAGS.
-CMDPKG := $(shell go list .)/cmd
+I2GWPKG := $(shell go list .)/pkg/i2gw
 
 # Get the version string from git describe.
 # --tags: Use annotated tags.
@@ -29,7 +29,7 @@ CMDPKG := $(shell go list .)/cmd
 GIT_VERSION_STRING := $(shell git describe --tags --always --dirty 2>/dev/null)
 
 # Construct the LDFLAGS string to inject the version
-LDFLAGS := -ldflags="-X '$(CMDPKG).Version=$(GIT_VERSION_STRING)'"
+LDFLAGS := -ldflags="-X '$(I2GWPKG).Version=$(GIT_VERSION_STRING)'"
 
 # Print the help menu.
 .PHONY: help
