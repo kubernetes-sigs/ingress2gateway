@@ -77,17 +77,17 @@ brew install ingress2gateway
 
 Ingress2gateway reads Ingress resources and/or provider-specifc CRDs from a Kubernetes
 cluster or a file. It will output the equivalent Gateway API resources in a YAML/JSON
-format to stdout. To run ingress2gateway with default options simply run:
+format to stdout.  The simplest case is to convert all ingresses from one provider (in this example we use ingress-nginx):
 
 ```shell
-./ingress2gateway print
+./ingress2gateway print --providers=ingress-nginx
 ```
 
 The above command will:
 
 1. Read your Kube config file to extract the cluster credentials and the current
    active namespace.
-1. Search for ingresses and provider-specific resources in that namespace.
+1. Search for ingress-nginx resources in that namespace.
 1. Convert them to Gateway-API resources (Currently only Gateways and HTTPRoutes).
 
 ## Options
@@ -103,7 +103,7 @@ The above command will:
 | openapi3-gateway-class-name     |                         | No       | Provider-specific: openapi3. The name of the gateway class to use in the Gateways. |
 | openapi3-gateway-tls-secret     |                         | No       | Provider-specific: openapi3. The name of the secret for the TLS certificate references in the Gateways. |
 | output         | yaml                    | No       | The output format, either yaml or json.                       |
-| providers      | all supported providers | Yes       | Comma-separated list of providers. |
+| providers      |  | Yes       | Comma-separated list of providers. |
 | kubeconfig     |                         | No       | The kubeconfig file to use when talking to the cluster. If the flag is not set, a set of standard locations can be searched for an existing kubeconfig file. |
 
 ## Conversion of Ingress resources to Gateway API
