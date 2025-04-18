@@ -18,6 +18,19 @@
 # Enable Go modules.
 export GO111MODULE=on
 
+# CMDPKG is the package path for cmd.  This allows us to propogate the git info
+# to the binary via LDFLAGS.
+CMDPKG := $(shell go list .)/cmd
+
+# Get the version string from git describe.
+# --tags: Use annotated tags.
+# --always: Fallback to commit hash if no tag is found.
+# --dirty: Append -dirty if the working directory has uncommitted changes.
+GIT_VERSION_STRING := $(shell git describe --tags --always --dirty 2>/dev/null)
+
+# Construct the LDFLAGS string to inject the version
+LDFLAGS := -ldflags="-X '$(CMDPKG).Version=$(GIT_VERSION_STRING)'"
+
 # Print the help menu.
 .PHONY: help
 help:
@@ -45,7 +58,7 @@ test: vet;$(info $(M)...Begin to run tests.)  @ ## Run tests.
 # Build the binary
 .PHONY: build
 build: vet;$(info $(M)...Build the binary.)  @ ## Build the binary.
-	go build -o ingress2gateway .
+	go build $(LDFLAGS) -o ingress2gateway .
 
 # Run static analysis.
 .PHONY: verify
