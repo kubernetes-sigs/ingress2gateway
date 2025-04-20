@@ -19,6 +19,7 @@ package i2gw
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -136,6 +137,8 @@ func GetSupportedProviders() []string {
 	for key := range ProviderConstructorByName {
 		supportedProviders = append(supportedProviders, string(key))
 	}
+	// Sort the provider names for consistent output.
+	sort.Strings(supportedProviders)
 	return supportedProviders
 }
 
