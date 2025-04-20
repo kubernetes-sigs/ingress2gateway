@@ -73,7 +73,7 @@ brew install ingress2gateway
    make build
    ```
 
-## Usage
+## Basic Usage
 
 Ingress2gateway reads Ingress resources and/or provider-specifc CRDs from a Kubernetes
 cluster or a file. It will output the equivalent Gateway API resources in a YAML/JSON
@@ -141,6 +141,216 @@ routing rules.
 | `rules[].http.paths[].path`     | This field translates to a HTTPRoute `rules[].matches[].path.value` configuration.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `rules[].http.paths[].pathType` | This field translates to a HTTPRoute `rules[].matches[].path.type` configuration. Ingress `Exact` = HTTPRoute `Exact` match. Ingress `Prefix` = HTTPRoute `PathPrefix` match.                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `rules[].http.paths[].backend`  | The backend specified here will be translated to a HTTPRoute `rules[].backendRefs[]` element.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+
+
+<!--- BEGIN GENERATED DOCS -->
+### `ingress2gateway completion`
+
+**Usage:** `ingress2gateway completion`
+
+**Description:**
+
+Generate the autocompletion script for ingress2gateway for the specified shell.
+See each sub-command's help for details on how to use the generated script.
+
+
+**Available Subcommands:**
+| Command | Description |
+| ------- | ----------- |
+| `bash` | Generate the autocompletion script for bash |
+| `fish` | Generate the autocompletion script for fish |
+| `powershell` | Generate the autocompletion script for powershell |
+| `zsh` | Generate the autocompletion script for zsh |
+
+
+---
+### `ingress2gateway completion bash`
+
+**Usage:** `ingress2gateway completion bash`
+
+**Description:**
+
+Generate the autocompletion script for the bash shell.
+
+This script depends on the 'bash-completion' package.
+If it is not installed already, you can install it via your OS's package manager.
+
+To load completions in your current shell session:
+
+	source <(ingress2gateway completion bash)
+
+To load completions for every new session, execute once:
+
+#### Linux:
+
+	ingress2gateway completion bash > /etc/bash_completion.d/ingress2gateway
+
+#### macOS:
+
+	ingress2gateway completion bash > $(brew --prefix)/etc/bash_completion.d/ingress2gateway
+
+You will need to start a new shell for this setup to take effect.
+
+
+**Flags:**
+| Flag | Default Value | Required | Description |
+| ---- | ------------- | -------- | ----------- |
+| `--no-descriptions` | `false` | No | disable completion descriptions |
+
+**Inherited Flags:**
+| Flag | Default Value | Required | Description |
+| ---- | ------------- | -------- | ----------- |
+| `--kubeconfig` | ` `  | No | The kubeconfig file to use when talking to the cluster. If the flag is not set, a set of standard locations can be searched for an existing kubeconfig file. |
+
+
+---
+### `ingress2gateway completion fish`
+
+**Usage:** `ingress2gateway completion fish [flags]`
+
+**Description:**
+
+Generate the autocompletion script for the fish shell.
+
+To load completions in your current shell session:
+
+	ingress2gateway completion fish | source
+
+To load completions for every new session, execute once:
+
+	ingress2gateway completion fish > ~/.config/fish/completions/ingress2gateway.fish
+
+You will need to start a new shell for this setup to take effect.
+
+
+**Flags:**
+| Flag | Default Value | Required | Description |
+| ---- | ------------- | -------- | ----------- |
+| `--no-descriptions` | `false` | No | disable completion descriptions |
+
+**Inherited Flags:**
+| Flag | Default Value | Required | Description |
+| ---- | ------------- | -------- | ----------- |
+| `--kubeconfig` | ` `  | No | The kubeconfig file to use when talking to the cluster. If the flag is not set, a set of standard locations can be searched for an existing kubeconfig file. |
+
+
+---
+### `ingress2gateway completion help`
+
+**Usage:** `ingress2gateway completion help [command]`
+
+**Description:**
+
+Help provides help for any command in the application.
+Simply type completion help [path to command] for full details.
+
+**Flags:** None
+
+---
+### `ingress2gateway completion powershell`
+
+**Usage:** `ingress2gateway completion powershell [flags]`
+
+**Description:**
+
+Generate the autocompletion script for powershell.
+
+To load completions in your current shell session:
+
+	ingress2gateway completion powershell | Out-String | Invoke-Expression
+
+To load completions for every new session, add the output of the above command
+to your powershell profile.
+
+
+**Flags:**
+| Flag | Default Value | Required | Description |
+| ---- | ------------- | -------- | ----------- |
+| `--no-descriptions` | `false` | No | disable completion descriptions |
+
+**Inherited Flags:**
+| Flag | Default Value | Required | Description |
+| ---- | ------------- | -------- | ----------- |
+| `--kubeconfig` | ` `  | No | The kubeconfig file to use when talking to the cluster. If the flag is not set, a set of standard locations can be searched for an existing kubeconfig file. |
+
+
+---
+### `ingress2gateway completion zsh`
+
+**Usage:** `ingress2gateway completion zsh [flags]`
+
+**Description:**
+
+Generate the autocompletion script for the zsh shell.
+
+If shell completion is not already enabled in your environment you will need
+to enable it.  You can execute the following once:
+
+	echo "autoload -U compinit; compinit" >> ~/.zshrc
+
+To load completions in your current shell session:
+
+	source <(ingress2gateway completion zsh)
+
+To load completions for every new session, execute once:
+
+#### Linux:
+
+	ingress2gateway completion zsh > "${fpath[1]}/_ingress2gateway"
+
+#### macOS:
+
+	ingress2gateway completion zsh > $(brew --prefix)/share/zsh/site-functions/_ingress2gateway
+
+You will need to start a new shell for this setup to take effect.
+
+
+**Flags:**
+| Flag | Default Value | Required | Description |
+| ---- | ------------- | -------- | ----------- |
+| `--no-descriptions` | `false` | No | disable completion descriptions |
+
+**Inherited Flags:**
+| Flag | Default Value | Required | Description |
+| ---- | ------------- | -------- | ----------- |
+| `--kubeconfig` | ` `  | No | The kubeconfig file to use when talking to the cluster. If the flag is not set, a set of standard locations can be searched for an existing kubeconfig file. |
+
+### `ingress2gateway print`
+
+**Usage:** `ingress2gateway print [flags]`
+
+**Description:**
+
+Prints Gateway API objects generated from ingress and provider-specific resources.
+
+**Flags:**
+| Flag | Default Value | Required | Description |
+| ---- | ------------- | -------- | ----------- |
+| `-A`, `--all-namespaces` | `false` | No | If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even
+if specified with --namespace. |
+| `--input-file` | ` `  | No | Path to the manifest file. When set, the tool will read ingresses from the file instead of reading from the cluster. Supported files are yaml and json. |
+| `-n`, `--namespace` | ` `  | No | If present, the namespace scope for this CLI request. |
+| `--openapi3-backend` | ` `  | No | Provider-specific: openapi3. The name of the backend service to use in the HTTPRoutes. |
+| `--openapi3-gateway-class-name` | ` `  | No | Provider-specific: openapi3. The name of the gateway class to use in the Gateways. |
+| `--openapi3-gateway-tls-secret` | ` `  | No | Provider-specific: openapi3. The name of the secret for the TLS certificate references in the Gateways. |
+| `-o`, `--output` | `yaml` | No | Output format. One of: (json, yaml). |
+| `--providers` | `[]` | Yes | If present, the tool will try to convert only resources related to the specified providers, supported values are [apisix cilium gce ingress-nginx istio kong openapi3]. |
+
+**Inherited Flags:**
+| Flag | Default Value | Required | Description |
+| ---- | ------------- | -------- | ----------- |
+| `--kubeconfig` | ` `  | No | The kubeconfig file to use when talking to the cluster. If the flag is not set, a set of standard locations can be searched for an existing kubeconfig file. |
+
+### `ingress2gateway version`
+
+**Usage:** `ingress2gateway version`
+
+**Description:**
+
+Prints the build version details for ingress2gateway, including Git status information and Go version
+
+**Flags:** None
+<!--- END GENERATED DOCS -->
 
 ## Get Involved
 
