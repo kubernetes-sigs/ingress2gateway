@@ -15,8 +15,6 @@ linters:
   - govet
   - misspell
   - exportloopref
-  disable:
-  - scopelint
   disable-all: false
   presets:
   - bugs
@@ -31,7 +29,7 @@ linters-settings:
     min-confidence: 0.9
   govet:
     # report about shadowed variables
-    check-shadowing: true
+    shadow: true
   misspell:
     locale: US
 
