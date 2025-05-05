@@ -65,11 +65,12 @@ func (r *reader) readResourcesFromCluster(ctx context.Context) (*storage, error)
 	}
 	storage.Ingresses = ingresses
 
-	services, err := r.readServicesFromCluster(ctx)
+	services, err := common.ReadServicesFromCluster(ctx, r.conf.Client)
 	if err != nil {
 		return nil, err
 	}
 	storage.Services = services
+	storage.ServicePorts = common.GroupServicePortsByPortName(services)
 
 	backendConfigs, err := r.readBackendConfigsFromCluster(ctx)
 	if err != nil {
@@ -102,19 +103,6 @@ func (r *reader) readResourcesFromFile(filename string) (*storage, error) {
 	}
 
 	return storage, nil
-}
-
-func (r *reader) readServicesFromCluster(ctx context.Context) (map[types.NamespacedName]*apiv1.Service, error) {
-	var serviceList apiv1.ServiceList
-	err := r.conf.Client.List(ctx, &serviceList)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get services from the cluster: %w", err)
-	}
-	services := make(map[types.NamespacedName]*apiv1.Service)
-	for i, service := range serviceList.Items {
-		services[types.NamespacedName{Namespace: service.Namespace, Name: service.Name}] = &serviceList.Items[i]
-	}
-	return services, nil
 }
 
 func (r *reader) readBackendConfigsFromCluster(ctx context.Context) (map[types.NamespacedName]*backendconfigv1.BackendConfig, error) {
@@ -198,6 +186,7 @@ func (r *reader) readUnstructuredObjects(objects []*unstructured.Unstructured) (
 	}
 	res.Ingresses = ingresses
 	res.Services = services
+	res.ServicePorts = common.GroupServicePortsByPortName(services)
 	res.BackendConfigs = backendConfigs
 	res.FrontendConfigs = frontendConfigs
 	return res, nil

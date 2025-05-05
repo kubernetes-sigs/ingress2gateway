@@ -22,11 +22,13 @@ import (
 )
 
 type storage struct {
-	Ingresses map[types.NamespacedName]*networkingv1.Ingress
+	Ingresses    map[types.NamespacedName]*networkingv1.Ingress
+	ServicePorts map[types.NamespacedName]map[string]int32
 }
 
 func newResourcesStorage() *storage {
 	return &storage{
-		Ingresses: map[types.NamespacedName]*networkingv1.Ingress{},
+		Ingresses:    map[types.NamespacedName]*networkingv1.Ingress{},
+		ServicePorts: map[types.NamespacedName]map[string]int32{},
 	}
 }

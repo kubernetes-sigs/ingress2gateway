@@ -25,6 +25,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -242,14 +243,14 @@ func TestHeaderMatchingFeature(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			gatewayResources, errs := common.ToIR(tc.ingresses, i2gw.ProviderImplementationSpecificOptions{
+			gatewayResources, errs := common.ToIR(tc.ingresses, map[types.NamespacedName]map[string]int32{}, i2gw.ProviderImplementationSpecificOptions{
 				ToImplementationSpecificHTTPPathTypeMatch: implementationSpecificHTTPPathTypeMatch,
 			})
 			if len(errs) != 0 {
 				t.Errorf("Expected no errors, got %d: %+v", len(errs), errs)
 			}
 
-			errs = headerMatchingFeature(tc.ingresses, &gatewayResources)
+			errs = headerMatchingFeature(tc.ingresses, map[types.NamespacedName]map[string]int32{}, &gatewayResources)
 			if len(errs) != len(tc.expectedErrors) {
 				t.Errorf("Expected %d errors, got %d: %+v", len(tc.expectedErrors), len(errs), errs)
 			} else {

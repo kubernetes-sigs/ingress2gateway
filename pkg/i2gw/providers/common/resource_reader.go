@@ -24,6 +24,7 @@ import (
 	"io"
 	"os"
 
+	apiv1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -79,6 +80,48 @@ func ReadIngressesFromFile(filename, namespace string, ingressClasses sets.Set[s
 
 	}
 	return ingresses, nil
+}
+
+func ReadServicesFromCluster(ctx context.Context, client client.Client) (map[types.NamespacedName]*apiv1.Service, error) {
+	var serviceList apiv1.ServiceList
+	err := client.List(ctx, &serviceList)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get services from the cluster: %w", err)
+	}
+
+	services := map[types.NamespacedName]*apiv1.Service{}
+	for i, service := range serviceList.Items {
+		services[types.NamespacedName{Namespace: service.Namespace, Name: service.Name}] = &serviceList.Items[i]
+	}
+
+	return services, nil
+}
+
+func ReadServicesFromFile(filename, namespace string) (map[types.NamespacedName]*apiv1.Service, error) {
+	stream, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file %v: %w", filename, err)
+	}
+
+	unstructuredObjects, err := ExtractObjectsFromReader(bytes.NewReader(stream), namespace)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract objects: %w", err)
+	}
+
+	services := map[types.NamespacedName]*apiv1.Service{}
+	for _, f := range unstructuredObjects {
+		if !f.GroupVersionKind().Empty() && f.GroupVersionKind().Kind == "Service" {
+			var service apiv1.Service
+			err = runtime.DefaultUnstructuredConverter.
+				FromUnstructured(f.UnstructuredContent(), &service)
+			if err != nil {
+				return nil, err
+			}
+			services[types.NamespacedName{Namespace: service.Namespace, Name: service.Name}] = &service
+		}
+
+	}
+	return services, nil
 }
 
 // ExtractObjectsFromReader extracts all objects from a reader,

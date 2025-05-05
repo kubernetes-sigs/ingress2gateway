@@ -30,7 +30,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-func canaryFeature(ingresses []networkingv1.Ingress, ir *intermediate.IR) field.ErrorList {
+func canaryFeature(ingresses []networkingv1.Ingress, servicePorts map[types.NamespacedName]map[string]int32, ir *intermediate.IR) field.ErrorList {
 	ruleGroups := common.GetRuleGroups(ingresses)
 
 	for _, rg := range ruleGroups {
@@ -55,7 +55,7 @@ func canaryFeature(ingresses []networkingv1.Ingress, ir *intermediate.IR) field.
 			for _, paths := range ingressPathsByMatchKey {
 				path := paths[0]
 
-				backendRefs, calculationErrs := calculateBackendRefWeight(paths)
+				backendRefs, calculationErrs := calculateBackendRefWeight(rg.Namespace, servicePorts, paths)
 				errs = append(errs, calculationErrs...)
 
 				key := types.NamespacedName{Namespace: path.ingress.Namespace, Name: common.RouteName(rg.Name, rg.Host)}
@@ -127,7 +127,7 @@ func patchHTTPRouteWithBackendRefs(httpRoute *gatewayv1.HTTPRoute, backendRefs [
 	}
 }
 
-func calculateBackendRefWeight(paths []ingressPath) ([]gatewayv1.HTTPBackendRef, field.ErrorList) {
+func calculateBackendRefWeight(namespace string, servicePorts map[types.NamespacedName]map[string]int32, paths []ingressPath) ([]gatewayv1.HTTPBackendRef, field.ErrorList) {
 	var errors field.ErrorList
 	var backendRefs []gatewayv1.HTTPBackendRef
 
@@ -137,7 +137,7 @@ func calculateBackendRefWeight(paths []ingressPath) ([]gatewayv1.HTTPBackendRef,
 	var weightTotal = 100
 
 	for i, path := range paths {
-		backendRef, err := common.ToBackendRef(path.path.Backend, field.NewPath("paths", "backends").Index(i))
+		backendRef, err := common.ToBackendRef(namespace, path.path.Backend, servicePorts, field.NewPath("paths", "backends").Index(i))
 		if err != nil {
 			errors = append(errors, err)
 			continue

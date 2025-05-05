@@ -24,7 +24,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
-	corev1 "k8s.io/api/core/v1"
+	apiv1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -64,7 +64,7 @@ func Test_ToIR(t *testing.T) {
 											Path:     "/",
 											PathType: &iPrefix,
 											Backend: networkingv1.IngressBackend{
-												Resource: &corev1.TypedLocalObjectReference{
+												Resource: &apiv1.TypedLocalObjectReference{
 													Name:     "production",
 													Kind:     "StorageBucket",
 													APIGroup: ptrTo("vendor.example.com"),
@@ -95,7 +95,7 @@ func Test_ToIR(t *testing.T) {
 											Path:     "/",
 											PathType: &iPrefix,
 											Backend: networkingv1.IngressBackend{
-												Resource: &corev1.TypedLocalObjectReference{
+												Resource: &apiv1.TypedLocalObjectReference{
 													Name:     "canary",
 													Kind:     "StorageBucket",
 													APIGroup: ptrTo("vendor.example.com"),

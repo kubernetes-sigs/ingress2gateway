@@ -20,8 +20,10 @@ import (
 	"fmt"
 	"regexp"
 
+	apiv1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -105,16 +107,27 @@ func RouteName(ingressName, host string) string {
 	return fmt.Sprintf("%s-%s", ingressName, NameFromHost(host))
 }
 
-func ToBackendRef(ib networkingv1.IngressBackend, path *field.Path) (*gatewayv1.BackendRef, *field.Error) {
+func ToBackendRef(namespace string, ib networkingv1.IngressBackend, servicePorts map[types.NamespacedName]map[string]int32, path *field.Path) (*gatewayv1.BackendRef, *field.Error) {
 	if ib.Service != nil {
-		if ib.Service.Port.Name != "" {
-			fieldPath := path.Child("service", "port")
-			return nil, field.Invalid(fieldPath, "name", fmt.Sprintf("named ports not supported: %s", ib.Service.Port.Name))
+		if ib.Service.Port.Name == "" {
+			return &gatewayv1.BackendRef{
+				BackendObjectReference: gatewayv1.BackendObjectReference{
+					Name: gatewayv1.ObjectName(ib.Service.Name),
+					Port: (*gatewayv1.PortNumber)(&ib.Service.Port.Number),
+				},
+			}, nil
 		}
+
+		portNumber, ok := servicePorts[types.NamespacedName{Namespace: namespace, Name: ib.Service.Name}][ib.Service.Port.Name]
+		if !ok {
+			fieldPath := path.Child("service", "port")
+			return nil, field.Invalid(fieldPath, "name", fmt.Sprintf("cannot find port with name %s in service %s", ib.Service.Port.Name, ib.Service.Name))
+		}
+
 		return &gatewayv1.BackendRef{
 			BackendObjectReference: gatewayv1.BackendObjectReference{
 				Name: gatewayv1.ObjectName(ib.Service.Name),
-				Port: (*gatewayv1.PortNumber)(&ib.Service.Port.Number),
+				Port: (*gatewayv1.PortNumber)(&portNumber),
 			},
 		}, nil
 	}
@@ -150,6 +163,19 @@ func groupIngressPathsByMatchKey(rules []ingressRule) orderedIngressPathsByMatch
 		}
 	}
 	return ingressPathsByMatchKey
+}
+
+func GroupServicePortsByPortName(services map[types.NamespacedName]*apiv1.Service) map[types.NamespacedName]map[string]int32 {
+	servicePorts := map[types.NamespacedName]map[string]int32{}
+
+	for namespacedName, service := range services {
+		servicePorts[namespacedName] = map[string]int32{}
+		for _, port := range service.Spec.Ports {
+			servicePorts[namespacedName][port.Name] = port.Port
+		}
+	}
+
+	return servicePorts
 }
 
 func PtrTo[T any](a T) *T {

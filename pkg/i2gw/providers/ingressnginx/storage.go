@@ -28,7 +28,8 @@ type OrderedIngressMap struct {
 	ingressObjects map[types.NamespacedName]*networkingv1.Ingress
 }
 type storage struct {
-	Ingresses OrderedIngressMap
+	Ingresses    OrderedIngressMap
+	ServicePorts map[types.NamespacedName]map[string]int32
 }
 
 func newResourcesStorage() *storage {
@@ -37,6 +38,7 @@ func newResourcesStorage() *storage {
 			ingressNames:   []types.NamespacedName{},
 			ingressObjects: map[types.NamespacedName]*networkingv1.Ingress{},
 		},
+		ServicePorts: map[types.NamespacedName]map[string]int32{},
 	}
 }
 

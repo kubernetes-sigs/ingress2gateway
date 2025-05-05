@@ -20,7 +20,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	apiv1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestGroupIngressPathsByMatchKey(t *testing.T) {
@@ -525,8 +528,53 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			want := groupIngressPathsByMatchKey(tc.rules)
-			require.Equal(t, want, tc.expected)
+			require.Equal(t, tc.expected, groupIngressPathsByMatchKey(tc.rules))
 		})
 	}
+}
+
+func TestGroupServicePortsByPortName(t *testing.T) {
+	t.Run("group service ports by port name", func(t *testing.T) {
+		services := map[types.NamespacedName]*apiv1.Service{
+			{Namespace: "namespace1", Name: "service1"}: {
+				TypeMeta:   metav1.TypeMeta{Kind: "Service", APIVersion: "v1"},
+				ObjectMeta: metav1.ObjectMeta{Namespace: "namespace1", Name: "service1"},
+				Spec: apiv1.ServiceSpec{
+					Type: "ClusterIP",
+					Ports: []apiv1.ServicePort{
+						{Name: "http", Port: 80},
+						{Name: "https", Port: 443},
+					},
+				},
+			},
+			{Namespace: "namespace2", Name: "service2"}: {
+				TypeMeta:   metav1.TypeMeta{Kind: "Service", APIVersion: "v1"},
+				ObjectMeta: metav1.ObjectMeta{Namespace: "namespace2", Name: "service2"},
+				Spec: apiv1.ServiceSpec{
+					Type: "ClusterIP",
+					Ports: []apiv1.ServicePort{
+						{Name: "http", Port: 80},
+					},
+				},
+			},
+			{Namespace: "namespace1", Name: "service3"}: {
+				TypeMeta:   metav1.TypeMeta{Kind: "Service", APIVersion: "v1"},
+				ObjectMeta: metav1.ObjectMeta{Namespace: "namespace1", Name: "service3"},
+				Spec: apiv1.ServiceSpec{
+					Type: "ClusterIP",
+					Ports: []apiv1.ServicePort{
+						{Name: "http", Port: 9200},
+						{Name: "transport", Port: 9300},
+					},
+				},
+			},
+		}
+		expected := map[types.NamespacedName]map[string]int32{
+			{Namespace: "namespace1", Name: "service1"}: {"http": 80, "https": 443},
+			{Namespace: "namespace2", Name: "service2"}: {"http": 80},
+			{Namespace: "namespace1", Name: "service3"}: {"http": 9200, "transport": 9300},
+		}
+
+		require.Equal(t, expected, GroupServicePortsByPortName(services))
+	})
 }
