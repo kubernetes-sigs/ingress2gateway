@@ -23,7 +23,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
-	corev1 "k8s.io/api/core/v1"
+	apiv1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,12 +41,14 @@ func Test_ToIR(t *testing.T) {
 	testCases := []struct {
 		name           string
 		ingresses      []networkingv1.Ingress
+		servicePorts   map[types.NamespacedName]map[string]int32
 		expectedIR     intermediate.IR
 		expectedErrors field.ErrorList
 	}{
 		{
 			name:           "empty",
 			ingresses:      []networkingv1.Ingress{},
+			servicePorts:   map[types.NamespacedName]map[string]int32{},
 			expectedIR:     intermediate.IR{},
 			expectedErrors: field.ErrorList{},
 		},
@@ -77,6 +79,7 @@ func Test_ToIR(t *testing.T) {
 					IngressClassName: PtrTo("simple"),
 				},
 			}},
+			servicePorts: map[types.NamespacedName]map[string]int32{},
 			expectedIR: intermediate.IR{
 				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
 					{Namespace: "test", Name: "simple"}: {
@@ -159,6 +162,7 @@ func Test_ToIR(t *testing.T) {
 					IngressClassName: PtrTo("with-tls"),
 				},
 			}},
+			servicePorts: map[types.NamespacedName]map[string]int32{},
 			expectedIR: intermediate.IR{
 				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
 					{Namespace: "test", Name: "with-tls"}: {
@@ -234,7 +238,7 @@ func Test_ToIR(t *testing.T) {
 									Path:     "/bar",
 									PathType: &iExact,
 									Backend: networkingv1.IngressBackend{
-										Resource: &corev1.TypedLocalObjectReference{
+										Resource: &apiv1.TypedLocalObjectReference{
 											Name:     "custom",
 											Kind:     "StorageBucket",
 											APIGroup: PtrTo("vendor.example.com"),
@@ -254,6 +258,7 @@ func Test_ToIR(t *testing.T) {
 					},
 				},
 			}},
+			servicePorts: map[types.NamespacedName]map[string]int32{},
 			expectedIR: intermediate.IR{
 				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
 					{Namespace: "different", Name: "example-proxy"}: {
@@ -379,6 +384,7 @@ func Test_ToIR(t *testing.T) {
 					}},
 				},
 			}},
+			servicePorts: map[types.NamespacedName]map[string]int32{},
 			expectedIR: intermediate.IR{
 				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
 					{Namespace: "test", Name: "example-proxy"}: {
@@ -430,12 +436,130 @@ func Test_ToIR(t *testing.T) {
 			},
 			expectedErrors: field.ErrorList{},
 		},
+		{
+			name: "named ports",
+			ingresses: []networkingv1.Ingress{{
+				ObjectMeta: metav1.ObjectMeta{Name: "named-ports", Namespace: "test"},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{{
+						Host: "example.com",
+						IngressRuleValue: networkingv1.IngressRuleValue{
+							HTTP: &networkingv1.HTTPIngressRuleValue{
+								Paths: []networkingv1.HTTPIngressPath{{
+									Path:     "/foo",
+									PathType: &iPrefix,
+									Backend: networkingv1.IngressBackend{
+										Service: &networkingv1.IngressServiceBackend{
+											Name: "example",
+											Port: networkingv1.ServiceBackendPort{
+												Name: "http",
+											},
+										},
+									},
+								}},
+							},
+						},
+					}},
+					IngressClassName: PtrTo("named-ports"),
+				},
+			}},
+			servicePorts: map[types.NamespacedName]map[string]int32{
+				{Namespace: "test", Name: "example"}:  {"http": 3000},
+				{Namespace: "test", Name: "example2"}: {"http": 8080},
+			},
+			expectedIR: intermediate.IR{
+				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+					{Namespace: "test", Name: "named-ports"}: {
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: "named-ports", Namespace: "test"},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: "named-ports",
+								Listeners: []gatewayv1.Listener{{
+									Name:     "example-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: PtrTo(gatewayv1.Hostname("example.com")),
+								}},
+							},
+						},
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+					{Namespace: "test", Name: "named-ports-example-com"}: {
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: "named-ports-example-com", Namespace: "test"},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: "named-ports",
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{"example.com"},
+								Rules: []gatewayv1.HTTPRouteRule{{
+									Matches: []gatewayv1.HTTPRouteMatch{{
+										Path: &gatewayv1.HTTPPathMatch{
+											Type:  &gPathPrefix,
+											Value: PtrTo("/foo"),
+										},
+									}},
+									BackendRefs: []gatewayv1.HTTPBackendRef{{
+										BackendRef: gatewayv1.BackendRef{
+											BackendObjectReference: gatewayv1.BackendObjectReference{
+												Name: "example",
+												Port: PtrTo(gatewayv1.PortNumber(3000)),
+											},
+										},
+									}},
+								}},
+							},
+						},
+					},
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
+		{
+			name: "missing named ports",
+			ingresses: []networkingv1.Ingress{{
+				ObjectMeta: metav1.ObjectMeta{Name: "named-ports", Namespace: "test"},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{{
+						Host: "example.com",
+						IngressRuleValue: networkingv1.IngressRuleValue{
+							HTTP: &networkingv1.HTTPIngressRuleValue{
+								Paths: []networkingv1.HTTPIngressPath{{
+									Path:     "/foo",
+									PathType: &iPrefix,
+									Backend: networkingv1.IngressBackend{
+										Service: &networkingv1.IngressServiceBackend{
+											Name: "example",
+											Port: networkingv1.ServiceBackendPort{
+												Name: "http",
+											},
+										},
+									},
+								}},
+							},
+						},
+					}},
+					IngressClassName: PtrTo("named-ports"),
+				},
+			}},
+			servicePorts: map[types.NamespacedName]map[string]int32{
+				{Namespace: "test", Name: "example2"}: {"http": 8080},
+			},
+			expectedIR: intermediate.IR{
+				Gateways:   map[types.NamespacedName]intermediate.GatewayContext{},
+				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{},
+			},
+			expectedErrors: field.ErrorList{field.Invalid(field.NewPath(""), "", "")},
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			ir, errs := ToIR(tc.ingresses, i2gw.ProviderImplementationSpecificOptions{})
+			ir, errs := ToIR(tc.ingresses, tc.servicePorts, i2gw.ProviderImplementationSpecificOptions{})
 
 			if len(ir.HTTPRoutes) != len(tc.expectedIR.HTTPRoutes) {
 				t.Errorf("Expected %d HTTPRoutes, got %d: %+v",

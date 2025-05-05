@@ -34,8 +34,11 @@ import (
 
 // ToIR converts the received ingresses to intermediate.IR without taking into
 // consideration any provider specific logic.
-func ToIR(ingresses []networkingv1.Ingress, options i2gw.ProviderImplementationSpecificOptions) (intermediate.IR, field.ErrorList) {
-	aggregator := ingressAggregator{ruleGroups: map[ruleGroupKey]*ingressRuleGroup{}}
+func ToIR(ingresses []networkingv1.Ingress, servicePorts map[types.NamespacedName]map[string]int32, options i2gw.ProviderImplementationSpecificOptions) (intermediate.IR, field.ErrorList) {
+	aggregator := ingressAggregator{
+		ruleGroups:   map[ruleGroupKey]*ingressRuleGroup{},
+		servicePorts: servicePorts,
+	}
 
 	var errs field.ErrorList
 	for _, ingress := range ingresses {
@@ -105,6 +108,7 @@ type ruleGroupKey string
 type ingressAggregator struct {
 	ruleGroups      map[ruleGroupKey]*ingressRuleGroup
 	defaultBackends []ingressDefaultBackend
+	servicePorts    map[types.NamespacedName]map[string]int32
 }
 
 type pathMatchKey string
@@ -201,7 +205,7 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImpleme
 		}
 		gwKey := fmt.Sprintf("%s/%s", rg.namespace, rg.ingressClass)
 		listenersByNamespacedGateway[gwKey] = append(listenersByNamespacedGateway[gwKey], listener)
-		httpRoute, errs := rg.toHTTPRoute(options)
+		httpRoute, errs := rg.toHTTPRoute(a.servicePorts, options)
 		httpRoutes = append(httpRoutes, httpRoute)
 		errors = append(errors, errs...)
 	}
@@ -227,7 +231,7 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImpleme
 		}
 		httpRoute.SetGroupVersionKind(HTTPRouteGVK)
 
-		backendRef, err := toBackendRef(db.backend, field.NewPath(db.name, "paths", "backends").Index(i))
+		backendRef, err := ToBackendRef(db.namespace, db.backend, a.servicePorts, field.NewPath(db.name, "paths", "backends").Index(i))
 		if err != nil {
 			errors = append(errors, err)
 		} else {
@@ -292,7 +296,7 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImpleme
 	return httpRoutes, gateways, errors
 }
 
-func (rg *ingressRuleGroup) toHTTPRoute(options i2gw.ProviderImplementationSpecificOptions) (gatewayv1.HTTPRoute, field.ErrorList) {
+func (rg *ingressRuleGroup) toHTTPRoute(servicePorts map[types.NamespacedName]map[string]int32, options i2gw.ProviderImplementationSpecificOptions) (gatewayv1.HTTPRoute, field.ErrorList) {
 	ingressPathsByMatchKey := groupIngressPathsByMatchKey(rg.rules)
 	httpRoute := gatewayv1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
@@ -329,7 +333,7 @@ func (rg *ingressRuleGroup) toHTTPRoute(options i2gw.ProviderImplementationSpeci
 			Matches: []gatewayv1.HTTPRouteMatch{*match},
 		}
 
-		backendRefs, errs := rg.configureBackendRef(paths)
+		backendRefs, errs := rg.configureBackendRef(servicePorts, paths)
 		errors = append(errors, errs...)
 		hrRule.BackendRefs = backendRefs
 
@@ -339,12 +343,12 @@ func (rg *ingressRuleGroup) toHTTPRoute(options i2gw.ProviderImplementationSpeci
 	return httpRoute, errors
 }
 
-func (rg *ingressRuleGroup) configureBackendRef(paths []ingressPath) ([]gatewayv1.HTTPBackendRef, field.ErrorList) {
+func (rg *ingressRuleGroup) configureBackendRef(servicePorts map[types.NamespacedName]map[string]int32, paths []ingressPath) ([]gatewayv1.HTTPBackendRef, field.ErrorList) {
 	var errors field.ErrorList
 	var backendRefs []gatewayv1.HTTPBackendRef
 
 	for i, path := range paths {
-		backendRef, err := toBackendRef(path.path.Backend, field.NewPath("paths", "backends").Index(i))
+		backendRef, err := ToBackendRef(rg.namespace, path.path.Backend, servicePorts, field.NewPath("paths", "backends").Index(i))
 		if err != nil {
 			errors = append(errors, err)
 			continue
@@ -395,26 +399,4 @@ func toHTTPRouteMatch(routePath networkingv1.HTTPIngressPath, path *field.Path, 
 	}
 
 	return match, nil
-}
-
-func toBackendRef(ib networkingv1.IngressBackend, path *field.Path) (*gatewayv1.BackendRef, *field.Error) {
-	if ib.Service != nil {
-		if ib.Service.Port.Name != "" {
-			fieldPath := path.Child("service", "port")
-			return nil, field.Invalid(fieldPath, "name", fmt.Sprintf("named ports not supported: %s", ib.Service.Port.Name))
-		}
-		return &gatewayv1.BackendRef{
-			BackendObjectReference: gatewayv1.BackendObjectReference{
-				Name: gatewayv1.ObjectName(ib.Service.Name),
-				Port: (*gatewayv1.PortNumber)(&ib.Service.Port.Number),
-			},
-		}, nil
-	}
-	return &gatewayv1.BackendRef{
-		BackendObjectReference: gatewayv1.BackendObjectReference{
-			Group: (*gatewayv1.Group)(ib.Resource.APIGroup),
-			Kind:  (*gatewayv1.Kind)(&ib.Resource.Kind),
-			Name:  gatewayv1.ObjectName(ib.Resource.Name),
-		},
-	}, nil
 }

@@ -25,8 +25,9 @@ import (
 )
 
 type storage struct {
-	Ingresses map[types.NamespacedName]*networkingv1.Ingress
-	Services  map[types.NamespacedName]*apiv1.Service
+	Ingresses    map[types.NamespacedName]*networkingv1.Ingress
+	Services     map[types.NamespacedName]*apiv1.Service
+	ServicePorts map[types.NamespacedName]map[string]int32
 
 	// BackendConfig is a GKE Ingress extension, and it is associated to an GKE
 	// Ingress through specifying `cloud.google.com/backend-config` or
@@ -44,6 +45,7 @@ func newResourcesStorage() *storage {
 	return &storage{
 		Ingresses:       make(map[types.NamespacedName]*networkingv1.Ingress),
 		Services:        make(map[types.NamespacedName]*apiv1.Service),
+		ServicePorts:    make(map[types.NamespacedName]map[string]int32),
 		BackendConfigs:  make(map[types.NamespacedName]*backendconfigv1.BackendConfig),
 		FrontendConfigs: make(map[types.NamespacedName]*frontendconfigv1beta1.FrontendConfig),
 	}

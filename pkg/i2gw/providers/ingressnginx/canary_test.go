@@ -20,9 +20,10 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	corev1 "k8s.io/api/core/v1"
+	apiv1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -40,7 +41,7 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 				{
 					path: networkingv1.HTTPIngressPath{
 						Backend: networkingv1.IngressBackend{
-							Resource: &corev1.TypedLocalObjectReference{
+							Resource: &apiv1.TypedLocalObjectReference{
 								Name:     "canary",
 								Kind:     "StorageBucket",
 								APIGroup: ptrTo("vendor.example.com"),
@@ -55,7 +56,7 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 				{
 					path: networkingv1.HTTPIngressPath{
 						Backend: networkingv1.IngressBackend{
-							Resource: &corev1.TypedLocalObjectReference{
+							Resource: &apiv1.TypedLocalObjectReference{
 								Name:     "prod",
 								Kind:     "StorageBucket",
 								APIGroup: ptrTo("vendor.example.com"),
@@ -75,7 +76,7 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 				{
 					path: networkingv1.HTTPIngressPath{
 						Backend: networkingv1.IngressBackend{
-							Resource: &corev1.TypedLocalObjectReference{
+							Resource: &apiv1.TypedLocalObjectReference{
 								Name:     "canary",
 								Kind:     "StorageBucket",
 								APIGroup: ptrTo("vendor.example.com"),
@@ -90,7 +91,7 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 				{
 					path: networkingv1.HTTPIngressPath{
 						Backend: networkingv1.IngressBackend{
-							Resource: &corev1.TypedLocalObjectReference{
+							Resource: &apiv1.TypedLocalObjectReference{
 								Name:     "prod",
 								Kind:     "StorageBucket",
 								APIGroup: ptrTo("vendor.example.com"),
@@ -110,7 +111,7 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 				{
 					path: networkingv1.HTTPIngressPath{
 						Backend: networkingv1.IngressBackend{
-							Resource: &corev1.TypedLocalObjectReference{
+							Resource: &apiv1.TypedLocalObjectReference{
 								Name:     "canary",
 								Kind:     "StorageBucket",
 								APIGroup: ptrTo("vendor.example.com"),
@@ -125,7 +126,7 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 				{
 					path: networkingv1.HTTPIngressPath{
 						Backend: networkingv1.IngressBackend{
-							Resource: &corev1.TypedLocalObjectReference{
+							Resource: &apiv1.TypedLocalObjectReference{
 								Name:     "prod",
 								Kind:     "StorageBucket",
 								APIGroup: ptrTo("vendor.example.com"),
@@ -145,7 +146,7 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 				{
 					path: networkingv1.HTTPIngressPath{
 						Backend: networkingv1.IngressBackend{
-							Resource: &corev1.TypedLocalObjectReference{
+							Resource: &apiv1.TypedLocalObjectReference{
 								Name:     "canary",
 								Kind:     "StorageBucket",
 								APIGroup: ptrTo("vendor.example.com"),
@@ -160,7 +161,7 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 				{
 					path: networkingv1.HTTPIngressPath{
 						Backend: networkingv1.IngressBackend{
-							Resource: &corev1.TypedLocalObjectReference{
+							Resource: &apiv1.TypedLocalObjectReference{
 								Name:     "prod",
 								Kind:     "StorageBucket",
 								APIGroup: ptrTo("vendor.example.com"),
@@ -180,7 +181,7 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 				{
 					path: networkingv1.HTTPIngressPath{
 						Backend: networkingv1.IngressBackend{
-							Resource: &corev1.TypedLocalObjectReference{
+							Resource: &apiv1.TypedLocalObjectReference{
 								Name:     "canary",
 								Kind:     "StorageBucket",
 								APIGroup: ptrTo("vendor.example.com"),
@@ -196,7 +197,7 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 				{
 					path: networkingv1.HTTPIngressPath{
 						Backend: networkingv1.IngressBackend{
-							Resource: &corev1.TypedLocalObjectReference{
+							Resource: &apiv1.TypedLocalObjectReference{
 								Name:     "prod",
 								Kind:     "StorageBucket",
 								APIGroup: ptrTo("vendor.example.com"),
@@ -214,7 +215,7 @@ func Test_ingressRuleGroup_calculateBackendRefWeight(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			actualBackendRefs, errs := calculateBackendRefWeight(tc.paths)
+			actualBackendRefs, errs := calculateBackendRefWeight("example", map[types.NamespacedName]map[string]int32{}, tc.paths)
 			if len(errs) != len(tc.expectedErrors) {
 				t.Fatalf("expected %d errors, got %d", len(tc.expectedErrors), len(errs))
 			}

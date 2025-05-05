@@ -25,11 +25,13 @@ import (
 type storage struct {
 	Ingresses    map[types.NamespacedName]*networkingv1.Ingress
 	TCPIngresses []kongv1beta1.TCPIngress
+	ServicePorts map[types.NamespacedName]map[string]int32
 }
 
 func newResourceStorage() *storage {
 	return &storage{
 		Ingresses:    map[types.NamespacedName]*networkingv1.Ingress{},
 		TCPIngresses: []kongv1beta1.TCPIngress{},
+		ServicePorts: map[types.NamespacedName]map[string]int32{},
 	}
 }
