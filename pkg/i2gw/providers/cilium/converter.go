@@ -49,14 +49,14 @@ func (c *resourcesToIRConverter) convertToIR(storage *storage) (intermediate.IR,
 	}
 	// Convert plain ingress resources to gateway resources, ignoring all
 	// provider-specific features.
-	ir, errs := common.ToIR(ingressList, c.implementationSpecificOptions)
+	ir, errs := common.ToIR(ingressList, storage.ServicePorts, c.implementationSpecificOptions)
 	if len(errs) > 0 {
 		return intermediate.IR{}, errs
 	}
 
 	for _, parseFeatureFunc := range c.featureParsers {
 		// Apply the feature parsing function to the gateway resources, one by one.
-		parseErrs := parseFeatureFunc(ingressList, &ir)
+		parseErrs := parseFeatureFunc(ingressList, storage.ServicePorts, &ir)
 		// Append the parsing errors to the error list.
 		errs = append(errs, parseErrs...)
 	}

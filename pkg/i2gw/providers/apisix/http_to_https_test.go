@@ -266,7 +266,7 @@ func Test_httpToHttpsFeature(t *testing.T) {
 				},
 			}
 
-			errs := httpToHTTPSFeature(ingresses, ir)
+			errs := httpToHTTPSFeature(ingresses, map[types.NamespacedName]map[string]int32{}, ir)
 
 			if len(errs) != len(tc.expectedError) {
 				t.Errorf("expected %d errors, got %d", len(tc.expectedError), len(errs))

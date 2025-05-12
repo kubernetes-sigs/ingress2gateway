@@ -45,6 +45,12 @@ func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage
 		return nil, err
 	}
 	storage.Ingresses = ingresses
+
+	services, err := common.ReadServicesFromCluster(ctx, r.conf.Client)
+	if err != nil {
+		return nil, err
+	}
+	storage.ServicePorts = common.GroupServicePortsByPortName(services)
 	return storage, nil
 }
 
@@ -57,5 +63,11 @@ func (r *resourceReader) readResourcesFromFile(filename string) (*storage, error
 		return nil, err
 	}
 	storage.Ingresses = ingresses
+
+	services, err := common.ReadServicesFromFile(filename, r.conf.Namespace)
+	if err != nil {
+		return nil, err
+	}
+	storage.ServicePorts = common.GroupServicePortsByPortName(services)
 	return storage, nil
 }
