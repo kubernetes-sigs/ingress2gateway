@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1alpha3 "sigs.k8s.io/gateway-api/apis/v1alpha3"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
@@ -36,8 +37,10 @@ type IR struct {
 	TLSRoutes      map[types.NamespacedName]gatewayv1alpha2.TLSRoute
 	TCPRoutes      map[types.NamespacedName]gatewayv1alpha2.TCPRoute
 	UDPRoutes      map[types.NamespacedName]gatewayv1alpha2.UDPRoute
+	GRPCRoutes     map[types.NamespacedName]gatewayv1.GRPCRoute
 
-	ReferenceGrants map[types.NamespacedName]gatewayv1beta1.ReferenceGrant
+	BackendTLSPolicies map[types.NamespacedName]gatewayv1alpha3.BackendTLSPolicy
+	ReferenceGrants    map[types.NamespacedName]gatewayv1beta1.ReferenceGrant
 }
 
 // GatewayContext contains the Gateway-API Gateway object and GatewayIR, which
@@ -90,4 +93,5 @@ type ProviderSpecificServiceIR struct {
 	Istio        *IstioServiceIR
 	Kong         *KongServiceIR
 	Openapi3     *Openapi3ServiceIR
+	Nginx        *NginxServiceIR
 }

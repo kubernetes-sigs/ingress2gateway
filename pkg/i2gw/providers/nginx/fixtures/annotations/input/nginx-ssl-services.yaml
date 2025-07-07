@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ssl-services-test
+  namespace: default
+  annotations:
+    nginx.org/ssl-services: "secure-app"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: cafe.example.com
+    http:
+      paths:
+      - path: /ssl
+        pathType: Prefix
+        backend:
+          service:
+            name: secure-app
+            port:
+              number: 8443
+      - path: /tea
+        pathType: Prefix
+        backend:
+          service:
+            name: tea
+            port:
+              number: 80

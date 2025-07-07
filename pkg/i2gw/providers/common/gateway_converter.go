@@ -28,13 +28,15 @@ import (
 // without taking into consideration any provider specific logic.
 func ToGatewayResources(ir intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
 	gatewayResources := i2gw.GatewayResources{
-		Gateways:        make(map[types.NamespacedName]gatewayv1.Gateway),
-		HTTPRoutes:      make(map[types.NamespacedName]gatewayv1.HTTPRoute),
-		GatewayClasses:  ir.GatewayClasses,
-		TLSRoutes:       ir.TLSRoutes,
-		TCPRoutes:       ir.TCPRoutes,
-		UDPRoutes:       ir.UDPRoutes,
-		ReferenceGrants: ir.ReferenceGrants,
+		Gateways:           make(map[types.NamespacedName]gatewayv1.Gateway),
+		HTTPRoutes:         make(map[types.NamespacedName]gatewayv1.HTTPRoute),
+		GatewayClasses:     ir.GatewayClasses,
+		GRPCRoutes:         ir.GRPCRoutes,
+		TLSRoutes:          ir.TLSRoutes,
+		TCPRoutes:          ir.TCPRoutes,
+		UDPRoutes:          ir.UDPRoutes,
+		BackendTLSPolicies: ir.BackendTLSPolicies,
+		ReferenceGrants:    ir.ReferenceGrants,
 	}
 	for key, gatewayContext := range ir.Gateways {
 		gatewayResources.Gateways[key] = gatewayContext.Gateway

@@ -25,6 +25,7 @@ API.
 * [istio](pkg/i2gw/providers/istio/README.md)
 * [gce](pkg/i2gw/providers/gce/README.md)
 * [kong](pkg/i2gw/providers/kong/README.md)
+* [nginx](pkg/i2gw/providers/nginx/README.md)
 * [openapi](pkg/i2gw/providers/openapi3/README.md)
 
 If your provider, or a specific feature, is not currently supported, please open

@@ -38,6 +38,7 @@ import (
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
+	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/nginx"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/openapi3"
 
 	// Call init for notifications
@@ -147,6 +148,21 @@ func (pr *PrintRunner) outputResult(gatewayResources []i2gw.GatewayResources) {
 	}
 
 	for _, r := range gatewayResources {
+		resourceCount += len(r.GRPCRoutes)
+		for _, grpcRoute := range r.GRPCRoutes {
+			grpcRoute := grpcRoute
+			if grpcRoute.Annotations == nil {
+				grpcRoute.Annotations = make(map[string]string)
+			}
+			grpcRoute.Annotations[i2gw.GeneratorAnnotationKey] = fmt.Sprintf("ingress2gateway-%s", i2gw.Version)
+			err := pr.resourcePrinter.PrintObj(&grpcRoute, os.Stdout)
+			if err != nil {
+				fmt.Printf("# Error printing %s GRPCRoute: %v\n", grpcRoute.Name, err)
+			}
+		}
+	}
+
+	for _, r := range gatewayResources {
 		resourceCount += len(r.TLSRoutes)
 		for _, tlsRoute := range r.TLSRoutes {
 			tlsRoute := tlsRoute
@@ -187,6 +203,21 @@ func (pr *PrintRunner) outputResult(gatewayResources []i2gw.GatewayResources) {
 			err := pr.resourcePrinter.PrintObj(&udpRoute, os.Stdout)
 			if err != nil {
 				fmt.Printf("# Error printing %s UDPRoute: %v\n", udpRoute.Name, err)
+			}
+		}
+	}
+
+	for _, r := range gatewayResources {
+		resourceCount += len(r.BackendTLSPolicies)
+		for _, backendTLSPolicy := range r.BackendTLSPolicies {
+			backendTLSPolicy := backendTLSPolicy
+			if backendTLSPolicy.Annotations == nil {
+				backendTLSPolicy.Annotations = make(map[string]string)
+			}
+			backendTLSPolicy.Annotations[i2gw.GeneratorAnnotationKey] = fmt.Sprintf("ingress2gateway-%s", i2gw.Version)
+			err := pr.resourcePrinter.PrintObj(&backendTLSPolicy, os.Stdout)
+			if err != nil {
+				fmt.Printf("# Error printing %s BackendTLSPolicy: %v\n", backendTLSPolicy.Name, err)
 			}
 		}
 	}
@@ -277,7 +308,7 @@ func newPrintCommand() *cobra.Command {
 	var printFlags genericclioptions.JSONYamlPrintFlags
 	allowedFormats := printFlags.AllowedFormats()
 
-	// printCmd represents the print command. It prints HTTPRoutes and Gateways
+	// printCmd represents the print command. It prints Gateway API resources
 	// generated from Ingress resources.
 	var cmd = &cobra.Command{
 		Use:   "print",

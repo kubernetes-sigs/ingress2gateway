@@ -1,0 +1,47 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  creationTimestamp: null
+  name: nginx
+  namespace: default
+spec:
+  gatewayClassName: nginx
+  listeners:
+  - hostname: example.com
+    name: example-com-http
+    port: 80
+    protocol: HTTP
+status: {}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+    ingress2gateway.io/source-ingress-rules: default/test-rewrite:0
+  creationTimestamp: null
+  name: test-rewrite-example-com
+  namespace: default
+spec:
+  hostnames:
+  - example.com
+  parentRefs:
+  - name: nginx
+  rules:
+  - backendRefs:
+    - name: web-service
+      port: 80
+    filters:
+    - type: URLRewrite
+      urlRewrite:
+        path:
+          replacePrefixMatch: /api/v1
+          type: ReplacePrefixMatch
+    matches:
+    - path:
+        type: PathPrefix
+        value: /app
+status:
+  parents: []

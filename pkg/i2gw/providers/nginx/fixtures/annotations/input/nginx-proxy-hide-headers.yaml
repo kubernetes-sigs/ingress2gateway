@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: proxy-hide-headers-test
+  namespace: default
+  annotations:
+    nginx.org/proxy-hide-headers: "X-Secret-Token,X-Internal-Header"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: hide-headers.example.com
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: api-service
+            port:
+              number: 8080

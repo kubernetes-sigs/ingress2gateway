@@ -1,0 +1,69 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  creationTimestamp: null
+  name: nginx
+  namespace: default
+spec:
+  gatewayClassName: nginx
+  listeners:
+  - hostname: cafe.example.com
+    name: cafe-example-com-http
+    port: 80
+    protocol: HTTP
+status: {}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+    ingress2gateway.io/source-ingress-rules: default/ssl-services-test:0,1
+  creationTimestamp: null
+  name: ssl-services-test-cafe-example-com
+  namespace: default
+spec:
+  hostnames:
+  - cafe.example.com
+  parentRefs:
+  - name: nginx
+  rules:
+  - backendRefs:
+    - name: secure-app
+      port: 8443
+    matches:
+    - path:
+        type: PathPrefix
+        value: /ssl
+  - backendRefs:
+    - name: tea
+      port: 80
+    matches:
+    - path:
+        type: PathPrefix
+        value: /tea
+status:
+  parents: []
+---
+apiVersion: gateway.networking.k8s.io/v1alpha3
+kind: BackendTLSPolicy
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/managed-by: ingress2gateway
+    ingress2gateway.io/source: nginx-ssl-services
+  name: ssl-services-test-secure-app-backend-tls
+  namespace: default
+spec:
+  targetRefs:
+  - group: gateway.networking.k8s.io
+    kind: Service
+    name: secure-app
+  validation:
+    hostname: ""
+status:
+  ancestors: null
