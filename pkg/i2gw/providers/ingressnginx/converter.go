@@ -33,6 +33,7 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 	return &resourcesToIRConverter{
 		featureParsers: []i2gw.FeatureParser{
 			canaryFeature,
+			serverAliasFeature,
 		},
 	}
 }
