@@ -46,7 +46,7 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 			name: "1 rule with 1 match",
 			rules: []ingressRule{
 				{
-					networkingv1.IngressRule{
+					rule: networkingv1.IngressRule{
 						IngressRuleValue: networkingv1.IngressRuleValue{
 							HTTP: &networkingv1.HTTPIngressRuleValue{
 								Paths: []networkingv1.HTTPIngressPath{
@@ -66,6 +66,7 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 							},
 						},
 					},
+					sourceIngress: types.NamespacedName{Namespace: "test", Name: "test"},
 				},
 			},
 			expected: orderedIngressPathsByMatchKey{
@@ -99,7 +100,7 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 			name: "1 rule, multiple matches, different path",
 			rules: []ingressRule{
 				{
-					networkingv1.IngressRule{
+					rule: networkingv1.IngressRule{
 						IngressRuleValue: networkingv1.IngressRuleValue{
 							HTTP: &networkingv1.HTTPIngressRuleValue{
 								Paths: []networkingv1.HTTPIngressPath{
@@ -131,6 +132,7 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 							},
 						},
 					},
+					sourceIngress: types.NamespacedName{Namespace: "test", Name: "test"},
 				},
 			},
 			expected: orderedIngressPathsByMatchKey{
@@ -184,7 +186,7 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 			name: "multiple rules with single matches, same path",
 			rules: []ingressRule{
 				{
-					networkingv1.IngressRule{
+					rule: networkingv1.IngressRule{
 						IngressRuleValue: networkingv1.IngressRuleValue{
 							HTTP: &networkingv1.HTTPIngressRuleValue{
 								Paths: []networkingv1.HTTPIngressPath{
@@ -204,9 +206,10 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 							},
 						},
 					},
+					sourceIngress: types.NamespacedName{Namespace: "test", Name: "test"},
 				},
 				{
-					networkingv1.IngressRule{
+					rule: networkingv1.IngressRule{
 						IngressRuleValue: networkingv1.IngressRuleValue{
 							HTTP: &networkingv1.HTTPIngressRuleValue{
 								Paths: []networkingv1.HTTPIngressPath{
@@ -226,6 +229,7 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 							},
 						},
 					},
+					sourceIngress: types.NamespacedName{Namespace: "test", Name: "test"},
 				},
 			},
 			expected: orderedIngressPathsByMatchKey{
@@ -276,7 +280,7 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 			name: "multiple rules with single matches, different path",
 			rules: []ingressRule{
 				{
-					networkingv1.IngressRule{
+					rule: networkingv1.IngressRule{
 						IngressRuleValue: networkingv1.IngressRuleValue{
 							HTTP: &networkingv1.HTTPIngressRuleValue{
 								Paths: []networkingv1.HTTPIngressPath{
@@ -296,9 +300,10 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 							},
 						},
 					},
+					sourceIngress: types.NamespacedName{Namespace: "test", Name: "test"},
 				},
 				{
-					networkingv1.IngressRule{
+					rule: networkingv1.IngressRule{
 						IngressRuleValue: networkingv1.IngressRuleValue{
 							HTTP: &networkingv1.HTTPIngressRuleValue{
 								Paths: []networkingv1.HTTPIngressPath{
@@ -318,6 +323,7 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 							},
 						},
 					},
+					sourceIngress: types.NamespacedName{Namespace: "test", Name: "test"},
 				},
 			},
 			expected: orderedIngressPathsByMatchKey{
@@ -371,7 +377,7 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 			name: "multiple rules with multiple matches, mixed paths",
 			rules: []ingressRule{
 				{
-					networkingv1.IngressRule{
+					rule: networkingv1.IngressRule{
 						IngressRuleValue: networkingv1.IngressRuleValue{
 							HTTP: &networkingv1.HTTPIngressRuleValue{
 								Paths: []networkingv1.HTTPIngressPath{
@@ -403,9 +409,10 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 							},
 						},
 					},
+					sourceIngress: types.NamespacedName{Namespace: "test", Name: "test"},
 				},
 				{
-					networkingv1.IngressRule{
+					rule: networkingv1.IngressRule{
 						IngressRuleValue: networkingv1.IngressRuleValue{
 							HTTP: &networkingv1.HTTPIngressRuleValue{
 								Paths: []networkingv1.HTTPIngressPath{
@@ -437,6 +444,7 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 							},
 						},
 					},
+					sourceIngress: types.NamespacedName{Namespace: "test", Name: "test"},
 				},
 			},
 			expected: orderedIngressPathsByMatchKey{
