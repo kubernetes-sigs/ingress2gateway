@@ -123,7 +123,8 @@ type ingressRuleGroup struct {
 }
 
 type ingressRule struct {
-	rule networkingv1.IngressRule
+	rule          networkingv1.IngressRule
+	sourceIngress types.NamespacedName
 }
 
 type ingressDefaultBackend struct {
@@ -170,7 +171,7 @@ func (a *ingressAggregator) addIngressRule(namespace, name, ingressClass string,
 	if len(iSpec.TLS) > 0 {
 		rg.tls = append(rg.tls, iSpec.TLS...)
 	}
-	rg.rules = append(rg.rules, ingressRule{rule: rule})
+	rg.rules = append(rg.rules, ingressRule{rule: rule, sourceIngress: types.NamespacedName{Namespace: namespace, Name: name}})
 }
 
 func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImplementationSpecificOptions) ([]gatewayv1.HTTPRoute, []gatewayv1.Gateway, field.ErrorList) {
