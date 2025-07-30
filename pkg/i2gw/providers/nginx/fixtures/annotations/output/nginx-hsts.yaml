@@ -29,7 +29,6 @@ kind: HTTPRoute
 metadata:
   annotations:
     gateway.networking.k8s.io/generator: ingress2gateway-dev
-    ingress2gateway.io/source-ingress-rules: default/hsts-test:0
   creationTimestamp: null
   name: hsts-test-hsts-example-com
   namespace: default

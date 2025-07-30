@@ -148,7 +148,22 @@ func replaceGatewayPortsWithCustom(ingress networkingv1.Ingress, portConfigurati
 
 		// Add HTTPS listeners first (they take precedence)
 		for _, port := range portConfiguration.HTTPS {
-			filteredListeners = append(filteredListeners, createListener(hostname, port, gatewayv1.HTTPSProtocolType))
+			listener := createListener(hostname, port, gatewayv1.HTTPSProtocolType)
+
+			if len(ingress.Spec.TLS) > 0 {
+				listener.TLS = &gatewayv1.GatewayTLSConfig{
+					Mode: common.PtrTo(gatewayv1.TLSModeTerminate),
+					CertificateRefs: []gatewayv1.SecretObjectReference{
+						{
+							Name:      gatewayv1.ObjectName(ingress.Spec.TLS[0].SecretName),
+							Namespace: (*gatewayv1.Namespace)(&ingress.Namespace),
+						},
+					},
+				}
+			}
+
+			filteredListeners = append(filteredListeners, listener)
+
 			usedPorts[port] = struct{}{}
 		}
 

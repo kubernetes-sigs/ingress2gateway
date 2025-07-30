@@ -20,7 +20,6 @@ kind: HTTPRoute
 metadata:
   annotations:
     gateway.networking.k8s.io/generator: ingress2gateway-dev
-    ingress2gateway.io/source-ingress-rules: default/proxy-set-headers-test:0
   creationTimestamp: null
   name: proxy-set-headers-test-set-headers-example-com
   namespace: default

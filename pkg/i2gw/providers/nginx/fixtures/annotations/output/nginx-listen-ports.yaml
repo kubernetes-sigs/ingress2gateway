@@ -13,6 +13,13 @@ spec:
     name: custom-ports-example-com-https-8443
     port: 8443
     protocol: HTTPS
+    tls:
+      certificateRefs:
+      - group: null
+        kind: null
+        name: custom-ports-tls
+        namespace: default
+      mode: Terminate
   - hostname: custom-ports.example.com
     name: custom-ports-example-com-http-8080
     port: 8080
@@ -28,7 +35,6 @@ kind: HTTPRoute
 metadata:
   annotations:
     gateway.networking.k8s.io/generator: ingress2gateway-dev
-    ingress2gateway.io/source-ingress-rules: default/listen-ports-test:0
   creationTimestamp: null
   name: listen-ports-test-custom-ports-example-com
   namespace: default

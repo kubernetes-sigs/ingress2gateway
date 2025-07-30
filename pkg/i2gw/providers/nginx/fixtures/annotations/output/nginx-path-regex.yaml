@@ -20,7 +20,6 @@ kind: HTTPRoute
 metadata:
   annotations:
     gateway.networking.k8s.io/generator: ingress2gateway-dev
-    ingress2gateway.io/source-ingress-rules: default/test-path-regex:0,1
   creationTimestamp: null
   name: test-path-regex-example-com
   namespace: default
