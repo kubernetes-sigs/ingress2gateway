@@ -1,8 +1,8 @@
 # NGINX Ingress Controller Provider
 
-This provider converts [NGINX Inc's Ingress Controller](https://github.com/nginxinc/kubernetes-ingress) resources to Gateway API resources.
+This provider converts [NGINX Ingress Controller](https://github.com/nginx/kubernetes-ingress) resources to Gateway API resources.
 
-**Note**: This provider is specifically for NGINX Inc's commercial Ingress Controller, not the community [ingress-nginx](https://github.com/kubernetes/ingress-nginx) controller. If you're using the community ingress-nginx controller, please use the `ingress-nginx` provider instead.
+**Note**: This provider is specifically for NGINX Ingress Controller, not the community [ingress-nginx](https://github.com/kubernetes/ingress-nginx) controller. If you're using the community ingress-nginx controller, please use the `ingress-nginx` provider instead.
 
 ## Supported Resources
 
@@ -29,7 +29,7 @@ This provider converts [NGINX Inc's Ingress Controller](https://github.com/nginx
 ## Usage
 
 ```bash
-# Convert NGINX Inc Ingress Controller resources from cluster
+# Convert NGINX Ingress Controller resources from cluster
 ingress2gateway print --providers=nginx
 
 # Convert from file
@@ -105,7 +105,7 @@ annotations:
 
 ## Contributing
 
-When adding support for new NGINX Inc Ingress Controller annotations:
+When adding support for new NGINX Ingress Controller annotations:
 
 1. Add the annotation constant to `annotations/constants.go`
 2. Implement the conversion logic in the appropriate `annotations/*.go` file
@@ -116,7 +116,7 @@ For more information on the provider architecture, see [PROVIDER.md](../../PROVI
 
 ## References
 
-* [NGINX Inc Kubernetes Ingress Controller](https://github.com/nginxinc/kubernetes-ingress)
-* [NGINX Inc Ingress Controller Annotations](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/)
+* [NGINX Kubernetes Ingress Controller](https://github.com/nginx/kubernetes-ingress)
+* [NGINX Ingress Controller Annotations](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/)
 * [NGINX Gateway Fabric](https://docs.nginx.com/nginx-gateway-fabric/)
 * [Gateway API Documentation](https://gateway-api.sigs.k8s.io/)
