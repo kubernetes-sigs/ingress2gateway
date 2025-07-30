@@ -16,14 +16,25 @@ limitations under the License.
 
 package nginx
 
-// import (
-//	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
-//	"sigs.k8s.io/controller-runtime/pkg/client"
-// )
+import (
+	"testing"
+)
 
-// notify dispatches a notification with the nginx provider name
-// Currently unused but kept for future notification needs
-// func notify(mType notifications.MessageType, message string, callingObject ...client.Object) {
-//	newNotification := notifications.NewNotification(mType, message, callingObject...)
-//	notifications.NotificationAggr.DispatchNotification(newNotification, string(Name))
-// }
+func Test_newResourcesToIRConverter(t *testing.T) {
+	tests := []struct {
+		name string
+		want *resourcesToIRConverter
+	}{
+		{
+			name: "basic",
+			want: &resourcesToIRConverter{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := newResourcesToIRConverter(); got == nil {
+				t.Errorf("newResourcesToIRConverter() = %v, want non-nil", got)
+			}
+		})
+	}
+}
