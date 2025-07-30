@@ -100,7 +100,13 @@ func Test_ToIR(t *testing.T) {
 				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
 					{Namespace: "test", Name: "simple-example-com"}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
-							ObjectMeta: metav1.ObjectMeta{Name: "simple-example-com", Namespace: "test"},
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "simple-example-com",
+								Namespace: "test",
+								Annotations: map[string]string{
+									"ingress2gateway.io/source-ingress-rules": "test/simple:0",
+								},
+							},
 							Spec: gatewayv1.HTTPRouteSpec{
 								CommonRouteSpec: gatewayv1.CommonRouteSpec{
 									ParentRefs: []gatewayv1.ParentReference{{
@@ -193,7 +199,13 @@ func Test_ToIR(t *testing.T) {
 				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
 					{Namespace: "test", Name: "with-tls-example-com"}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
-							ObjectMeta: metav1.ObjectMeta{Name: "with-tls-example-com", Namespace: "test"},
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "with-tls-example-com",
+								Namespace: "test",
+								Annotations: map[string]string{
+									"ingress2gateway.io/source-ingress-rules": "test/with-tls:0",
+								},
+							},
 							Spec: gatewayv1.HTTPRouteSpec{
 								CommonRouteSpec: gatewayv1.CommonRouteSpec{
 									ParentRefs: []gatewayv1.ParentReference{{
@@ -279,7 +291,13 @@ func Test_ToIR(t *testing.T) {
 				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
 					{Namespace: "different", Name: "net-example-net"}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
-							ObjectMeta: metav1.ObjectMeta{Name: "net-example-net", Namespace: "different"},
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "net-example-net",
+								Namespace: "different",
+								Annotations: map[string]string{
+									"ingress2gateway.io/source-ingress-rules": "different/net:0",
+								},
+							},
 							Spec: gatewayv1.HTTPRouteSpec{
 								CommonRouteSpec: gatewayv1.CommonRouteSpec{
 									ParentRefs: []gatewayv1.ParentReference{{
@@ -405,7 +423,13 @@ func Test_ToIR(t *testing.T) {
 				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
 					{Namespace: "test", Name: "duplicate-a-example-com"}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
-							ObjectMeta: metav1.ObjectMeta{Name: "duplicate-a-example-com", Namespace: "test"},
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "duplicate-a-example-com",
+								Namespace: "test",
+								Annotations: map[string]string{
+									"ingress2gateway.io/source-ingress-rules": "test/duplicate-a:0;test/duplicate-b:0",
+								},
+							},
 							Spec: gatewayv1.HTTPRouteSpec{
 								CommonRouteSpec: gatewayv1.CommonRouteSpec{
 									ParentRefs: []gatewayv1.ParentReference{{
@@ -487,7 +511,13 @@ func Test_ToIR(t *testing.T) {
 				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
 					{Namespace: "test", Name: "named-ports-example-com"}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
-							ObjectMeta: metav1.ObjectMeta{Name: "named-ports-example-com", Namespace: "test"},
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "named-ports-example-com",
+								Namespace: "test",
+								Annotations: map[string]string{
+									"ingress2gateway.io/source-ingress-rules": "test/named-ports:0",
+								},
+							},
 							Spec: gatewayv1.HTTPRouteSpec{
 								CommonRouteSpec: gatewayv1.CommonRouteSpec{
 									ParentRefs: []gatewayv1.ParentReference{{
@@ -553,6 +583,148 @@ func Test_ToIR(t *testing.T) {
 				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{},
 			},
 			expectedErrors: field.ErrorList{field.Invalid(field.NewPath(""), "", "")},
+		},
+		{
+			name: "multiple ingresses with source ingress annotation mapping",
+			ingresses: []networkingv1.Ingress{{
+				ObjectMeta: metav1.ObjectMeta{Name: "app1", Namespace: "test"},
+				Spec: networkingv1.IngressSpec{
+					IngressClassName: PtrTo("nginx"),
+					Rules: []networkingv1.IngressRule{{
+						Host: "example.com",
+						IngressRuleValue: networkingv1.IngressRuleValue{
+							HTTP: &networkingv1.HTTPIngressRuleValue{
+								Paths: []networkingv1.HTTPIngressPath{{
+									Path:     "/app1",
+									PathType: &iPrefix,
+									Backend: networkingv1.IngressBackend{
+										Service: &networkingv1.IngressServiceBackend{
+											Name: "app1-service",
+											Port: networkingv1.ServiceBackendPort{Number: 8080},
+										},
+									},
+								}},
+							},
+						},
+					}},
+				},
+			}, {
+				ObjectMeta: metav1.ObjectMeta{Name: "app2", Namespace: "test"},
+				Spec: networkingv1.IngressSpec{
+					IngressClassName: PtrTo("nginx"),
+					Rules: []networkingv1.IngressRule{{
+						Host: "example.com",
+						IngressRuleValue: networkingv1.IngressRuleValue{
+							HTTP: &networkingv1.HTTPIngressRuleValue{
+								Paths: []networkingv1.HTTPIngressPath{{
+									Path:     "/app2",
+									PathType: &iPrefix,
+									Backend: networkingv1.IngressBackend{
+										Service: &networkingv1.IngressServiceBackend{
+											Name: "app2-service",
+											Port: networkingv1.ServiceBackendPort{Number: 3000},
+										},
+									},
+								}, {
+									Path:     "/app2/admin",
+									PathType: &iExact,
+									Backend: networkingv1.IngressBackend{
+										Service: &networkingv1.IngressServiceBackend{
+											Name: "app2-admin-service",
+											Port: networkingv1.ServiceBackendPort{Number: 9000},
+										},
+									},
+								}},
+							},
+						},
+					}},
+				},
+			}},
+			servicePorts: map[types.NamespacedName]map[string]int32{},
+			expectedIR: intermediate.IR{
+				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+					{Namespace: "test", Name: "nginx"}: {
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: "nginx", Namespace: "test"},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: "nginx",
+								Listeners: []gatewayv1.Listener{{
+									Name:     "example-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: PtrTo(gatewayv1.Hostname("example.com")),
+								}},
+							},
+						},
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+					{Namespace: "test", Name: "app1-example-com"}: {
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "app1-example-com",
+								Namespace: "test",
+								Annotations: map[string]string{
+									"ingress2gateway.io/source-ingress-rules": "test/app1:0;test/app2:1,2",
+								},
+							},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{Name: "nginx"}},
+								},
+								Hostnames: []gatewayv1.Hostname{"example.com"},
+								Rules: []gatewayv1.HTTPRouteRule{{
+									Matches: []gatewayv1.HTTPRouteMatch{{
+										Path: &gatewayv1.HTTPPathMatch{
+											Type:  &gPathPrefix,
+											Value: PtrTo("/app1"),
+										},
+									}},
+									BackendRefs: []gatewayv1.HTTPBackendRef{{
+										BackendRef: gatewayv1.BackendRef{
+											BackendObjectReference: gatewayv1.BackendObjectReference{
+												Name: "app1-service",
+												Port: PtrTo(gatewayv1.PortNumber(8080)),
+											},
+										},
+									}},
+								}, {
+									Matches: []gatewayv1.HTTPRouteMatch{{
+										Path: &gatewayv1.HTTPPathMatch{
+											Type:  &gPathPrefix,
+											Value: PtrTo("/app2"),
+										},
+									}},
+									BackendRefs: []gatewayv1.HTTPBackendRef{{
+										BackendRef: gatewayv1.BackendRef{
+											BackendObjectReference: gatewayv1.BackendObjectReference{
+												Name: "app2-service",
+												Port: PtrTo(gatewayv1.PortNumber(3000)),
+											},
+										},
+									}},
+								}, {
+									Matches: []gatewayv1.HTTPRouteMatch{{
+										Path: &gatewayv1.HTTPPathMatch{
+											Type:  &gExact,
+											Value: PtrTo("/app2/admin"),
+										},
+									}},
+									BackendRefs: []gatewayv1.HTTPBackendRef{{
+										BackendRef: gatewayv1.BackendRef{
+											BackendObjectReference: gatewayv1.BackendObjectReference{
+												Name: "app2-admin-service",
+												Port: PtrTo(gatewayv1.PortNumber(9000)),
+											},
+										},
+									}},
+								}},
+							},
+						},
+					},
+				},
+			},
+			expectedErrors: field.ErrorList{},
 		},
 	}
 

@@ -135,10 +135,11 @@ type ingressDefaultBackend struct {
 }
 
 type ingressPath struct {
-	ruleIdx  int
-	pathIdx  int
-	ruleType string
-	path     networkingv1.HTTPIngressPath
+	ruleIdx       int
+	pathIdx       int
+	ruleType      string
+	path          networkingv1.HTTPIngressPath
+	sourceIngress types.NamespacedName
 }
 
 func (a *ingressAggregator) addIngress(ingress networkingv1.Ingress) {
@@ -320,6 +321,8 @@ func (rg *ingressRuleGroup) toHTTPRoute(servicePorts map[types.NamespacedName]ma
 		httpRoute.Spec.Hostnames = []gatewayv1.Hostname{gatewayv1.Hostname(rg.host)}
 	}
 
+	ruleSourceIngresses := make(map[types.NamespacedName][]int)
+
 	var errors field.ErrorList
 	for _, key := range ingressPathsByMatchKey.keys {
 		paths := ingressPathsByMatchKey.data[key]
@@ -338,8 +341,34 @@ func (rg *ingressRuleGroup) toHTTPRoute(servicePorts map[types.NamespacedName]ma
 		errors = append(errors, errs...)
 		hrRule.BackendRefs = backendRefs
 
+		// Add source ingress information for this specific rule
+		if hrRule.Filters == nil {
+			hrRule.Filters = []gatewayv1.HTTPRouteFilter{}
+		}
+
+		for _, p := range paths {
+			ruleSourceIngresses[p.sourceIngress] = append(ruleSourceIngresses[p.sourceIngress], len(httpRoute.Spec.Rules))
+		}
+
 		httpRoute.Spec.Rules = append(httpRoute.Spec.Rules, hrRule)
 	}
+
+	// Initialize annotations map if needed
+	if httpRoute.Annotations == nil {
+		httpRoute.Annotations = make(map[string]string)
+	}
+
+	// Build annotation mapping source ingress to rule indices
+	var annotationParts []string
+	for sourceIngress, ruleIndices := range ruleSourceIngresses {
+		ingressKey := sourceIngress.Namespace + "/" + sourceIngress.Name
+		var indicesStr []string
+		for _, idx := range ruleIndices {
+			indicesStr = append(indicesStr, fmt.Sprintf("%d", idx))
+		}
+		annotationParts = append(annotationParts, fmt.Sprintf("%s:%s", ingressKey, strings.Join(indicesStr, ",")))
+	}
+	httpRoute.Annotations["ingress2gateway.io/source-ingress-rules"] = strings.Join(annotationParts, ";")
 
 	return httpRoute, errors
 }
