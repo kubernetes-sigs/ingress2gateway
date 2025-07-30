@@ -91,6 +91,7 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 									},
 								},
 							},
+							sourceIngress: types.NamespacedName{Namespace: "test", Name: "test"},
 						},
 					},
 				},
@@ -158,6 +159,7 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 									},
 								},
 							},
+							sourceIngress: types.NamespacedName{Namespace: "test", Name: "test"},
 						},
 					},
 					"Prefix//test2": {
@@ -177,6 +179,7 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 									},
 								},
 							},
+							sourceIngress: types.NamespacedName{Namespace: "test", Name: "test"},
 						},
 					},
 				},
@@ -254,6 +257,7 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 									},
 								},
 							},
+							sourceIngress: types.NamespacedName{Namespace: "test", Name: "test"},
 						},
 						{
 							ruleIdx:  1,
@@ -271,6 +275,7 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 									},
 								},
 							},
+							sourceIngress: types.NamespacedName{Namespace: "test", Name: "test"},
 						},
 					},
 				},
@@ -349,6 +354,7 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 									},
 								},
 							},
+							sourceIngress: types.NamespacedName{Namespace: "test", Name: "test"},
 						},
 					},
 					"Prefix//test2": {
@@ -368,6 +374,7 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 									},
 								},
 							},
+							sourceIngress: types.NamespacedName{Namespace: "test", Name: "test"},
 						},
 					},
 				},
@@ -471,6 +478,7 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 									},
 								},
 							},
+							sourceIngress: types.NamespacedName{Namespace: "test", Name: "test"},
 						},
 						{
 							ruleIdx:  1,
@@ -488,6 +496,7 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 									},
 								},
 							},
+							sourceIngress: types.NamespacedName{Namespace: "test", Name: "test"},
 						},
 					},
 					"Prefix//test12": {
@@ -507,6 +516,7 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 									},
 								},
 							},
+							sourceIngress: types.NamespacedName{Namespace: "test", Name: "test"},
 						},
 					},
 					"Prefix//test21": {
@@ -526,6 +536,7 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 									},
 								},
 							},
+							sourceIngress: types.NamespacedName{Namespace: "test", Name: "test"},
 						},
 					},
 				},

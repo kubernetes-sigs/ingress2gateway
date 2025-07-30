@@ -341,11 +341,6 @@ func (rg *ingressRuleGroup) toHTTPRoute(servicePorts map[types.NamespacedName]ma
 		errors = append(errors, errs...)
 		hrRule.BackendRefs = backendRefs
 
-		// Add source ingress information for this specific rule
-		if hrRule.Filters == nil {
-			hrRule.Filters = []gatewayv1.HTTPRouteFilter{}
-		}
-
 		for _, p := range paths {
 			ruleSourceIngresses[p.sourceIngress] = append(ruleSourceIngresses[p.sourceIngress], len(httpRoute.Spec.Rules))
 		}
@@ -359,10 +354,24 @@ func (rg *ingressRuleGroup) toHTTPRoute(servicePorts map[types.NamespacedName]ma
 	}
 
 	// Build annotation mapping source ingress to rule indices
-	var annotationParts []string
-	for sourceIngress, ruleIndices := range ruleSourceIngresses {
+	annotationParts := make([]string, 0, len(ruleSourceIngresses))
+	
+	// Sort source ingresses for deterministic annotation ordering
+	sortedSourceIngresses := make([]types.NamespacedName, 0, len(ruleSourceIngresses))
+	for sourceIngress := range ruleSourceIngresses {
+		sortedSourceIngresses = append(sortedSourceIngresses, sourceIngress)
+	}
+	slices.SortFunc(sortedSourceIngresses, func(a, b types.NamespacedName) int {
+		if a.Namespace != b.Namespace {
+			return cmp.Compare(a.Namespace, b.Namespace)
+		}
+		return cmp.Compare(a.Name, b.Name)
+	})
+	
+	for _, sourceIngress := range sortedSourceIngresses {
+		ruleIndices := ruleSourceIngresses[sourceIngress]
 		ingressKey := sourceIngress.Namespace + "/" + sourceIngress.Name
-		var indicesStr []string
+		indicesStr := make([]string, 0, len(ruleIndices))
 		for _, idx := range ruleIndices {
 			indicesStr = append(indicesStr, fmt.Sprintf("%d", idx))
 		}
