@@ -119,13 +119,15 @@ func TestGRPCServicesRemoveHTTPRoute(t *testing.T) {
 
 	// Verify GRPCRoute structure
 	grpcRoute := ir.GRPCRoutes[routeKey]
-	if len(grpcRoute.Spec.Rules) == 0 {
-		t.Error("GRPCRoute should have rules")
+	expectedRules := 1
+	if len(grpcRoute.Spec.Rules) != expectedRules {
+		t.Errorf("Expected GRPCRoute to have %d rules, got %d", expectedRules, len(grpcRoute.Spec.Rules))
 		return
 	}
 
-	if len(grpcRoute.Spec.Rules[0].BackendRefs) == 0 {
-		t.Error("GRPCRoute should have backend refs")
+	expectedBackendRefs := 1
+	if len(grpcRoute.Spec.Rules[0].BackendRefs) != expectedBackendRefs {
+		t.Errorf("Expected GRPCRoute to have %d backend refs, got %d", expectedBackendRefs, len(grpcRoute.Spec.Rules[0].BackendRefs))
 		return
 	}
 
