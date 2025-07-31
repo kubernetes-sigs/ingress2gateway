@@ -40,7 +40,7 @@ func HeaderManipulationFeature(ingresses []networkingv1.Ingress, _ map[types.Nam
 			key := types.NamespacedName{Namespace: rule.Ingress.Namespace, Name: common.RouteName(rg.Name, rg.Host)}
 			httpRouteContext, ok := ir.HTTPRoutes[key]
 			if !ok {
-				return field.ErrorList{field.InternalError(nil, fmt.Errorf("HTTPRoute does not exist - this should never happen"))}
+				return field.ErrorList{field.InternalError(nil, fmt.Errorf("HTTPRoute does not exist - common HTTPRoute generation failed"))}
 			}
 
 			// Process proxy-hide-headers annotation
