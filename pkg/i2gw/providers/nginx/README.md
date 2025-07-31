@@ -116,7 +116,7 @@ For more information on the provider architecture, see [PROVIDER.md](../../PROVI
 
 ## References
 
-* [NGINX Kubernetes Ingress Controller](https://github.com/nginx/kubernetes-ingress)
+* [NGINX Ingress Controller](https://github.com/nginx/kubernetes-ingress)
 * [NGINX Ingress Controller Annotations](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/)
 * [NGINX Gateway Fabric](https://docs.nginx.com/nginx-gateway-fabric/)
 * [Gateway API Documentation](https://gateway-api.sigs.k8s.io/)
