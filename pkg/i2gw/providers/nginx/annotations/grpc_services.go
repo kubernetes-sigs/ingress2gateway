@@ -26,6 +26,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
@@ -266,13 +267,15 @@ func convertHTTPFiltersToGRPCFilters(httpFilters []gatewayv1.HTTPRouteFilter) []
 
 		// These HTTP filter types are not applicable to gRPC and are skipped
 		case gatewayv1.HTTPRouteFilterRequestRedirect:
-			// RequestRedirect is not applicable to gRPC
+			notify(notifications.WarningNotification, "RequestRedirect is not applicable to gRPC")
 		case gatewayv1.HTTPRouteFilterURLRewrite:
-			// URLRewrite is not applicable to gRPC
+			notify(notifications.WarningNotification, "URLRewrite is not applicable to gRPC")
 		case gatewayv1.HTTPRouteFilterRequestMirror:
-			// RequestMirror is not applicable to gRPC
+			notify(notifications.WarningNotification, "RequestMirror is not applicable to gRPC")
 		case gatewayv1.HTTPRouteFilterExtensionRef:
-			// ExtensionRef filters are not converted to gRPC equivalents
+			notify(notifications.WarningNotification, "ExtensionRef filters are not converted to gRPC equivalents")
+		default:
+			notify(notifications.WarningNotification, "Unknown HTTPRouteFilter type: "+string(httpFilter.Type))
 		}
 	}
 
