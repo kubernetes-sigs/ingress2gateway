@@ -98,6 +98,7 @@ spec:
 - `Server,X-Powered-By` headers will be hidden for all rules
 - HSTS will be enabled for all rules
 - This affects both `/app1` and `/app2` paths
+- [Issue #229](https://github.com/kubernetes-sigs/ingress2gateway/issues/229)
 
 **Workarounds:**
 1. **Separate Hostnames**: Use different hostnames for different applications (e.g., `app1.example.com`, `app2.example.com`)
