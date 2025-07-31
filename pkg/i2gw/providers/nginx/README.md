@@ -38,19 +38,19 @@ ingress2gateway print --providers=nginx --input-file=nginx-ingress.yaml
 
 ## Gateway API Mapping
 
-| NGINX Annotation | Gateway API Resource              |
-|---|-----------------------------------|
-| `nginx.org/ssl-services` | BackendTLSPolicy                  |
-| `nginx.org/grpc-services` | GRPCRoute                         |
-| `nginx.org/websocket-services` | Informational notification only  |
-| `nginx.org/proxy-hide-headers` | HTTPRoute ResponseHeaderModifier  |
-| `nginx.org/proxy-set-headers` | HTTPRoute RequestHeaderModifier   |
-| `nginx.org/rewrites` | HTTPRoute URLRewrite filter       |
-| `nginx.org/listen-ports*` | Gateway custom listeners          |
-| `nginx.org/path-regex` | HTTPRoute RegularExpression paths |
-| `nginx.org/redirect-to-https` | HTTPRoute RequestRedirect filter  |
+| NGINX Annotation                    | Gateway API Resource              |
+|--------------------------------------|-----------------------------------|
+| `nginx.org/ssl-services`             | BackendTLSPolicy                  |
+| `nginx.org/grpc-services`            | GRPCRoute                         |
+| `nginx.org/websocket-services`       | Informational notification only  |
+| `nginx.org/proxy-hide-headers`       | HTTPRoute ResponseHeaderModifier  |
+| `nginx.org/proxy-set-headers`        | HTTPRoute RequestHeaderModifier   |
+| `nginx.org/rewrites`                 | HTTPRoute URLRewrite filter       |
+| `nginx.org/listen-ports*`            | Gateway custom listeners          |
+| `nginx.org/path-regex`               | HTTPRoute RegularExpression paths |
+| `nginx.org/redirect-to-https`        | HTTPRoute RequestRedirect filter  |
 | `ingress.kubernetes.io/ssl-redirect` | HTTPRoute RequestRedirect filter  |
-| `nginx.org/hsts*` | HTTPRoute ResponseHeaderModifier |
+| `nginx.org/hsts*`                    | HTTPRoute ResponseHeaderModifier  |
 
 ## SSL Redirect Behavior
 
