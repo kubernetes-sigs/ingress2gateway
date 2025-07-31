@@ -20,7 +20,7 @@ import (
 	"testing"
 )
 
-func Test_newResourcesToIRConverter(t *testing.T) {
+func TestNewResourcesToIRConverter(t *testing.T) {
 	tests := []struct {
 		name string
 		want *resourcesToIRConverter

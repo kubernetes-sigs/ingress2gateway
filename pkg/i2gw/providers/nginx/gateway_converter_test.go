@@ -20,7 +20,7 @@ import (
 	"testing"
 )
 
-func Test_newGatewayResourcesConverter(t *testing.T) {
+func TestNewGatewayResourcesConverter(t *testing.T) {
 	tests := []struct {
 		name string
 		want *gatewayResourcesConverter
