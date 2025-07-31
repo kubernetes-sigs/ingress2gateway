@@ -31,6 +31,45 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
+// Common test data
+var (
+	testIngressSpec = networkingv1.IngressSpec{
+		IngressClassName: ptr.To("nginx"),
+		Rules: []networkingv1.IngressRule{
+			{
+				Host: "example.com",
+				IngressRuleValue: networkingv1.IngressRuleValue{
+					HTTP: &networkingv1.HTTPIngressRuleValue{
+						Paths: []networkingv1.HTTPIngressPath{
+							{
+								Path: "/",
+								Backend: networkingv1.IngressBackend{
+									Service: &networkingv1.IngressServiceBackend{
+										Name: "web-service",
+										Port: networkingv1.ServiceBackendPort{Number: 80},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+)
+
+// Helper functions for test setup
+func createTestIngress(name, namespace string, annotations map[string]string) networkingv1.Ingress {
+	return networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        name,
+			Namespace:   namespace,
+			Annotations: annotations,
+		},
+		Spec: testIngressSpec,
+	}
+}
+
 func TestParseSetHeaders(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -43,11 +82,9 @@ func TestParseSetHeaders(t *testing.T) {
 			expected: map[string]string{},
 		},
 		{
-			name:  "single header name only",
-			input: "X-Custom-Header",
-			expected: map[string]string{
-				"X-Custom-Header": "",
-			},
+			name:     "single header name only",
+			input:    "X-Custom-Header",
+			expected: map[string]string{}, // Headers without values should not be added
 		},
 		{
 			name:  "single header with value",
@@ -57,13 +94,9 @@ func TestParseSetHeaders(t *testing.T) {
 			},
 		},
 		{
-			name:  "multiple headers names only",
-			input: "X-Header1,X-Header2,X-Header3",
-			expected: map[string]string{
-				"X-Header1": "",
-				"X-Header2": "",
-				"X-Header3": "",
-			},
+			name:     "multiple headers names only",
+			input:    "X-Header1,X-Header2,X-Header3",
+			expected: map[string]string{}, // Headers without values should not be added
 		},
 		{
 			name:  "multiple headers with values",
@@ -77,9 +110,8 @@ func TestParseSetHeaders(t *testing.T) {
 			name:  "mixed format",
 			input: "X-Default-Header,X-Custom-Header: custom-value,X-Another-Header",
 			expected: map[string]string{
-				"X-Default-Header": "",
-				"X-Custom-Header":  "custom-value",
-				"X-Another-Header": "",
+				// Only headers with explicit values should be included
+				"X-Custom-Header": "custom-value",
 			},
 		},
 		{
@@ -150,38 +182,9 @@ func TestHideHeaders(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ingress := networkingv1.Ingress{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-ingress",
-					Namespace: "default",
-					Annotations: map[string]string{
-						nginxProxyHideHeadersAnnotation: tt.hideHeaders,
-					},
-				},
-				Spec: networkingv1.IngressSpec{
-					IngressClassName: ptr.To("nginx"),
-					Rules: []networkingv1.IngressRule{
-						{
-							Host: "example.com",
-							IngressRuleValue: networkingv1.IngressRuleValue{
-								HTTP: &networkingv1.HTTPIngressRuleValue{
-									Paths: []networkingv1.HTTPIngressPath{
-										{
-											Path: "/",
-											Backend: networkingv1.IngressBackend{
-												Service: &networkingv1.IngressServiceBackend{
-													Name: "web-service",
-													Port: networkingv1.ServiceBackendPort{Number: 80},
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			}
+			ingress := createTestIngress("test-ingress", "default", map[string]string{
+				nginxProxyHideHeadersAnnotation: tt.hideHeaders,
+			})
 
 			ir := intermediate.IR{
 				Gateways:   make(map[types.NamespacedName]intermediate.GatewayContext),
@@ -316,38 +319,9 @@ func TestSetHeaders(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ingress := networkingv1.Ingress{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-ingress",
-					Namespace: "default",
-					Annotations: map[string]string{
-						nginxProxySetHeadersAnnotation: tt.setHeaders,
-					},
-				},
-				Spec: networkingv1.IngressSpec{
-					IngressClassName: ptr.To("nginx"),
-					Rules: []networkingv1.IngressRule{
-						{
-							Host: "example.com",
-							IngressRuleValue: networkingv1.IngressRuleValue{
-								HTTP: &networkingv1.HTTPIngressRuleValue{
-									Paths: []networkingv1.HTTPIngressPath{
-										{
-											Path: "/",
-											Backend: networkingv1.IngressBackend{
-												Service: &networkingv1.IngressServiceBackend{
-													Name: "web-service",
-													Port: networkingv1.ServiceBackendPort{Number: 80},
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			}
+			ingress := createTestIngress("test-ingress", "default", map[string]string{
+				nginxProxySetHeadersAnnotation: tt.setHeaders,
+			})
 
 			ir := intermediate.IR{
 				Gateways:   make(map[types.NamespacedName]intermediate.GatewayContext),
@@ -484,36 +458,7 @@ func TestHeaderManipulationFeature(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ingress := networkingv1.Ingress{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:        "test-ingress",
-					Namespace:   "default",
-					Annotations: tt.annotations,
-				},
-				Spec: networkingv1.IngressSpec{
-					IngressClassName: ptr.To("nginx"),
-					Rules: []networkingv1.IngressRule{
-						{
-							Host: "example.com",
-							IngressRuleValue: networkingv1.IngressRuleValue{
-								HTTP: &networkingv1.HTTPIngressRuleValue{
-									Paths: []networkingv1.HTTPIngressPath{
-										{
-											Path: "/",
-											Backend: networkingv1.IngressBackend{
-												Service: &networkingv1.IngressServiceBackend{
-													Name: "web-service",
-													Port: networkingv1.ServiceBackendPort{Number: 80},
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			}
+			ingress := createTestIngress("test-ingress", "default", tt.annotations)
 
 			ir := intermediate.IR{
 				Gateways:   make(map[types.NamespacedName]intermediate.GatewayContext),

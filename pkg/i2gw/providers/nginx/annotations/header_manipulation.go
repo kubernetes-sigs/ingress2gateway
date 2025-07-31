@@ -26,7 +26,6 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
@@ -133,39 +132,16 @@ func createRequestHeaderModifier(setHeaders string) *gatewayv1.HTTPRouteFilter {
 
 // parseCommaSeparatedHeaders parses a comma-separated list of header names
 func parseCommaSeparatedHeaders(headersList string) []string {
-	if headersList == "" {
-		return nil
-	}
-
-	var result []string
-	headers := strings.Split(headersList, ",")
-	for _, header := range headers {
-		header = strings.TrimSpace(header)
-		if header != "" {
-			result = append(result, header)
-		}
-	}
-
-	return result
+	return splitAndTrimCommaList(headersList)
 }
 
 // parseSetHeaders parses nginx.org/proxy-set-headers annotation format
 // Supports both header names and header:value pairs
 func parseSetHeaders(setHeaders string) map[string]string {
 	headers := make(map[string]string)
-
-	if setHeaders == "" {
-		return headers
-	}
-
-	parts := strings.Split(setHeaders, ",")
+	parts := splitAndTrimCommaList(setHeaders)
 
 	for _, part := range parts {
-		part = strings.TrimSpace(part)
-		if part == "" {
-			continue
-		}
-
 		if strings.Contains(part, ":") {
 			// Format: "Header-Name: value"
 			kv := strings.SplitN(part, ":", 2)
@@ -176,16 +152,9 @@ func parseSetHeaders(setHeaders string) map[string]string {
 					headers[headerName] = headerValue
 				}
 			}
-		} else {
-			// Format: "Header-Name" (use default value pattern)
-			headerName := strings.TrimSpace(part)
-			if headerName != "" {
-				notify(notifications.WarningNotification, "Header "+headerName+" is not applicable to Gateway API")
-				// For Gateway API, we can't use NGINX variables like $http_*
-				// Instead, we'll use a placeholder that indicates the header should pass through
-				// Note: This is a limitation of Gateway API vs NGINX capabilities
-			}
 		}
+		// Note: Headers without explicit values (format "$Variable-Name") are skipped
+		// as Gateway API cannot use NGINX variables like $http_* and headers need values
 	}
 
 	return headers

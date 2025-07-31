@@ -18,7 +18,6 @@ package annotations
 
 import (
 	"fmt"
-	"strings"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,13 +50,10 @@ func SSLServicesFeature(ingresses []networkingv1.Ingress, _ map[types.Namespaced
 func processSSLServicesAnnotation(ingress networkingv1.Ingress, sslServices string, ir *intermediate.IR) field.ErrorList {
 	var errs field.ErrorList //nolint:unparam // ErrorList return type maintained for consistency
 
-	services := strings.Split(sslServices, ",")
+	services := splitAndTrimCommaList(sslServices)
 	sslServiceSet := make(map[string]struct{})
 	for _, service := range services {
-		service = strings.TrimSpace(service)
-		if service != "" {
-			sslServiceSet[service] = struct{}{}
-		}
+		sslServiceSet[service] = struct{}{}
 	}
 
 	if ir.BackendTLSPolicies == nil {

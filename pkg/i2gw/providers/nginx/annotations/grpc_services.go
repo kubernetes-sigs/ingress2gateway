@@ -68,13 +68,10 @@ func processGRPCServicesAnnotation(ingress networkingv1.Ingress, grpcServices st
 	var errs field.ErrorList //nolint:unparam // ErrorList return type maintained for consistency
 
 	// Parse comma-separated service names that should use gRPC
-	services := strings.Split(grpcServices, ",")
+	services := splitAndTrimCommaList(grpcServices)
 	grpcServiceSet := make(map[string]struct{})
 	for _, service := range services {
-		service = strings.TrimSpace(service)
-		if service != "" {
-			grpcServiceSet[service] = struct{}{}
-		}
+		grpcServiceSet[service] = struct{}{}
 	}
 
 	// Initialize GRPCRoutes map if needed

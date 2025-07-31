@@ -74,14 +74,9 @@ func extractListenPorts(portsAnnotation string) []int32 {
 	}
 
 	var ports []int32
-	portStrings := strings.Split(portsAnnotation, ",")
+	portStrings := splitAndTrimCommaList(portsAnnotation)
 
 	for _, portStr := range portStrings {
-		portStr = strings.TrimSpace(portStr)
-		if portStr == "" {
-			continue
-		}
-
 		if port, err := strconv.ParseInt(portStr, 10, 32); err == nil {
 			if port > 0 && port <= 65535 {
 				ports = append(ports, int32(port))
