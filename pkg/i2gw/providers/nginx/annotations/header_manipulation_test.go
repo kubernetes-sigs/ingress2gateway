@@ -217,7 +217,8 @@ func TestHideHeaders(t *testing.T) {
 
 			filter := createResponseHeaderModifier(tt.hideHeaders)
 			if filter == nil {
-				t.Fatal("Expected filter to be created")
+				t.Error("Expected filter to be created")
+				return
 			}
 			// Apply filter to first rule (simplified for test)
 			var errs field.ErrorList
@@ -235,21 +236,25 @@ func TestHideHeaders(t *testing.T) {
 
 			updatedRoute := ir.HTTPRoutes[routeKey].HTTPRoute
 			if len(updatedRoute.Spec.Rules) == 0 {
-				t.Fatal("Expected at least one rule")
+				t.Error("Expected at least one rule")
+				return
 			}
 
 			rule := updatedRoute.Spec.Rules[0]
 			if len(rule.Filters) != 1 {
-				t.Fatalf("Expected 1 filter, got %d", len(rule.Filters))
+				t.Errorf("Expected 1 filter, got %d", len(rule.Filters))
+				return
 			}
 
 			filter = &rule.Filters[0]
 			if filter.Type != gatewayv1.HTTPRouteFilterResponseHeaderModifier {
-				t.Fatalf("Expected ResponseHeaderModifier filter, got %s", filter.Type)
+				t.Errorf("Expected ResponseHeaderModifier filter, got %s", filter.Type)
+				return
 			}
 
 			if filter.ResponseHeaderModifier == nil {
-				t.Fatal("Expected ResponseHeaderModifier to be non-nil")
+				t.Error("Expected ResponseHeaderModifier to be non-nil")
+				return
 			}
 
 			if len(filter.ResponseHeaderModifier.Remove) != len(tt.expectedHeaders) {
