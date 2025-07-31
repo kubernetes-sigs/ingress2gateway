@@ -84,7 +84,7 @@ func RewriteTargetFeature(ingresses []networkingv1.Ingress, _ map[types.Namespac
 }
 
 // parseRewriteRules parses nginx.org/rewrites annotation format
-// NIC format: "serviceName=service rewrite=path[,serviceName2=service2 rewrite=path2]"
+// NIC format: "serviceName=service rewrite=path;serviceName2=service2 rewrite=path2"
 func parseRewriteRules(rewriteValue string) map[string]string {
 	rules := make(map[string]string)
 

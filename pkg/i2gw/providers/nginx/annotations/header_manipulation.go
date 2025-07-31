@@ -26,6 +26,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
@@ -179,10 +180,10 @@ func parseSetHeaders(setHeaders string) map[string]string {
 			// Format: "Header-Name" (use default value pattern)
 			headerName := strings.TrimSpace(part)
 			if headerName != "" {
+				notify(notifications.WarningNotification, "Header "+headerName+" is not applicable to Gateway API")
 				// For Gateway API, we can't use NGINX variables like $http_*
 				// Instead, we'll use a placeholder that indicates the header should pass through
 				// Note: This is a limitation of Gateway API vs NGINX capabilities
-				headers[headerName] = "" // Empty value means "pass through from client"
 			}
 		}
 	}
