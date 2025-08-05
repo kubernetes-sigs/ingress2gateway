@@ -491,12 +491,12 @@ func TestPathRegexCaseInsensitiveFlagInjection(t *testing.T) {
 		t.Errorf("Expected PathMatchRegularExpression, got %v", match.Path.Type)
 	}
 
-	// Verify (?i) flag was injected
 	if match.Path.Value == nil {
 		t.Error("Expected path value to be set")
 		return
 	}
 
+	// Verify (?i) flag was injected
 	expectedPath := "(?i)/api/v[0-9]+"
 	if *match.Path.Value != expectedPath {
 		t.Errorf("Expected path value '%s', got '%s'", expectedPath, *match.Path.Value)

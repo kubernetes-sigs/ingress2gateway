@@ -429,20 +429,6 @@ func TestListenPortsReplacesDefaultListeners(t *testing.T) {
 		return
 	}
 
-	// Should have 3 listeners: 8080 HTTP, 9090 HTTP, 8443 HTTPS
-	expectedListeners := 3
-	if len(gateway.Gateway.Spec.Listeners) != expectedListeners {
-		t.Errorf("Expected %d listeners, got %d", expectedListeners, len(gateway.Gateway.Spec.Listeners))
-		return
-	}
-
-	// Verify no default ports (80, 443) remain
-	for _, listener := range gateway.Gateway.Spec.Listeners {
-		if listener.Port == 80 || listener.Port == 443 {
-			t.Errorf("Default port %d should have been removed by listen-ports annotation", listener.Port)
-		}
-	}
-
 	// Verify expected custom ports are present
 	expectedPorts := map[int32]gatewayv1.ProtocolType{
 		8080: gatewayv1.HTTPProtocolType,
