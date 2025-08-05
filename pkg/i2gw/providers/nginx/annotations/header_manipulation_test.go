@@ -261,7 +261,8 @@ func TestHideHeaders(t *testing.T) {
 			}
 
 			if len(filter.ResponseHeaderModifier.Remove) != len(tt.expectedHeaders) {
-				t.Fatalf("Expected %d headers to remove, got %d", len(tt.expectedHeaders), len(filter.ResponseHeaderModifier.Remove))
+				t.Errorf("Expected %d headers to remove, got %d", len(tt.expectedHeaders), len(filter.ResponseHeaderModifier.Remove))
+				return
 			}
 
 			for _, expectedHeader := range tt.expectedHeaders {
@@ -374,32 +375,37 @@ func TestSetHeaders(t *testing.T) {
 
 			updatedRoute := ir.HTTPRoutes[routeKey].HTTPRoute
 			if len(updatedRoute.Spec.Rules) == 0 {
-				t.Fatal("Expected at least one rule")
+				t.Error("Expected at least one rule")
+				return
 			}
 
 			rule := updatedRoute.Spec.Rules[0]
 			if len(tt.expectedHeaders) == 0 {
 				if len(rule.Filters) > 0 {
-					t.Fatalf("Expected no filters, got %d", len(rule.Filters))
+					t.Errorf("Expected no filters, got %d", len(rule.Filters))
 				}
 				return
 			}
 
 			if len(rule.Filters) != 1 {
-				t.Fatalf("Expected 1 filter, got %d", len(rule.Filters))
+				t.Errorf("Expected 1 filter, got %d", len(rule.Filters))
+				return
 			}
 
 			filter = &rule.Filters[0]
 			if filter.Type != gatewayv1.HTTPRouteFilterRequestHeaderModifier {
-				t.Fatalf("Expected RequestHeaderModifier filter, got %s", filter.Type)
+				t.Errorf("Expected RequestHeaderModifier filter, got %s", filter.Type)
+				return
 			}
 
 			if filter.RequestHeaderModifier == nil {
-				t.Fatal("Expected RequestHeaderModifier to be non-nil")
+				t.Error("Expected RequestHeaderModifier to be non-nil")
+				return
 			}
 
 			if len(filter.RequestHeaderModifier.Set) != len(tt.expectedHeaders) {
-				t.Fatalf("Expected %d headers to set, got %d", len(tt.expectedHeaders), len(filter.RequestHeaderModifier.Set))
+				t.Errorf("Expected %d headers to set, got %d", len(tt.expectedHeaders), len(filter.RequestHeaderModifier.Set))
+				return
 			}
 
 			for _, expectedHeader := range tt.expectedHeaders {
@@ -499,7 +505,8 @@ func TestHeaderManipulationFeature(t *testing.T) {
 
 			updatedRoute := ir.HTTPRoutes[routeKey].HTTPRoute
 			if len(updatedRoute.Spec.Rules) == 0 {
-				t.Fatal("Expected at least one rule")
+				t.Error("Expected at least one rule")
+				return
 			}
 
 			rule := updatedRoute.Spec.Rules[0]

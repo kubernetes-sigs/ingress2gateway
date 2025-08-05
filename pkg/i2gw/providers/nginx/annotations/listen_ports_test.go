@@ -282,7 +282,8 @@ func TestListenPortsFeature(t *testing.T) {
 			}
 
 			if len(ir.Gateways) != 1 {
-				t.Fatalf("Expected 1 gateway, got %d", len(ir.Gateways))
+				t.Errorf("Expected 1 gateway, got %d", len(ir.Gateways))
+				return
 			}
 
 			var gateway gatewayv1.Gateway
@@ -292,7 +293,8 @@ func TestListenPortsFeature(t *testing.T) {
 			}
 
 			if len(gateway.Spec.Listeners) != tt.expectedListeners {
-				t.Fatalf("Expected %d listeners, got %d", tt.expectedListeners, len(gateway.Spec.Listeners))
+				t.Errorf("Expected %d listeners, got %d", tt.expectedListeners, len(gateway.Spec.Listeners))
+				return
 			}
 
 			httpCount := 0
@@ -423,13 +425,15 @@ func TestListenPortsReplacesDefaultListeners(t *testing.T) {
 	// Verify Gateway was updated
 	gateway, exists := ir.Gateways[gatewayKey]
 	if !exists {
-		t.Fatal("Gateway should exist")
+		t.Error("Gateway should exist")
+		return
 	}
 
 	// Should have 3 listeners: 8080 HTTP, 9090 HTTP, 8443 HTTPS
 	expectedListeners := 3
 	if len(gateway.Gateway.Spec.Listeners) != expectedListeners {
-		t.Fatalf("Expected %d listeners, got %d", expectedListeners, len(gateway.Gateway.Spec.Listeners))
+		t.Errorf("Expected %d listeners, got %d", expectedListeners, len(gateway.Gateway.Spec.Listeners))
+		return
 	}
 
 	// Verify no default ports (80, 443) remain
@@ -511,7 +515,8 @@ func TestListenPortsConflictResolution(t *testing.T) {
 	}
 
 	if len(ir.Gateways) != 1 {
-		t.Fatalf("Expected 1 gateway, got %d", len(ir.Gateways))
+		t.Errorf("Expected 1 gateway, got %d", len(ir.Gateways))
+		return
 	}
 
 	var gateway gatewayv1.Gateway
@@ -524,7 +529,8 @@ func TestListenPortsConflictResolution(t *testing.T) {
 	// Note: 8443 should be HTTPS only (not HTTP) due to conflict resolution
 	expectedListeners := 4
 	if len(gateway.Spec.Listeners) != expectedListeners {
-		t.Fatalf("Expected %d listeners, got %d", expectedListeners, len(gateway.Spec.Listeners))
+		t.Errorf("Expected %d listeners, got %d", expectedListeners, len(gateway.Spec.Listeners))
+		return
 	}
 
 	// Verify no port conflicts (same port with different protocols)

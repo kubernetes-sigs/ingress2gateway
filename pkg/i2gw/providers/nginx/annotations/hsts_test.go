@@ -203,12 +203,14 @@ func TestHSTSFeature(t *testing.T) {
 
 			// Verify HSTS filter was added
 			if len(httpRoute.Spec.Rules) == 0 {
-				t.Fatal("Expected HTTPRoute to have rules")
+				t.Error("Expected HTTPRoute to have rules")
+				return
 			}
 
 			rule := httpRoute.Spec.Rules[0]
 			if len(rule.Filters) == 0 {
-				t.Fatal("Expected HTTPRoute rule to have filters")
+				t.Error("Expected HTTPRoute rule to have filters")
+				return
 			}
 
 			// Find the HSTS filter
@@ -227,7 +229,8 @@ func TestHSTSFeature(t *testing.T) {
 			}
 
 			if hstsFilter == nil {
-				t.Fatal("Expected HSTS ResponseHeaderModifier filter")
+				t.Error("Expected HSTS ResponseHeaderModifier filter")
+				return
 			}
 
 			// Verify the HSTS header value

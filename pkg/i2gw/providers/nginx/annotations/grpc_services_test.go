@@ -92,7 +92,8 @@ func TestGRPCServicesRemoveHTTPRoute(t *testing.T) {
 	// Execute
 	errs := GRPCServicesFeature([]networkingv1.Ingress{ingress}, nil, &ir)
 	if len(errs) > 0 {
-		t.Fatalf("Unexpected errors: %v", errs)
+		t.Errorf("Unexpected errors: %v", errs)
+		return
 	}
 
 	// Debug output
@@ -275,7 +276,8 @@ func TestGRPCServicesWithMixedServices(t *testing.T) {
 	// Execute
 	errs := GRPCServicesFeature([]networkingv1.Ingress{ingress}, nil, &ir)
 	if len(errs) > 0 {
-		t.Fatalf("Unexpected errors: %v", errs)
+		t.Errorf("Unexpected errors: %v", errs)
+		return
 	}
 
 	// Verify HTTPRoute still exists (but modified)

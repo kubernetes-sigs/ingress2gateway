@@ -109,7 +109,8 @@ func TestSSLServicesAnnotation(t *testing.T) {
 
 			errs := processSSLServicesAnnotation(ingress, tt.annotation, &ir)
 			if len(errs) > 0 {
-				t.Fatalf("Unexpected errors: %v", errs)
+				t.Errorf("Unexpected errors: %v", errs)
+				return
 			}
 
 			if len(ir.BackendTLSPolicies) != tt.expectedPolicies {
@@ -203,7 +204,8 @@ func TestSSLServicesFeature(t *testing.T) {
 
 			errs := SSLServicesFeature(tt.ingresses, nil, &ir)
 			if len(errs) > 0 {
-				t.Fatalf("Unexpected errors: %v", errs)
+				t.Errorf("Unexpected errors: %v", errs)
+				return
 			}
 
 			if len(ir.BackendTLSPolicies) != tt.expectedPolicies {

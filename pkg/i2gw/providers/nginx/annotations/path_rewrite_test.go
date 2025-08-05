@@ -159,12 +159,14 @@ func TestRewriteTarget(t *testing.T) {
 
 			errs := RewriteTargetFeature([]networkingv1.Ingress{tt.ingress}, nil, &ir)
 			if len(errs) > 0 {
-				t.Fatalf("Unexpected errors: %v", errs)
+				t.Errorf("Unexpected errors: %v", errs)
+				return
 			}
 
 			updatedRoute := ir.HTTPRoutes[routeKey]
 			if len(updatedRoute.HTTPRoute.Spec.Rules) == 0 || len(updatedRoute.HTTPRoute.Spec.Rules[0].Filters) == 0 {
-				t.Fatal("Expected filter to be added to HTTPRoute")
+				t.Errorf("Expected filter to be added to HTTPRoute")
+				return
 			}
 
 			filter := updatedRoute.HTTPRoute.Spec.Rules[0].Filters[0]
@@ -173,7 +175,8 @@ func TestRewriteTarget(t *testing.T) {
 			}
 
 			if filter.URLRewrite == nil || filter.URLRewrite.Path == nil {
-				t.Fatal("Expected URLRewrite filter with Path modifier")
+				t.Errorf("Expected URLRewrite filter with Path modifier")
+				return
 			}
 
 			if *filter.URLRewrite.Path.ReplacePrefixMatch != *tt.expectedFilter.URLRewrite.Path.ReplacePrefixMatch {

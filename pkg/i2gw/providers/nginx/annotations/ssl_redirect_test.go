@@ -153,7 +153,8 @@ func TestSSLRedirectFeature(t *testing.T) {
 			// Execute
 			errs := SSLRedirectFeature([]networkingv1.Ingress{ingress}, nil, &ir)
 			if len(errs) > 0 {
-				t.Fatalf("Unexpected errors: %v", errs)
+				t.Errorf("Unexpected errors: %v", errs)
+				return
 			}
 
 			// Verify results
@@ -195,7 +196,8 @@ func TestSSLRedirectFeature(t *testing.T) {
 
 			// Verify redirect rule was added
 			if len(httpRoute.Spec.Rules) < 2 {
-				t.Fatal("Expected at least 2 rules (redirect + original)")
+				t.Errorf("Expected at least 2 rules (redirect + original)")
+				return
 			}
 
 			// First rule should be the redirect rule

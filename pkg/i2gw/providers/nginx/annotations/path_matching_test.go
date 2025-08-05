@@ -183,12 +183,14 @@ func TestPathRegex(t *testing.T) {
 
 			updatedRoute := ir.HTTPRoutes[routeKey]
 			if len(updatedRoute.HTTPRoute.Spec.Rules) == 0 || len(updatedRoute.HTTPRoute.Spec.Rules[0].Matches) == 0 {
-				t.Fatal("Expected HTTPRoute to have rules and matches")
+				t.Error("Expected HTTPRoute to have rules and matches")
+				return
 			}
 
 			match := updatedRoute.HTTPRoute.Spec.Rules[0].Matches[0]
 			if match.Path == nil {
-				t.Fatal("Expected path match to exist")
+				t.Error("Expected path match to exist")
+				return
 			}
 
 			actualPathType := *match.Path.Type
@@ -292,12 +294,14 @@ func TestPathRegexMultipleMatches(t *testing.T) {
 	matches := updatedRoute.HTTPRoute.Spec.Rules[0].Matches
 
 	if len(matches) != 2 {
-		t.Fatalf("Expected 2 matches, got %d", len(matches))
+		t.Errorf("Expected 2 matches, got %d", len(matches))
+		return
 	}
 
 	for i, match := range matches {
 		if match.Path == nil {
-			t.Fatalf("Expected path match %d to exist", i)
+			t.Errorf("Expected path match %d to exist", i)
+			return
 		}
 
 		if *match.Path.Type != gatewayv1.PathMatchRegularExpression {
@@ -375,7 +379,8 @@ func TestPathRegexCaseInsensitiveNotification(t *testing.T) {
 
 	// Should have no errors since we're using notifications now
 	if len(errs) != 0 {
-		t.Fatalf("Expected 0 errors, got %d", len(errs))
+		t.Errorf("Expected 0 errors, got %d", len(errs))
+		return
 	}
 
 	// Verify path type is still set correctly
@@ -465,17 +470,20 @@ func TestPathRegexCaseInsensitiveFlagInjection(t *testing.T) {
 	// Verify the path was modified
 	updatedRoute := ir.HTTPRoutes[routeKey]
 	if len(updatedRoute.HTTPRoute.Spec.Rules) == 0 {
-		t.Fatal("Expected HTTPRoute to have rules")
+		t.Error("Expected HTTPRoute to have rules")
+		return
 	}
 
 	rule := updatedRoute.HTTPRoute.Spec.Rules[0]
 	if len(rule.Matches) == 0 {
-		t.Fatal("Expected HTTPRoute rule to have matches")
+		t.Error("Expected HTTPRoute rule to have matches")
+		return
 	}
 
 	match := rule.Matches[0]
 	if match.Path == nil {
-		t.Fatal("Expected HTTPRoute match to have path")
+		t.Error("Expected HTTPRoute match to have path")
+		return
 	}
 
 	// Verify path match type is regular expression
@@ -485,7 +493,8 @@ func TestPathRegexCaseInsensitiveFlagInjection(t *testing.T) {
 
 	// Verify (?i) flag was injected
 	if match.Path.Value == nil {
-		t.Fatal("Expected path value to be set")
+		t.Error("Expected path value to be set")
+		return
 	}
 
 	expectedPath := "(?i)/api/v[0-9]+"
