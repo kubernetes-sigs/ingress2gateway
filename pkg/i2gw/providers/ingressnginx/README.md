@@ -11,6 +11,6 @@ Current supported annotations:
 - `nginx.ingress.kubernetes.io/canary-by-header-pattern`: If specified, this is the pattern to match against for the HTTPHeaderMatch, which will be of type HeaderMatchRegularExpression.
 - `nginx.ingress.kubernetes.io/canary-weight`: If specified and non-zero, this value will be applied as the weight of the backends for the routes generated from this Ingress resource.
 - `nginx.ingress.kubernetes.io/canary-weight-total`: If specified, this value will be used as the total weight for canary deployments.
-- `nginx.ingress.kubernetes.io/server-alias`: If specified, this value will be added as additional hostnames to the Gateway listeners and HTTPRoutes. Supports comma-separated values for multiple aliases.
+- `nginx.ingress.kubernetes.io/server-alias`: If specified, this value will be added as additional hostnames to the HTTPRoutes. Supports comma-separated values for multiple aliases.
 
 If you are reliant on any annotations not listed above, please open an issue. In the meantime you'll need to manually find a Gateway API equivalent.

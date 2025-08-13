@@ -123,18 +123,6 @@ func TestServerAliasFeature(t *testing.T) {
 										Port:     80,
 										Hostname: ptrTo(gatewayv1.Hostname("example.com")),
 									},
-									{
-										Name:     "api-example-com",
-										Protocol: gatewayv1.HTTPProtocolType,
-										Port:     80,
-										Hostname: ptrTo(gatewayv1.Hostname("api.example.com")),
-									},
-									{
-										Name:     "cdn-example-com",
-										Protocol: gatewayv1.HTTPProtocolType,
-										Port:     80,
-										Hostname: ptrTo(gatewayv1.Hostname("cdn.example.com")),
-									},
 								},
 							},
 						},

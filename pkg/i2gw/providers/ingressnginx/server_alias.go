@@ -70,47 +70,7 @@ func serverAliasFeature(ingresses []networkingv1.Ingress, _ map[types.Namespaced
 
 	// Process each gateway that has server aliases
 	for gatewayKey, aliases := range serverAliasesByGateway {
-		gatewayContext, exists := ir.Gateways[gatewayKey]
-		if !exists {
-			continue // Skip if the gateway doesn't exist in the IR
-		}
-
-		// Find an existing listener to base the new ones on (use the first HTTP/HTTPS listener)
-		var baseListener *gatewayv1.Listener
-		for i, listener := range gatewayContext.Spec.Listeners {
-			if listener.Protocol == gatewayv1.HTTPProtocolType || listener.Protocol == gatewayv1.HTTPSProtocolType {
-				baseListener = &gatewayContext.Spec.Listeners[i]
-				break
-			}
-		}
-
-		if baseListener != nil {
-			// Create additional listeners for each server alias
-			for _, alias := range aliases {
-				hostname := gatewayv1.Hostname(alias)
-
-				// Create a new listener based on the existing one but with the alias hostname
-				aliasListener := gatewayv1.Listener{
-					Name:     gatewayv1.SectionName(common.NameFromHost(alias)),
-					Hostname: &hostname,
-					Protocol: baseListener.Protocol,
-					Port:     baseListener.Port,
-					TLS:      baseListener.TLS,
-				}
-
-				// Add the new listener to the gateway
-				gatewayContext.Spec.Listeners = append(gatewayContext.Spec.Listeners, aliasListener)
-
-				notify(notifications.InfoNotification,
-					fmt.Sprintf("added server alias listener for hostname: %s", alias),
-					&gatewayContext.Gateway)
-			}
-
-			// Update the gateway context in the IR
-			ir.Gateways[gatewayKey] = gatewayContext
-		}
-
-		// Also update HTTPRoutes to include the server aliases as additional hostnames
+		// Update HTTPRoutes to include the server aliases as additional hostnames
 		for routeKey, routeContext := range ir.HTTPRoutes {
 			if routeKey.Namespace == gatewayKey.Namespace {
 				// Add server aliases as additional hostnames to the HTTPRoute
