@@ -94,7 +94,7 @@ func (pr *PrintRunner) PrintGatewayAPIObjects(cmd *cobra.Command, _ []string) er
 	}
 
 	for _, table := range notificationTablesMap {
-		fmt.Println(table)
+		fmt.Fprintln(os.Stderr, table)
 	}
 
 	pr.outputResult(gatewayResources)
