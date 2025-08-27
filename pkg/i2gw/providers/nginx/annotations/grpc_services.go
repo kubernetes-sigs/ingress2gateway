@@ -17,8 +17,6 @@ limitations under the License.
 package annotations
 
 import (
-	"strings"
-
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -46,20 +44,6 @@ func GRPCServicesFeature(ingresses []networkingv1.Ingress, _ map[types.Namespace
 	return errs
 }
 
-// parseGRPCServiceMethod parses gRPC service and method from HTTP path
-func parseGRPCServiceMethod(path string) (service, method string) {
-	path = strings.TrimPrefix(path, "/")
-
-	parts := strings.SplitN(path, "/", 2)
-	if len(parts) >= 1 && parts[0] != "" {
-		service = parts[0]
-	}
-	if len(parts) >= 2 && parts[1] != "" {
-		method = parts[1]
-	}
-
-	return service, method
-}
 
 // processGRPCServicesAnnotation handles gRPC backend services
 //
@@ -111,7 +95,7 @@ func processGRPCServicesAnnotation(ingress networkingv1.Ingress, grpcServices st
 
 				// Convert HTTP path to gRPC service/method match
 				if path.Path != "" {
-					service, method := parseGRPCServiceMethod(path.Path)
+					service, method := common.ParseGRPCServiceMethod(path.Path)
 					if service != "" {
 						grpcMatch.Method = &gatewayv1.GRPCMethodMatch{
 							Service: &service,
@@ -196,7 +180,7 @@ func processGRPCServicesAnnotation(ingress networkingv1.Ingress, grpcServices st
 
 			// Remove HTTP rules that correspond to gRPC services from the HTTPRoute
 			if httpRouteExists {
-				remainingHTTPRules = removeGRPCRulesFromHTTPRoute(&httpRouteContext.HTTPRoute, grpcServiceSet)
+				remainingHTTPRules = common.RemoveGRPCRulesFromHTTPRoute(&httpRouteContext.HTTPRoute, grpcServiceSet)
 
 				// If no rules remain, remove the entire HTTPRoute
 				if len(remainingHTTPRules) == 0 {
@@ -219,87 +203,29 @@ func findAndConvertFiltersForGRPCPath(httpRules []gatewayv1.HTTPRouteRule, grpcP
 	for _, httpRule := range httpRules {
 		for _, match := range httpRule.Matches {
 			if match.Path != nil && match.Path.Value != nil && *match.Path.Value == grpcPath {
-				// Found the matching rule, convert its filters
-				return convertHTTPFiltersToGRPCFilters(httpRule.Filters)
+				// Found the matching rule, convert its filters  
+				conversionResult := common.ConvertHTTPFiltersToGRPCFilters(httpRule.Filters)
+				
+				// Handle notifications for unsupported filters
+				for _, unsupportedType := range conversionResult.UnsupportedTypes {
+					switch unsupportedType {
+					case gatewayv1.HTTPRouteFilterRequestRedirect:
+						notify(notifications.WarningNotification, "RequestRedirect is not applicable to gRPC")
+					case gatewayv1.HTTPRouteFilterURLRewrite:
+						notify(notifications.WarningNotification, "URLRewrite is not applicable to gRPC")
+					case gatewayv1.HTTPRouteFilterRequestMirror:
+						notify(notifications.WarningNotification, "RequestMirror is not applicable to gRPC")
+					case gatewayv1.HTTPRouteFilterExtensionRef:
+						notify(notifications.WarningNotification, "ExtensionRef filters are not converted to gRPC equivalents")
+					default:
+						notify(notifications.WarningNotification, "Unknown HTTPRouteFilter type: "+string(unsupportedType))
+					}
+				}
+				return conversionResult.GRPCFilters
 			}
 		}
 	}
 	return nil
 }
 
-// convertHTTPFiltersToGRPCFilters converts a list of HTTPRoute filters to GRPCRoute filters
-func convertHTTPFiltersToGRPCFilters(httpFilters []gatewayv1.HTTPRouteFilter) []gatewayv1.GRPCRouteFilter {
-	var grpcFilters []gatewayv1.GRPCRouteFilter
 
-	for _, httpFilter := range httpFilters {
-		var grpcFilter gatewayv1.GRPCRouteFilter
-
-		switch httpFilter.Type {
-		case gatewayv1.HTTPRouteFilterRequestHeaderModifier:
-			if httpFilter.RequestHeaderModifier != nil {
-				grpcFilter = gatewayv1.GRPCRouteFilter{
-					Type: gatewayv1.GRPCRouteFilterRequestHeaderModifier,
-					RequestHeaderModifier: &gatewayv1.HTTPHeaderFilter{
-						Set:    httpFilter.RequestHeaderModifier.Set,
-						Add:    httpFilter.RequestHeaderModifier.Add,
-						Remove: httpFilter.RequestHeaderModifier.Remove,
-					},
-				}
-				grpcFilters = append(grpcFilters, grpcFilter)
-			}
-
-		case gatewayv1.HTTPRouteFilterResponseHeaderModifier:
-			if httpFilter.ResponseHeaderModifier != nil {
-				grpcFilter = gatewayv1.GRPCRouteFilter{
-					Type: gatewayv1.GRPCRouteFilterResponseHeaderModifier,
-					ResponseHeaderModifier: &gatewayv1.HTTPHeaderFilter{
-						Set:    httpFilter.ResponseHeaderModifier.Set,
-						Add:    httpFilter.ResponseHeaderModifier.Add,
-						Remove: httpFilter.ResponseHeaderModifier.Remove,
-					},
-				}
-				grpcFilters = append(grpcFilters, grpcFilter)
-			}
-
-		// These HTTP filter types are not applicable to gRPC and are skipped
-		case gatewayv1.HTTPRouteFilterRequestRedirect:
-			notify(notifications.WarningNotification, "RequestRedirect is not applicable to gRPC")
-		case gatewayv1.HTTPRouteFilterURLRewrite:
-			notify(notifications.WarningNotification, "URLRewrite is not applicable to gRPC")
-		case gatewayv1.HTTPRouteFilterRequestMirror:
-			notify(notifications.WarningNotification, "RequestMirror is not applicable to gRPC")
-		case gatewayv1.HTTPRouteFilterExtensionRef:
-			notify(notifications.WarningNotification, "ExtensionRef filters are not converted to gRPC equivalents")
-		default:
-			notify(notifications.WarningNotification, "Unknown HTTPRouteFilter type: "+string(httpFilter.Type))
-		}
-	}
-
-	return grpcFilters
-}
-
-// removeGRPCRulesFromHTTPRoute removes HTTPRoute rules that target gRPC services
-func removeGRPCRulesFromHTTPRoute(httpRoute *gatewayv1.HTTPRoute, grpcServiceSet map[string]struct{}) []gatewayv1.HTTPRouteRule {
-	var remainingRules []gatewayv1.HTTPRouteRule
-
-	for _, rule := range httpRoute.Spec.Rules {
-		var remainingBackendRefs []gatewayv1.HTTPBackendRef
-
-		// Check each backend ref in the rule
-		for _, backendRef := range rule.BackendRefs {
-			serviceName := string(backendRef.BackendRef.BackendObjectReference.Name)
-			// Only keep backend refs that are NOT gRPC services
-			if _, isGRPCService := grpcServiceSet[serviceName]; !isGRPCService {
-				remainingBackendRefs = append(remainingBackendRefs, backendRef)
-			}
-		}
-
-		// If any backend refs remain, keep the rule
-		if len(remainingBackendRefs) > 0 {
-			rule.BackendRefs = remainingBackendRefs
-			remainingRules = append(remainingRules, rule)
-		}
-	}
-
-	return remainingRules
-}

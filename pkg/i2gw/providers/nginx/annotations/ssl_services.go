@@ -17,18 +17,14 @@ limitations under the License.
 package annotations
 
 import (
-	"fmt"
-
 	networkingv1 "k8s.io/api/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1alpha3 "sigs.k8s.io/gateway-api/apis/v1alpha3"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
 // SSLServicesFeature processes nginx.org/ssl-services annotation
@@ -60,39 +56,10 @@ func processSSLServicesAnnotation(ingress networkingv1.Ingress, sslServices stri
 		ir.BackendTLSPolicies = make(map[types.NamespacedName]gatewayv1alpha3.BackendTLSPolicy)
 	}
 	for serviceName := range sslServiceSet {
-		policyName := fmt.Sprintf("%s-%s-backend-tls", ingress.Name, serviceName)
+		policy := common.CreateBackendTLSPolicy(ingress.Namespace, ingress.Name, serviceName)
 		policyKey := types.NamespacedName{
 			Namespace: ingress.Namespace,
-			Name:      policyName,
-		}
-
-		policy := gatewayv1alpha3.BackendTLSPolicy{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: gatewayv1alpha3.GroupVersion.String(),
-				Kind:       BackendTLSPolicyKind,
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      policyName,
-				Namespace: ingress.Namespace,
-				Labels: map[string]string{
-					"app.kubernetes.io/managed-by": "ingress2gateway",
-				},
-			},
-			Spec: gatewayv1alpha3.BackendTLSPolicySpec{
-				TargetRefs: []gatewayv1alpha2.LocalPolicyTargetReferenceWithSectionName{
-					{
-						LocalPolicyTargetReference: gatewayv1alpha2.LocalPolicyTargetReference{
-							Group: CoreGroup,
-							Kind:  ServiceKind,
-							Name:  gatewayv1.ObjectName(serviceName),
-						},
-					},
-				},
-				Validation: gatewayv1alpha3.BackendTLSPolicyValidation{
-					// Note: WellKnownCACertificates and Hostname fields are intentionally left empty
-					// These fields must be manually configured based on your backend service's TLS setup
-				},
-			},
+			Name:      common.BackendTLSPolicyName(ingress.Name, serviceName),
 		}
 
 		ir.BackendTLSPolicies[policyKey] = policy
