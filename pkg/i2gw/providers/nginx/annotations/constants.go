@@ -62,3 +62,8 @@ const (
 	ServiceKind              = "Service"
 	GRPCRouteKind            = "GRPCRoute"
 )
+
+// Resource group constants
+const (
+	CoreGroup = "" // Core Kubernetes resources (Service, etc.)
+)

@@ -23,7 +23,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
-	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha3 "sigs.k8s.io/gateway-api/apis/v1alpha3"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
@@ -126,8 +125,8 @@ func TestSSLServicesAnnotation(t *testing.T) {
 					if policy.Spec.TargetRefs[0].Kind != "Service" {
 						t.Errorf("Expected TargetRef Kind 'Service', got '%s'", policy.Spec.TargetRefs[0].Kind)
 					}
-					if policy.Spec.TargetRefs[0].Group != gatewayv1.GroupName {
-						t.Errorf("Expected TargetRef Group '%s', got '%s'", gatewayv1.GroupName, policy.Spec.TargetRefs[0].Group)
+					if policy.Spec.TargetRefs[0].Group != CoreGroup {
+						t.Errorf("Expected TargetRef Group '%s', got '%s'", CoreGroup, policy.Spec.TargetRefs[0].Group)
 					}
 
 					if policy.Labels["app.kubernetes.io/managed-by"] != "ingress2gateway" {

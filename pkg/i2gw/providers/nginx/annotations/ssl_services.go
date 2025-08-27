@@ -82,7 +82,7 @@ func processSSLServicesAnnotation(ingress networkingv1.Ingress, sslServices stri
 				TargetRefs: []gatewayv1alpha2.LocalPolicyTargetReferenceWithSectionName{
 					{
 						LocalPolicyTargetReference: gatewayv1alpha2.LocalPolicyTargetReference{
-							Group: gatewayv1.GroupName,
+							Group: CoreGroup,
 							Kind:  ServiceKind,
 							Name:  gatewayv1.ObjectName(serviceName),
 						},

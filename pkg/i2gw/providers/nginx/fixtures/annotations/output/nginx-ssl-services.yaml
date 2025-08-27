@@ -66,7 +66,7 @@ metadata:
   namespace: default
 spec:
   targetRefs:
-  - group: gateway.networking.k8s.io
+  - group: ""
     kind: Service
     name: secure-app
   validation:
