@@ -133,9 +133,6 @@ func TestSSLServicesAnnotation(t *testing.T) {
 					if policy.Labels["app.kubernetes.io/managed-by"] != "ingress2gateway" {
 						t.Errorf("Expected managed-by label 'ingress2gateway', got '%s'", policy.Labels["app.kubernetes.io/managed-by"])
 					}
-					if policy.Labels["ingress2gateway.io/source"] != "nginx-ssl-services" {
-						t.Errorf("Expected source label 'nginx-ssl-services', got '%s'", policy.Labels["ingress2gateway.io/source"])
-					}
 				}
 			}
 

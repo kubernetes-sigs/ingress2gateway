@@ -23,7 +23,6 @@ metadata:
   creationTimestamp: null
   labels:
     app.kubernetes.io/managed-by: ingress2gateway
-    ingress2gateway.io/source: nginx-grpc-services
   name: grpc-services-test-grpc-example-com
   namespace: default
 spec:

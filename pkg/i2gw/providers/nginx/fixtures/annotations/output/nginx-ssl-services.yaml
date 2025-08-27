@@ -1,3 +1,11 @@
+Notifications from NGINX:
++--------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------+
+| MESSAGE TYPE |                                                                                               NOTIFICATION                                                                                               |           CALLING OBJECT           |
++--------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------+
+| WARNING      | nginx.org/ssl-services: BackendTLSPolicy created but requires manual configuration. You must set the 'validation.hostname' field to match your backend service's TLS certificate hostname, and configure | Ingress: default/ssl-services-test |
+|              | appropriate CA certificates or certificateRefs for TLS verification.                                                                                                                                     |                                    |
++--------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------+
+
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
@@ -54,7 +62,6 @@ metadata:
   creationTimestamp: null
   labels:
     app.kubernetes.io/managed-by: ingress2gateway
-    ingress2gateway.io/source: nginx-ssl-services
   name: ssl-services-test-secure-app-backend-tls
   namespace: default
 spec:

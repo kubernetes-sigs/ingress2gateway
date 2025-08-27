@@ -59,50 +59,6 @@ The provider supports two SSL redirect annotations with identical behavior:
 * **`nginx.org/redirect-to-https`** - Redirects all HTTP traffic to HTTPS with a 301 status code
 * **`ingress.kubernetes.io/ssl-redirect`** - Redirects all HTTP traffic to HTTPS with a 301 status code (legacy compatibility)
 
-## Examples
-
-```yaml
-# SSL Backend
-annotations:
-  nginx.org/ssl-services: "backend-service"
-
-# WebSocket Backend
-annotations:
-  nginx.org/websocket-services: "websocket-service"
-
-# Header Manipulation  
-annotations:
-  nginx.org/proxy-set-headers: "X-Custom-Header: custom-value"
-  nginx.org/proxy-hide-headers: "Server,X-Powered-By"
-
-# URL Rewriting
-annotations:
-  nginx.org/rewrites: "api-service=/v1/api"
-
-# Custom Ports
-annotations:
-  nginx.org/listen-ports: "8080,8081"
-  nginx.org/listen-ports-ssl: "8443"
-
-# Regex Paths
-annotations:
-  nginx.org/path-regex: "true"
-
-# SSL Redirect (Modern)
-annotations:
-  nginx.org/redirect-to-https: "true"
-
-# SSL Redirect (Legacy)
-annotations:
-  ingress.kubernetes.io/ssl-redirect: "true"
-
-# HSTS Security Headers
-annotations:
-  nginx.org/hsts: "true"
-  nginx.org/hsts-max-age: "31536000"
-  nginx.org/hsts-include-subdomains: "true"
-```
-
 ## Contributing
 
 When adding support for new NGINX Ingress Controller annotations:

@@ -7,8 +7,11 @@ This directory contains the implementation of [NGINX Ingress Controller](https:/
 ## Structure
 
 - **`constants.go`** - All annotation constants and schema definitions
-- **`backend_protocol.go`** - Backend protocol annotations (`ssl-services`, `grpc-services`, `websocket-services`)
+- **`ssl_services.go`** - SSL backend services (`ssl-services`)
+- **`grpc_services.go`** - gRPC backend services (`grpc-services`)
+- **`websocket_services.go`** - WebSocket backend services (`websocket-services`)
 - **`header_manipulation.go`** - Header manipulation annotations (`hide-headers`, `proxy-set-headers`, etc.)
+- **`hsts.go`** - HSTS header annotations (`hsts`)
 - **`listen_ports.go`** - Custom port listeners (`listen-ports`, `listen-ports-ssl`)
 - **`path_matching.go`** - Path regex matching (`path-regex`)
 - **`path_rewrite.go`** - URL rewriting (`rewrites`)
@@ -18,8 +21,11 @@ This directory contains the implementation of [NGINX Ingress Controller](https:/
 
 Each annotation file exports a main feature function:
 
-- `BackendProtocolFeature` - Processes backend protocol annotations
-- `HeaderManipulationFeature` - Processes header manipulation annotations  
+- `SSLServicesFeature` - Processes SSL backend services annotations
+- `GRPCServicesFeature` - Processes gRPC backend services annotations
+- `WebSocketServicesFeature` - Processes WebSocket backend services annotations
+- `HeaderManipulationFeature` - Processes header manipulation annotations
+- `HSTSFeature` - Processes HSTS header annotations
 - `ListenPortsFeature` - Processes custom port listener annotations
 - `PathRegexFeature` - Processes path regex annotations
 - `RewriteTargetFeature` - Processes URL rewrite annotations

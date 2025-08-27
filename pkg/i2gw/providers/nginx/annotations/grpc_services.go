@@ -172,7 +172,6 @@ func processGRPCServicesAnnotation(ingress networkingv1.Ingress, grpcServices st
 					Namespace: ingress.Namespace,
 					Labels: map[string]string{
 						"app.kubernetes.io/managed-by": "ingress2gateway",
-						"ingress2gateway.io/source":    "nginx-grpc-services",
 					},
 				},
 				Spec: gatewayv1.GRPCRouteSpec{

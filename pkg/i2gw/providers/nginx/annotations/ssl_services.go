@@ -76,7 +76,6 @@ func processSSLServicesAnnotation(ingress networkingv1.Ingress, sslServices stri
 				Namespace: ingress.Namespace,
 				Labels: map[string]string{
 					"app.kubernetes.io/managed-by": "ingress2gateway",
-					"ingress2gateway.io/source":    "nginx-ssl-services",
 				},
 			},
 			Spec: gatewayv1alpha3.BackendTLSPolicySpec{
