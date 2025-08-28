@@ -125,8 +125,8 @@ func TestSSLServicesAnnotation(t *testing.T) {
 					if policy.Spec.TargetRefs[0].Kind != "Service" {
 						t.Errorf("Expected TargetRef Kind 'Service', got '%s'", policy.Spec.TargetRefs[0].Kind)
 					}
-					if policy.Spec.TargetRefs[0].Group != CoreGroup {
-						t.Errorf("Expected TargetRef Group '%s', got '%s'", CoreGroup, policy.Spec.TargetRefs[0].Group)
+					if policy.Spec.TargetRefs[0].Group != "" {
+						t.Errorf("Expected TargetRef Group '%s', got '%s'", "", policy.Spec.TargetRefs[0].Group)
 					}
 
 					if policy.Labels["app.kubernetes.io/managed-by"] != "ingress2gateway" {

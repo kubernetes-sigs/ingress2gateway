@@ -57,13 +57,6 @@ const (
 
 // Resource kind constants
 const (
-	BackendTLSPolicyKind     = "BackendTLSPolicy"
-	ClientSettingsPolicyKind = "ClientSettingsPolicy"
-	ServiceKind              = "Service"
-	GRPCRouteKind            = "GRPCRoute"
-)
-
-// Resource group constants
-const (
-	CoreGroup = "" // Core Kubernetes resources (Service, etc.)
+	BackendTLSPolicyKind = "BackendTLSPolicy"
+	GRPCRouteKind        = "GRPCRoute"
 )
