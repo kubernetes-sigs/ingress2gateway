@@ -26,20 +26,28 @@ import (
 
 // converter implements the i2gw.CustomResourceReader interface.
 type resourceReader struct {
-	conf *i2gw.ProviderConf
+	conf         *i2gw.ProviderConf
+	ingressClass string
 }
 
 // newResourceReader returns a resourceReader instance.
 func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
+	var ingressClass string
+
+	if ps := conf.ProviderSpecificFlags[Name]; ps != nil {
+		ingressClass = ps[NginxIngressClassFlag]
+	}
+
 	return &resourceReader{
-		conf: conf,
+		conf:         conf,
+		ingressClass: ingressClass,
 	}
 }
 
 func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage, error) {
 	storage := newResourcesStorage()
 
-	ingresses, err := common.ReadIngressesFromCluster(ctx, r.conf.Client, sets.New(NginxIngressClass))
+	ingresses, err := common.ReadIngressesFromCluster(ctx, r.conf.Client, sets.New(r.ingressClass))
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +64,7 @@ func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage
 func (r *resourceReader) readResourcesFromFile(filename string) (*storage, error) {
 	storage := newResourcesStorage()
 
-	ingresses, err := common.ReadIngressesFromFile(filename, r.conf.Namespace, sets.New(NginxIngressClass))
+	ingresses, err := common.ReadIngressesFromFile(filename, r.conf.Namespace, sets.New(r.ingressClass))
 	if err != nil {
 		return nil, err
 	}

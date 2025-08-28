@@ -2,6 +2,10 @@
 
 The project supports translating ingress-nginx specific annotations.
 
+**Ingress class name**
+
+To specify the name of the Ingress class to select, use `--ingress-nginx-ingress-class=ingress-nginx` (default to 'nginx').
+
 Current supported annotations:
 
 - `nginx.ingress.kubernetes.io/canary`: If set to true will enable weighting backends.

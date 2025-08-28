@@ -29,9 +29,15 @@ import (
 // The Name of the provider.
 const Name = "ingress-nginx"
 const NginxIngressClass = "nginx"
+const NginxIngressClassFlag = "ingress-class"
 
 func init() {
 	i2gw.ProviderConstructorByName[Name] = NewProvider
+	i2gw.RegisterProviderSpecificFlag(Name, i2gw.ProviderSpecificFlag{
+		Name:         "ingress-class",
+		Description:  "The name of the ingress class to select. Defaults to 'nginx'",
+		DefaultValue: NginxIngressClass,
+	})
 }
 
 // Provider implements the i2gw.Provider interface.
