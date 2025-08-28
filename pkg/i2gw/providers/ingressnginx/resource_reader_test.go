@@ -62,7 +62,6 @@ spec:
               number: 80
 `
 var IngressClass = "nginx"
-var expectedIngressName = "ingress-with-matching-ingressclass"
 
 // Test that the ingress-class provider-specific flag is honored by the resource reader
 func TestResourceReader_FiltersByIngressClass_FromFile(t *testing.T) {
@@ -97,5 +96,5 @@ func TestResourceReader_FiltersByIngressClass_FromFile(t *testing.T) {
 	ingresses := storage.Ingresses.List()
 
 	assert.Len(t, ingresses, 1, "Expected exactly one ingress to be selected")
-	assert.Equal(t, expectedIngressName, ingresses[0].Name, "Ingress class name should match the expected ingress")
+	assert.Equal(t, IngressClass, *ingresses[0].Spec.IngressClassName, "Ingresses fetched should have the provided ingressClass")
 }
