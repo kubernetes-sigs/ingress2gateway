@@ -21,8 +21,6 @@ metadata:
   annotations:
     gateway.networking.k8s.io/generator: ingress2gateway-dev
   creationTimestamp: null
-  labels:
-    app.kubernetes.io/managed-by: ingress2gateway
   name: grpc-services-test-grpc-example-com
   namespace: default
 spec:

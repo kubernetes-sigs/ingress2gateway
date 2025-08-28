@@ -352,6 +352,8 @@ func RemoveGRPCRulesFromHTTPRoute(httpRoute *gatewayv1.HTTPRoute, grpcServiceSet
 // CreateBackendTLSPolicy creates a BackendTLSPolicy for the given service
 func CreateBackendTLSPolicy(namespace, policyName, serviceName string) gatewayv1alpha3.BackendTLSPolicy {
 
+	// TODO: Migrate BackendTLSPolicy from gatewayv1alpha3 to gatewayv1 for Gateway API 1.4
+	// See: https://github.com/kubernetes-sigs/ingress2gateway/issues/236
 	return gatewayv1alpha3.BackendTLSPolicy{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: gatewayv1alpha3.GroupVersion.String(),
@@ -360,9 +362,6 @@ func CreateBackendTLSPolicy(namespace, policyName, serviceName string) gatewayv1
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      policyName,
 			Namespace: namespace,
-			Labels: map[string]string{
-				"app.kubernetes.io/managed-by": "ingress2gateway",
-			},
 		},
 		Spec: gatewayv1alpha3.BackendTLSPolicySpec{
 			TargetRefs: []gatewayv1alpha2.LocalPolicyTargetReferenceWithSectionName{

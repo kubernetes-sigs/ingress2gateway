@@ -153,9 +153,6 @@ func processGRPCServicesAnnotation(ingress networkingv1.Ingress, grpcServices st
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      routeName,
 					Namespace: ingress.Namespace,
-					Labels: map[string]string{
-						"app.kubernetes.io/managed-by": "ingress2gateway",
-					},
 				},
 				Spec: gatewayv1.GRPCRouteSpec{
 					CommonRouteSpec: gatewayv1.CommonRouteSpec{

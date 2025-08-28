@@ -913,7 +913,6 @@ func TestCreateBackendTLSPolicy(t *testing.T) {
 			require.Equal(t, tc.namespace, policy.Namespace)
 			require.Equal(t, "BackendTLSPolicy", policy.Kind)
 			require.Equal(t, gatewayv1alpha3.GroupVersion.String(), policy.APIVersion)
-			require.Equal(t, "ingress2gateway", policy.Labels["app.kubernetes.io/managed-by"])
 
 			require.Len(t, policy.Spec.TargetRefs, 1)
 			require.Equal(t, gatewayv1.ObjectName(tc.serviceName), policy.Spec.TargetRefs[0].Name)
