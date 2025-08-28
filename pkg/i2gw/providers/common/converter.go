@@ -30,6 +30,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1alpha3 "sigs.k8s.io/gateway-api/apis/v1alpha3"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 // ToIR converts the received ingresses to intermediate.IR without taking into
@@ -66,8 +69,16 @@ func ToIR(ingresses []networkingv1.Ingress, servicePorts map[types.NamespacedNam
 	}
 
 	return intermediate.IR{
-		Gateways:   gatewayByKey,
-		HTTPRoutes: routeByKey,
+		Gateways:           gatewayByKey,
+		HTTPRoutes:         routeByKey,
+		Services:           make(map[types.NamespacedName]intermediate.ProviderSpecificServiceIR),
+		GatewayClasses:     make(map[types.NamespacedName]gatewayv1.GatewayClass),
+		TLSRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
+		TCPRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
+		UDPRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.UDPRoute),
+		GRPCRoutes:         make(map[types.NamespacedName]gatewayv1.GRPCRoute),
+		BackendTLSPolicies: make(map[types.NamespacedName]gatewayv1alpha3.BackendTLSPolicy),
+		ReferenceGrants:    make(map[types.NamespacedName]gatewayv1beta1.ReferenceGrant),
 	}, nil
 }
 

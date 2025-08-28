@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: proxy-set-headers-test
+  namespace: default
+  annotations:
+    nginx.org/proxy-set-headers: "header-a:value-a,header-b:value-b"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: set-headers.example.com
+    http:
+      paths:
+      - path: /echo
+        pathType: Prefix
+        backend:
+          service:
+            name: echo-service
+            port:
+              number: 8080

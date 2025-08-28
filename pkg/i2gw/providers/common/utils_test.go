@@ -24,6 +24,8 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1alpha3 "sigs.k8s.io/gateway-api/apis/v1alpha3"
 )
 
 func TestGroupIngressPathsByMatchKey(t *testing.T) {
@@ -577,4 +579,345 @@ func TestGroupServicePortsByPortName(t *testing.T) {
 
 		require.Equal(t, expected, GroupServicePortsByPortName(services))
 	})
+}
+
+func TestParseGRPCServiceMethod(t *testing.T) {
+	testCases := []struct {
+		name            string
+		path            string
+		expectedService string
+		expectedMethod  string
+	}{
+		{
+			name:            "empty path",
+			path:            "",
+			expectedService: "",
+			expectedMethod:  "",
+		},
+		{
+			name:            "root path",
+			path:            "/",
+			expectedService: "",
+			expectedMethod:  "",
+		},
+		{
+			name:            "service only",
+			path:            "/UserService",
+			expectedService: "UserService",
+			expectedMethod:  "",
+		},
+		{
+			name:            "service and method",
+			path:            "/UserService/GetUser",
+			expectedService: "UserService",
+			expectedMethod:  "GetUser",
+		},
+		{
+			name:            "service and method with extra path",
+			path:            "/UserService/GetUser/extra",
+			expectedService: "UserService",
+			expectedMethod:  "GetUser/extra",
+		},
+		{
+			name:            "path without leading slash",
+			path:            "UserService/GetUser",
+			expectedService: "UserService",
+			expectedMethod:  "GetUser",
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			service, method := ParseGRPCServiceMethod(tc.path)
+			require.Equal(t, tc.expectedService, service)
+			require.Equal(t, tc.expectedMethod, method)
+		})
+	}
+}
+
+func TestConvertHTTPFiltersToGRPCFilters(t *testing.T) {
+	testCases := []struct {
+		name                string
+		httpFilters         []gatewayv1.HTTPRouteFilter
+		expectedGRPCFilters []gatewayv1.GRPCRouteFilter
+		expectedUnsupported []gatewayv1.HTTPRouteFilterType
+	}{
+		{
+			name:                "empty filters",
+			httpFilters:         []gatewayv1.HTTPRouteFilter{},
+			expectedGRPCFilters: []gatewayv1.GRPCRouteFilter{},
+			expectedUnsupported: []gatewayv1.HTTPRouteFilterType{},
+		},
+		{
+			name: "request header modifier",
+			httpFilters: []gatewayv1.HTTPRouteFilter{
+				{
+					Type: gatewayv1.HTTPRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &gatewayv1.HTTPHeaderFilter{
+						Set: []gatewayv1.HTTPHeader{
+							{Name: "X-Custom-Header", Value: "test"},
+						},
+						Add: []gatewayv1.HTTPHeader{
+							{Name: "X-Additional", Value: "header"},
+						},
+						Remove: []string{"X-Remove"},
+					},
+				},
+			},
+			expectedGRPCFilters: []gatewayv1.GRPCRouteFilter{
+				{
+					Type: gatewayv1.GRPCRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &gatewayv1.HTTPHeaderFilter{
+						Set: []gatewayv1.HTTPHeader{
+							{Name: "X-Custom-Header", Value: "test"},
+						},
+						Add: []gatewayv1.HTTPHeader{
+							{Name: "X-Additional", Value: "header"},
+						},
+						Remove: []string{"X-Remove"},
+					},
+				},
+			},
+			expectedUnsupported: []gatewayv1.HTTPRouteFilterType{},
+		},
+		{
+			name: "response header modifier",
+			httpFilters: []gatewayv1.HTTPRouteFilter{
+				{
+					Type: gatewayv1.HTTPRouteFilterResponseHeaderModifier,
+					ResponseHeaderModifier: &gatewayv1.HTTPHeaderFilter{
+						Set: []gatewayv1.HTTPHeader{
+							{Name: "X-Response-Header", Value: "value"},
+						},
+					},
+				},
+			},
+			expectedGRPCFilters: []gatewayv1.GRPCRouteFilter{
+				{
+					Type: gatewayv1.GRPCRouteFilterResponseHeaderModifier,
+					ResponseHeaderModifier: &gatewayv1.HTTPHeaderFilter{
+						Set: []gatewayv1.HTTPHeader{
+							{Name: "X-Response-Header", Value: "value"},
+						},
+					},
+				},
+			},
+			expectedUnsupported: []gatewayv1.HTTPRouteFilterType{},
+		},
+		{
+			name: "unsupported filters are tracked",
+			httpFilters: []gatewayv1.HTTPRouteFilter{
+				{
+					Type: gatewayv1.HTTPRouteFilterRequestRedirect,
+					RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
+						Hostname: PtrTo(gatewayv1.PreciseHostname("example.com")),
+					},
+				},
+				{
+					Type: gatewayv1.HTTPRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &gatewayv1.HTTPHeaderFilter{
+						Set: []gatewayv1.HTTPHeader{
+							{Name: "X-Custom", Value: "test"},
+						},
+					},
+				},
+			},
+			expectedGRPCFilters: []gatewayv1.GRPCRouteFilter{
+				{
+					Type: gatewayv1.GRPCRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &gatewayv1.HTTPHeaderFilter{
+						Set: []gatewayv1.HTTPHeader{
+							{Name: "X-Custom", Value: "test"},
+						},
+					},
+				},
+			},
+			expectedUnsupported: []gatewayv1.HTTPRouteFilterType{
+				gatewayv1.HTTPRouteFilterRequestRedirect,
+			},
+		},
+		{
+			name: "multiple unsupported filters",
+			httpFilters: []gatewayv1.HTTPRouteFilter{
+				{
+					Type: gatewayv1.HTTPRouteFilterRequestRedirect,
+				},
+				{
+					Type: gatewayv1.HTTPRouteFilterURLRewrite,
+				},
+				{
+					Type: gatewayv1.HTTPRouteFilterRequestMirror,
+				},
+			},
+			expectedGRPCFilters: []gatewayv1.GRPCRouteFilter{},
+			expectedUnsupported: []gatewayv1.HTTPRouteFilterType{
+				gatewayv1.HTTPRouteFilterRequestRedirect,
+				gatewayv1.HTTPRouteFilterURLRewrite,
+				gatewayv1.HTTPRouteFilterRequestMirror,
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			result := ConvertHTTPFiltersToGRPCFilters(tc.httpFilters)
+			require.Equal(t, tc.expectedGRPCFilters, result.GRPCFilters)
+			require.Equal(t, tc.expectedUnsupported, result.UnsupportedTypes)
+		})
+	}
+}
+
+func TestRemoveGRPCRulesFromHTTPRoute(t *testing.T) {
+	testCases := []struct {
+		name           string
+		httpRoute      *gatewayv1.HTTPRoute
+		grpcServiceSet map[string]struct{}
+		expectedRules  int
+	}{
+		{
+			name: "no gRPC services - all rules remain",
+			httpRoute: &gatewayv1.HTTPRoute{
+				Spec: gatewayv1.HTTPRouteSpec{
+					Rules: []gatewayv1.HTTPRouteRule{
+						{
+							BackendRefs: []gatewayv1.HTTPBackendRef{
+								{
+									BackendRef: gatewayv1.BackendRef{
+										BackendObjectReference: gatewayv1.BackendObjectReference{
+											Name: "http-service",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			grpcServiceSet: map[string]struct{}{},
+			expectedRules:  1,
+		},
+		{
+			name: "remove gRPC service rules",
+			httpRoute: &gatewayv1.HTTPRoute{
+				Spec: gatewayv1.HTTPRouteSpec{
+					Rules: []gatewayv1.HTTPRouteRule{
+						{
+							BackendRefs: []gatewayv1.HTTPBackendRef{
+								{
+									BackendRef: gatewayv1.BackendRef{
+										BackendObjectReference: gatewayv1.BackendObjectReference{
+											Name: "grpc-service",
+										},
+									},
+								},
+							},
+						},
+						{
+							BackendRefs: []gatewayv1.HTTPBackendRef{
+								{
+									BackendRef: gatewayv1.BackendRef{
+										BackendObjectReference: gatewayv1.BackendObjectReference{
+											Name: "http-service",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			grpcServiceSet: map[string]struct{}{"grpc-service": {}},
+			expectedRules:  1,
+		},
+		{
+			name: "mixed backend refs in same rule",
+			httpRoute: &gatewayv1.HTTPRoute{
+				Spec: gatewayv1.HTTPRouteSpec{
+					Rules: []gatewayv1.HTTPRouteRule{
+						{
+							BackendRefs: []gatewayv1.HTTPBackendRef{
+								{
+									BackendRef: gatewayv1.BackendRef{
+										BackendObjectReference: gatewayv1.BackendObjectReference{
+											Name: "grpc-service",
+										},
+									},
+								},
+								{
+									BackendRef: gatewayv1.BackendRef{
+										BackendObjectReference: gatewayv1.BackendObjectReference{
+											Name: "http-service",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			grpcServiceSet: map[string]struct{}{"grpc-service": {}},
+			expectedRules:  1, // Rule remains but with only HTTP backend refs
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			result := RemoveGRPCRulesFromHTTPRoute(tc.httpRoute, tc.grpcServiceSet)
+			require.Len(t, result, tc.expectedRules)
+
+			// For the mixed backend refs test, verify that only non-gRPC services remain
+			if tc.name == "mixed backend refs in same rule" && len(result) > 0 {
+				require.Len(t, result[0].BackendRefs, 1)
+				require.Equal(t, gatewayv1.ObjectName("http-service"), result[0].BackendRefs[0].BackendRef.BackendObjectReference.Name)
+			}
+		})
+	}
+}
+
+func TestCreateBackendTLSPolicy(t *testing.T) {
+	testCases := []struct {
+		name        string
+		namespace   string
+		policyName  string
+		serviceName string
+	}{
+		{
+			name:        "basic policy creation",
+			namespace:   "default",
+			policyName:  "test-ingress-ssl-service-backend-tls",
+			serviceName: "ssl-service",
+		},
+		{
+			name:        "different namespace",
+			namespace:   "production",
+			policyName:  "api-ingress-secure-api-backend-tls",
+			serviceName: "secure-api",
+		},
+		{
+			name:        "custom policy name",
+			namespace:   "custom",
+			policyName:  "my-custom-policy",
+			serviceName: "custom-service",
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			policy := CreateBackendTLSPolicy(tc.namespace, tc.policyName, tc.serviceName)
+
+			require.Equal(t, tc.policyName, policy.Name)
+			require.Equal(t, tc.namespace, policy.Namespace)
+			require.Equal(t, "BackendTLSPolicy", policy.Kind)
+			require.Equal(t, gatewayv1alpha3.GroupVersion.String(), policy.APIVersion)
+
+			require.Len(t, policy.Spec.TargetRefs, 1)
+			require.Equal(t, gatewayv1.ObjectName(tc.serviceName), policy.Spec.TargetRefs[0].Name)
+			require.Equal(t, "", string(policy.Spec.TargetRefs[0].Group)) // Core group
+			require.Equal(t, "Service", string(policy.Spec.TargetRefs[0].Kind))
+		})
+	}
 }

@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1alpha3 "sigs.k8s.io/gateway-api/apis/v1alpha3"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
@@ -38,14 +39,16 @@ import (
 // This behavior is likely to change after https://github.com/kubernetes-sigs/gateway-api/pull/1863 takes place.
 func MergeIRs(irs ...IR) (IR, field.ErrorList) {
 	mergedIRs := IR{
-		Gateways:        make(map[types.NamespacedName]GatewayContext),
-		GatewayClasses:  make(map[types.NamespacedName]gatewayv1.GatewayClass),
-		HTTPRoutes:      make(map[types.NamespacedName]HTTPRouteContext),
-		Services:        make(map[types.NamespacedName]ProviderSpecificServiceIR),
-		TLSRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
-		TCPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
-		UDPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.UDPRoute),
-		ReferenceGrants: make(map[types.NamespacedName]gatewayv1beta1.ReferenceGrant),
+		Gateways:           make(map[types.NamespacedName]GatewayContext),
+		GatewayClasses:     make(map[types.NamespacedName]gatewayv1.GatewayClass),
+		HTTPRoutes:         make(map[types.NamespacedName]HTTPRouteContext),
+		Services:           make(map[types.NamespacedName]ProviderSpecificServiceIR),
+		TLSRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
+		TCPRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
+		UDPRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.UDPRoute),
+		GRPCRoutes:         make(map[types.NamespacedName]gatewayv1.GRPCRoute),
+		BackendTLSPolicies: make(map[types.NamespacedName]gatewayv1alpha3.BackendTLSPolicy),
+		ReferenceGrants:    make(map[types.NamespacedName]gatewayv1beta1.ReferenceGrant),
 	}
 	var errs field.ErrorList
 	mergedIRs.Gateways, errs = mergeGatewayContexts(irs)
@@ -60,6 +63,8 @@ func MergeIRs(irs ...IR) (IR, field.ErrorList) {
 		maps.Copy(mergedIRs.TLSRoutes, gr.TLSRoutes)
 		maps.Copy(mergedIRs.TCPRoutes, gr.TCPRoutes)
 		maps.Copy(mergedIRs.UDPRoutes, gr.UDPRoutes)
+		maps.Copy(mergedIRs.GRPCRoutes, gr.GRPCRoutes)
+		maps.Copy(mergedIRs.BackendTLSPolicies, gr.BackendTLSPolicies)
 		maps.Copy(mergedIRs.ReferenceGrants, gr.ReferenceGrants)
 	}
 	return mergedIRs, errs

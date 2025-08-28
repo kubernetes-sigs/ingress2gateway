@@ -1,0 +1,55 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  creationTimestamp: null
+  name: nginx
+  namespace: default
+spec:
+  gatewayClassName: nginx
+  listeners:
+  - hostname: hsts.example.com
+    name: hsts-example-com-http
+    port: 80
+    protocol: HTTP
+  - hostname: hsts.example.com
+    name: hsts-example-com-https
+    port: 443
+    protocol: HTTPS
+    tls:
+      certificateRefs:
+      - group: null
+        kind: null
+        name: hsts-tls
+status: {}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  creationTimestamp: null
+  name: hsts-test-hsts-example-com
+  namespace: default
+spec:
+  hostnames:
+  - hsts.example.com
+  parentRefs:
+  - name: nginx
+  rules:
+  - backendRefs:
+    - name: secure-app
+      port: 443
+    filters:
+    - responseHeaderModifier:
+        set:
+        - name: Strict-Transport-Security
+          value: max-age=31536000; includeSubDomains
+      type: ResponseHeaderModifier
+    matches:
+    - path:
+        type: PathPrefix
+        value: /
+status:
+  parents: []

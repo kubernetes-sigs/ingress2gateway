@@ -1,0 +1,46 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  creationTimestamp: null
+  name: nginx
+  namespace: default
+spec:
+  gatewayClassName: nginx
+  listeners:
+  - hostname: hide-headers.example.com
+    name: hide-headers-example-com-http
+    port: 80
+    protocol: HTTP
+status: {}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  creationTimestamp: null
+  name: proxy-hide-headers-test-hide-headers-example-com
+  namespace: default
+spec:
+  hostnames:
+  - hide-headers.example.com
+  parentRefs:
+  - name: nginx
+  rules:
+  - backendRefs:
+    - name: api-service
+      port: 8080
+    filters:
+    - responseHeaderModifier:
+        remove:
+        - X-Secret-Token
+        - X-Internal-Header
+      type: ResponseHeaderModifier
+    matches:
+    - path:
+        type: PathPrefix
+        value: /api
+status:
+  parents: []

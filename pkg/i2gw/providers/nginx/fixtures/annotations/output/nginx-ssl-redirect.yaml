@@ -1,0 +1,56 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  creationTimestamp: null
+  name: nginx
+  namespace: default
+spec:
+  gatewayClassName: nginx
+  listeners:
+  - hostname: secure.example.com
+    name: secure-example-com-http
+    port: 80
+    protocol: HTTP
+  - hostname: secure.example.com
+    name: https-secure-example-com
+    port: 443
+    protocol: HTTPS
+    tls:
+      certificateRefs:
+      - group: null
+        kind: null
+        name: secure-example-com-tls
+      mode: Terminate
+status: {}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  creationTimestamp: null
+  name: test-ssl-redirect-secure-example-com
+  namespace: default
+spec:
+  hostnames:
+  - secure.example.com
+  parentRefs:
+  - name: nginx
+    sectionName: secure-example-com-http
+  rules:
+  - filters:
+    - requestRedirect:
+        scheme: https
+        statusCode: 301
+      type: RequestRedirect
+  - backendRefs:
+    - name: secure-service
+      port: 80
+    matches:
+    - path:
+        type: PathPrefix
+        value: /
+status:
+  parents: []

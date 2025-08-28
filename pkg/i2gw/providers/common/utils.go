@@ -19,13 +19,17 @@ package common
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 	apiv1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1alpha3 "sigs.k8s.io/gateway-api/apis/v1alpha3"
 )
 
 func GetIngressClass(ingress networkingv1.Ingress) string {
@@ -225,4 +229,154 @@ func removeBackendRefsDuplicates(backendRefs []gatewayv1.HTTPBackendRef) []gatew
 		uniqueBackendRefs = append(uniqueBackendRefs, backendRef)
 	}
 	return uniqueBackendRefs
+}
+
+// ParseGRPCServiceMethod parses gRPC service and method from HTTP path
+func ParseGRPCServiceMethod(path string) (service, method string) {
+	path = strings.TrimPrefix(path, "/")
+
+	parts := strings.SplitN(path, "/", 2)
+	if len(parts) >= 1 && parts[0] != "" {
+		service = parts[0]
+	}
+	if len(parts) >= 2 && parts[1] != "" {
+		method = parts[1]
+	}
+
+	return service, method
+}
+
+// GRPCFilterConversionResult holds the result of converting HTTP filters to gRPC filters
+type GRPCFilterConversionResult struct {
+	GRPCFilters      []gatewayv1.GRPCRouteFilter
+	UnsupportedTypes []gatewayv1.HTTPRouteFilterType
+}
+
+// ConvertHTTPFiltersToGRPCFilters converts a list of HTTPRoute filters to GRPCRoute filters
+// Returns both the converted filters and a list of unsupported filter types for notification
+func ConvertHTTPFiltersToGRPCFilters(httpFilters []gatewayv1.HTTPRouteFilter) GRPCFilterConversionResult {
+	if len(httpFilters) == 0 {
+		return GRPCFilterConversionResult{
+			GRPCFilters:      []gatewayv1.GRPCRouteFilter{},
+			UnsupportedTypes: []gatewayv1.HTTPRouteFilterType{},
+		}
+	}
+
+	var grpcFilters []gatewayv1.GRPCRouteFilter
+	var unsupportedTypes []gatewayv1.HTTPRouteFilterType
+
+	for _, httpFilter := range httpFilters {
+		switch httpFilter.Type {
+		case gatewayv1.HTTPRouteFilterRequestHeaderModifier:
+			if httpFilter.RequestHeaderModifier != nil {
+				grpcFilter := gatewayv1.GRPCRouteFilter{
+					Type: gatewayv1.GRPCRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: &gatewayv1.HTTPHeaderFilter{
+						Set:    httpFilter.RequestHeaderModifier.Set,
+						Add:    httpFilter.RequestHeaderModifier.Add,
+						Remove: httpFilter.RequestHeaderModifier.Remove,
+					},
+				}
+				grpcFilters = append(grpcFilters, grpcFilter)
+			}
+
+		case gatewayv1.HTTPRouteFilterResponseHeaderModifier:
+			if httpFilter.ResponseHeaderModifier != nil {
+				grpcFilter := gatewayv1.GRPCRouteFilter{
+					Type: gatewayv1.GRPCRouteFilterResponseHeaderModifier,
+					ResponseHeaderModifier: &gatewayv1.HTTPHeaderFilter{
+						Set:    httpFilter.ResponseHeaderModifier.Set,
+						Add:    httpFilter.ResponseHeaderModifier.Add,
+						Remove: httpFilter.ResponseHeaderModifier.Remove,
+					},
+				}
+				grpcFilters = append(grpcFilters, grpcFilter)
+			}
+
+		// These HTTP filter types are not applicable to gRPC
+		case gatewayv1.HTTPRouteFilterRequestRedirect:
+			unsupportedTypes = append(unsupportedTypes, httpFilter.Type)
+		case gatewayv1.HTTPRouteFilterURLRewrite:
+			unsupportedTypes = append(unsupportedTypes, httpFilter.Type)
+		case gatewayv1.HTTPRouteFilterRequestMirror:
+			unsupportedTypes = append(unsupportedTypes, httpFilter.Type)
+		case gatewayv1.HTTPRouteFilterExtensionRef:
+			unsupportedTypes = append(unsupportedTypes, httpFilter.Type)
+		default:
+			unsupportedTypes = append(unsupportedTypes, httpFilter.Type)
+		}
+	}
+
+	// Ensure we return empty slices instead of nil
+	if grpcFilters == nil {
+		grpcFilters = []gatewayv1.GRPCRouteFilter{}
+	}
+	if unsupportedTypes == nil {
+		unsupportedTypes = []gatewayv1.HTTPRouteFilterType{}
+	}
+
+	return GRPCFilterConversionResult{
+		GRPCFilters:      grpcFilters,
+		UnsupportedTypes: unsupportedTypes,
+	}
+}
+
+// RemoveGRPCRulesFromHTTPRoute removes HTTPRoute rules that target gRPC services.
+// When route rules are converted from HTTP to gRPC routes, this function cleans up the original
+// HTTPRoute by removing backend references to those gRPC services, preventing duplicate routing.
+func RemoveGRPCRulesFromHTTPRoute(httpRoute *gatewayv1.HTTPRoute, grpcServiceSet map[string]struct{}) []gatewayv1.HTTPRouteRule {
+	var remainingRules []gatewayv1.HTTPRouteRule
+
+	for _, rule := range httpRoute.Spec.Rules {
+		var remainingBackendRefs []gatewayv1.HTTPBackendRef
+
+		// Check each backend ref in the rule
+		for _, backendRef := range rule.BackendRefs {
+			serviceName := string(backendRef.BackendRef.BackendObjectReference.Name)
+			// Only keep backend refs that are NOT gRPC services
+			if _, isGRPCService := grpcServiceSet[serviceName]; !isGRPCService {
+				remainingBackendRefs = append(remainingBackendRefs, backendRef)
+			}
+		}
+
+		// If any backend refs remain, keep the rule
+		if len(remainingBackendRefs) > 0 {
+			rule.BackendRefs = remainingBackendRefs
+			remainingRules = append(remainingRules, rule)
+		}
+	}
+
+	return remainingRules
+}
+
+// CreateBackendTLSPolicy creates a BackendTLSPolicy for the given service
+func CreateBackendTLSPolicy(namespace, policyName, serviceName string) gatewayv1alpha3.BackendTLSPolicy {
+
+	// TODO: Migrate BackendTLSPolicy from gatewayv1alpha3 to gatewayv1 for Gateway API 1.4
+	// See: https://github.com/kubernetes-sigs/ingress2gateway/issues/236
+	return gatewayv1alpha3.BackendTLSPolicy{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: gatewayv1alpha3.GroupVersion.String(),
+			Kind:       "BackendTLSPolicy",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      policyName,
+			Namespace: namespace,
+		},
+		Spec: gatewayv1alpha3.BackendTLSPolicySpec{
+			TargetRefs: []gatewayv1alpha2.LocalPolicyTargetReferenceWithSectionName{
+				{
+					LocalPolicyTargetReference: gatewayv1alpha2.LocalPolicyTargetReference{
+						Group: "", // Core group
+						Kind:  "Service",
+						Name:  gatewayv1.ObjectName(serviceName),
+					},
+				},
+			},
+			Validation: gatewayv1alpha3.BackendTLSPolicyValidation{
+				// Note: WellKnownCACertificates and Hostname fields are intentionally left empty
+				// These fields must be manually configured based on your backend service's TLS setup
+			},
+		},
+	}
 }
