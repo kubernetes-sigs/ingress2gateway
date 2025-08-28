@@ -881,32 +881,35 @@ func TestCreateBackendTLSPolicy(t *testing.T) {
 	testCases := []struct {
 		name         string
 		namespace    string
-		ingressName  string
+		policyName   string
 		serviceName  string
-		expectedName string
 	}{
 		{
-			name:         "basic policy creation",
-			namespace:    "default",
-			ingressName:  "test-ingress",
-			serviceName:  "ssl-service",
-			expectedName: "test-ingress-ssl-service-backend-tls",
+			name:        "basic policy creation",
+			namespace:   "default",
+			policyName:  "test-ingress-ssl-service-backend-tls",
+			serviceName: "ssl-service",
 		},
 		{
-			name:         "different namespace",
-			namespace:    "production",
-			ingressName:  "api-ingress",
-			serviceName:  "secure-api",
-			expectedName: "api-ingress-secure-api-backend-tls",
+			name:        "different namespace",
+			namespace:   "production",
+			policyName:  "api-ingress-secure-api-backend-tls",
+			serviceName: "secure-api",
+		},
+		{
+			name:        "custom policy name",
+			namespace:   "custom",
+			policyName:  "my-custom-policy",
+			serviceName: "custom-service",
 		},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			policy := CreateBackendTLSPolicy(tc.namespace, tc.ingressName, tc.serviceName)
+			policy := CreateBackendTLSPolicy(tc.namespace, tc.policyName, tc.serviceName)
 
-			require.Equal(t, tc.expectedName, policy.Name)
+			require.Equal(t, tc.policyName, policy.Name)
 			require.Equal(t, tc.namespace, policy.Namespace)
 			require.Equal(t, "BackendTLSPolicy", policy.Kind)
 			require.Equal(t, gatewayv1alpha3.GroupVersion.String(), policy.APIVersion)

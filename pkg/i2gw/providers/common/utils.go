@@ -321,7 +321,9 @@ func ConvertHTTPFiltersToGRPCFilters(httpFilters []gatewayv1.HTTPRouteFilter) GR
 	}
 }
 
-// RemoveGRPCRulesFromHTTPRoute removes HTTPRoute rules that target gRPC services
+// RemoveGRPCRulesFromHTTPRoute removes HTTPRoute rules that target gRPC services.
+// When route rules are converted from HTTP to gRPC routes, this function cleans up the original
+// HTTPRoute by removing backend references to those gRPC services, preventing duplicate routing.
 func RemoveGRPCRulesFromHTTPRoute(httpRoute *gatewayv1.HTTPRoute, grpcServiceSet map[string]struct{}) []gatewayv1.HTTPRouteRule {
 	var remainingRules []gatewayv1.HTTPRouteRule
 
@@ -348,8 +350,7 @@ func RemoveGRPCRulesFromHTTPRoute(httpRoute *gatewayv1.HTTPRoute, grpcServiceSet
 }
 
 // CreateBackendTLSPolicy creates a BackendTLSPolicy for the given service
-func CreateBackendTLSPolicy(namespace, ingressName, serviceName string) gatewayv1alpha3.BackendTLSPolicy {
-	policyName := fmt.Sprintf("%s-%s-backend-tls", ingressName, serviceName)
+func CreateBackendTLSPolicy(namespace, policyName, serviceName string) gatewayv1alpha3.BackendTLSPolicy {
 
 	return gatewayv1alpha3.BackendTLSPolicy{
 		TypeMeta: metav1.TypeMeta{
@@ -382,6 +383,7 @@ func CreateBackendTLSPolicy(namespace, ingressName, serviceName string) gatewayv
 }
 
 // BackendTLSPolicyName returns the generated name for a BackendTLSPolicy
+// Providers can use this function or create their own naming scheme
 func BackendTLSPolicyName(ingressName, serviceName string) string {
 	return fmt.Sprintf("%s-%s-backend-tls", ingressName, serviceName)
 }

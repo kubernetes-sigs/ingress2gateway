@@ -56,10 +56,11 @@ func processSSLServicesAnnotation(ingress networkingv1.Ingress, sslServices stri
 		ir.BackendTLSPolicies = make(map[types.NamespacedName]gatewayv1alpha3.BackendTLSPolicy)
 	}
 	for serviceName := range sslServiceSet {
-		policy := common.CreateBackendTLSPolicy(ingress.Namespace, ingress.Name, serviceName)
+		policyName := common.BackendTLSPolicyName(ingress.Name, serviceName)
+		policy := common.CreateBackendTLSPolicy(ingress.Namespace, policyName, serviceName)
 		policyKey := types.NamespacedName{
 			Namespace: ingress.Namespace,
-			Name:      common.BackendTLSPolicyName(ingress.Name, serviceName),
+			Name:      policyName,
 		}
 
 		ir.BackendTLSPolicies[policyKey] = policy
