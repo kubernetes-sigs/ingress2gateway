@@ -19,6 +19,7 @@ package annotations
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -204,6 +205,42 @@ func TestSSLServicesFeature(t *testing.T) {
 			if len(ir.BackendTLSPolicies) != tt.expectedPolicies {
 				t.Errorf("Expected %d BackendTLSPolicies, got %d", tt.expectedPolicies, len(ir.BackendTLSPolicies))
 			}
+		})
+	}
+}
+
+func TestBackendTLSPolicyName(t *testing.T) {
+	testCases := []struct {
+		name        string
+		ingressName string
+		serviceName string
+		expected    string
+	}{
+		{
+			name:        "basic name generation",
+			ingressName: "test-ingress",
+			serviceName: "ssl-service",
+			expected:    "test-ingress-ssl-service-backend-tls",
+		},
+		{
+			name:        "long names",
+			ingressName: "very-long-ingress-name",
+			serviceName: "very-long-service-name",
+			expected:    "very-long-ingress-name-very-long-service-name-backend-tls",
+		},
+		{
+			name:        "names with hyphens",
+			ingressName: "my-api-ingress",
+			serviceName: "backend-svc",
+			expected:    "my-api-ingress-backend-svc-backend-tls",
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			result := BackendTLSPolicyName(tc.ingressName, tc.serviceName)
+			require.Equal(t, tc.expected, result)
 		})
 	}
 }

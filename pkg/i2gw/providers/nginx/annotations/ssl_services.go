@@ -17,6 +17,8 @@ limitations under the License.
 package annotations
 
 import (
+	"fmt"
+
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -56,7 +58,7 @@ func processSSLServicesAnnotation(ingress networkingv1.Ingress, sslServices stri
 		ir.BackendTLSPolicies = make(map[types.NamespacedName]gatewayv1alpha3.BackendTLSPolicy)
 	}
 	for serviceName := range sslServiceSet {
-		policyName := common.BackendTLSPolicyName(ingress.Name, serviceName)
+		policyName := BackendTLSPolicyName(ingress.Name, serviceName)
 		policy := common.CreateBackendTLSPolicy(ingress.Namespace, policyName, serviceName)
 		policyKey := types.NamespacedName{
 			Namespace: ingress.Namespace,
@@ -73,4 +75,9 @@ func processSSLServicesAnnotation(ingress networkingv1.Ingress, sslServices stri
 	}
 
 	return errs
+}
+
+// BackendTLSPolicyName returns the generated name for a BackendTLSPolicy using NGINX naming convention
+func BackendTLSPolicyName(ingressName, serviceName string) string {
+	return fmt.Sprintf("%s-%s-backend-tls", ingressName, serviceName)
 }

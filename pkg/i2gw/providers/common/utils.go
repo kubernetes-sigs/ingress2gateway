@@ -381,8 +381,3 @@ func CreateBackendTLSPolicy(namespace, policyName, serviceName string) gatewayv1
 	}
 }
 
-// BackendTLSPolicyName returns the generated name for a BackendTLSPolicy
-// Providers can use this function or create their own naming scheme
-func BackendTLSPolicyName(ingressName, serviceName string) string {
-	return fmt.Sprintf("%s-%s-backend-tls", ingressName, serviceName)
-}

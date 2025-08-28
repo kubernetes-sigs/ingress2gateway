@@ -922,32 +922,3 @@ func TestCreateBackendTLSPolicy(t *testing.T) {
 	}
 }
 
-func TestBackendTLSPolicyName(t *testing.T) {
-	testCases := []struct {
-		name        string
-		ingressName string
-		serviceName string
-		expected    string
-	}{
-		{
-			name:        "basic name generation",
-			ingressName: "test-ingress",
-			serviceName: "ssl-service",
-			expected:    "test-ingress-ssl-service-backend-tls",
-		},
-		{
-			name:        "long names",
-			ingressName: "very-long-ingress-name",
-			serviceName: "very-long-service-name",
-			expected:    "very-long-ingress-name-very-long-service-name-backend-tls",
-		},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			result := BackendTLSPolicyName(tc.ingressName, tc.serviceName)
-			require.Equal(t, tc.expected, result)
-		})
-	}
-}
