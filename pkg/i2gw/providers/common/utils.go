@@ -380,4 +380,3 @@ func CreateBackendTLSPolicy(namespace, policyName, serviceName string) gatewayv1
 		},
 	}
 }
-

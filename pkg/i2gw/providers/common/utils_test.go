@@ -879,10 +879,10 @@ func TestRemoveGRPCRulesFromHTTPRoute(t *testing.T) {
 
 func TestCreateBackendTLSPolicy(t *testing.T) {
 	testCases := []struct {
-		name         string
-		namespace    string
-		policyName   string
-		serviceName  string
+		name        string
+		namespace   string
+		policyName  string
+		serviceName string
 	}{
 		{
 			name:        "basic policy creation",
@@ -921,4 +921,3 @@ func TestCreateBackendTLSPolicy(t *testing.T) {
 		})
 	}
 }
-
