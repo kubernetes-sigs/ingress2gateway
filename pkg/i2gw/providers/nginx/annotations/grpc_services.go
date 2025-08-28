@@ -44,7 +44,6 @@ func GRPCServicesFeature(ingresses []networkingv1.Ingress, _ map[types.Namespace
 	return errs
 }
 
-
 // processGRPCServicesAnnotation handles gRPC backend services
 //
 //nolint:unparam // ErrorList return type maintained for consistency
@@ -203,12 +202,18 @@ func findAndConvertFiltersForGRPCPath(httpRules []gatewayv1.HTTPRouteRule, grpcP
 	for _, httpRule := range httpRules {
 		for _, match := range httpRule.Matches {
 			if match.Path != nil && match.Path.Value != nil && *match.Path.Value == grpcPath {
-				// Found the matching rule, convert its filters  
+				// Found the matching rule, convert its filters
 				conversionResult := common.ConvertHTTPFiltersToGRPCFilters(httpRule.Filters)
-				
+
 				// Handle notifications for unsupported filters
 				for _, unsupportedType := range conversionResult.UnsupportedTypes {
 					switch unsupportedType {
+					case gatewayv1.HTTPRouteFilterRequestHeaderModifier:
+						// This should never happen as it's a supported filter, but added for exhaustiveness
+						notify(notifications.WarningNotification, "RequestHeaderModifier should be supported for gRPC")
+					case gatewayv1.HTTPRouteFilterResponseHeaderModifier:
+						// This should never happen as it's a supported filter, but added for exhaustiveness
+						notify(notifications.WarningNotification, "ResponseHeaderModifier should be supported for gRPC")
 					case gatewayv1.HTTPRouteFilterRequestRedirect:
 						notify(notifications.WarningNotification, "RequestRedirect is not applicable to gRPC")
 					case gatewayv1.HTTPRouteFilterURLRewrite:
@@ -227,5 +232,3 @@ func findAndConvertFiltersForGRPCPath(httpRules []gatewayv1.HTTPRouteRule, grpcP
 	}
 	return nil
 }
-
-

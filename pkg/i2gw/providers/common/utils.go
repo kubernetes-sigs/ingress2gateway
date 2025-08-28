@@ -248,8 +248,8 @@ func ParseGRPCServiceMethod(path string) (service, method string) {
 
 // GRPCFilterConversionResult holds the result of converting HTTP filters to gRPC filters
 type GRPCFilterConversionResult struct {
-	GRPCFilters       []gatewayv1.GRPCRouteFilter
-	UnsupportedTypes  []gatewayv1.HTTPRouteFilterType
+	GRPCFilters      []gatewayv1.GRPCRouteFilter
+	UnsupportedTypes []gatewayv1.HTTPRouteFilterType
 }
 
 // ConvertHTTPFiltersToGRPCFilters converts a list of HTTPRoute filters to GRPCRoute filters
@@ -261,7 +261,7 @@ func ConvertHTTPFiltersToGRPCFilters(httpFilters []gatewayv1.HTTPRouteFilter) GR
 			UnsupportedTypes: []gatewayv1.HTTPRouteFilterType{},
 		}
 	}
-	
+
 	var grpcFilters []gatewayv1.GRPCRouteFilter
 	var unsupportedTypes []gatewayv1.HTTPRouteFilterType
 
@@ -314,7 +314,7 @@ func ConvertHTTPFiltersToGRPCFilters(httpFilters []gatewayv1.HTTPRouteFilter) GR
 	if unsupportedTypes == nil {
 		unsupportedTypes = []gatewayv1.HTTPRouteFilterType{}
 	}
-	
+
 	return GRPCFilterConversionResult{
 		GRPCFilters:      grpcFilters,
 		UnsupportedTypes: unsupportedTypes,
@@ -350,7 +350,7 @@ func RemoveGRPCRulesFromHTTPRoute(httpRoute *gatewayv1.HTTPRoute, grpcServiceSet
 // CreateBackendTLSPolicy creates a BackendTLSPolicy for the given service
 func CreateBackendTLSPolicy(namespace, ingressName, serviceName string) gatewayv1alpha3.BackendTLSPolicy {
 	policyName := fmt.Sprintf("%s-%s-backend-tls", ingressName, serviceName)
-	
+
 	return gatewayv1alpha3.BackendTLSPolicy{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: gatewayv1alpha3.GroupVersion.String(),
@@ -367,7 +367,7 @@ func CreateBackendTLSPolicy(namespace, ingressName, serviceName string) gatewayv
 			TargetRefs: []gatewayv1alpha2.LocalPolicyTargetReferenceWithSectionName{
 				{
 					LocalPolicyTargetReference: gatewayv1alpha2.LocalPolicyTargetReference{
-						Group: "",  // Core group
+						Group: "", // Core group
 						Kind:  "Service",
 						Name:  gatewayv1.ObjectName(serviceName),
 					},

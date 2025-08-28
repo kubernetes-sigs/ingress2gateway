@@ -638,16 +638,16 @@ func TestParseGRPCServiceMethod(t *testing.T) {
 
 func TestConvertHTTPFiltersToGRPCFilters(t *testing.T) {
 	testCases := []struct {
-		name                 string
-		httpFilters          []gatewayv1.HTTPRouteFilter
-		expectedGRPCFilters  []gatewayv1.GRPCRouteFilter
-		expectedUnsupported  []gatewayv1.HTTPRouteFilterType
+		name                string
+		httpFilters         []gatewayv1.HTTPRouteFilter
+		expectedGRPCFilters []gatewayv1.GRPCRouteFilter
+		expectedUnsupported []gatewayv1.HTTPRouteFilterType
 	}{
 		{
-			name:                 "empty filters",
-			httpFilters:          []gatewayv1.HTTPRouteFilter{},
-			expectedGRPCFilters:  []gatewayv1.GRPCRouteFilter{},
-			expectedUnsupported:  []gatewayv1.HTTPRouteFilterType{},
+			name:                "empty filters",
+			httpFilters:         []gatewayv1.HTTPRouteFilter{},
+			expectedGRPCFilters: []gatewayv1.GRPCRouteFilter{},
+			expectedUnsupported: []gatewayv1.HTTPRouteFilterType{},
 		},
 		{
 			name: "request header modifier",
