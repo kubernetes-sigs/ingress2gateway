@@ -21,7 +21,6 @@ import (
 	"strconv"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -123,7 +122,7 @@ func patchHTTPRouteWithBackendRefs(httpRoute *gatewayv1.HTTPRoute, backendRefs [
 		}
 	}
 	if ruleExists {
-		notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress and patched %v fields", field.NewPath("httproute", "spec", "rules").Key("").Child("backendRefs")), httpRoute)
+		notify(fmt.Sprintf("parsed canary annotations of ingress and patched %v fields", field.NewPath("httproute", "spec", "rules").Key("").Child("backendRefs")), httpRoute)
 	}
 }
 

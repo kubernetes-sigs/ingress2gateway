@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 
 	networkingv1 "k8s.io/api/networking/v1"
@@ -63,8 +62,9 @@ func serverAliasFeature(ingresses []networkingv1.Ingress, _ map[types.Namespaced
 				}
 			}
 
-			notify(notifications.InfoNotification,
-				fmt.Sprintf("parsed server-alias annotation with %d aliases: %s", len(aliases), strings.Join(aliases, ", ")), &ingress)
+			notify(
+				fmt.Sprintf("parsed server-alias annotation with %d aliases: %s", len(aliases), strings.Join(aliases, ", ")), &ingress,
+			)
 		}
 	}
 
@@ -81,9 +81,10 @@ func serverAliasFeature(ingresses []networkingv1.Ingress, _ map[types.Namespaced
 
 					if !exists {
 						routeContext.Spec.Hostnames = append(routeContext.Spec.Hostnames, hostname)
-						notify(notifications.InfoNotification,
+						notify(
 							fmt.Sprintf("added server alias hostname \"%s\" to HTTPRoute \"%s\" for Gateway \"%s\"", alias, routeContext.Name, gatewayKey.Name),
-							&routeContext.HTTPRoute)
+							&routeContext.HTTPRoute,
+						)
 
 						// Update the route context in the IR
 						ir.HTTPRoutes[routeKey] = routeContext

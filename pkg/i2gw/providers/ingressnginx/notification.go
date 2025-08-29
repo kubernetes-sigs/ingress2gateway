@@ -21,7 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func notify(mType notifications.MessageType, message string, callingObject ...client.Object) { //nolint:unparam
-	newNotification := notifications.NewNotification(mType, message, callingObject...)
+func notify(message string, callingObject ...client.Object) {
+	newNotification := notifications.NewNotification(notifications.InfoNotification, message, callingObject...)
 	notifications.NotificationAggr.DispatchNotification(newNotification, string(Name))
 }
