@@ -82,7 +82,7 @@ func serverAliasFeature(ingresses []networkingv1.Ingress, _ map[types.Namespaced
 					if !exists {
 						routeContext.Spec.Hostnames = append(routeContext.Spec.Hostnames, hostname)
 						notify(notifications.InfoNotification,
-							fmt.Sprintf("added server alias hostname to HTTPRoute: %s", alias),
+							fmt.Sprintf("added server alias hostname \"%s\" to HTTPRoute \"%s\" for Gateway \"%s\"", alias, routeContext.Name, gatewayKey.Name),
 							&routeContext.HTTPRoute)
 
 						// Update the route context in the IR
