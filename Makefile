@@ -18,6 +18,10 @@
 # Enable Go modules.
 export GO111MODULE=on
 
+# INGRESS2GATEWAY defines the ingress2gateway location
+# It will be used by some makefile targets to avoid rebuilding it
+INGRESS2GATEWAY ?= $(shell pwd)/ingress2gateway
+
 # I2GWPKG is the package path for i2gw.  This allows us to propogate the git info
 # to the binary via LDFLAGS.
 I2GWPKG := $(shell go list .)/pkg/i2gw
@@ -57,10 +61,21 @@ test: vet;$(info $(M)...Begin to run tests.)  @ ## Run tests.
 
 # Build the binary
 .PHONY: build
-build: vet;$(info $(M)...Build the binary.)  @ ## Build the binary.
-	go build $(LDFLAGS) -o ingress2gateway .
+build: vet clean $(INGRESS2GATEWAY);$(info $(M)...Build the binary.)  @ ## Build the binary.
+
+.PHONY: clean
+clean:
+	rm -rf $(INGRESS2GATEWAY)
+
+$(INGRESS2GATEWAY):
+	go build $(LDFLAGS) -o $(INGRESS2GATEWAY) .
 
 # Run static analysis.
 .PHONY: verify
 verify:
 	hack/verify-all.sh -v
+
+# Run e2e tests
+.PHONY: e2e
+e2e: $(INGRESS2GATEWAY)
+	I2G=$(INGRESS2GATEWAY) hack/verify-e2e.sh
