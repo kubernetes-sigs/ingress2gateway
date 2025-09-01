@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
@@ -30,6 +31,8 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/utils/ptr"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	// Call init function for the providers
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/apisix"
@@ -73,6 +76,19 @@ type PrintRunner struct {
 
 	// Provider specific flags --<provider>-<flag>.
 	providerSpecificFlags map[string]*string
+
+	// parentRefs indicates that the created *Route should contain a specific set
+	// of parentRefs. Its format should be as: --parentRefs=ns/name:sectionname:port=group/kind
+	// In case the group is empty  it is: --parentRefs=ns/myservice=kind
+	// In case the namespace is empty (eg.: use the same) it is: --parentRefs=name:sectionname=group/kind
+	// In case the section name is empty but not the port, it is: --parentRefs=ns/name::port=group/kind
+	// In case the port or sectionname are empty, they can be passed as: --parentRefs=ns/name=group/kind
+	// In case just the name should be used it can be passed as: --parentRefs=ns/name (or --parentRefs=name)
+	// In case the name and kind are desired, it can be passed as: --parentRefs=name=kind
+	parentRefs []string
+
+	// parsedParentRefs represents the parentRefs that should be added to *Route
+	parsedParentRefs []gatewayv1.ParentReference
 }
 
 // PrintGatewayAPIObjects performs necessary steps to digest and print
@@ -87,6 +103,11 @@ func (pr *PrintRunner) PrintGatewayAPIObjects(cmd *cobra.Command, _ []string) er
 	err = pr.initializeNamespaceFilter()
 	if err != nil {
 		return fmt.Errorf("failed to initialize namespace filter: %w", err)
+	}
+
+	err = pr.initializeParentRefs()
+	if err != nil {
+		return fmt.Errorf("failed parsing parent refs: %w", err)
 	}
 
 	gatewayResources, notificationTablesMap, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers, pr.getProviderSpecificFlags())
@@ -257,6 +278,68 @@ func (pr *PrintRunner) outputResult(gatewayResources []i2gw.GatewayResources) {
 	}
 }
 
+// initializeParentRefs parses the parentRef flag and sets the desired parentReferences
+// to be added to the *Route
+// This parser will parse a format like ns/name:sectionname:port=group/kind
+func (pr *PrintRunner) initializeParentRefs() error {
+	if len(pr.parentRefs) == 0 {
+		return nil
+	}
+
+	pr.parsedParentRefs = make([]gatewayv1.ParentReference, 0)
+	for _, ref := range pr.parentRefs {
+		// split resource=group/kind in two
+		resourceAndGroupKind := strings.Split(ref, "=")
+		// Simpler case is just ns/name existing, so we short-circuit from here
+		nsName := strings.SplitN(resourceAndGroupKind[0], "/", 2)
+		parsedParentRef := gatewayv1.ParentReference{}
+
+		var ns, name string
+		if len(nsName) == 1 {
+			name = nsName[0]
+		} else {
+			ns = nsName[0]
+			name = nsName[1]
+		}
+
+		// Check and split if name contains :sectionname:port
+		nameSectionPort := strings.Split(name, ":")
+
+		if len(nameSectionPort) > 1 {
+			name = nameSectionPort[0]
+			if nameSectionPort[1] != "" {
+				parsedParentRef.SectionName = ptr.To(gatewayv1.SectionName(nameSectionPort[1]))
+			}
+			if len(nameSectionPort) > 2 && nameSectionPort[2] != "" {
+				portNumber, err := strconv.Atoi(nameSectionPort[2])
+				if err != nil {
+					return fmt.Errorf("parentRef %s contains invalid port number", ref)
+				}
+				parsedParentRef.Port = ptr.To(gatewayv1.PortNumber(portNumber))
+			}
+		}
+		// Done parsing the first part, we can set the parentRef namespace and name
+		parsedParentRef.Name = gatewayv1.ObjectName(name)
+		if ns != "" {
+			parsedParentRef.Namespace = ptr.To(gatewayv1.Namespace(ns))
+		}
+
+		// If the flag contains group and kind
+		if len(resourceAndGroupKind) > 1 {
+			groupKind := strings.SplitN(resourceAndGroupKind[1], "/", 2)
+			if len(groupKind) == 1 {
+				parsedParentRef.Kind = ptr.To(gatewayv1.Kind(groupKind[0]))
+			} else {
+				parsedParentRef.Group = ptr.To(gatewayv1.Group(groupKind[0]))
+				parsedParentRef.Kind = ptr.To(gatewayv1.Kind(groupKind[1]))
+			}
+		}
+
+		pr.parsedParentRefs = append(pr.parsedParentRefs, parsedParentRef)
+	}
+	return nil
+}
+
 // initializeResourcePrinter assign a specific type of printers.ResourcePrinter
 // based on the outputFormat of the printRunner struct.
 func (pr *PrintRunner) initializeResourcePrinter() error {
@@ -338,6 +421,18 @@ if specified with --namespace.`)
 
 	cmd.Flags().StringSliceVar(&pr.providers, "providers", []string{},
 		fmt.Sprintf("If present, the tool will try to convert only resources related to the specified providers, supported values are %v.", i2gw.GetSupportedProviders()))
+
+	cmd.Flags().StringSliceVar(&pr.parentRefs, "parent-refs", []string{},
+		`Allows defining the parentRefs to be set on Route resources. Format is ns/name:sectionname:port=group/kind.
+Examples: 
+--parentRefs=name - Sets only the name of the parent
+--parentRefs=ns/name - Sets the namespace/name
+--parentRefs=name=kind - Sets the name and kind
+--parentRefs=ns/name=group/kind - Sets the namespace, name, group and kind
+--parentRefs=name:section=group/kind - Sets the name, section, group and kind
+--parentRefs=name::port=group/kind - Sets the name, port, group and kind
+		`,
+	)
 
 	pr.providerSpecificFlags = make(map[string]*string)
 	for provider, flags := range i2gw.GetProviderSpecificFlagDefinitions() {

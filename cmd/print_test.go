@@ -22,10 +22,14 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/google/go-cmp/cmp"
 	"k8s.io/cli-runtime/pkg/printers"
+	"k8s.io/utils/ptr"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 func Test_getResourcePrinter(t *testing.T) {
@@ -79,6 +83,128 @@ func Test_getResourcePrinter(t *testing.T) {
 		})
 
 	}
+}
+
+func Test_initializeParentRefs(t *testing.T) {
+	testCases := []struct {
+		name               string
+		parentRefs         []string
+		expectedParentRefs []gatewayv1.ParentReference
+		expectedError      string
+	}{
+		{
+			name:               "empty parentref should return null parentRefs",
+			expectedParentRefs: nil,
+		},
+		{
+			name:       "resource only parentRef should return just the object name set",
+			parentRefs: []string{"someresource"},
+			expectedParentRefs: []gatewayv1.ParentReference{
+				{
+					Name: "someresource",
+				},
+			},
+		},
+		{
+			name:       "resource and namespace parentRef should return the right object",
+			parentRefs: []string{"somens/someresource"},
+			expectedParentRefs: []gatewayv1.ParentReference{
+				{
+					Name:      "someresource",
+					Namespace: ptr.To(gatewayv1.Namespace("somens")),
+				},
+			},
+		},
+		{
+			name:       "resource, namespace and kind parentRef should return the right object",
+			parentRefs: []string{"somens/someresource=Something"},
+			expectedParentRefs: []gatewayv1.ParentReference{
+				{
+					Name:      "someresource",
+					Namespace: ptr.To(gatewayv1.Namespace("somens")),
+					Kind:      ptr.To(gatewayv1.Kind("Something")),
+				},
+			},
+		},
+		{
+			name:       "resource, namespace, group kind parentRef should return the right object",
+			parentRefs: []string{"somens/someresource=somegroup.k8s.io/Something"},
+			expectedParentRefs: []gatewayv1.ParentReference{
+				{
+					Name:      "someresource",
+					Namespace: ptr.To(gatewayv1.Namespace("somens")),
+					Kind:      ptr.To(gatewayv1.Kind("Something")),
+					Group:     ptr.To(gatewayv1.Group("somegroup.k8s.io")),
+				},
+			},
+		},
+		{
+			name:       "resource, namespace and sectionname parentRef should return the right object",
+			parentRefs: []string{"somens/someresource:section1"},
+			expectedParentRefs: []gatewayv1.ParentReference{
+				{
+					Name:        "someresource",
+					Namespace:   ptr.To(gatewayv1.Namespace("somens")),
+					SectionName: ptr.To(gatewayv1.SectionName("section1")),
+				},
+			},
+		},
+		{
+			name:       "resource, namespace and port parentRef should return the right object",
+			parentRefs: []string{"somens/someresource::12345"},
+			expectedParentRefs: []gatewayv1.ParentReference{
+				{
+					Name:      "someresource",
+					Namespace: ptr.To(gatewayv1.Namespace("somens")),
+					Port:      ptr.To(gatewayv1.PortNumber(12345)),
+				},
+			},
+		},
+		{
+			name:       "resource, namespace, sectionname, port and resource kind parentRef should return the right object",
+			parentRefs: []string{"somens/someresource:section1:12345=Gateway"},
+			expectedParentRefs: []gatewayv1.ParentReference{
+				{
+					Name:        "someresource",
+					Namespace:   ptr.To(gatewayv1.Namespace("somens")),
+					SectionName: ptr.To(gatewayv1.SectionName("section1")),
+					Kind:        ptr.To(gatewayv1.Kind("Gateway")),
+					Port:        ptr.To(gatewayv1.PortNumber(12345)),
+				},
+			},
+		},
+		{
+			name:          "invalid port should return an error",
+			parentRefs:    []string{"somens/someresource:section1:xpto=Gateway"},
+			expectedError: "Gateway contains invalid port number",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			pr := PrintRunner{
+				parentRefs: tc.parentRefs,
+			}
+			err := pr.initializeParentRefs()
+
+			if tc.expectedError != "" {
+				if err == nil {
+					t.Errorf("Expected error but got none")
+				}
+				if !strings.Contains(err.Error(), tc.expectedError) {
+					t.Errorf("got invalid error, expecting=%s got=%s", tc.expectedError, err.Error())
+				}
+			}
+
+			if tc.expectedError == "" && err != nil {
+				t.Errorf("Expected no error but got %v", err)
+			}
+
+			if tc.expectedError == "" && !reflect.DeepEqual(tc.expectedParentRefs, pr.parsedParentRefs) {
+				t.Errorf("parsedParentRef does not match. Expected=%s got=%s", spew.Sdump(tc.expectedParentRefs), spew.Sdump(pr.parsedParentRefs))
+			}
+		})
+	}
+
 }
 
 func Test_getNamespaceFilter(t *testing.T) {
