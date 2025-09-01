@@ -264,6 +264,9 @@ func (pr *PrintRunner) initializeResourcePrinter() error {
 	case "yaml", "":
 		pr.resourcePrinter = &printers.YAMLPrinter{}
 		return nil
+	case "kyaml":
+		pr.resourcePrinter = &printers.KYAMLPrinter{}
+		return nil
 	case "json":
 		pr.resourcePrinter = &printers.JSONPrinter{}
 		return nil

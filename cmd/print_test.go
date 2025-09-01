@@ -48,6 +48,12 @@ func Test_getResourcePrinter(t *testing.T) {
 			expectingError:  false,
 		},
 		{
+			name:            "KYAML format",
+			outputFormat:    "kyaml",
+			expectedPrinter: &printers.KYAMLPrinter{},
+			expectingError:  false,
+		},
+		{
 			name:            "Default to YAML format",
 			outputFormat:    "",
 			expectedPrinter: &printers.YAMLPrinter{},
