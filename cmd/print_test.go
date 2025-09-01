@@ -85,6 +85,7 @@ func Test_getNamespaceFilter(t *testing.T) {
 	testCases := []struct {
 		name                      string
 		namespace                 string
+		inputfile                 string
 		allNamespaces             bool
 		expectedNamespaceFilter   string
 		expectingError            bool
@@ -114,6 +115,24 @@ func Test_getNamespaceFilter(t *testing.T) {
 			expectingError:            false,
 			expectingCurrentNamespace: true,
 		},
+		{
+			name:                      "Input file is used without namespaces",
+			namespace:                 "",
+			allNamespaces:             false,
+			inputfile:                 "something.yaml",
+			expectedNamespaceFilter:   "",
+			expectingError:            false,
+			expectingCurrentNamespace: false,
+		},
+		{
+			name:                      "Input file is used with namespaces",
+			namespace:                 "default",
+			allNamespaces:             false,
+			inputfile:                 "something.yaml",
+			expectedNamespaceFilter:   "default",
+			expectingError:            false,
+			expectingCurrentNamespace: false,
+		},
 	}
 
 	destroy, err := setupKubeConfig()
@@ -127,6 +146,7 @@ func Test_getNamespaceFilter(t *testing.T) {
 			pr := PrintRunner{
 				namespace:     tc.namespace,
 				allNamespaces: tc.allNamespaces,
+				inputFile:     tc.inputfile,
 			}
 			err = pr.initializeNamespaceFilter()
 
