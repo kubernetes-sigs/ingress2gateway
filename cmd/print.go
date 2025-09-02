@@ -278,7 +278,6 @@ func (pr *PrintRunner) initializeResourcePrinter() error {
 // 2. If an input-file is used and no namespace is added then all namespaces are selected.
 // 3. If namespace is specified, it filters resources based on that namespace.
 // 4. If no namespace is specified and reading from the cluster, it attempts to get the namespace from the cluster; if unsuccessful, initialization fails.
-// 5. If no namespace is specified and reading from a file, it attempts to get the namespace from the cluster; if unsuccessful, it reads all resources.
 func (pr *PrintRunner) initializeNamespaceFilter() error {
 	// When we should use all namespaces, empty string is used as the filter.
 	if pr.allNamespaces || (pr.inputFile != "" && pr.namespace == "") {
