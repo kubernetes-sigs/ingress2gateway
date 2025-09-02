@@ -24,6 +24,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/nginx/annotations"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/nginx/crds"
 )
 
 type resourcesToIRConverter struct {
@@ -59,6 +60,32 @@ func (c *resourcesToIRConverter) convert(storage *storage) (intermediate.IR, fie
 	ir, errorList := common.ToIR(ingressList, storage.ServicePorts, c.implementationSpecificOptions)
 	if len(errorList) > 0 {
 		return intermediate.IR{}, errorList
+	}
+
+	// Convert all NGINX CRDs (VirtualServer, VirtualServerRoute, TransportServer) to IR
+	crdIR, crdNotifications, errs := crds.CRDsToGatewayIR(
+		storage.VirtualServers,
+		storage.VirtualServerRoutes,
+		storage.TransportServers,
+		storage.GlobalConfiguration,
+	)
+	if len(errs) > 0 {
+		errorList = append(errorList, errs...)
+	}
+
+	// Log CRD conversion notifications
+	for _, notification := range crdNotifications {
+		notify(notification.Type, notification.Message)
+	}
+
+	if len(errorList) > 0 {
+		return intermediate.IR{}, errorList
+	}
+
+	// Merge CRD IR with Ingress IR
+	ir, errs = intermediate.MergeIRs(ir, crdIR)
+	if len(errs) > 0 {
+		return intermediate.IR{}, errs
 	}
 
 	for _, parseFeatureFunc := range c.featureParsers {
