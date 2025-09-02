@@ -60,6 +60,7 @@ type ProviderSpecificGatewayIR struct {
 	IngressNginx *IngressNginxGatewayIR
 	Istio        *IstioGatewayIR
 	Kong         *KongGatewayIR
+	Nginx        *NginxGatewayIR
 	Openapi3     *Openapi3GatewayIR
 }
 
@@ -80,6 +81,7 @@ type ProviderSpecificHTTPRouteIR struct {
 	IngressNginx *IngressNginxHTTPRouteIR
 	Istio        *IstioHTTPRouteIR
 	Kong         *KongHTTPRouteIR
+	Nginx        *NginxHTTPRouteIR
 	Openapi3     *Openapi3HTTPRouteIR
 }
 

@@ -25,10 +25,19 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 )
 
-const Name = "nginx"
+const (
+	Name = "nginx"
+
+	GlobalConfigurationFlag = "global-configuration"
+)
 
 func init() {
 	i2gw.ProviderConstructorByName[Name] = NewProvider
+
+	i2gw.RegisterProviderSpecificFlag(Name, i2gw.ProviderSpecificFlag{
+		Name:        GlobalConfigurationFlag,
+		Description: "Name of NIC GlobalConfiguration resource.",
+	})
 }
 
 type Provider struct {
