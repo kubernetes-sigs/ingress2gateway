@@ -19,10 +19,8 @@ package crds
 import (
 	"strings"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	nginxv1 "github.com/nginx/kubernetes-ingress/pkg/apis/configuration/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -43,8 +41,6 @@ func findUpstream(upstreams []nginxv1.Upstream, name string) *nginxv1.Upstream {
 	return nil
 }
 
-// sanitizeHostname is implemented in gateway_builder.go
-
 // containsRegexPatterns checks if a value contains regex special characters
 func containsRegexPatterns(s string) bool {
 	return strings.ContainsAny(s, `\.+*?^$()[]{}|`)
@@ -54,12 +50,4 @@ func containsRegexPatterns(s string) bool {
 func addNotification(notificationList *[]notifications.Notification, messageType notifications.MessageType, message string, obj client.Object) {
 	n := notifications.NewNotification(messageType, message, obj)
 	*notificationList = append(*notificationList, n)
-}
-
-// getFirstGateway returns the first gateway from a map of gateways
-func getFirstGateway(gateways map[types.NamespacedName]intermediate.GatewayContext) intermediate.GatewayContext {
-	for _, gateway := range gateways {
-		return gateway
-	}
-	return intermediate.GatewayContext{}
 }
