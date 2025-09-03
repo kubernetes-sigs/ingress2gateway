@@ -16,7 +16,10 @@ limitations under the License.
 
 package main
 
-import "github.com/kubernetes-sigs/ingress2gateway/cmd"
+import (
+	"github.com/kubernetes-sigs/ingress2gateway/cmd"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
+)
 
 func main() {
 	cmd.Execute()
