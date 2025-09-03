@@ -27,7 +27,6 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/client-go/tools/clientcmd"
 
@@ -264,6 +263,9 @@ func (pr *PrintRunner) initializeResourcePrinter() error {
 	case "yaml", "":
 		pr.resourcePrinter = &printers.YAMLPrinter{}
 		return nil
+	case "kyaml":
+		pr.resourcePrinter = &printers.KYAMLPrinter{}
+		return nil
 	case "json":
 		pr.resourcePrinter = &printers.JSONPrinter{}
 		return nil
@@ -305,8 +307,6 @@ func (pr *PrintRunner) initializeNamespaceFilter() error {
 
 func newPrintCommand() *cobra.Command {
 	pr := &PrintRunner{}
-	var printFlags genericclioptions.JSONYamlPrintFlags
-	allowedFormats := printFlags.AllowedFormats()
 
 	// printCmd represents the print command. It prints Gateway API resources
 	// generated from Ingress resources.
@@ -324,7 +324,7 @@ func newPrintCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&pr.outputFormat, "output", "o", "yaml",
-		fmt.Sprintf(`Output format. One of: (%s).`, strings.Join(allowedFormats, ", ")))
+		"Output format. One of: (yaml, json, kyaml).")
 
 	cmd.Flags().StringVar(&pr.inputFile, "input-file", "",
 		`Path to the manifest file. When set, the tool will read ingresses from the file instead of reading from the cluster. Supported files are yaml and json.`)

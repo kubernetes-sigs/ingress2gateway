@@ -82,7 +82,7 @@ func TestFileConvertion(t *testing.T) {
 
 	filepath.WalkDir(filepath.Join(fixturesDir, "input"), func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			t.Fatalf(err.Error())
+			t.Fatal(err.Error())
 		}
 		if d.IsDir() {
 			return nil
