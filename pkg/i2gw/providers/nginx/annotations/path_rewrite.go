@@ -22,11 +22,11 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
+	nginxcommon "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/nginx/common"
 )
 
 // RewriteTargetFeature converts nginx.org/rewrites annotation to URLRewrite filter
@@ -57,20 +57,13 @@ func RewriteTargetFeature(ingresses []networkingv1.Ingress, _ map[types.Namespac
 				for _, path := range rule.IngressRule.HTTP.Paths {
 					serviceName := path.Backend.Service.Name
 					if rewritePath, hasRewrite := rewriteRules[serviceName]; hasRewrite {
-						filter := gatewayv1.HTTPRouteFilter{
-							Type: gatewayv1.HTTPRouteFilterURLRewrite,
-							URLRewrite: &gatewayv1.HTTPURLRewriteFilter{
-								Path: &gatewayv1.HTTPPathModifier{
-									Type:               gatewayv1.PrefixMatchHTTPPathModifier,
-									ReplacePrefixMatch: ptr.To(rewritePath),
-								},
-							},
+						filter := nginxcommon.CreateURLRewriteFilter(rewritePath)
+						if filter != nil {
+							if httpRouteContext.HTTPRoute.Spec.Rules[i].Filters == nil {
+								httpRouteContext.HTTPRoute.Spec.Rules[i].Filters = []gatewayv1.HTTPRouteFilter{}
+							}
+							httpRouteContext.HTTPRoute.Spec.Rules[i].Filters = append(httpRouteContext.HTTPRoute.Spec.Rules[i].Filters, *filter)
 						}
-
-						if httpRouteContext.HTTPRoute.Spec.Rules[i].Filters == nil {
-							httpRouteContext.HTTPRoute.Spec.Rules[i].Filters = []gatewayv1.HTTPRouteFilter{}
-						}
-						httpRouteContext.HTTPRoute.Spec.Rules[i].Filters = append(httpRouteContext.HTTPRoute.Spec.Rules[i].Filters, filter)
 					}
 				}
 			}
@@ -87,34 +80,25 @@ func RewriteTargetFeature(ingresses []networkingv1.Ingress, _ map[types.Namespac
 // NIC format: "serviceName=service rewrite=path;serviceName2=service2 rewrite=path2"
 func parseRewriteRules(rewriteValue string) map[string]string {
 	rules := make(map[string]string)
-
 	if rewriteValue == "" {
 		return rules
 	}
-
-	// Split by semicolon for each rule
 	parts := strings.Split(rewriteValue, ";")
-
 	for _, part := range parts {
 		part = strings.TrimSpace(part)
 		if part == "" {
 			continue
 		}
-
-		// Expect format: serviceName=service rewrite=rewrite
 		serviceIdx := strings.Index(part, "=")
 		rewriteIdx := strings.Index(part, " rewrite=")
 		if serviceIdx == -1 || rewriteIdx == -1 || rewriteIdx <= serviceIdx {
 			continue
 		}
-
 		serviceName := strings.TrimSpace(part[serviceIdx+1 : rewriteIdx])
 		rewritePath := strings.TrimSpace(part[rewriteIdx+9:])
-
 		if serviceName != "" && rewritePath != "" {
 			rules[serviceName] = rewritePath
 		}
 	}
-
 	return rules
 }
