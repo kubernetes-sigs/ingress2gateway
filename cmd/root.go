@@ -49,6 +49,8 @@ func Execute() {
 	rootCmd := newRootCmd()
 	rootCmd.AddCommand(newPrintCommand())
 	rootCmd.AddCommand(versionCmd)
+	// This command is used to generate docs for the other commands, it must be added last.
+	rootCmd.AddCommand(newGenerateDocsCmd(rootCmd))
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
