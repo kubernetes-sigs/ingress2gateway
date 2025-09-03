@@ -45,7 +45,7 @@ type listenerKey struct {
 	Hostname string
 }
 
-type gatewayListenerKey struct {
+type GatewayListenerKey struct {
 	gatewayName  string
 	listenerName string
 }
@@ -71,7 +71,7 @@ func NewNamespaceGatewayFactory(namespace string, virtualServers []nginxv1.Virtu
 }
 
 // CreateNamespaceGateway creates a single Gateway for all VirtualServers and TransportServers in the namespace
-func (f *NamespaceGatewayFactory) CreateNamespaceGateway() (map[types.NamespacedName]intermediate.GatewayContext, map[string][]gatewayListenerKey) {
+func (f *NamespaceGatewayFactory) CreateNamespaceGateway() (map[types.NamespacedName]intermediate.GatewayContext, map[string][]GatewayListenerKey) {
 	gatewayName := DefaultGatewayName
 	gatewayKey := types.NamespacedName{
 		Namespace: f.namespace,
@@ -111,9 +111,9 @@ func (f *NamespaceGatewayFactory) CreateNamespaceGateway() (map[types.Namespaced
 }
 
 // createListeners creates HTTP and HTTPS listeners for the Gateway
-func (f *NamespaceGatewayFactory) createListeners(gatewayName string) ([]gatewayv1.Listener, map[string][]gatewayListenerKey) {
+func (f *NamespaceGatewayFactory) createListeners(gatewayName string) ([]gatewayv1.Listener, map[string][]GatewayListenerKey) {
 	uniqueListeners := make(map[listenerKey]gatewayv1.Listener)
-	virtualServerMap := make(map[string][]gatewayListenerKey)
+	virtualServerMap := make(map[string][]GatewayListenerKey)
 
 	for _, vs := range f.virtualServers {
 		httpPort, httpsPort := f.getListenerPorts(vs)
@@ -146,7 +146,7 @@ func (f *NamespaceGatewayFactory) createListeners(gatewayName string) ([]gateway
 			}
 
 			if !redirect {
-				virtualServerMap[vs.Name] = append(virtualServerMap[vs.Name], gatewayListenerKey{
+				virtualServerMap[vs.Name] = append(virtualServerMap[vs.Name], GatewayListenerKey{
 					gatewayName:  gatewayName,
 					listenerName: string(uniqueListeners[key].Name),
 				})
@@ -186,7 +186,7 @@ func (f *NamespaceGatewayFactory) createListeners(gatewayName string) ([]gateway
 				}
 			}
 
-			virtualServerMap[vs.Name] = append(virtualServerMap[vs.Name], gatewayListenerKey{
+			virtualServerMap[vs.Name] = append(virtualServerMap[vs.Name], GatewayListenerKey{
 				gatewayName:  gatewayName,
 				listenerName: string(uniqueListeners[key].Name),
 			})
@@ -194,7 +194,7 @@ func (f *NamespaceGatewayFactory) createListeners(gatewayName string) ([]gateway
 	}
 
 	// Process TransportServers to create TCP/TLS/UDP listeners
-	transportServerMap := make(map[string][]gatewayListenerKey)
+	transportServerMap := make(map[string][]GatewayListenerKey)
 	for _, ts := range f.transportServers {
 		port := f.getTransportServerPort(ts)
 		if port == nil {
@@ -252,7 +252,7 @@ func (f *NamespaceGatewayFactory) createListeners(gatewayName string) ([]gateway
 		}
 
 		// Map TransportServer to listener
-		transportServerMap[ts.Name] = append(transportServerMap[ts.Name], gatewayListenerKey{
+		transportServerMap[ts.Name] = append(transportServerMap[ts.Name], GatewayListenerKey{
 			gatewayName:  gatewayName,
 			listenerName: listenerName,
 		})
@@ -350,17 +350,6 @@ func (f *NamespaceGatewayFactory) generateTransportListenerName(ts nginxv1.Trans
 	}
 
 	return fmt.Sprintf("%s-%d", protocolStr, port)
-}
-
-// addNotification adds a notification to the notification list
-func (f *NamespaceGatewayFactory) addNotification(messageType notifications.MessageType, message string) {
-	// Use the first VirtualServer as the source object for namespace-level notifications
-	var sourceObject *nginxv1.VirtualServer
-	if len(f.virtualServers) > 0 {
-		sourceObject = &f.virtualServers[0]
-	}
-
-	addNotification(f.notificationList, messageType, message, sourceObject)
 }
 
 // sanitizeHostname replaces special characters for use in sectionName

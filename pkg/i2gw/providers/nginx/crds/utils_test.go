@@ -62,6 +62,7 @@ func TestFindUpstream(t *testing.T) {
 		result := findUpstream(upstreams, "upstream2")
 		if result == nil {
 			t.Error("Expected to find upstream2, got nil")
+			return
 		}
 		if result.Service != "service2" {
 			t.Errorf("Expected service2, got %s", result.Service)

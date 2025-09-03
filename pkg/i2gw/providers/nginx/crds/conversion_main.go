@@ -28,11 +28,11 @@ import (
 	nginxv1 "github.com/nginx/kubernetes-ingress/pkg/apis/configuration/v1"
 )
 
-// CRDsToGatewayIR converts nginx VirtualServer, VirtualServerRoute, and TransportServer CRDs to Gateway API resources
+// ToGatewayIR converts nginx VirtualServer, VirtualServerRoute, and TransportServer CRDs to Gateway API resources
 // This function creates one shared Gateway per namespace that handles both Layer 7 and Layer 4 traffic
-func CRDsToGatewayIR(
+func ToGatewayIR(
 	virtualServers []nginxv1.VirtualServer,
-	virtualServerRoutes []nginxv1.VirtualServerRoute,
+	_ []nginxv1.VirtualServerRoute,
 	transportServers []nginxv1.TransportServer,
 	globalConfiguration *nginxv1.GlobalConfiguration) (
 	partial intermediate.IR,

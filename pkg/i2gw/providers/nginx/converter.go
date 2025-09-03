@@ -63,7 +63,7 @@ func (c *resourcesToIRConverter) convert(storage *storage) (intermediate.IR, fie
 	}
 
 	// Convert all NGINX CRDs (VirtualServer, VirtualServerRoute, TransportServer) to IR
-	crdIR, crdNotifications, errs := crds.CRDsToGatewayIR(
+	crdIR, crdNotifications, errs := crds.ToGatewayIR(
 		storage.VirtualServers,
 		storage.VirtualServerRoutes,
 		storage.TransportServers,

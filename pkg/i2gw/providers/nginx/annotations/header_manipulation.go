@@ -123,4 +123,3 @@ func parseSetHeaders(setHeaders string) map[string]string {
 
 	return headers
 }
-
