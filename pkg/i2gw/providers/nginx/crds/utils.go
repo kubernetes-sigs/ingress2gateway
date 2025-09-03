@@ -17,7 +17,6 @@ limitations under the License.
 package crds
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
@@ -45,71 +44,6 @@ func findUpstream(upstreams []nginxv1.Upstream, name string) *nginxv1.Upstream {
 }
 
 // sanitizeHostname is implemented in gateway_builder.go
-
-// Notification system utilities
-
-// NotificationCollector provides a unified way to collect notifications
-type NotificationCollector struct {
-	notifications []notifications.Notification
-}
-
-// NewNotificationCollector creates a new notification collector
-func NewNotificationCollector() *NotificationCollector {
-	return &NotificationCollector{
-		notifications: make([]notifications.Notification, 0),
-	}
-}
-
-// AddInfo adds an info notification
-func (nc *NotificationCollector) AddInfo(message string, obj client.Object) {
-	nc.addNotification(notifications.InfoNotification, message, obj)
-}
-
-// AddWarning adds a warning notification
-func (nc *NotificationCollector) AddWarning(message string, obj client.Object) {
-	nc.addNotification(notifications.WarningNotification, message, obj)
-}
-
-// AddError adds an error notification
-func (nc *NotificationCollector) AddError(message string, obj client.Object) {
-	nc.addNotification(notifications.ErrorNotification, message, obj)
-}
-
-// AddInfof adds a formatted info notification
-func (nc *NotificationCollector) AddInfof(format string, args ...interface{}) {
-	nc.addNotification(notifications.InfoNotification, fmt.Sprintf(format, args...), nil)
-}
-
-// AddWarningf adds a formatted warning notification
-func (nc *NotificationCollector) AddWarningf(format string, args ...interface{}) {
-	nc.addNotification(notifications.WarningNotification, fmt.Sprintf(format, args...), nil)
-}
-
-// AddErrorf adds a formatted error notification
-func (nc *NotificationCollector) AddErrorf(format string, args ...interface{}) {
-	nc.addNotification(notifications.ErrorNotification, fmt.Sprintf(format, args...), nil)
-}
-
-// GetNotifications returns all collected notifications
-func (nc *NotificationCollector) GetNotifications() []notifications.Notification {
-	return nc.notifications
-}
-
-// Clear removes all notifications
-func (nc *NotificationCollector) Clear() {
-	nc.notifications = nc.notifications[:0]
-}
-
-// Merge adds notifications from another collector
-func (nc *NotificationCollector) Merge(other *NotificationCollector) {
-	nc.notifications = append(nc.notifications, other.notifications...)
-}
-
-// addNotification is the internal method for adding notifications
-func (nc *NotificationCollector) addNotification(messageType notifications.MessageType, message string, obj client.Object) {
-	n := notifications.NewNotification(messageType, message, obj)
-	nc.notifications = append(nc.notifications, n)
-}
 
 // containsRegexPatterns checks if a value contains regex special characters
 func containsRegexPatterns(s string) bool {
