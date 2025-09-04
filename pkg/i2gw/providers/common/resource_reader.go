@@ -53,9 +53,18 @@ func ReadIngressesFromCluster(ctx context.Context, client client.Client, ingress
 }
 
 func ReadIngressesFromFile(filename, namespace string, ingressClasses sets.Set[string]) (map[types.NamespacedName]*networkingv1.Ingress, error) {
-	stream, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file %v: %w", filename, err)
+	var stream []byte
+	var err error
+	if filename == "-" {
+		stream, err = io.ReadAll(os.Stdin)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read from stdin: %w", err)
+		}
+	} else {
+		stream, err = os.ReadFile(filename)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read file %v: %w", filename, err)
+		}
 	}
 
 	unstructuredObjects, err := ExtractObjectsFromReader(bytes.NewReader(stream), namespace)
@@ -98,9 +107,18 @@ func ReadServicesFromCluster(ctx context.Context, client client.Client) (map[typ
 }
 
 func ReadServicesFromFile(filename, namespace string) (map[types.NamespacedName]*apiv1.Service, error) {
-	stream, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file %v: %w", filename, err)
+	var stream []byte
+	var err error
+	if filename == "-" {
+		stream, err = io.ReadAll(os.Stdin)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read from stdin: %w", err)
+		}
+	} else {
+		stream, err = os.ReadFile(filename)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read file %v: %w", filename, err)
+		}
 	}
 
 	unstructuredObjects, err := ExtractObjectsFromReader(bytes.NewReader(stream), namespace)

@@ -327,7 +327,7 @@ func newPrintCommand() *cobra.Command {
 		"Output format. One of: (yaml, json, kyaml).")
 
 	cmd.Flags().StringVar(&pr.inputFile, "input-file", "",
-		`Path to the manifest file. When set, the tool will read ingresses from the file instead of reading from the cluster. Supported files are yaml and json.`)
+		`Path to the manifest file. Use "-" to read from stdin. When set, the tool will read ingresses from the file instead of reading from the cluster. Supported files are yaml and json.`)
 
 	cmd.Flags().StringVarP(&pr.namespace, "namespace", "n", "",
 		`If present, the namespace scope for this CLI request.`)
