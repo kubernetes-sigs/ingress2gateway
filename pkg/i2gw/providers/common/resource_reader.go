@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 
 	apiv1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -32,6 +33,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	kubeyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+var (
+	stdin     []byte
+	stdinOnce sync.Once
+	stdinErr  error
 )
 
 func ReadIngressesFromCluster(ctx context.Context, client client.Client, ingressClasses sets.Set[string]) (map[types.NamespacedName]*networkingv1.Ingress, error) {
@@ -54,13 +61,16 @@ func ReadIngressesFromCluster(ctx context.Context, client client.Client, ingress
 
 // readFileOrStdin reads content from a file or stdin based on the filename.
 // If filename is "-", it reads from stdin, otherwise from the specified file.
+// Stdin content is stored in memory after the first read to allow multiple calls.
 func readFileOrStdin(filename string) ([]byte, error) {
 	if filename == "-" {
-		stream, err := io.ReadAll(os.Stdin)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read from stdin: %w", err)
-		}
-		return stream, nil
+		stdinOnce.Do(func() {
+			stdin, stdinErr = io.ReadAll(os.Stdin)
+			if stdinErr != nil {
+				stdinErr = fmt.Errorf("failed to read from stdin: %w", stdinErr)
+			}
+		})
+		return stdin, stdinErr
 	}
 
 	stream, err := os.ReadFile(filename)
