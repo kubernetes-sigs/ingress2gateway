@@ -36,7 +36,7 @@ func init() {
 
 	i2gw.RegisterProviderSpecificFlag(Name, i2gw.ProviderSpecificFlag{
 		Name:        GlobalConfigurationFlag,
-		Description: "Name of NIC GlobalConfiguration resource.",
+		Description: "Namespace and Name of NIC GlobalConfiguration resource.",
 	})
 }
 
