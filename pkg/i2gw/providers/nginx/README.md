@@ -29,12 +29,23 @@ This provider converts [NGINX Ingress Controller](https://github.com/nginx/kuber
 ## Usage
 
 ```bash
-# Convert NGINX Ingress Controller resources from cluster
+# Convert NGINX Ingress Controller resources from cluster (default namespace)
 ingress2gateway print --providers=nginx
 
-# Convert from file
+# Convert from cluster with specific namespace
+ingress2gateway print --providers=nginx --namespace=production
+
+# Convert from file (all namespaces in file)
 ingress2gateway print --providers=nginx --input-file=nginx-ingress.yaml
 ```
+
+## Requirements
+
+* **Ingress Class**: Only Ingress resources with `ingressClassName: nginx` are processed
+* **Namespace**: 
+  - When reading from cluster: defaults to `default` namespace
+  - When reading from file: processes all namespaces in the file
+  - Use `--namespace` flag to specify a different namespace for cluster reads
 
 ## Gateway API Mapping
 

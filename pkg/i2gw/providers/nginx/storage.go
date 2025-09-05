@@ -19,17 +19,27 @@ package nginx
 import (
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	nginxv1 "github.com/nginx/kubernetes-ingress/pkg/apis/configuration/v1"
 )
 
 type storage struct {
-	Ingresses    map[types.NamespacedName]*networkingv1.Ingress
-	ServicePorts map[types.NamespacedName]map[string]int32
+	Ingresses           map[types.NamespacedName]*networkingv1.Ingress
+	VirtualServers      []nginxv1.VirtualServer
+	VirtualServerRoutes []nginxv1.VirtualServerRoute
+	TransportServers    []nginxv1.TransportServer
+	GlobalConfiguration *nginxv1.GlobalConfiguration
+	ServicePorts        map[types.NamespacedName]map[string]int32
 }
 
 // newResourceStorage creates a new storage instance
 func newResourceStorage() *storage {
 	return &storage{
-		Ingresses:    map[types.NamespacedName]*networkingv1.Ingress{},
-		ServicePorts: map[types.NamespacedName]map[string]int32{},
+		Ingresses:           map[types.NamespacedName]*networkingv1.Ingress{},
+		VirtualServers:      []nginxv1.VirtualServer{},
+		VirtualServerRoutes: []nginxv1.VirtualServerRoute{},
+		TransportServers:    []nginxv1.TransportServer{},
+		GlobalConfiguration: nil,
+		ServicePorts:        map[types.NamespacedName]map[string]int32{},
 	}
 }

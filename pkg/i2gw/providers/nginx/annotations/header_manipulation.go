@@ -27,6 +27,7 @@ import (
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
+	nginxcommon "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/nginx/common"
 )
 
 // HeaderManipulationFeature converts header manipulation annotations to HTTPRoute filters
@@ -87,47 +88,13 @@ func addFilterToHTTPRoute(httpRoute *gatewayv1.HTTPRoute, _ networkingv1.Ingress
 // createResponseHeaderModifier creates a ResponseHeaderModifier filter from comma-separated header names
 func createResponseHeaderModifier(hideHeaders string) *gatewayv1.HTTPRouteFilter {
 	headersToRemove := parseCommaSeparatedHeaders(hideHeaders)
-	if len(headersToRemove) == 0 {
-		return nil
-	}
-
-	return &gatewayv1.HTTPRouteFilter{
-		Type: gatewayv1.HTTPRouteFilterResponseHeaderModifier,
-		ResponseHeaderModifier: &gatewayv1.HTTPHeaderFilter{
-			Remove: headersToRemove,
-		},
-	}
+	return nginxcommon.CreateResponseHeaderModifier(headersToRemove)
 }
 
 // createRequestHeaderModifier creates a RequestHeaderModifier filter from proxy-set-headers annotation
 func createRequestHeaderModifier(setHeaders string) *gatewayv1.HTTPRouteFilter {
 	headers := parseSetHeaders(setHeaders)
-	if len(headers) == 0 {
-		return nil
-	}
-
-	var headersToSet []gatewayv1.HTTPHeader
-	for name, value := range headers {
-		if value != "" && !strings.Contains(value, "$") {
-			headersToSet = append(headersToSet, gatewayv1.HTTPHeader{
-				Name:  gatewayv1.HTTPHeaderName(name),
-				Value: value,
-			})
-		}
-		// Note: Headers with NGINX variables cannot be converted to Gateway API
-		// as Gateway API doesn't support dynamic header values
-	}
-
-	if len(headersToSet) == 0 {
-		return nil
-	}
-
-	return &gatewayv1.HTTPRouteFilter{
-		Type: gatewayv1.HTTPRouteFilterRequestHeaderModifier,
-		RequestHeaderModifier: &gatewayv1.HTTPHeaderFilter{
-			Set: headersToSet,
-		},
-	}
+	return nginxcommon.CreateRequestHeaderModifier(headers)
 }
 
 // parseCommaSeparatedHeaders parses a comma-separated list of header names
@@ -143,7 +110,6 @@ func parseSetHeaders(setHeaders string) map[string]string {
 
 	for _, part := range parts {
 		if strings.Contains(part, ":") {
-			// Format: "Header-Name: value"
 			kv := strings.SplitN(part, ":", 2)
 			if len(kv) == 2 {
 				headerName := strings.TrimSpace(kv[0])
@@ -153,12 +119,7 @@ func parseSetHeaders(setHeaders string) map[string]string {
 				}
 			}
 		}
-		// Note: Headers without explicit values (format "$Variable-Name") are skipped
-		// as Gateway API cannot use NGINX variables like $http_* and headers need values
 	}
 
 	return headers
 }
-
-// Note: The patchHTTPRouteHeaderMatching function has been removed as it was incomplete.
-// Header matching should be implemented separately if needed for specific NGINX features.

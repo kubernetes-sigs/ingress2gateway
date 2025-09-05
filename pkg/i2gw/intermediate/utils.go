@@ -43,10 +43,10 @@ func MergeIRs(irs ...IR) (IR, field.ErrorList) {
 		GatewayClasses:     make(map[types.NamespacedName]gatewayv1.GatewayClass),
 		HTTPRoutes:         make(map[types.NamespacedName]HTTPRouteContext),
 		Services:           make(map[types.NamespacedName]ProviderSpecificServiceIR),
+		GRPCRoutes:         make(map[types.NamespacedName]gatewayv1.GRPCRoute),
 		TLSRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
 		TCPRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
 		UDPRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.UDPRoute),
-		GRPCRoutes:         make(map[types.NamespacedName]gatewayv1.GRPCRoute),
 		BackendTLSPolicies: make(map[types.NamespacedName]gatewayv1alpha3.BackendTLSPolicy),
 		ReferenceGrants:    make(map[types.NamespacedName]gatewayv1beta1.ReferenceGrant),
 	}
@@ -60,10 +60,10 @@ func MergeIRs(irs ...IR) (IR, field.ErrorList) {
 		maps.Copy(mergedIRs.GatewayClasses, gr.GatewayClasses)
 		maps.Copy(mergedIRs.HTTPRoutes, gr.HTTPRoutes)
 		maps.Copy(mergedIRs.Services, gr.Services)
+		maps.Copy(mergedIRs.GRPCRoutes, gr.GRPCRoutes)
 		maps.Copy(mergedIRs.TLSRoutes, gr.TLSRoutes)
 		maps.Copy(mergedIRs.TCPRoutes, gr.TCPRoutes)
 		maps.Copy(mergedIRs.UDPRoutes, gr.UDPRoutes)
-		maps.Copy(mergedIRs.GRPCRoutes, gr.GRPCRoutes)
 		maps.Copy(mergedIRs.BackendTLSPolicies, gr.BackendTLSPolicies)
 		maps.Copy(mergedIRs.ReferenceGrants, gr.ReferenceGrants)
 	}
