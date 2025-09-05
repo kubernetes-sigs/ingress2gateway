@@ -32,7 +32,7 @@ import (
 )
 
 const (
-	// DefaultGatewayName is the default name for gateways created from VirtualServers
+	// DefaultGatewayName is the default name for gateways created from VirtualServers and TransportServers
 	DefaultGatewayName = "nginx"
 
 	namespaceGatewayHTTPPort  = 80
