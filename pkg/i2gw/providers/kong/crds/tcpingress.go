@@ -127,7 +127,7 @@ func (a *tcpIngressAggregator) toRoutesAndGateways() ([]gatewayv1alpha2.TCPRoute
 			listener.Hostname = (*gatewayv1.Hostname)(&rg.tls[0].Hosts[0])
 		}
 		if len(rg.tls) > 0 {
-			listener.TLS = &gatewayv1.GatewayTLSConfig{
+			listener.TLS = &gatewayv1.ListenerTLSConfig{
 				Mode: common.PtrTo(gatewayv1.TLSModePassthrough),
 			}
 		}

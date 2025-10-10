@@ -154,7 +154,7 @@ func TestTCPIngressToGatewayAPI(t *testing.T) {
 								Port:     8888,
 								Protocol: gatewayv1.TLSProtocolType,
 								Hostname: common.PtrTo(gatewayv1.Hostname("example.com")),
-								TLS: &gatewayv1.GatewayTLSConfig{
+								TLS: &gatewayv1.ListenerTLSConfig{
 									Mode: common.PtrTo(gatewayv1.TLSModePassthrough),
 									CertificateRefs: []gatewayv1.SecretObjectReference{
 										{

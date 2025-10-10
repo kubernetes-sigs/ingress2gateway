@@ -28,8 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
-	gatewayv1alpha3 "sigs.k8s.io/gateway-api/apis/v1alpha3"
 )
 
 func GetIngressClass(ingress networkingv1.Ingress) string {
@@ -350,30 +348,30 @@ func RemoveGRPCRulesFromHTTPRoute(httpRoute *gatewayv1.HTTPRoute, grpcServiceSet
 }
 
 // CreateBackendTLSPolicy creates a BackendTLSPolicy for the given service
-func CreateBackendTLSPolicy(namespace, policyName, serviceName string) gatewayv1alpha3.BackendTLSPolicy {
+func CreateBackendTLSPolicy(namespace, policyName, serviceName string) gatewayv1.BackendTLSPolicy {
 
 	// TODO: Migrate BackendTLSPolicy from gatewayv1alpha3 to gatewayv1 for Gateway API 1.4
 	// See: https://github.com/kubernetes-sigs/ingress2gateway/issues/236
-	return gatewayv1alpha3.BackendTLSPolicy{
+	return gatewayv1.BackendTLSPolicy{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: gatewayv1alpha3.GroupVersion.String(),
+			APIVersion: gatewayv1.GroupVersion.String(),
 			Kind:       "BackendTLSPolicy",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      policyName,
 			Namespace: namespace,
 		},
-		Spec: gatewayv1alpha3.BackendTLSPolicySpec{
-			TargetRefs: []gatewayv1alpha2.LocalPolicyTargetReferenceWithSectionName{
+		Spec: gatewayv1.BackendTLSPolicySpec{
+			TargetRefs: []gatewayv1.LocalPolicyTargetReferenceWithSectionName{
 				{
-					LocalPolicyTargetReference: gatewayv1alpha2.LocalPolicyTargetReference{
+					LocalPolicyTargetReference: gatewayv1.LocalPolicyTargetReference{
 						Group: "", // Core group
 						Kind:  "Service",
 						Name:  gatewayv1.ObjectName(serviceName),
 					},
 				},
 			},
-			Validation: gatewayv1alpha3.BackendTLSPolicyValidation{
+			Validation: gatewayv1.BackendTLSPolicyValidation{
 				// Note: WellKnownCACertificates and Hostname fields are intentionally left empty
 				// These fields must be manually configured based on your backend service's TLS setup
 			},

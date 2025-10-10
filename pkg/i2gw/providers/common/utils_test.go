@@ -25,7 +25,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha3 "sigs.k8s.io/gateway-api/apis/v1alpha3"
 )
 
 func TestGroupIngressPathsByMatchKey(t *testing.T) {
@@ -912,7 +911,7 @@ func TestCreateBackendTLSPolicy(t *testing.T) {
 			require.Equal(t, tc.policyName, policy.Name)
 			require.Equal(t, tc.namespace, policy.Namespace)
 			require.Equal(t, "BackendTLSPolicy", policy.Kind)
-			require.Equal(t, gatewayv1alpha3.GroupVersion.String(), policy.APIVersion)
+			require.Equal(t, gatewayv1.GroupVersion.String(), policy.APIVersion)
 
 			require.Len(t, policy.Spec.TargetRefs, 1)
 			require.Equal(t, gatewayv1.ObjectName(tc.serviceName), policy.Spec.TargetRefs[0].Name)

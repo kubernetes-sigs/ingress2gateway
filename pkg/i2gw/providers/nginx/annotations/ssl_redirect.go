@@ -109,7 +109,7 @@ func ensureHTTPSListener(ingress networkingv1.Ingress, rule networkingv1.Ingress
 		Protocol: gatewayv1.HTTPSProtocolType,
 		Port:     443,
 		Hostname: &hostname,
-		TLS: &gatewayv1.GatewayTLSConfig{
+		TLS: &gatewayv1.ListenerTLSConfig{
 			Mode: ptr.To(gatewayv1.TLSModeTerminate),
 			CertificateRefs: []gatewayv1.SecretObjectReference{
 				{Name: gatewayv1.ObjectName(fmt.Sprintf("%s-tls", strings.ReplaceAll(rule.Host, ".", "-")))},

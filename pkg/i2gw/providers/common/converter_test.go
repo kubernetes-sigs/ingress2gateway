@@ -180,7 +180,7 @@ func Test_ToIR(t *testing.T) {
 									Port:     443,
 									Protocol: gatewayv1.HTTPSProtocolType,
 									Hostname: PtrTo(gatewayv1.Hostname("example.com")),
-									TLS: &gatewayv1.GatewayTLSConfig{
+									TLS: &gatewayv1.ListenerTLSConfig{
 										CertificateRefs: []gatewayv1.SecretObjectReference{{
 											Name: "example-cert",
 										}},

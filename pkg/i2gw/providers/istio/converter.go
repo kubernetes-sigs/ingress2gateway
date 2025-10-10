@@ -257,7 +257,7 @@ func (c *resourcesToIRConverter) convertGateway(gw *istioclientv1beta1.Gateway, 
 				Protocol: protocol,
 			}
 			if tlsMode != "" {
-				gwListener.TLS = &gatewayv1.GatewayTLSConfig{
+				gwListener.TLS = &gatewayv1.ListenerTLSConfig{
 					Mode: &tlsMode,
 				}
 			}
