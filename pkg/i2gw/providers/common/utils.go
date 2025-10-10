@@ -300,6 +300,10 @@ func ConvertHTTPFiltersToGRPCFilters(httpFilters []gatewayv1.HTTPRouteFilter) GR
 			unsupportedTypes = append(unsupportedTypes, httpFilter.Type)
 		case gatewayv1.HTTPRouteFilterExtensionRef:
 			unsupportedTypes = append(unsupportedTypes, httpFilter.Type)
+		case gatewayv1.HTTPRouteFilterCORS:
+			unsupportedTypes = append(unsupportedTypes, httpFilter.Type)
+		case gatewayv1.HTTPRouteFilterExternalAuth:
+			unsupportedTypes = append(unsupportedTypes, httpFilter.Type)
 		default:
 			unsupportedTypes = append(unsupportedTypes, httpFilter.Type)
 		}
