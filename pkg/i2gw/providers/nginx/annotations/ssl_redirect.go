@@ -47,7 +47,7 @@ func SSLRedirectFeature(ingresses []networkingv1.Ingress, _ map[types.Namespaced
 			}
 
 			for _, ingressRule := range rule.Ingress.Spec.Rules {
-				ensureHTTPSListener(rule.Ingress, ingressRule, ir)
+				ensureHTTPSListener(*rule.Ingress, ingressRule, ir)
 
 				routeName := common.RouteName(rule.Ingress.Name, ingressRule.Host)
 				routeKey := types.NamespacedName{Namespace: rule.Ingress.Namespace, Name: routeName}

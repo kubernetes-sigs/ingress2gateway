@@ -59,7 +59,7 @@ func ListenPortsFeature(ingresses []networkingv1.Ingress, _ map[types.Namespaced
 			}
 
 			if len(httpPorts) > 0 || len(sslPorts) > 0 {
-				errs = append(errs, replaceGatewayPortsWithCustom(rule.Ingress, config, ir)...)
+				errs = append(errs, replaceGatewayPortsWithCustom(*rule.Ingress, config, ir)...)
 			}
 		}
 	}

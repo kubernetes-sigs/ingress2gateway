@@ -39,7 +39,7 @@ func HSTSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]ma
 	for _, rg := range ruleGroups {
 		for _, rule := range rg.Rules {
 			if hsts, ok := rule.Ingress.Annotations[nginxHSTSAnnotation]; ok && hsts == "true" {
-				errs = append(errs, processHSTSAnnotation(rule.Ingress, ir)...)
+				errs = append(errs, processHSTSAnnotation(*rule.Ingress, ir)...)
 			}
 		}
 	}

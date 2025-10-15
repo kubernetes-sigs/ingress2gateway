@@ -47,7 +47,7 @@ func HeaderManipulationFeature(ingresses []networkingv1.Ingress, _ map[types.Nam
 			if hideHeaders, exists := rule.Ingress.Annotations[nginxProxyHideHeadersAnnotation]; exists && hideHeaders != "" {
 				filter := createResponseHeaderModifier(hideHeaders)
 				if filter != nil {
-					errs = append(errs, addFilterToHTTPRoute(&httpRouteContext.HTTPRoute, rule.Ingress, *filter)...)
+					errs = append(errs, addFilterToHTTPRoute(&httpRouteContext.HTTPRoute, *rule.Ingress, *filter)...)
 				}
 			}
 
@@ -55,7 +55,7 @@ func HeaderManipulationFeature(ingresses []networkingv1.Ingress, _ map[types.Nam
 			if setHeaders, exists := rule.Ingress.Annotations[nginxProxySetHeadersAnnotation]; exists && setHeaders != "" {
 				filter := createRequestHeaderModifier(setHeaders)
 				if filter != nil {
-					errs = append(errs, addFilterToHTTPRoute(&httpRouteContext.HTTPRoute, rule.Ingress, *filter)...)
+					errs = append(errs, addFilterToHTTPRoute(&httpRouteContext.HTTPRoute, *rule.Ingress, *filter)...)
 				}
 			}
 

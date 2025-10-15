@@ -39,8 +39,8 @@ import (
 // consideration any provider specific logic.
 func ToIR(ingresses []networkingv1.Ingress, servicePorts map[types.NamespacedName]map[string]int32, options i2gw.ProviderImplementationSpecificOptions) (intermediate.IR, field.ErrorList) {
 	aggregator := ingressAggregator{
-		ruleGroups:   map[ruleGroupKey]*ingressRuleGroup{},
-		servicePorts: servicePorts,
+		RuleGroups:   map[ruleGroupKey]*IngressRuleGroup{},
+		ServicePorts: servicePorts,
 	}
 
 	var errs field.ErrorList
@@ -117,20 +117,25 @@ var (
 type ruleGroupKey string
 
 type ingressAggregator struct {
-	ruleGroups      map[ruleGroupKey]*ingressRuleGroup
-	defaultBackends []ingressDefaultBackend
-	servicePorts    map[types.NamespacedName]map[string]int32
+	RuleGroups      map[ruleGroupKey]*IngressRuleGroup
+	DefaultBackends []ingressDefaultBackend
+	ServicePorts    map[types.NamespacedName]map[string]int32
 }
 
 type pathMatchKey string
 
-type ingressRuleGroup struct {
-	namespace    string
-	name         string
-	ingressClass string
-	host         string
-	tls          []networkingv1.IngressTLS
-	rules        []ingressRule
+type IngressRuleGroup struct {
+	Namespace    string
+	Name         string
+	IngressClass string
+	Host         string
+	TLS          []networkingv1.IngressTLS
+	Rules        []Rule
+}
+
+type Rule struct {
+	Ingress     *networkingv1.Ingress
+	IngressRule *networkingv1.IngressRule
 }
 
 type ingressRule struct {
@@ -141,47 +146,42 @@ type ingressDefaultBackend struct {
 	name         string
 	namespace    string
 	ingressClass string
+	ingress      *networkingv1.Ingress
 	backend      networkingv1.IngressBackend
-}
-
-type ingressPath struct {
-	ruleIdx  int
-	pathIdx  int
-	ruleType string
-	path     networkingv1.HTTPIngressPath
 }
 
 func (a *ingressAggregator) addIngress(ingress networkingv1.Ingress) {
 	ingressClass := GetIngressClass(ingress)
 	for _, rule := range ingress.Spec.Rules {
-		a.addIngressRule(ingress.Namespace, ingress.Name, ingressClass, rule, ingress.Spec)
+		a.addIngressRule(ingress.Namespace, ingress.Name, ingressClass, rule, &ingress)
 	}
 	if ingress.Spec.DefaultBackend != nil {
-		a.defaultBackends = append(a.defaultBackends, ingressDefaultBackend{
+		a.DefaultBackends = append(a.DefaultBackends, ingressDefaultBackend{
 			name:         ingress.Name,
 			namespace:    ingress.Namespace,
 			ingressClass: ingressClass,
+			ingress:      &ingress,
 			backend:      *ingress.Spec.DefaultBackend,
 		})
 	}
 }
 
-func (a *ingressAggregator) addIngressRule(namespace, name, ingressClass string, rule networkingv1.IngressRule, iSpec networkingv1.IngressSpec) {
+func (a *ingressAggregator) addIngressRule(namespace, name, ingressClass string, rule networkingv1.IngressRule, ingress *networkingv1.Ingress) {
 	rgKey := ruleGroupKey(fmt.Sprintf("%s/%s/%s", namespace, ingressClass, rule.Host))
-	rg, ok := a.ruleGroups[rgKey]
+	rg, ok := a.RuleGroups[rgKey]
 	if !ok {
-		rg = &ingressRuleGroup{
-			namespace:    namespace,
-			name:         name,
-			ingressClass: ingressClass,
-			host:         rule.Host,
+		rg = &IngressRuleGroup{
+			Namespace:    namespace,
+			Name:         name,
+			IngressClass: ingressClass,
+			Host:         rule.Host,
 		}
-		a.ruleGroups[rgKey] = rg
+		a.RuleGroups[rgKey] = rg
 	}
-	if len(iSpec.TLS) > 0 {
-		rg.tls = append(rg.tls, iSpec.TLS...)
+	if len(ingress.Spec.TLS) > 0 {
+		rg.TLS = append(rg.TLS, ingress.Spec.TLS...)
 	}
-	rg.rules = append(rg.rules, ingressRule{rule: rule})
+	rg.Rules = append(rg.Rules, Rule{IngressRule: &rule, Ingress: ingress})
 }
 
 func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImplementationSpecificOptions) ([]gatewayv1.HTTPRoute, []gatewayv1.Gateway, field.ErrorList) {
@@ -190,8 +190,8 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImpleme
 	listenersByNamespacedGateway := map[string][]gatewayv1.Listener{}
 
 	// Sort the rulegroups to iterate the map in a sorted order.
-	ruleGroupsKeys := make([]ruleGroupKey, 0, len(a.ruleGroups))
-	for k := range a.ruleGroups {
+	ruleGroupsKeys := make([]ruleGroupKey, 0, len(a.RuleGroups))
+	for k := range a.RuleGroups {
 		ruleGroupsKeys = append(ruleGroupsKeys, k)
 	}
 
@@ -200,28 +200,28 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImpleme
 	})
 
 	for _, rgk := range ruleGroupsKeys {
-		rg := a.ruleGroups[rgk]
+		rg := a.RuleGroups[rgk]
 		listener := gatewayv1.Listener{}
-		if rg.host != "" {
-			listener.Hostname = (*gatewayv1.Hostname)(&rg.host)
-		} else if len(rg.tls) == 1 && len(rg.tls[0].Hosts) == 1 {
-			listener.Hostname = (*gatewayv1.Hostname)(&rg.tls[0].Hosts[0])
+		if rg.Host != "" {
+			listener.Hostname = (*gatewayv1.Hostname)(&rg.Host)
+		} else if len(rg.TLS) == 1 && len(rg.TLS[0].Hosts) == 1 {
+			listener.Hostname = (*gatewayv1.Hostname)(&rg.TLS[0].Hosts[0])
 		}
-		if len(rg.tls) > 0 {
+		if len(rg.TLS) > 0 {
 			listener.TLS = &gatewayv1.GatewayTLSConfig{}
 		}
-		for _, tls := range rg.tls {
+		for _, tls := range rg.TLS {
 			listener.TLS.CertificateRefs = append(listener.TLS.CertificateRefs,
 				gatewayv1.SecretObjectReference{Name: gatewayv1.ObjectName(tls.SecretName)})
 		}
-		gwKey := fmt.Sprintf("%s/%s", rg.namespace, rg.ingressClass)
+		gwKey := fmt.Sprintf("%s/%s", rg.Namespace, rg.IngressClass)
 		listenersByNamespacedGateway[gwKey] = append(listenersByNamespacedGateway[gwKey], listener)
-		httpRoute, errs := rg.toHTTPRoute(a.servicePorts, options)
+		httpRoute, errs := rg.toHTTPRoute(a.ServicePorts, options)
 		httpRoutes = append(httpRoutes, httpRoute)
 		errors = append(errors, errs...)
 	}
 
-	for i, db := range a.defaultBackends {
+	for i, db := range a.DefaultBackends {
 		httpRoute := gatewayv1.HTTPRoute{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("%s-default-backend", db.name),
@@ -242,7 +242,7 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImpleme
 		}
 		httpRoute.SetGroupVersionKind(HTTPRouteGVK)
 
-		backendRef, err := ToBackendRef(db.namespace, db.backend, a.servicePorts, field.NewPath(db.name, "paths", "backends").Index(i))
+		backendRef, err := ToBackendRef(db.namespace, db.backend, a.ServicePorts, field.NewPath(db.name, "paths", "backends").Index(i))
 		if err != nil {
 			errors = append(errors, err)
 		} else {
@@ -307,12 +307,12 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImpleme
 	return httpRoutes, gateways, errors
 }
 
-func (rg *ingressRuleGroup) toHTTPRoute(servicePorts map[types.NamespacedName]map[string]int32, options i2gw.ProviderImplementationSpecificOptions) (gatewayv1.HTTPRoute, field.ErrorList) {
-	ingressPathsByMatchKey := groupIngressPathsByMatchKey(rg.rules)
+func (rg *IngressRuleGroup) toHTTPRoute(servicePorts map[types.NamespacedName]map[string]int32, options i2gw.ProviderImplementationSpecificOptions) (gatewayv1.HTTPRoute, field.ErrorList) {
+	ingressPathsByMatchKey := groupIngressPathsByMatchKey(rg.Rules)
 	httpRoute := gatewayv1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      RouteName(rg.name, rg.host),
-			Namespace: rg.namespace,
+			Name:      RouteName(rg.Name, rg.Host),
+			Namespace: rg.Namespace,
 		},
 		Spec: gatewayv1.HTTPRouteSpec{},
 		Status: gatewayv1.HTTPRouteStatus{
@@ -323,19 +323,28 @@ func (rg *ingressRuleGroup) toHTTPRoute(servicePorts map[types.NamespacedName]ma
 	}
 	httpRoute.SetGroupVersionKind(HTTPRouteGVK)
 
-	if rg.ingressClass != "" {
-		httpRoute.Spec.ParentRefs = []gatewayv1.ParentReference{{Name: gatewayv1.ObjectName(rg.ingressClass)}}
+	if rg.IngressClass != "" {
+		httpRoute.Spec.ParentRefs = []gatewayv1.ParentReference{{Name: gatewayv1.ObjectName(rg.IngressClass)}}
 	}
-	if rg.host != "" {
-		httpRoute.Spec.Hostnames = []gatewayv1.Hostname{gatewayv1.Hostname(rg.host)}
+	if rg.Host != "" {
+		httpRoute.Spec.Hostnames = []gatewayv1.Hostname{gatewayv1.Hostname(rg.Host)}
 	}
 
 	var errors field.ErrorList
 	for _, key := range ingressPathsByMatchKey.keys {
 		paths := ingressPathsByMatchKey.data[key]
 		path := paths[0]
-		fieldPath := field.NewPath("spec", "rules").Index(path.ruleIdx).Child(path.ruleType).Child("paths").Index(path.pathIdx)
-		match, err := toHTTPRouteMatch(path.path, fieldPath, options.ToImplementationSpecificHTTPPathTypeMatch)
+		fieldPath := field.NewPath("spec", "rules").Index(path.RuleIdx).Child(path.RuleType).Child("paths").Index(path.PathIdx)
+
+		if options.ToImplementationSpecificRules != nil {
+			hrRules, errs := options.ToImplementationSpecificRules(paths, fieldPath, servicePorts, rg.Namespace)
+			httpRoute.Spec.Rules = append(httpRoute.Spec.Rules, hrRules...)
+			errors = append(errors, errs...)
+			continue
+		}
+		// ** default translation logic
+
+		match, err := ToHTTPRouteMatch(path.Path, fieldPath, options.ToImplementationSpecificHTTPPathTypeMatch)
 		if err != nil {
 			errors = append(errors, err)
 			continue
@@ -344,41 +353,26 @@ func (rg *ingressRuleGroup) toHTTPRoute(servicePorts map[types.NamespacedName]ma
 			Matches: []gatewayv1.HTTPRouteMatch{*match},
 		}
 
-		backendRefs, errs := rg.configureBackendRef(servicePorts, paths)
+		backendRefs, errs := ConfigureBackendRef(servicePorts, paths, rg.Namespace)
 		errors = append(errors, errs...)
 		hrRule.BackendRefs = backendRefs
 
+		//  ** end
 		httpRoute.Spec.Rules = append(httpRoute.Spec.Rules, hrRule)
 	}
 
 	return httpRoute, errors
 }
 
-func (rg *ingressRuleGroup) configureBackendRef(servicePorts map[types.NamespacedName]map[string]int32, paths []ingressPath) ([]gatewayv1.HTTPBackendRef, field.ErrorList) {
-	var errors field.ErrorList
-	var backendRefs []gatewayv1.HTTPBackendRef
-
-	for i, path := range paths {
-		backendRef, err := ToBackendRef(rg.namespace, path.path.Backend, servicePorts, field.NewPath("paths", "backends").Index(i))
-		if err != nil {
-			errors = append(errors, err)
-			continue
-		}
-		backendRefs = append(backendRefs, gatewayv1.HTTPBackendRef{BackendRef: *backendRef})
-	}
-
-	return removeBackendRefsDuplicates(backendRefs), errors
-}
-
-func getPathMatchKey(ip ingressPath) pathMatchKey {
+func getPathMatchKey(ip i2gw.IngressPath) pathMatchKey {
 	var pathType string
-	if ip.path.PathType != nil {
-		pathType = string(*ip.path.PathType)
+	if ip.Path.PathType != nil {
+		pathType = string(*ip.Path.PathType)
 	}
-	return pathMatchKey(fmt.Sprintf("%s/%s", pathType, ip.path.Path))
+	return pathMatchKey(fmt.Sprintf("%s/%s", pathType, ip.Path.Path))
 }
 
-func toHTTPRouteMatch(routePath networkingv1.HTTPIngressPath, path *field.Path, toImplementationSpecificPathMatch i2gw.ImplementationSpecificHTTPPathTypeMatchConverter) (*gatewayv1.HTTPRouteMatch, *field.Error) {
+func ToHTTPRouteMatch(routePath networkingv1.HTTPIngressPath, path *field.Path, toImplementationSpecificPathMatch i2gw.ImplementationSpecificHTTPPathTypeMatchConverter) (*gatewayv1.HTTPRouteMatch, *field.Error) {
 	pmPrefix := gatewayv1.PathMatchPathPrefix
 	pmExact := gatewayv1.PathMatchExact
 

@@ -21,6 +21,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	apiv1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
@@ -46,19 +47,7 @@ func GetIngressClass(ingress networkingv1.Ingress) string {
 	return ingressClass
 }
 
-type IngressRuleGroup struct {
-	Namespace    string
-	Name         string
-	IngressClass string
-	Host         string
-	TLS          []networkingv1.IngressTLS
-	Rules        []Rule
-}
 
-type Rule struct {
-	Ingress     networkingv1.Ingress
-	IngressRule networkingv1.IngressRule
-}
 
 func GetRuleGroups(ingresses []networkingv1.Ingress) map[string]IngressRuleGroup {
 	ruleGroups := make(map[string]IngressRuleGroup)
@@ -81,8 +70,8 @@ func GetRuleGroups(ingresses []networkingv1.Ingress) map[string]IngressRuleGroup
 			}
 			rg.TLS = append(rg.TLS, ingress.Spec.TLS...)
 			rg.Rules = append(rg.Rules, Rule{
-				Ingress:     ingress,
-				IngressRule: rule,
+				Ingress:     &ingress,
+				IngressRule: &rule,
 			})
 
 			ruleGroups[rgKey] = rg
@@ -109,6 +98,21 @@ func NameFromHost(host string) string {
 
 func RouteName(ingressName, host string) string {
 	return fmt.Sprintf("%s-%s", ingressName, NameFromHost(host))
+}
+
+func ConfigureBackendRef(servicePorts map[types.NamespacedName]map[string]int32, paths []i2gw.IngressPath, namespace string) ([]gatewayv1.HTTPBackendRef, field.ErrorList) {
+	var errors field.ErrorList
+	var backendRefs []gatewayv1.HTTPBackendRef
+
+	for i, path := range paths {
+		backendRef, err := ToBackendRef(namespace, path.Path.Backend, servicePorts, field.NewPath("paths", "backends").Index(i))
+		if err != nil {
+			errors = append(errors, err)
+			continue
+		}
+		backendRefs = append(backendRefs, gatewayv1.HTTPBackendRef{BackendRef: *backendRef})
+	}
+	return removeBackendRefsDuplicates(backendRefs), errors
 }
 
 func ToBackendRef(namespace string, ib networkingv1.IngressBackend, servicePorts map[types.NamespacedName]map[string]int32, path *field.Path) (*gatewayv1.BackendRef, *field.Error) {
@@ -146,19 +150,19 @@ func ToBackendRef(namespace string, ib networkingv1.IngressBackend, servicePorts
 
 type orderedIngressPathsByMatchKey struct {
 	keys []pathMatchKey
-	data map[pathMatchKey][]ingressPath
+	data map[pathMatchKey][]i2gw.IngressPath
 }
 
-func groupIngressPathsByMatchKey(rules []ingressRule) orderedIngressPathsByMatchKey {
+func groupIngressPathsByMatchKey(rules []Rule) orderedIngressPathsByMatchKey {
 	// we track the keys in an additional slice in order to preserve the rules order
 	ingressPathsByMatchKey := orderedIngressPathsByMatchKey{
 		keys: []pathMatchKey{},
-		data: map[pathMatchKey][]ingressPath{},
+		data: map[pathMatchKey][] i2gw.IngressPath{},
 	}
 
 	for i, ir := range rules {
-		for j, path := range ir.rule.HTTP.Paths {
-			ip := ingressPath{ruleIdx: i, pathIdx: j, ruleType: "http", path: path}
+		for j, path := range ir.IngressRule.HTTP.Paths {
+			ip := i2gw.IngressPath{RuleIdx: i, PathIdx: j, RuleType: "http", Path: path, Ingress: ir.Ingress}
 			pmKey := getPathMatchKey(ip)
 			if _, ok := ingressPathsByMatchKey.data[pmKey]; !ok {
 				ingressPathsByMatchKey.keys = append(ingressPathsByMatchKey.keys, pmKey)

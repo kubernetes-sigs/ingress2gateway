@@ -36,7 +36,7 @@ func GRPCServicesFeature(ingresses []networkingv1.Ingress, _ map[types.Namespace
 	for _, rg := range ruleGroups {
 		for _, rule := range rg.Rules {
 			if grpcServices, exists := rule.Ingress.Annotations[nginxGRPCServicesAnnotation]; exists && grpcServices != "" {
-				errs = append(errs, processGRPCServicesAnnotation(rule.Ingress, grpcServices, ir)...)
+				errs = append(errs, processGRPCServicesAnnotation(*rule.Ingress, grpcServices, ir)...)
 			}
 		}
 	}

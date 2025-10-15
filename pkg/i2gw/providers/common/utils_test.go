@@ -19,6 +19,7 @@ package common
 import (
 	"testing"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/stretchr/testify/require"
 	apiv1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -33,22 +34,22 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 
 	testCases := []struct {
 		name     string
-		rules    []ingressRule
+		rules    []Rule
 		expected orderedIngressPathsByMatchKey
 	}{
 		{
 			name:  "no rules",
-			rules: []ingressRule{},
+			rules: []Rule{},
 			expected: orderedIngressPathsByMatchKey{
 				keys: []pathMatchKey{},
-				data: map[pathMatchKey][]ingressPath{},
+				data: map[pathMatchKey][]i2gw.IngressPath{},
 			},
 		},
 		{
 			name: "1 rule with 1 match",
-			rules: []ingressRule{
+			rules: []Rule{
 				{
-					networkingv1.IngressRule{
+					IngressRule: &networkingv1.IngressRule{
 						IngressRuleValue: networkingv1.IngressRuleValue{
 							HTTP: &networkingv1.HTTPIngressRuleValue{
 								Paths: []networkingv1.HTTPIngressPath{
@@ -74,13 +75,13 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 				keys: []pathMatchKey{
 					"Prefix//test",
 				},
-				data: map[pathMatchKey][]ingressPath{
+				data: map[pathMatchKey][]i2gw.IngressPath{
 					"Prefix//test": {
 						{
-							ruleIdx:  0,
-							pathIdx:  0,
-							ruleType: "http",
-							path: networkingv1.HTTPIngressPath{
+							RuleIdx:  0,
+							PathIdx:  0,
+							RuleType: "http",
+							Path: networkingv1.HTTPIngressPath{
 								Path:     "/test",
 								PathType: &iPrefix,
 								Backend: networkingv1.IngressBackend{
@@ -99,9 +100,9 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 		},
 		{
 			name: "1 rule, multiple matches, different path",
-			rules: []ingressRule{
+			rules: []Rule{
 				{
-					networkingv1.IngressRule{
+					IngressRule: &networkingv1.IngressRule{
 						IngressRuleValue: networkingv1.IngressRuleValue{
 							HTTP: &networkingv1.HTTPIngressRuleValue{
 								Paths: []networkingv1.HTTPIngressPath{
@@ -140,13 +141,13 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 					"Prefix//test1",
 					"Prefix//test2",
 				},
-				data: map[pathMatchKey][]ingressPath{
+				data: map[pathMatchKey][]i2gw.IngressPath{
 					"Prefix//test1": {
 						{
-							ruleIdx:  0,
-							pathIdx:  0,
-							ruleType: "http",
-							path: networkingv1.HTTPIngressPath{
+							RuleIdx:  0,
+							PathIdx:  0,
+							RuleType: "http",
+							Path: networkingv1.HTTPIngressPath{
 								Path:     "/test1",
 								PathType: &iPrefix,
 								Backend: networkingv1.IngressBackend{
@@ -162,10 +163,10 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 					},
 					"Prefix//test2": {
 						{
-							ruleIdx:  0,
-							pathIdx:  1,
-							ruleType: "http",
-							path: networkingv1.HTTPIngressPath{
+							RuleIdx:  0,
+							PathIdx:  1,
+							RuleType: "http",
+							Path: networkingv1.HTTPIngressPath{
 								Path:     "/test2",
 								PathType: &iPrefix,
 								Backend: networkingv1.IngressBackend{
@@ -184,9 +185,9 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 		},
 		{
 			name: "multiple rules with single matches, same path",
-			rules: []ingressRule{
+			rules: []Rule{
 				{
-					networkingv1.IngressRule{
+					IngressRule: &networkingv1.IngressRule{
 						IngressRuleValue: networkingv1.IngressRuleValue{
 							HTTP: &networkingv1.HTTPIngressRuleValue{
 								Paths: []networkingv1.HTTPIngressPath{
@@ -208,7 +209,7 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 					},
 				},
 				{
-					networkingv1.IngressRule{
+					IngressRule: &networkingv1.IngressRule{
 						IngressRuleValue: networkingv1.IngressRuleValue{
 							HTTP: &networkingv1.HTTPIngressRuleValue{
 								Paths: []networkingv1.HTTPIngressPath{
@@ -234,13 +235,13 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 				keys: []pathMatchKey{
 					"Prefix//test",
 				},
-				data: map[pathMatchKey][]ingressPath{
+				data: map[pathMatchKey][]i2gw.IngressPath{
 					"Prefix//test": {
 						{
-							ruleIdx:  0,
-							pathIdx:  0,
-							ruleType: "http",
-							path: networkingv1.HTTPIngressPath{
+							RuleIdx:  0,
+							PathIdx:  0,
+							RuleType: "http",
+							Path: networkingv1.HTTPIngressPath{
 								Path:     "/test",
 								PathType: &iPrefix,
 								Backend: networkingv1.IngressBackend{
@@ -254,10 +255,10 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 							},
 						},
 						{
-							ruleIdx:  1,
-							pathIdx:  0,
-							ruleType: "http",
-							path: networkingv1.HTTPIngressPath{
+							RuleIdx:  1,
+							PathIdx:  0,
+							RuleType: "http",
+							Path: networkingv1.HTTPIngressPath{
 								Path:     "/test",
 								PathType: &iPrefix,
 								Backend: networkingv1.IngressBackend{
@@ -276,9 +277,9 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 		},
 		{
 			name: "multiple rules with single matches, different path",
-			rules: []ingressRule{
+			rules: []Rule{
 				{
-					networkingv1.IngressRule{
+					IngressRule: &networkingv1.IngressRule{
 						IngressRuleValue: networkingv1.IngressRuleValue{
 							HTTP: &networkingv1.HTTPIngressRuleValue{
 								Paths: []networkingv1.HTTPIngressPath{
@@ -300,7 +301,7 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 					},
 				},
 				{
-					networkingv1.IngressRule{
+					IngressRule: &networkingv1.IngressRule{
 						IngressRuleValue: networkingv1.IngressRuleValue{
 							HTTP: &networkingv1.HTTPIngressRuleValue{
 								Paths: []networkingv1.HTTPIngressPath{
@@ -327,13 +328,13 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 					"Prefix//test",
 					"Prefix//test2",
 				},
-				data: map[pathMatchKey][]ingressPath{
+				data: map[pathMatchKey][]i2gw.IngressPath{
 					"Prefix//test": {
 						{
-							ruleIdx:  0,
-							pathIdx:  0,
-							ruleType: "http",
-							path: networkingv1.HTTPIngressPath{
+							RuleIdx:  0,
+							PathIdx:  0,
+							RuleType: "http",
+							Path: networkingv1.HTTPIngressPath{
 								Path:     "/test",
 								PathType: &iPrefix,
 								Backend: networkingv1.IngressBackend{
@@ -349,10 +350,10 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 					},
 					"Prefix//test2": {
 						{
-							ruleIdx:  1,
-							pathIdx:  0,
-							ruleType: "http",
-							path: networkingv1.HTTPIngressPath{
+							RuleIdx:  1,
+							PathIdx:  0,
+							RuleType: "http",
+							Path: networkingv1.HTTPIngressPath{
 								Path:     "/test2",
 								PathType: &iPrefix,
 								Backend: networkingv1.IngressBackend{
@@ -371,9 +372,9 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 		},
 		{
 			name: "multiple rules with multiple matches, mixed paths",
-			rules: []ingressRule{
+			rules: []Rule{
 				{
-					networkingv1.IngressRule{
+					IngressRule: &networkingv1.IngressRule{
 						IngressRuleValue: networkingv1.IngressRuleValue{
 							HTTP: &networkingv1.HTTPIngressRuleValue{
 								Paths: []networkingv1.HTTPIngressPath{
@@ -407,7 +408,7 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 					},
 				},
 				{
-					networkingv1.IngressRule{
+					IngressRule: &networkingv1.IngressRule{
 						IngressRuleValue: networkingv1.IngressRuleValue{
 							HTTP: &networkingv1.HTTPIngressRuleValue{
 								Paths: []networkingv1.HTTPIngressPath{
@@ -447,13 +448,13 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 					"Prefix//test12",
 					"Prefix//test21",
 				},
-				data: map[pathMatchKey][]ingressPath{
+				data: map[pathMatchKey][]i2gw.IngressPath{
 					"Prefix//test11": {
 						{
-							ruleIdx:  0,
-							pathIdx:  0,
-							ruleType: "http",
-							path: networkingv1.HTTPIngressPath{
+							RuleIdx:  0,
+							PathIdx:  0,
+							RuleType: "http",
+							Path: networkingv1.HTTPIngressPath{
 								Path:     "/test11",
 								PathType: &iPrefix,
 								Backend: networkingv1.IngressBackend{
@@ -467,10 +468,10 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 							},
 						},
 						{
-							ruleIdx:  1,
-							pathIdx:  1,
-							ruleType: "http",
-							path: networkingv1.HTTPIngressPath{
+							RuleIdx:  1,
+							PathIdx:  1,
+							RuleType: "http",
+							Path: networkingv1.HTTPIngressPath{
 								Path:     "/test11",
 								PathType: &iPrefix,
 								Backend: networkingv1.IngressBackend{
@@ -486,10 +487,10 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 					},
 					"Prefix//test12": {
 						{
-							ruleIdx:  0,
-							pathIdx:  1,
-							ruleType: "http",
-							path: networkingv1.HTTPIngressPath{
+							RuleIdx:  0,
+							PathIdx:  1,
+							RuleType: "http",
+							Path: networkingv1.HTTPIngressPath{
 								Path:     "/test12",
 								PathType: &iPrefix,
 								Backend: networkingv1.IngressBackend{
@@ -505,10 +506,10 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 					},
 					"Prefix//test21": {
 						{
-							ruleIdx:  1,
-							pathIdx:  0,
-							ruleType: "http",
-							path: networkingv1.HTTPIngressPath{
+							RuleIdx:  1,
+							PathIdx:  0,
+							RuleType: "http",
+							Path: networkingv1.HTTPIngressPath{
 								Path:     "/test21",
 								PathType: &iPrefix,
 								Backend: networkingv1.IngressBackend{
