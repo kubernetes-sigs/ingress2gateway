@@ -49,8 +49,8 @@ func GetIngressClass(ingress networkingv1.Ingress) string {
 
 
 
-func GetRuleGroups(ingresses []networkingv1.Ingress) map[string]IngressRuleGroup {
-	ruleGroups := make(map[string]IngressRuleGroup)
+func GetRuleGroups(ingresses []networkingv1.Ingress) map[string]ingressRuleGroup {
+	ruleGroups := make(map[string]ingressRuleGroup)
 
 	for _, ingress := range ingresses {
 		ingressClass := GetIngressClass(ingress)
@@ -60,7 +60,7 @@ func GetRuleGroups(ingresses []networkingv1.Ingress) map[string]IngressRuleGroup
 			rgKey := fmt.Sprintf("%s/%s/%s", ingress.Namespace, ingressClass, rule.Host)
 			rg, ok := ruleGroups[rgKey]
 			if !ok {
-				rg = IngressRuleGroup{
+				rg = ingressRuleGroup{
 					Namespace:    ingress.Namespace,
 					Name:         ingress.Name,
 					IngressClass: ingressClass,

@@ -184,7 +184,6 @@ func (c *resourcesToIRConverter) convert(storage *storage) (intermediate.IR, fie
 	// provider-specific features.
 	ir, errs := common.ToIR(ingressList, storage.ServicePorts, i2gw.ProviderImplementationSpecificOptions{
 		ToImplementationSpecificRules: IngressNginxHTTPRuleConverter,
-
 	})
 	if len(errs) > 0 {
 		return intermediate.IR{}, errs

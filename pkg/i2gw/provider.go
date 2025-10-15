@@ -90,8 +90,10 @@ type IRToGatewayAPIConverter interface {
 // ImplementationSpecificHTTPPathTypeMatchConverter is an option to customize the ingress implementationSpecific
 // match type conversion.
 type ImplementationSpecificHTTPPathTypeMatchConverter func(*gatewayv1.HTTPPathMatch)
-type ImplementationSpecificHTTPRuleConverter func([]IngressPath, *field.Path, map[types.NamespacedName]map[string]int32, string) ([]gatewayv1.HTTPRouteRule, field.ErrorList)
 
+// ImplementationSpecificHTTPRuleConverter is an option to customize the ingress implementationSpecific
+// rule conversion.
+type ImplementationSpecificHTTPRuleConverter func([]IngressPath, *field.Path, map[types.NamespacedName]map[string]int32, string) ([]gatewayv1.HTTPRouteRule, field.ErrorList)
 
 type IngressPath struct {
 	RuleIdx  int
