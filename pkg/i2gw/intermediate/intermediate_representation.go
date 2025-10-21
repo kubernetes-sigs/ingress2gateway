@@ -107,8 +107,10 @@ type BackendSource struct {
 	// Source Ingress that contributed this backend
 	Ingress *networkingv1.Ingress
 
-	// The specific rule and path index in the source Ingress
-	// -1 represents the default backend
-	IngressRuleIdx int
-	IngressPathIdx int
+	// Exactly one of Path or DefaultBackend must be non-nil.
+	// Path points to the specific HTTPIngressPath that contributed this backend.
+	Path *networkingv1.HTTPIngressPath
+	
+	// DefaultBackend points to the Ingress's spec.defaultBackend that contributed this backend.
+	DefaultBackend *networkingv1.IngressBackend
 }

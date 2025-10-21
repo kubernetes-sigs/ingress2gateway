@@ -274,8 +274,7 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImpleme
 				{
 					{
 						Ingress:        db.sourceIngress,
-						IngressRuleIdx: -1,
-						IngressPathIdx: -1,
+						DefaultBackend: &db.backend,
 					},
 				},
 			}
@@ -401,9 +400,8 @@ func (rg *ingressRuleGroup) configureBackendRef(servicePorts map[types.Namespace
 		
 		// Track source for this backend
 		sources = append(sources, intermediate.BackendSource{
-			Ingress:        path.sourceIngress,
-			IngressRuleIdx: path.ruleIdx,
-			IngressPathIdx: path.pathIdx,
+			Ingress: path.sourceIngress,
+			Path:    &path.path,
 		})
 	}
 
