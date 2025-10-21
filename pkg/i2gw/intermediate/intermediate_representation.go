@@ -109,7 +109,7 @@ type BackendSource struct {
 	// Exactly one of Path or DefaultBackend must be non-nil.
 	// Path points to the specific HTTPIngressPath that contributed this backend.
 	Path *networkingv1.HTTPIngressPath
-	
+
 	// DefaultBackend points to the Ingress's spec.defaultBackend that contributed this backend.
 	DefaultBackend *networkingv1.IngressBackend
 }

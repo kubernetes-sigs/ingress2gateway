@@ -100,14 +100,14 @@ func canaryFeature(ingresses []networkingv1.Ingress, servicePorts map[types.Name
 			var canaryBackend *gatewayv1.HTTPBackendRef
 			var nonCanaryBackend *gatewayv1.HTTPBackendRef
 			var canaryConfig canaryConfig
-			
+
 			for backendIdx, source := range backendSources {
 				if source.Ingress == nil {
 					continue
 				}
-				
+
 				backendRef := &httpRouteContext.HTTPRoute.Spec.Rules[ruleIdx].BackendRefs[backendIdx]
-				
+
 				if source.Ingress.Annotations[canaryAnnotation] == "true" {
 					if canaryBackend != nil {
 						return field.ErrorList{
@@ -140,9 +140,9 @@ func canaryFeature(ingresses []networkingv1.Ingress, servicePorts map[types.Name
 				if canaryWeight > canaryConfig.weightTotal {
 					canaryWeight = canaryConfig.weightTotal
 				}
-				
+
 				canaryBackend.Weight = &canaryWeight
-				
+
 				if nonCanaryBackend != nil {
 					nonCanaryWeight := canaryConfig.weightTotal - canaryWeight
 					nonCanaryBackend.Weight = &nonCanaryWeight

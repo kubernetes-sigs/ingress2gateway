@@ -144,18 +144,19 @@ type ingressRule struct {
 }
 
 type ingressDefaultBackend struct {
-	name         string
-	namespace    string
-	ingressClass string
-	backend      networkingv1.IngressBackend
-	sourceIngress      *networkingv1.Ingress // Source tracking
+	name          string
+	namespace     string
+	ingressClass  string
+	backend       networkingv1.IngressBackend
+	sourceIngress *networkingv1.Ingress
 }
 
 type ingressPath struct {
-	ruleIdx  int
-	pathIdx  int
-	ruleType string
-	path     networkingv1.HTTPIngressPath
+	// These are for source error propagation
+	ruleIdx       int
+	pathIdx       int
+	ruleType      string
+	path          networkingv1.HTTPIngressPath
 	sourceIngress *networkingv1.Ingress
 }
 
@@ -166,11 +167,11 @@ func (a *ingressAggregator) addIngress(ingress networkingv1.Ingress) {
 	}
 	if ingress.Spec.DefaultBackend != nil {
 		a.defaultBackends = append(a.defaultBackends, ingressDefaultBackend{
-			name:         ingress.Name,
-			namespace:    ingress.Namespace,
-			ingressClass: ingressClass,
-			backend:      *ingress.Spec.DefaultBackend,
-			sourceIngress:      &ingress,
+			name:          ingress.Name,
+			namespace:     ingress.Namespace,
+			ingressClass:  ingressClass,
+			backend:       *ingress.Spec.DefaultBackend,
+			sourceIngress: &ingress,
 		})
 	}
 }
@@ -397,7 +398,7 @@ func (rg *ingressRuleGroup) configureBackendRef(servicePorts map[types.Namespace
 			continue
 		}
 		backendRefs = append(backendRefs, gatewayv1.HTTPBackendRef{BackendRef: *backendRef})
-		
+
 		// Track source for this backend
 		sources = append(sources, intermediate.BackendSource{
 			Ingress: path.sourceIngress,
