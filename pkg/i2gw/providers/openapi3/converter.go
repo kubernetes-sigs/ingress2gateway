@@ -299,7 +299,7 @@ func (c *resourcesToIRConverter) toListener(protocolAndHostname string, _ int) g
 			tlsSecretRef.Namespace = common.PtrTo(gatewayv1.Namespace(c.tlsSecretRef.Namespace))
 		}
 
-		listener.TLS = &gatewayv1.GatewayTLSConfig{
+		listener.TLS = &gatewayv1.ListenerTLSConfig{
 			CertificateRefs: []gatewayv1.SecretObjectReference{tlsSecretRef},
 		}
 	}

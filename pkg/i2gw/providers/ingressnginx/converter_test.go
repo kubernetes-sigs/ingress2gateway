@@ -308,7 +308,7 @@ func Test_ToIR(t *testing.T) {
 										Port:     443,
 										Protocol: gatewayv1.HTTPSProtocolType,
 										Hostname: ptrTo(gatewayv1.Hostname("bar.example.com")),
-										TLS: &gatewayv1.GatewayTLSConfig{
+										TLS: &gatewayv1.ListenerTLSConfig{
 											CertificateRefs: []gatewayv1.SecretObjectReference{
 												{Name: "example-com"},
 											},
@@ -325,7 +325,7 @@ func Test_ToIR(t *testing.T) {
 										Port:     443,
 										Protocol: gatewayv1.HTTPSProtocolType,
 										Hostname: ptrTo(gatewayv1.Hostname("foo.example.com")),
-										TLS: &gatewayv1.GatewayTLSConfig{
+										TLS: &gatewayv1.ListenerTLSConfig{
 											CertificateRefs: []gatewayv1.SecretObjectReference{
 												{Name: "example-com"},
 											},

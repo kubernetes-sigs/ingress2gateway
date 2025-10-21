@@ -20,7 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
-	gatewayv1alpha3 "sigs.k8s.io/gateway-api/apis/v1alpha3"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
@@ -39,7 +38,7 @@ type IR struct {
 	UDPRoutes      map[types.NamespacedName]gatewayv1alpha2.UDPRoute
 	GRPCRoutes     map[types.NamespacedName]gatewayv1.GRPCRoute
 
-	BackendTLSPolicies map[types.NamespacedName]gatewayv1alpha3.BackendTLSPolicy
+	BackendTLSPolicies map[types.NamespacedName]gatewayv1.BackendTLSPolicy
 	ReferenceGrants    map[types.NamespacedName]gatewayv1beta1.ReferenceGrant
 }
 

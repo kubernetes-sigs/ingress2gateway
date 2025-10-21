@@ -219,6 +219,10 @@ func findAndConvertFiltersForGRPCPath(httpRules []gatewayv1.HTTPRouteRule, grpcP
 						notify(notifications.WarningNotification, "RequestMirror is not applicable to gRPC")
 					case gatewayv1.HTTPRouteFilterExtensionRef:
 						notify(notifications.WarningNotification, "ExtensionRef filters are not converted to gRPC equivalents")
+					case gatewayv1.HTTPRouteFilterCORS:
+						notify(notifications.WarningNotification, "CORS is not applicable to gRPC")
+					case gatewayv1.HTTPRouteFilterExternalAuth:
+						notify(notifications.WarningNotification, "ExternalAuth is not applicable to gRPC")
 					default:
 						notify(notifications.WarningNotification, "Unknown HTTPRouteFilter type: "+string(unsupportedType))
 					}
