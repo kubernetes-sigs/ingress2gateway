@@ -645,6 +645,186 @@ func Test_ToIR(t *testing.T) {
 			},
 			expectedErrors: field.ErrorList{},
 		},
+		{
+			name: "canary with same service in different rules - based on bad.yaml",
+			ingresses: OrderedIngressMap{
+				ingressNames: []types.NamespacedName{{Namespace: "default", Name: "production-ingress"}, {Namespace: "default", Name: "canary-ingress"}},
+				ingressObjects: map[types.NamespacedName]*networkingv1.Ingress{
+					{Namespace: "default", Name: "production-ingress"}: {
+						ObjectMeta: metav1.ObjectMeta{Name: "production-ingress", Namespace: "default"},
+						Spec: networkingv1.IngressSpec{
+							IngressClassName: ptrTo("nginx"),
+							Rules: []networkingv1.IngressRule{{
+								Host: "api.example.com",
+								IngressRuleValue: networkingv1.IngressRuleValue{
+									HTTP: &networkingv1.HTTPIngressRuleValue{
+										Paths: []networkingv1.HTTPIngressPath{
+											{
+												Path:     "/api",
+												PathType: &iPrefix,
+												Backend: networkingv1.IngressBackend{
+													Service: &networkingv1.IngressServiceBackend{
+														Name: "api-service-v1",
+														Port: networkingv1.ServiceBackendPort{Number: 80},
+													},
+												},
+											},
+											{
+												Path:     "/admin",
+												PathType: &iPrefix,
+												Backend: networkingv1.IngressBackend{
+													Service: &networkingv1.IngressServiceBackend{
+														Name: "admin-service",
+														Port: networkingv1.ServiceBackendPort{Number: 80},
+													},
+												},
+											},
+										},
+									},
+								},
+							}},
+						},
+					},
+					{Namespace: "default", Name: "canary-ingress"}: {
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "canary-ingress",
+							Namespace: "default",
+							Annotations: map[string]string{
+								"nginx.ingress.kubernetes.io/canary":        "true",
+								"nginx.ingress.kubernetes.io/canary-weight": "10",
+							},
+						},
+						Spec: networkingv1.IngressSpec{
+							IngressClassName: ptrTo("nginx"),
+							Rules: []networkingv1.IngressRule{{
+								Host: "api.example.com",
+								IngressRuleValue: networkingv1.IngressRuleValue{
+									HTTP: &networkingv1.HTTPIngressRuleValue{
+										Paths: []networkingv1.HTTPIngressPath{
+											{
+												Path:     "/api",
+												PathType: &iPrefix,
+												Backend: networkingv1.IngressBackend{
+													Service: &networkingv1.IngressServiceBackend{
+														Name: "api-service-v2",
+														Port: networkingv1.ServiceBackendPort{Number: 80},
+													},
+												},
+											},
+											{
+												Path:     "/admin",
+												PathType: &iPrefix,
+												Backend: networkingv1.IngressBackend{
+													Service: &networkingv1.IngressServiceBackend{
+														Name: "api-service-v1", // Same service as production's "/api" path!
+														Port: networkingv1.ServiceBackendPort{Number: 80},
+													},
+												},
+											},
+										},
+									},
+								},
+							}},
+						},
+					},
+				},
+			},
+			expectedIR: intermediate.IR{
+				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+					{Namespace: "default", Name: "nginx"}: {
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: "nginx", Namespace: "default"},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: "nginx",
+								Listeners: []gatewayv1.Listener{{
+									Name:     "api-example-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: ptrTo(gatewayv1.Hostname("api.example.com")),
+								}},
+							},
+						},
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+					{Namespace: "default", Name: "production-ingress-api-example-com"}: {
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: "production-ingress-api-example-com", Namespace: "default"},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: "nginx",
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{"api.example.com"},
+								Rules: []gatewayv1.HTTPRouteRule{
+									{
+										Matches: []gatewayv1.HTTPRouteMatch{{
+											Path: &gatewayv1.HTTPPathMatch{
+												Type:  &gPathPrefix,
+												Value: ptrTo("/api"),
+											},
+										}},
+										// Path "/api" has api-service-v1 from production and api-service-v2 from canary
+										BackendRefs: []gatewayv1.HTTPBackendRef{
+											{
+												BackendRef: gatewayv1.BackendRef{
+													BackendObjectReference: gatewayv1.BackendObjectReference{
+														Name: "api-service-v1",
+														Port: ptrTo(gatewayv1.PortNumber(80)),
+													},
+													Weight: ptrTo(int32(90)), // Production gets 90%
+												},
+											},
+											{
+												BackendRef: gatewayv1.BackendRef{
+													BackendObjectReference: gatewayv1.BackendObjectReference{
+														Name: "api-service-v2",
+														Port: ptrTo(gatewayv1.PortNumber(80)),
+													},
+													Weight: ptrTo(int32(10)), // Canary gets 10%
+												},
+											},
+										},
+									},
+									{
+										Matches: []gatewayv1.HTTPRouteMatch{{
+											Path: &gatewayv1.HTTPPathMatch{
+												Type:  &gPathPrefix,
+												Value: ptrTo("/admin"),
+											},
+										}},
+										// Path "/admin" has admin-service from production and api-service-v1 from canary
+										// Note: api-service-v1 appears in both rules but with different weights based on source!
+										BackendRefs: []gatewayv1.HTTPBackendRef{
+											{
+												BackendRef: gatewayv1.BackendRef{
+													BackendObjectReference: gatewayv1.BackendObjectReference{
+														Name: "admin-service",
+														Port: ptrTo(gatewayv1.PortNumber(80)),
+													},
+													Weight: ptrTo(int32(90)), // Production gets 90%
+												},
+											},
+											{
+												BackendRef: gatewayv1.BackendRef{
+													BackendObjectReference: gatewayv1.BackendObjectReference{
+														Name: "api-service-v1",
+														Port: ptrTo(gatewayv1.PortNumber(80)),
+													},
+													Weight: ptrTo(int32(10)), // Canary gets 10%
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
 	}
 
 	for _, tc := range testCases {

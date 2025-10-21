@@ -158,7 +158,13 @@ func groupIngressPathsByMatchKey(rules []ingressRule) orderedIngressPathsByMatch
 
 	for i, ir := range rules {
 		for j, path := range ir.rule.HTTP.Paths {
-			ip := ingressPath{ruleIdx: i, pathIdx: j, ruleType: "http", path: path}
+			ip := ingressPath{
+				ruleIdx:       i,
+				pathIdx:       j,
+				ruleType:      "http",
+				path:          path,
+				sourceIngress: ir.ingress,
+			}
 			pmKey := getPathMatchKey(ip)
 			if _, ok := ingressPathsByMatchKey.data[pmKey]; !ok {
 				ingressPathsByMatchKey.keys = append(ingressPathsByMatchKey.keys, pmKey)

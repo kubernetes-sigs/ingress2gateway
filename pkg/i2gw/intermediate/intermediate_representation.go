@@ -17,6 +17,7 @@ limitations under the License.
 package intermediate
 
 import (
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
@@ -71,6 +72,10 @@ type ProviderSpecificGatewayIR struct {
 type HTTPRouteContext struct {
 	gatewayv1.HTTPRoute
 	ProviderSpecificIR ProviderSpecificHTTPRouteIR
+
+	// RuleBackendSources tracks the source Ingress for each BackendRef in each rule.
+	// RuleBackendSources[i][j] is the source for HTTPRoute.Spec.Rules[i].BackendRefs[j]
+	RuleBackendSources [][]BackendSource
 }
 
 type ProviderSpecificHTTPRouteIR struct {
@@ -94,4 +99,15 @@ type ProviderSpecificServiceIR struct {
 	Kong         *KongServiceIR
 	Openapi3     *Openapi3ServiceIR
 	Nginx        *NginxServiceIR
+}
+
+// BackendSource tracks the source Ingress resource that contributed
+// a specific BackendRef to an HTTPRoute rule.
+type BackendSource struct {
+	// Source Ingress that contributed this backend
+	Ingress *networkingv1.Ingress
+
+	// The specific rule and path index in the source Ingress
+	IngressRuleIdx int
+	IngressPathIdx int
 }
