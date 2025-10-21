@@ -108,6 +108,7 @@ type BackendSource struct {
 	Ingress *networkingv1.Ingress
 
 	// The specific rule and path index in the source Ingress
+	// -1 represents the default backend
 	IngressRuleIdx int
 	IngressPathIdx int
 }

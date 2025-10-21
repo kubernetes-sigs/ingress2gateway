@@ -148,6 +148,7 @@ type ingressDefaultBackend struct {
 	namespace    string
 	ingressClass string
 	backend      networkingv1.IngressBackend
+	sourceIngress      *networkingv1.Ingress // Source tracking
 }
 
 type ingressPath struct {
@@ -169,6 +170,7 @@ func (a *ingressAggregator) addIngress(ingress networkingv1.Ingress) {
 			namespace:    ingress.Namespace,
 			ingressClass: ingressClass,
 			backend:      *ingress.Spec.DefaultBackend,
+			sourceIngress:      &ingress,
 		})
 	}
 }
@@ -266,8 +268,19 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImpleme
 			})
 		}
 
-		// Default backends don't have source tracking (they come from spec.defaultBackend)
-		httpRoutes = append(httpRoutes, httpRouteWithSources{route: httpRoute, sources: nil})
+		var sources [][]intermediate.BackendSource
+		if db.sourceIngress != nil {
+			sources = [][]intermediate.BackendSource{
+				{
+					{
+						Ingress:        db.sourceIngress,
+						IngressRuleIdx: -1,
+						IngressPathIdx: -1,
+					},
+				},
+			}
+		}
+		httpRoutes = append(httpRoutes, httpRouteWithSources{route: httpRoute, sources: sources})
 	}
 
 	gatewaysByKey := map[string]*gatewayv1.Gateway{}
