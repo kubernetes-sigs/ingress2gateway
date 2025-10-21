@@ -73,8 +73,7 @@ type HTTPRouteContext struct {
 	gatewayv1.HTTPRoute
 	ProviderSpecificIR ProviderSpecificHTTPRouteIR
 
-	// RuleBackendSources tracks the source Ingress for each BackendRef in each rule.
-	// RuleBackendSources[i][j] is the source for HTTPRoute.Spec.Rules[i].BackendRefs[j]
+	// RuleBackendSources[i][j] is the source of the jth backend in the ith element of HTTPRoute.Spec.Rules.
 	RuleBackendSources [][]BackendSource
 }
 
