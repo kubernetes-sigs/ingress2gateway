@@ -260,6 +260,7 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImpleme
 		}
 		httpRoute.SetGroupVersionKind(HTTPRouteGVK)
 
+		// We create an HTTPRoute with a single rule and a single backend.
 		backendRef, err := ToBackendRef(db.namespace, db.backend, a.servicePorts, field.NewPath(db.name, "paths", "backends").Index(i))
 		if err != nil {
 			errors = append(errors, err)
@@ -268,17 +269,14 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImpleme
 				BackendRefs: []gatewayv1.HTTPBackendRef{{BackendRef: *backendRef}},
 			})
 		}
-
-		var sources [][]intermediate.BackendSource
-		if db.sourceIngress != nil {
-			sources = [][]intermediate.BackendSource{
+		// Set the single source for this default backend.
+		sources := [][]intermediate.BackendSource{
+			{
 				{
-					{
-						Ingress:        db.sourceIngress,
-						DefaultBackend: &db.backend,
-					},
+					Ingress:        db.sourceIngress,
+					DefaultBackend: &db.backend,
 				},
-			}
+			},
 		}
 		httpRoutes = append(httpRoutes, httpRouteWithSources{route: httpRoute, sources: sources})
 	}
