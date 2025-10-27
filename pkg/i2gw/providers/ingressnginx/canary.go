@@ -73,23 +73,6 @@ func canaryFeature(ingresses []networkingv1.Ingress, servicePorts map[types.Name
 			continue
 		}
 
-		canaryEnabled := false
-		for _, backendSources := range httpRouteContext.RuleBackendSources {
-			for _, source := range backendSources {
-				if source.Ingress != nil && source.Ingress.Annotations[canaryAnnotation] == "true" {
-					canaryEnabled = true
-					break
-				}
-			}
-			if canaryEnabled {
-				break
-			}
-		}
-
-		if !canaryEnabled {
-			continue
-		}
-
 		for ruleIdx, backendSources := range httpRouteContext.RuleBackendSources {
 			if ruleIdx >= len(httpRouteContext.HTTPRoute.Spec.Rules) {
 				continue
@@ -101,6 +84,7 @@ func canaryFeature(ingresses []networkingv1.Ingress, servicePorts map[types.Name
 			var nonCanaryBackend *gatewayv1.HTTPBackendRef
 			var canaryConfig canaryConfig
 
+			// Find the canary and non-canary backends
 			for backendIdx, source := range backendSources {
 				if source.Ingress == nil {
 					continue
@@ -134,6 +118,7 @@ func canaryFeature(ingresses []networkingv1.Ingress, servicePorts map[types.Name
 				}
 			}
 
+			// If there is a canary backend, set weights
 			if canaryBackend != nil {
 				// Cap canary weight at total
 				canaryWeight := canaryConfig.weight
