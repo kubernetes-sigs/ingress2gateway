@@ -156,7 +156,13 @@ func groupIngressPathsByMatchKey(rules []ingressRule) orderedIngressPathsByMatch
 
 	for i, ir := range rules {
 		for j, path := range ir.rule.HTTP.Paths {
-			ip := ingressPath{ruleIdx: i, pathIdx: j, ruleType: "http", path: path}
+			ip := ingressPath{
+				ruleIdx:       i,
+				pathIdx:       j,
+				ruleType:      "http",
+				path:          path,
+				sourceIngress: ir.ingress,
+			}
 			pmKey := getPathMatchKey(ip)
 			if _, ok := ingressPathsByMatchKey.data[pmKey]; !ok {
 				ingressPathsByMatchKey.keys = append(ingressPathsByMatchKey.keys, pmKey)
@@ -194,8 +200,8 @@ type uniqueBackendRefsKey struct {
 
 // removeBackendRefsDuplicates removes duplicate backendRefs from a list of backendRefs.
 func removeBackendRefsDuplicates(backendRefs []gatewayv1.HTTPBackendRef) []gatewayv1.HTTPBackendRef {
-	var uniqueBackendRefs []gatewayv1.HTTPBackendRef
-	uniqueKeys := map[uniqueBackendRefsKey]struct{}{}
+
+	uniqueBackendRefs := map[uniqueBackendRefsKey]*gatewayv1.HTTPBackendRef{}
 
 	for _, backendRef := range backendRefs {
 		var k uniqueBackendRefsKey
@@ -219,14 +225,19 @@ func removeBackendRefsDuplicates(backendRefs []gatewayv1.HTTPBackendRef) []gatew
 			k.Port = *backendRef.Port
 		}
 
-		if _, exists := uniqueKeys[k]; exists {
-			continue
+		if oldRef, exists := uniqueBackendRefs[k]; exists {
+			if oldRef.Weight != nil && backendRef.Weight != nil {
+				*oldRef.Weight += *backendRef.Weight
+			}
+		} else {
+			uniqueBackendRefs[k] = backendRef.DeepCopy()
 		}
-
-		uniqueKeys[k] = struct{}{}
-		uniqueBackendRefs = append(uniqueBackendRefs, backendRef)
 	}
-	return uniqueBackendRefs
+	result := make([]gatewayv1.HTTPBackendRef, 0, len(uniqueBackendRefs))
+	for _, backendRef := range uniqueBackendRefs {
+		result = append(result, *backendRef)
+	}
+	return result
 }
 
 // ParseGRPCServiceMethod parses gRPC service and method from HTTP path
