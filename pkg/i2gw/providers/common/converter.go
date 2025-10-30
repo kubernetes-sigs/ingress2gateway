@@ -404,8 +404,7 @@ func (rg *ingressRuleGroup) configureBackendRef(servicePorts map[types.Namespace
 		})
 	}
 
-	// Remove duplicates while maintaining source tracking
-	// uniqueBackendRefs, uniqueSources := removeBackendRefsDuplicatesWithSources(backendRefs, sources)
+	// keep duplicates as they might have different sources.
 	return backendRefs, sources, errors
 }
 
