@@ -142,6 +142,129 @@ func Test_ToGatewayResources(t *testing.T) {
 				},
 			},
 		},
+		{
+			desc: "duplicated backends",
+			ir: intermediate.IR{
+				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+					{Namespace: "test", Name: "example-proxy"}: {
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: "example-proxy", Namespace: "test"},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: "example-proxy",
+								Listeners: []gatewayv1.Listener{{
+									Name:     "example-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: PtrTo(gatewayv1.Hostname("example.com")),
+								}},
+							},
+						},
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+					{Namespace: "test", Name: "duplicate-example-com"}: {
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: "duplicate-example-com", Namespace: "test"},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: "example-proxy",
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{"example.com"},
+								Rules: []gatewayv1.HTTPRouteRule{{
+									Matches: []gatewayv1.HTTPRouteMatch{{
+										Path: &gatewayv1.HTTPPathMatch{
+											Type:  &gPathPrefix,
+											Value: PtrTo("/foo"),
+										},
+									}},
+									BackendRefs: []gatewayv1.HTTPBackendRef{
+										{
+											BackendRef: gatewayv1.BackendRef{
+												BackendObjectReference: gatewayv1.BackendObjectReference{
+													Name: "example",
+													Port: PtrTo(gatewayv1.PortNumber(3000)),
+												},
+											},
+										},
+										{
+											BackendRef: gatewayv1.BackendRef{
+												BackendObjectReference: gatewayv1.BackendObjectReference{
+													Name: "example",
+													Port: PtrTo(gatewayv1.PortNumber(3000)),
+												},
+											},
+										},
+									},
+								}},
+							},
+						},
+					},
+				},
+			},
+			expectedGatewayResources: i2gw.GatewayResources{
+				Gateways: map[types.NamespacedName]gatewayv1.Gateway{
+					{Namespace: "test", Name: "example-proxy"}: {
+						TypeMeta: metav1.TypeMeta{
+							Kind:       "Gateway",
+							APIVersion: "gateway.networking.k8s.io/v1",
+						},
+						ObjectMeta: metav1.ObjectMeta{Name: "example-proxy", Namespace: "test"},
+						Spec: gatewayv1.GatewaySpec{
+							GatewayClassName: "example-proxy",
+							Listeners: []gatewayv1.Listener{{
+								Name:     "example-com-http",
+								Port:     80,
+								Protocol: gatewayv1.HTTPProtocolType,
+								Hostname: PtrTo(gatewayv1.Hostname("example.com")),
+							}},
+						},
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]gatewayv1.HTTPRoute{
+					{Namespace: "test", Name: "duplicate-example-com"}: {
+						TypeMeta: metav1.TypeMeta{
+							Kind:       "HTTPRoute",
+							APIVersion: "gateway.networking.k8s.io/v1",
+						},
+						ObjectMeta: metav1.ObjectMeta{Name: "duplicate-example-com", Namespace: "test"},
+						Spec: gatewayv1.HTTPRouteSpec{
+							CommonRouteSpec: gatewayv1.CommonRouteSpec{
+								ParentRefs: []gatewayv1.ParentReference{{
+									Name: "example-proxy",
+								}},
+							},
+							Hostnames: []gatewayv1.Hostname{"example.com"},
+							Rules: []gatewayv1.HTTPRouteRule{{
+								Matches: []gatewayv1.HTTPRouteMatch{{
+									Path: &gatewayv1.HTTPPathMatch{
+										Type:  &gPathPrefix,
+										Value: PtrTo("/foo"),
+									},
+								}},
+								BackendRefs: []gatewayv1.HTTPBackendRef{
+									{
+										BackendRef: gatewayv1.BackendRef{
+											BackendObjectReference: gatewayv1.BackendObjectReference{
+												Name: "example",
+												Port: PtrTo(gatewayv1.PortNumber(3000)),
+											},
+										},
+									},
+								},
+							}},
+						},
+						Status: gatewayv1.HTTPRouteStatus{
+							RouteStatus: gatewayv1.RouteStatus{
+								Parents: []gatewayv1.RouteParentStatus{},
+							},
+						},
+					},
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
 	}
 
 	for _, tc := range testCases {
