@@ -17,6 +17,7 @@ limitations under the License.
 package ingressnginx
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -30,6 +31,7 @@ func Test_parseCanaryConfig(t *testing.T) {
 		ingress        networkingv1.Ingress
 		expectedConfig canaryConfig
 		expectError    bool
+		errorContains  string
 	}{
 		{
 			name: "actually get weights",
@@ -74,7 +76,8 @@ func Test_parseCanaryConfig(t *testing.T) {
 					},
 				},
 			},
-			expectError: true,
+			expectError:   true,
+			errorContains: "invalid canary-weight annotation",
 		},
 		{
 			name: "errors on non integer weight total",
@@ -86,7 +89,8 @@ func Test_parseCanaryConfig(t *testing.T) {
 					},
 				},
 			},
-			expectError: true,
+			expectError:   true,
+			errorContains: "invalid canary-weight-total annotation",
 		},
 	}
 
@@ -97,6 +101,9 @@ func Test_parseCanaryConfig(t *testing.T) {
 			if tc.expectError {
 				if err == nil {
 					t.Fatalf("expected error but got none")
+				}
+				if tc.errorContains != "" && !strings.Contains(err.Error(), tc.errorContains) {
+					t.Fatalf("expected error containing %q, got %q", tc.errorContains, err.Error())
 				}
 				return
 			}
