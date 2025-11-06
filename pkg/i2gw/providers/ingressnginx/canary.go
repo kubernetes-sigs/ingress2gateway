@@ -49,7 +49,7 @@ func parseCanaryConfig(ingress *networkingv1.Ingress) (canaryConfig, error) {
 	}
 
 	if weight := ingress.Annotations[canaryWeightAnnotation]; weight != "" {
-		w, err := strconv.Atoi(weight)
+		w, err := strconv.ParseInt(weight, 10, 32)
 		if err != nil {
 			return config, fmt.Errorf("invalid canary-weight annotation %q: %w", weight, err)
 		}
@@ -60,7 +60,7 @@ func parseCanaryConfig(ingress *networkingv1.Ingress) (canaryConfig, error) {
 	}
 
 	if total := ingress.Annotations[canaryWeightTotalAnnotation]; total != "" {
-		wt, err := strconv.Atoi(total)
+		wt, err := strconv.ParseInt(total, 10, 32)
 		if err != nil {
 			return config, fmt.Errorf("invalid canary-weight-total annotation %q: %w", total, err)
 		}
@@ -77,7 +77,7 @@ func parseCanaryConfig(ingress *networkingv1.Ingress) (canaryConfig, error) {
 	return config, nil
 }
 
-func canaryFeature(ingresses []networkingv1.Ingress, servicePorts map[types.NamespacedName]map[string]int32, ir *intermediate.IR) field.ErrorList {
+func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *intermediate.IR) field.ErrorList {
 	ruleGroups := common.GetRuleGroups(ingresses)
 	var errList field.ErrorList
 
