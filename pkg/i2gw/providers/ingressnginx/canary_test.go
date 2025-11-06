@@ -278,4 +278,3 @@ func Test_parseCanaryConfig(t *testing.T) {
 		})
 	}
 }
-

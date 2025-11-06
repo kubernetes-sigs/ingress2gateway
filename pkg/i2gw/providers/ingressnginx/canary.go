@@ -110,14 +110,6 @@ func canaryFeature(ingresses []networkingv1.Ingress, servicePorts map[types.Name
 					continue
 				}
 
-				if backendIdx >= len(httpRouteContext.HTTPRoute.Spec.Rules[ruleIdx].BackendRefs) {
-					errList = append(errList, field.InternalError(
-						field.NewPath("httproute", httpRouteContext.HTTPRoute.Name, "spec", "rules").Index(ruleIdx).Child("backendRefs").Index(backendIdx),
-						fmt.Errorf("backend index %d exceeds available backends", backendIdx),
-					))
-					continue
-				}
-
 				backendRef := &httpRouteContext.HTTPRoute.Spec.Rules[ruleIdx].BackendRefs[backendIdx]
 
 				if source.Ingress.Annotations[canaryAnnotation] == "true" {
@@ -173,7 +165,7 @@ func canaryFeature(ingresses []networkingv1.Ingress, servicePorts map[types.Name
 				nonCanaryWeight := canaryConfig.weightTotal - canaryWeight
 				nonCanaryBackend.Weight = &nonCanaryWeight
 
-				notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set weights (canary: %d, non-canary: %d, total: %d)", 
+				notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set weights (canary: %d, non-canary: %d, total: %d)",
 					canarySourceIngress.Namespace, canarySourceIngress.Name, canaryWeight, nonCanaryWeight, canaryConfig.weightTotal), &httpRouteContext.HTTPRoute)
 			}
 		}
