@@ -167,14 +167,9 @@ func canaryFeature(ingresses []networkingv1.Ingress, servicePorts map[types.Name
 					continue
 				}
 
-				// Cap canary weight at total
 				canaryWeight := canaryConfig.weight
-				if canaryWeight > canaryConfig.weightTotal {
-					canaryWeight = canaryConfig.weightTotal
-				}
 
 				canaryBackend.Weight = &canaryWeight
-
 				nonCanaryWeight := canaryConfig.weightTotal - canaryWeight
 				nonCanaryBackend.Weight = &nonCanaryWeight
 

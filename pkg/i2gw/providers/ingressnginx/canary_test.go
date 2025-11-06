@@ -67,6 +67,70 @@ func Test_parseCanaryConfig(t *testing.T) {
 			expectError: false,
 		},
 		{
+			name: "weight set to 0",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/canary":        "true",
+						"nginx.ingress.kubernetes.io/canary-weight": "0",
+					},
+				},
+			},
+			expectedConfig: canaryConfig{
+				weight:      0,
+				weightTotal: 100,
+			},
+			expectError: false,
+		},
+		{
+			name: "weight set to 100",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/canary":        "true",
+						"nginx.ingress.kubernetes.io/canary-weight": "100",
+					},
+				},
+			},
+			expectedConfig: canaryConfig{
+				weight:      100,
+				weightTotal: 100,
+			},
+			expectError: false,
+		},
+		{
+			name: "custom weight total",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/canary":              "true",
+						"nginx.ingress.kubernetes.io/canary-weight":       "50",
+						"nginx.ingress.kubernetes.io/canary-weight-total": "200",
+					},
+				},
+			},
+			expectedConfig: canaryConfig{
+				weight:      50,
+				weightTotal: 200,
+			},
+			expectError: false,
+		},
+		{
+			name: "no weight annotation defaults to 0",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/canary": "true",
+					},
+				},
+			},
+			expectedConfig: canaryConfig{
+				weight:      0,
+				weightTotal: 100,
+			},
+			expectError: false,
+		},
+		{
 			name: "errors on non integer weight",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
@@ -91,6 +155,102 @@ func Test_parseCanaryConfig(t *testing.T) {
 			},
 			expectError:   true,
 			errorContains: "invalid canary-weight-total annotation",
+		},
+		{
+			name: "errors on invalid weight string",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/canary":        "true",
+						"nginx.ingress.kubernetes.io/canary-weight": "abc",
+					},
+				},
+			},
+			expectError:   true,
+			errorContains: "invalid canary-weight annotation",
+		},
+		{
+			name: "errors on invalid weight total string",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/canary":              "true",
+						"nginx.ingress.kubernetes.io/canary-weight-total": "xyz",
+					},
+				},
+			},
+			expectError:   true,
+			errorContains: "invalid canary-weight-total annotation",
+		},
+		{
+			name: "errors on negative weight",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/canary":        "true",
+						"nginx.ingress.kubernetes.io/canary-weight": "-10",
+					},
+				},
+			},
+			expectError:   true,
+			errorContains: "canary-weight must be non-negative",
+		},
+		{
+			name: "errors on zero weight total",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/canary":              "true",
+						"nginx.ingress.kubernetes.io/canary-weight-total": "0",
+					},
+				},
+			},
+			expectError:   true,
+			errorContains: "canary-weight-total must be positive",
+		},
+		{
+			name: "errors on negative weight total",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/canary":              "true",
+						"nginx.ingress.kubernetes.io/canary-weight-total": "-100",
+					},
+				},
+			},
+			expectError:   true,
+			errorContains: "canary-weight-total must be positive",
+		},
+		{
+			name: "errors when weight exceeds total",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/canary":              "true",
+						"nginx.ingress.kubernetes.io/canary-weight":       "150",
+						"nginx.ingress.kubernetes.io/canary-weight-total": "100",
+					},
+				},
+			},
+			expectError:   true,
+			errorContains: "canary-weight (150) exceeds canary-weight-total (100)",
+		},
+		{
+			name: "weight equal to total is valid",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/canary":              "true",
+						"nginx.ingress.kubernetes.io/canary-weight":       "200",
+						"nginx.ingress.kubernetes.io/canary-weight-total": "200",
+					},
+				},
+			},
+			expectedConfig: canaryConfig{
+				weight:      200,
+				weightTotal: 200,
+			},
+			expectError: false,
 		},
 	}
 
