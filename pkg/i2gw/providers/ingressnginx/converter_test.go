@@ -175,6 +175,134 @@ func Test_ToIR(t *testing.T) {
 			expectedErrors: field.ErrorList{},
 		},
 		{
+			name: "canary deployment total weight",
+			ingresses: OrderedIngressMap{
+				ingressNames: []types.NamespacedName{{Namespace: "default", Name: "production"}, {Namespace: "default", Name: "canary"}},
+				ingressObjects: map[types.NamespacedName]*networkingv1.Ingress{
+					{Namespace: "default", Name: "production"}: {
+						ObjectMeta: metav1.ObjectMeta{Name: "production", Namespace: "default"},
+						Spec: networkingv1.IngressSpec{
+							IngressClassName: ptrTo("ingress-nginx"),
+							Rules: []networkingv1.IngressRule{{
+								Host: "echo.prod.mydomain.com",
+								IngressRuleValue: networkingv1.IngressRuleValue{
+									HTTP: &networkingv1.HTTPIngressRuleValue{
+										Paths: []networkingv1.HTTPIngressPath{{
+											Path:     "/",
+											PathType: &iPrefix,
+											Backend: networkingv1.IngressBackend{
+												Resource: &apiv1.TypedLocalObjectReference{
+													Name:     "production",
+													Kind:     "StorageBucket",
+													APIGroup: ptrTo("vendor.example.com"),
+												},
+											},
+										}},
+									},
+								},
+							}},
+						},
+					},
+					{Namespace: "default", Name: "canary"}: {
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "canary",
+							Namespace: "default",
+							Annotations: map[string]string{
+								"nginx.ingress.kubernetes.io/canary":              "true",
+								"nginx.ingress.kubernetes.io/canary-weight":       "20",
+								"nginx.ingress.kubernetes.io/canary-weight-total": "200",
+							},
+						},
+						Spec: networkingv1.IngressSpec{
+							IngressClassName: ptrTo("ingress-nginx"),
+							Rules: []networkingv1.IngressRule{{
+								Host: "echo.prod.mydomain.com",
+								IngressRuleValue: networkingv1.IngressRuleValue{
+									HTTP: &networkingv1.HTTPIngressRuleValue{
+										Paths: []networkingv1.HTTPIngressPath{{
+											Path:     "/",
+											PathType: &iPrefix,
+											Backend: networkingv1.IngressBackend{
+												Resource: &apiv1.TypedLocalObjectReference{
+													Name:     "canary",
+													Kind:     "StorageBucket",
+													APIGroup: ptrTo("vendor.example.com"),
+												},
+											},
+										}},
+									},
+								},
+							}},
+						},
+					},
+				},
+			},
+			expectedIR: intermediate.IR{
+				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+					{Namespace: "default", Name: "ingress-nginx"}: {
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: "ingress-nginx", Namespace: "default"},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: "ingress-nginx",
+								Listeners: []gatewayv1.Listener{{
+									Name:     "echo-prod-mydomain-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: ptrTo(gatewayv1.Hostname("echo.prod.mydomain.com")),
+								}},
+							},
+						},
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+					{Namespace: "default", Name: "production-echo-prod-mydomain-com"}: {
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: "production-echo-prod-mydomain-com", Namespace: "default"},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: "ingress-nginx",
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{"echo.prod.mydomain.com"},
+								Rules: []gatewayv1.HTTPRouteRule{{
+									Matches: []gatewayv1.HTTPRouteMatch{{
+										Path: &gatewayv1.HTTPPathMatch{
+											Type:  &gPathPrefix,
+											Value: ptrTo("/"),
+										},
+									}},
+									BackendRefs: []gatewayv1.HTTPBackendRef{
+										{
+											BackendRef: gatewayv1.BackendRef{
+												BackendObjectReference: gatewayv1.BackendObjectReference{
+													Name:  "production",
+													Group: ptrTo(gatewayv1.Group("vendor.example.com")),
+													Kind:  ptrTo(gatewayv1.Kind("StorageBucket")),
+												},
+												Weight: ptrTo(int32(180)),
+											},
+										},
+										{
+											BackendRef: gatewayv1.BackendRef{
+												BackendObjectReference: gatewayv1.BackendObjectReference{
+													Name:  "canary",
+													Group: ptrTo(gatewayv1.Group("vendor.example.com")),
+													Kind:  ptrTo(gatewayv1.Kind("StorageBucket")),
+												},
+												Weight: ptrTo(int32(20)),
+											},
+										},
+									},
+								}},
+							},
+						},
+					},
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
+		{
 			name: "ImplementationSpecific HTTPRouteMatching",
 			ingresses: OrderedIngressMap{
 				ingressNames: []types.NamespacedName{{Namespace: "default", Name: "implementation-specific-regex"}},
