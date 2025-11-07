@@ -2,6 +2,7 @@
 
 ## Table of Contents
 
+- [v0.5.0-rc1](#v050-rc1)
 - [v0.4.0](#v040)
 - [v0.4.0-rc1](#v040-rc1)
 - [v0.3.0](#v030)
@@ -11,8 +12,35 @@
 - [v0.1.0](#v010)
 - [v0.1.0-rc1](#v010-rc1)
 
+## v0.5.0-rc1
+
+## Changes by Kind
+
+### Feature
+
+- Add parameter to ingress-nginx provider to select ingress class (#231, @adrianmoisey)
+- Add support for kyaml printer (#242, @rikatz)
+- Add support for named ports (#222, @gavinkflam)
+- Added new fields in IR to track the source Ingress of each HTTPRoute BackendRef.
+  - Fixed incorrect canary weight assignment when a Service appeared under different paths in both canary and non-canary Ingresses.
+  - Added some more validations to ingress-nginx canary annotation parsing. (#251, @Stevenjin8)
+- Adds support for the NGINX provider in ingress2gateway. (#224, @sarthyparty)
+- The version of the binary can now be printed with the `version` command (e.g. ingress2gateway version) (#216, @spencerhance)
+- Upgraded GatewayAPI to v1.4.0 (#248, @Stevenjin8)
+
+### Bug or Regression
+
+- Fix invocations for OIDC-enabled clusters from kubeconfig (#245, @jpiper)
+- Print notification table on stderr (#233, @rikatz)
+
+### Other (Cleanup or Flake)
+
+- Do not require namespace when using input-file flag, default to all-namespaces (#241, @rikatz)
+
 ## v0.4.0
+
 No changes since [v0.4.0-rc1](#v040-rc1)
+
 ## Changes by Kind
 
 ### Other (Cleanup or Flake)
