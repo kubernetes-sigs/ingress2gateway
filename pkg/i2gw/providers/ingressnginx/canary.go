@@ -26,219 +26,153 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-func canaryFeature(ingresses []networkingv1.Ingress, servicePorts map[types.NamespacedName]map[string]int32, ir *intermediate.IR) field.ErrorList {
+const (
+	canaryAnnotation            = "nginx.ingress.kubernetes.io/canary"
+	canaryWeightAnnotation      = "nginx.ingress.kubernetes.io/canary-weight"
+	canaryWeightTotalAnnotation = "nginx.ingress.kubernetes.io/canary-weight-total"
+)
+
+// canaryConfig holds the parsed canary configuration from a single Ingress
+type canaryConfig struct {
+	weight      int32
+	weightTotal int32
+}
+
+// parseCanaryConfig extracts canary weight configuration from an Ingress
+func parseCanaryConfig(ingress *networkingv1.Ingress) (canaryConfig, error) {
+	config := canaryConfig{
+		weight:      0,
+		weightTotal: 100, // default
+	}
+
+	if weight := ingress.Annotations[canaryWeightAnnotation]; weight != "" {
+		w, err := strconv.ParseInt(weight, 10, 32)
+		if err != nil {
+			return config, fmt.Errorf("invalid canary-weight annotation %q: %w", weight, err)
+		}
+		if w < 0 {
+			return config, fmt.Errorf("canary-weight must be non-negative, got %d", w)
+		}
+		config.weight = int32(w)
+	}
+
+	if total := ingress.Annotations[canaryWeightTotalAnnotation]; total != "" {
+		wt, err := strconv.ParseInt(total, 10, 32)
+		if err != nil {
+			return config, fmt.Errorf("invalid canary-weight-total annotation %q: %w", total, err)
+		}
+		if wt <= 0 {
+			return config, fmt.Errorf("canary-weight-total must be positive, got %d", wt)
+		}
+		config.weightTotal = int32(wt)
+	}
+
+	if config.weight > config.weightTotal {
+		return config, fmt.Errorf("canary-weight (%d) exceeds canary-weight-total (%d)", config.weight, config.weightTotal)
+	}
+
+	return config, nil
+}
+
+func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *intermediate.IR) field.ErrorList {
 	ruleGroups := common.GetRuleGroups(ingresses)
+	var errList field.ErrorList
 
 	for _, rg := range ruleGroups {
-		ingressPathsByMatchKey, errs := getPathsByMatchGroups(rg)
-		if len(errs) > 0 {
-			return errs
+		key := types.NamespacedName{Namespace: rg.Namespace, Name: common.RouteName(rg.Name, rg.Host)}
+		httpRouteContext, ok := ir.HTTPRoutes[key]
+		if !ok {
+			continue
 		}
 
-		// We're dividing ingresses based on rule groups.  If any path within a
-		// rule group is associated with an ingress object containing canary annotations,
-		// the entire rule group is affected.
-		canaryEnabled := false
-		for _, paths := range ingressPathsByMatchKey {
-			for _, path := range paths {
-				if path.extra.canary.enable {
-					canaryEnabled = true
-				}
+		for ruleIdx, backendSources := range httpRouteContext.RuleBackendSources {
+			if ruleIdx >= len(httpRouteContext.HTTPRoute.Spec.Rules) {
+				errList = append(errList, field.InternalError(
+					field.NewPath("httproute", httpRouteContext.HTTPRoute.Name, "spec", "rules").Index(ruleIdx),
+					fmt.Errorf("rule index %d exceeds available rules", ruleIdx),
+				))
+				continue
 			}
-		}
 
-		if canaryEnabled {
-			for _, paths := range ingressPathsByMatchKey {
-				path := paths[0]
+			// There must be a non canary backend and at most one canary backend
+			// This is done in place.
+			var canaryBackend *gatewayv1.HTTPBackendRef
+			var nonCanaryBackend *gatewayv1.HTTPBackendRef
+			var canaryConfig canaryConfig
+			var canarySourceIngress *networkingv1.Ingress
 
-				backendRefs, calculationErrs := calculateBackendRefWeight(rg.Namespace, servicePorts, paths)
-				errs = append(errs, calculationErrs...)
-
-				key := types.NamespacedName{Namespace: path.ingress.Namespace, Name: common.RouteName(rg.Name, rg.Host)}
-				httpRouteContext, ok := ir.HTTPRoutes[key]
-				if !ok {
-					// If there wasn't an HTTPRoute for this Ingress, we can skip it as something is wrong.
-					// All the available errors will be returned at the end.
+			// Find the canary and non-canary backends
+			for backendIdx, source := range backendSources {
+				if source.Ingress == nil {
 					continue
 				}
 
-				patchHTTPRouteWithBackendRefs(&httpRouteContext.HTTPRoute, backendRefs)
-			}
-			if len(errs) > 0 {
-				return errs
-			}
-		}
-	}
+				backendRef := &httpRouteContext.HTTPRoute.Spec.Rules[ruleIdx].BackendRefs[backendIdx]
 
-	return nil
-}
+				if source.Ingress.Annotations[canaryAnnotation] == "true" {
+					if canaryBackend != nil {
+						errList = append(errList, field.Invalid(
+							field.NewPath("httproute", httpRouteContext.HTTPRoute.Name, "spec", "rules").Index(ruleIdx).Child("backendRefs"),
+							fmt.Sprintf("ingresses %s/%s and %s/%s", canarySourceIngress.Namespace, canarySourceIngress.Name, source.Ingress.Namespace, source.Ingress.Name),
+							"at most one canary backend is allowed per rule",
+						))
+						continue
+					}
 
-func getPathsByMatchGroups(rg common.IngressRuleGroup) (map[pathMatchKey][]ingressPath, field.ErrorList) {
-	ingressPathsByMatchKey := map[pathMatchKey][]ingressPath{}
+					config, err := parseCanaryConfig(source.Ingress)
+					if err != nil {
+						errList = append(errList, field.Invalid(
+							field.NewPath("ingress", source.Ingress.Namespace, source.Ingress.Name, "metadata", "annotations"),
+							source.Ingress.Annotations,
+							fmt.Sprintf("failed to parse canary configuration: %v", err),
+						))
+						continue
+					}
 
-	for _, ir := range rg.Rules {
-
-		ingress := ir.Ingress
-		annotations, errs := parseCanaryAnnotations(ingress)
-		if len(errs) > 0 {
-			return nil, errs
-		}
-
-		extraFeatures := extra{canary: &annotations}
-
-		for _, path := range ir.IngressRule.HTTP.Paths {
-			ip := ingressPath{ingress: ingress, ruleType: "http", path: path, extra: &extraFeatures}
-			pmKey := getPathMatchKey(ip)
-			ingressPathsByMatchKey[pmKey] = append(ingressPathsByMatchKey[pmKey], ip)
-		}
-	}
-
-	return ingressPathsByMatchKey, nil
-}
-
-func patchHTTPRouteWithBackendRefs(httpRoute *gatewayv1.HTTPRoute, backendRefs []gatewayv1.HTTPBackendRef) {
-	var ruleExists bool
-	for _, backendRef := range backendRefs {
-
-		ruleExists = false
-
-		for _, rule := range httpRoute.Spec.Rules {
-			for i := range rule.BackendRefs {
-				if backendRef.Name == rule.BackendRefs[i].Name {
-					rule.BackendRefs[i].Weight = backendRef.Weight
-					ruleExists = true
-					break
+					canaryBackend = backendRef
+					canaryConfig = config
+					canarySourceIngress = source.Ingress
+				} else {
+					if nonCanaryBackend != nil {
+						errList = append(errList, field.Invalid(
+							field.NewPath("httproute", httpRouteContext.HTTPRoute.Name, "spec", "rules").Index(ruleIdx).Child("backendRefs"),
+							"multiple non-canary backends",
+							"at most one non-canary backend is allowed per rule when using canary",
+						))
+						continue
+					}
+					nonCanaryBackend = backendRef
 				}
 			}
-		}
 
-		if !ruleExists {
-			httpRoute.Spec.Rules = append(httpRoute.Spec.Rules, gatewayv1.HTTPRouteRule{
-				BackendRefs: []gatewayv1.HTTPBackendRef{backendRef},
-			})
-		}
-	}
-	if ruleExists {
-		notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress and patched %v fields", field.NewPath("httproute", "spec", "rules").Key("").Child("backendRefs")), httpRoute)
-	}
-}
+			// If there is a canary backend, validate and set weights
+			if canaryBackend != nil {
+				if nonCanaryBackend == nil {
+					errList = append(errList, field.Invalid(
+						field.NewPath("httproute", httpRouteContext.HTTPRoute.Name, "spec", "rules").Index(ruleIdx).Child("backendRefs"),
+						"canary backend without non-canary backend",
+						"a non-canary backend is required when using canary",
+					))
+					continue
+				}
 
-func calculateBackendRefWeight(namespace string, servicePorts map[types.NamespacedName]map[string]int32, paths []ingressPath) ([]gatewayv1.HTTPBackendRef, field.ErrorList) {
-	var errors field.ErrorList
-	var backendRefs []gatewayv1.HTTPBackendRef
+				canaryWeight := canaryConfig.weight
 
-	var numWeightedBackends, totalWeightSet int32
+				canaryBackend.Weight = &canaryWeight
+				nonCanaryWeight := canaryConfig.weightTotal - canaryWeight
+				nonCanaryBackend.Weight = &nonCanaryWeight
 
-	// This is the default value for nginx annotation nginx.ingress.kubernetes.io/canary-weight-total
-	var weightTotal = 100
-
-	for i, path := range paths {
-		backendRef, err := common.ToBackendRef(namespace, path.path.Backend, servicePorts, field.NewPath("paths", "backends").Index(i))
-		if err != nil {
-			errors = append(errors, err)
-			continue
-		}
-		if path.extra != nil && path.extra.canary != nil && path.extra.canary.enable {
-			weight := int32(path.extra.canary.weight)
-			backendRef.Weight = &weight
-			totalWeightSet += weight
-			numWeightedBackends++
-			if path.extra.canary.weightTotal > 0 {
-				weightTotal = path.extra.canary.weightTotal
-			}
-		}
-		backendRefs = append(backendRefs, gatewayv1.HTTPBackendRef{BackendRef: *backendRef})
-	}
-	if numWeightedBackends > 0 && numWeightedBackends < int32(len(backendRefs)) {
-		weightToSet := (int32(weightTotal) - totalWeightSet) / (int32(len(backendRefs)) - numWeightedBackends)
-		if weightToSet < 0 {
-			weightToSet = 0
-		}
-		for i := range backendRefs {
-			if backendRefs[i].Weight == nil {
-				backendRefs[i].Weight = &weightToSet
-			}
-			if *backendRefs[i].Weight > int32(weightTotal) {
-				backendRefs[i].Weight = ptr.To(int32(weightTotal))
+				notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set weights (canary: %d, non-canary: %d, total: %d)",
+					canarySourceIngress.Namespace, canarySourceIngress.Name, canaryWeight, nonCanaryWeight, canaryConfig.weightTotal), &httpRouteContext.HTTPRoute)
 			}
 		}
 	}
 
-	return backendRefs, errors
-}
-
-type canaryAnnotations struct {
-	enable           bool
-	headerKey        string
-	headerValue      string
-	headerRegexMatch bool
-	weight           int
-	weightTotal      int
-}
-
-func parseCanaryAnnotations(ingress networkingv1.Ingress) (canaryAnnotations, field.ErrorList) {
-	var errs field.ErrorList
-	var err error
-
-	fieldPath := field.NewPath(ingress.Name).Child("metadata").Child("annotations")
-
-	var annotations canaryAnnotations
-	if c := ingress.Annotations["nginx.ingress.kubernetes.io/canary"]; c == "true" {
-		annotations.enable = true
-		if cHeader := ingress.Annotations["nginx.ingress.kubernetes.io/canary-by-header"]; cHeader != "" {
-			annotations.headerKey = cHeader
-			annotations.headerValue = "always"
-		}
-		if cHeaderVal := ingress.Annotations["nginx.ingress.kubernetes.io/canary-by-header-value"]; cHeaderVal != "" {
-			annotations.headerValue = cHeaderVal
-		}
-		if cHeaderRegex := ingress.Annotations["nginx.ingress.kubernetes.io/canary-by-header-pattern"]; cHeaderRegex != "" {
-			annotations.headerValue = cHeaderRegex
-			annotations.headerRegexMatch = true
-		}
-		if cHeaderWeight := ingress.Annotations["nginx.ingress.kubernetes.io/canary-weight"]; cHeaderWeight != "" {
-			annotations.weight, err = strconv.Atoi(cHeaderWeight)
-			if err != nil {
-				errs = append(errs, field.TypeInvalid(fieldPath, "nginx.ingress.kubernetes.io/canary-weight", err.Error()))
-			}
-			annotations.weightTotal = 100
-		}
-		if cHeaderWeightTotal := ingress.Annotations["nginx.ingress.kubernetes.io/canary-weight-total"]; cHeaderWeightTotal != "" {
-			annotations.weightTotal, err = strconv.Atoi(cHeaderWeightTotal)
-			if err != nil {
-				errs = append(errs, field.TypeInvalid(fieldPath, "nginx.ingress.kubernetes.io/canary-weight-total", err.Error()))
-			}
-		}
+	if len(errList) > 0 {
+		return errList
 	}
-	return annotations, errs
-}
-
-func getPathMatchKey(ip ingressPath) pathMatchKey {
-	var pathType string
-	if ip.path.PathType != nil {
-		pathType = string(*ip.path.PathType)
-	}
-	var canaryHeaderKey string
-	if ip.extra != nil && ip.extra.canary != nil && ip.extra.canary.headerKey != "" {
-		canaryHeaderKey = ip.extra.canary.headerKey
-	}
-	return pathMatchKey(fmt.Sprintf("%s/%s/%s", pathType, ip.path.Path, canaryHeaderKey))
-}
-
-type pathMatchKey string
-
-type ingressPath struct {
-	ingress networkingv1.Ingress
-
-	ruleType string
-	path     networkingv1.HTTPIngressPath
-	extra    *extra
-}
-
-type extra struct {
-	canary *canaryAnnotations
+	return nil
 }

@@ -43,6 +43,11 @@ func ToGatewayResources(ir intermediate.IR) (i2gw.GatewayResources, field.ErrorL
 	}
 	for key, httpRouteContext := range ir.HTTPRoutes {
 		gatewayResources.HTTPRoutes[key] = httpRouteContext.HTTPRoute
+		hr := gatewayResources.HTTPRoutes[key]
+		for i := range hr.Spec.Rules {
+			hr.Spec.Rules[i].BackendRefs = removeBackendRefsDuplicates(hr.Spec.Rules[i].BackendRefs)
+		}
+		gatewayResources.HTTPRoutes[key] = hr
 	}
 	return gatewayResources, nil
 }
