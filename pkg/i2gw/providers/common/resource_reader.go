@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 
 	apiv1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -32,6 +33,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	kubeyaml "k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+var (
+	stdin     []byte
+	stdinOnce sync.Once
+	stdinErr  error
 )
 
 func ReadIngressesFromCluster(ctx context.Context, client client.Client, ingressClasses sets.Set[string]) (map[types.NamespacedName]*networkingv1.Ingress, error) {
@@ -52,10 +59,31 @@ func ReadIngressesFromCluster(ctx context.Context, client client.Client, ingress
 	return ingresses, nil
 }
 
-func ReadIngressesFromFile(filename, namespace string, ingressClasses sets.Set[string]) (map[types.NamespacedName]*networkingv1.Ingress, error) {
+// readFileOrStdin reads content from a file or stdin based on the filename.
+// If filename is "-", it reads from stdin, otherwise from the specified file.
+// Stdin content is stored in memory after the first read to allow multiple calls.
+func readFileOrStdin(filename string) ([]byte, error) {
+	if filename == "-" {
+		stdinOnce.Do(func() {
+			stdin, stdinErr = io.ReadAll(os.Stdin)
+			if stdinErr != nil {
+				stdinErr = fmt.Errorf("failed to read from stdin: %w", stdinErr)
+			}
+		})
+		return stdin, stdinErr
+	}
+
 	stream, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file %v: %w", filename, err)
+	}
+	return stream, nil
+}
+
+func ReadIngressesFromFile(filename, namespace string, ingressClasses sets.Set[string]) (map[types.NamespacedName]*networkingv1.Ingress, error) {
+	stream, err := readFileOrStdin(filename)
+	if err != nil {
+		return nil, err
 	}
 
 	unstructuredObjects, err := ExtractObjectsFromReader(bytes.NewReader(stream), namespace)
@@ -98,9 +126,9 @@ func ReadServicesFromCluster(ctx context.Context, client client.Client) (map[typ
 }
 
 func ReadServicesFromFile(filename, namespace string) (map[types.NamespacedName]*apiv1.Service, error) {
-	stream, err := os.ReadFile(filename)
+	stream, err := readFileOrStdin(filename)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read file %v: %w", filename, err)
+		return nil, err
 	}
 
 	unstructuredObjects, err := ExtractObjectsFromReader(bytes.NewReader(stream), namespace)
