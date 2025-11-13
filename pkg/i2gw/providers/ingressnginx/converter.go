@@ -25,7 +25,8 @@ import (
 
 // resourcesToIRConverter implements the ToIR function of i2gw.ResourcesToIRConverter interface.
 type resourcesToIRConverter struct {
-	featureParsers []i2gw.FeatureParser
+	featureParsers                []i2gw.FeatureParser
+	implementationSpecificOptions i2gw.ProviderImplementationSpecificOptions
 }
 
 // newResourcesToIRConverter returns an ingress-nginx resourcesToIRConverter instance.
@@ -33,6 +34,9 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 	return &resourcesToIRConverter{
 		featureParsers: []i2gw.FeatureParser{
 			canaryFeature,
+		},
+		implementationSpecificOptions: i2gw.ProviderImplementationSpecificOptions{
+			ToImplementationSpecificHTTPPathTypeMatch: implementationSpecificHTTPPathTypeMatch,
 		},
 	}
 }
@@ -44,7 +48,7 @@ func (c *resourcesToIRConverter) convert(storage *storage) (intermediate.IR, fie
 
 	// Convert plain ingress resources to gateway resources, ignoring all
 	// provider-specific features.
-	ir, errs := common.ToIR(ingressList, storage.ServicePorts, i2gw.ProviderImplementationSpecificOptions{})
+	ir, errs := common.ToIR(ingressList, storage.ServicePorts, c.implementationSpecificOptions)
 	if len(errs) > 0 {
 		return intermediate.IR{}, errs
 	}
