@@ -6,6 +6,10 @@ The project supports translating ingress-nginx specific annotations.
 
 To specify the name of the Ingress class to select, use `--ingress-nginx-ingress-class=ingress-nginx` (default to 'nginx').
 
+**ImplementationSpecific Path Type**
+
+The ingress-nginx provider supports the `ImplementationSpecific` path type. When this path type is used, paths are converted to `PathMatchRegularExpression` in the Gateway API HTTPRoute, as ingress-nginx treats ImplementationSpecific paths as regular expressions.
+
 Current supported annotations:
 
 - `nginx.ingress.kubernetes.io/canary`: If set to true will enable weighting backends.
