@@ -2,7 +2,6 @@
 
 approvers:
   - LiorLieberman
-  - mlavacca  
   - robscott
   - youngnick
 
@@ -12,3 +11,4 @@ reviewers:
 emeritus_approvers:
   - bowei
   - shaneutt
+  - mlavacca
