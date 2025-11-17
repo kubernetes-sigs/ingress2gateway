@@ -17,9 +17,7 @@ limitations under the License.
 package ingressnginx
 
 import (
-	"io"
-	"os"
-	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
@@ -65,18 +63,6 @@ var IngressClass = "nginx"
 
 // Test that the ingress-class provider-specific flag is honored by the resource reader
 func TestResourceReader_FiltersByIngressClass_FromFile(t *testing.T) {
-	dir := t.TempDir()
-	filePath := filepath.Join(dir, "ingress.yaml")
-
-	f, err := os.Create(filepath.Clean(filePath))
-	if err != nil {
-		t.Fatalf("failed to create file: %v", err)
-	}
-	defer f.Close()
-
-	if _, err = io.WriteString(f, ingressText); err != nil {
-		t.Fatalf("failed to write string: %v", err)
-	}
 
 	// Configure the ingress-nginx provider with the ingress-class flag set to "nginx".
 	conf := &i2gw.ProviderConf{
@@ -88,7 +74,9 @@ func TestResourceReader_FiltersByIngressClass_FromFile(t *testing.T) {
 	}
 
 	rr := newResourceReader(conf)
-	storage, err := rr.readResourcesFromFile(filePath)
+	reader := strings.NewReader(ingressText)
+
+	storage, err := rr.readResourcesFromFile(reader)
 	if err != nil {
 		t.Fatalf("readResourcesFromFile() error = %v", err)
 	}
