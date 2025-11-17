@@ -149,10 +149,14 @@ func Test_getNamespaceFilter(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			var inputPaths []string
+			if tc.inputfile != "" {
+				inputPaths = []string{tc.inputfile}
+			}
 			pr := PrintRunner{
 				namespace:     tc.namespace,
 				allNamespaces: tc.allNamespaces,
-				inputFile:     tc.inputfile,
+				inputPaths:    inputPaths,
 			}
 			err = pr.initializeNamespaceFilter()
 
@@ -318,5 +322,75 @@ func Test_getProviderSpecificFlags(t *testing.T) {
 				t.Errorf("Unexpected provider-specific flags, \n want: %+v\n got: %+v\n diff (-want +got):\n%s", tc.expected, actual, diff)
 			}
 		})
+	}
+}
+
+func TestDiscoverManifestFiles(t *testing.T) {
+	tmpDir := t.TempDir()
+	subDir := filepath.Join(tmpDir, "subdir")
+	nestedDir := filepath.Join(subDir, "nested")
+	os.MkdirAll(nestedDir, 0755)
+	files := map[string]string{
+		"test1.yaml": "test",
+		"test2.yml":  "test",
+		"test3.json": "test",
+		//.txt should be ignored
+		"test4.txt": "test",
+		//to test --recursive
+		"subdir/sub.yaml":           "test",
+		"subdir/nested/deep.yml":    "test",
+		"subdir/nested/config.json": "test",
+	}
+
+	for path, content := range files {
+		fullPath := filepath.Join(tmpDir, path)
+		os.WriteFile(fullPath, []byte(content), 0644)
+	}
+
+	tests := []struct {
+		name      string
+		recursive bool
+		wantCount int
+	}{
+		{"non-recursive finds only top level", false, 3},
+		{"recursive finds all manifest files", true, 6},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			filesFound, err := discoverManifestFiles(tmpDir, tt.recursive)
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+			if len(filesFound) != tt.wantCount {
+				t.Errorf("Expected %d files, got %d", tt.wantCount, len(filesFound))
+			}
+		})
+	}
+
+	// To test non-existing directory
+	_, err := discoverManifestFiles("/non/existent/path", false)
+	if err == nil {
+		t.Error("Expected error for non-existent directory")
+	}
+}
+
+func TestIsManifestFile(t *testing.T) {
+	tests := []struct {
+		path string
+		want bool
+	}{
+		{"test.yaml", true},
+		{"test.yml", true},
+		{"test.json", true},
+		{"test.txt", false},
+		{"test", false},
+	}
+
+	for _, tt := range tests {
+		got := isManifestFile(tt.path)
+		if got != tt.want {
+			t.Errorf("isManifestFile(%q) = %v, want %v", tt.path, got, tt.want)
+		}
 	}
 }
