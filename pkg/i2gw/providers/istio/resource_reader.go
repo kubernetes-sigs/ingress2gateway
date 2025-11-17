@@ -17,12 +17,10 @@ limitations under the License.
 package istio
 
 import (
-	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log"
-	"os"
-	"path/filepath"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
@@ -62,13 +60,9 @@ func (r *reader) readResourcesFromCluster(ctx context.Context) (*storage, error)
 	return res, nil
 }
 
-func (r *reader) readResourcesFromFile(_ context.Context, filename string) (*storage, error) {
-	stream, err := os.ReadFile(filepath.Clean(filename))
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file %v: %w", filename, err)
-	}
+func (r *reader) readResourcesFromFile(_ context.Context, reader io.Reader) (*storage, error) {
 
-	unstructuredObjects, err := common.ExtractObjectsFromReader(bytes.NewReader(stream), r.conf.Namespace)
+	unstructuredObjects, err := common.ExtractObjectsFromReader(reader, r.conf.Namespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract objects: %w", err)
 	}

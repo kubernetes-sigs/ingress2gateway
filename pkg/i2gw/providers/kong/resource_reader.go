@@ -17,11 +17,9 @@ limitations under the License.
 package kong
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
+	"io"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -72,22 +70,22 @@ func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage
 	return storage, nil
 }
 
-func (r *resourceReader) readResourcesFromFile(filename string) (*storage, error) {
+func (r *resourceReader) readResourcesFromFile(reader io.Reader) (*storage, error) {
 	storage := newResourceStorage()
 
-	ingresses, err := common.ReadIngressesFromFile(filename, r.conf.Namespace, sets.New(KongIngressClass))
+	ingresses, err := common.ReadIngressesFromFile(reader, r.conf.Namespace, sets.New(KongIngressClass))
 	if err != nil {
 		return nil, err
 	}
 	storage.Ingresses = ingresses
 
-	tcpIngresses, err := r.readTCPIngressesFromFile(filename)
+	tcpIngresses, err := r.readTCPIngressesFromFile(reader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read TCPIngresses: %w", err)
 	}
 	storage.TCPIngresses = tcpIngresses
 
-	services, err := common.ReadServicesFromFile(filename, r.conf.Namespace)
+	services, err := common.ReadServicesFromFile(reader, r.conf.Namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -122,13 +120,8 @@ func (r *resourceReader) readTCPIngressesFromCluster(ctx context.Context) ([]kon
 	return tcpIngresses, nil
 }
 
-func (r *resourceReader) readTCPIngressesFromFile(filename string) ([]kongv1beta1.TCPIngress, error) {
-	stream, err := os.ReadFile(filepath.Clean(filename))
-	if err != nil {
-		return nil, err
-	}
+func (r *resourceReader) readTCPIngressesFromFile(reader io.Reader) ([]kongv1beta1.TCPIngress, error) {
 
-	reader := bytes.NewReader(stream)
 	objs, err := common.ExtractObjectsFromReader(reader, r.conf.Namespace)
 	if err != nil {
 		return nil, err
