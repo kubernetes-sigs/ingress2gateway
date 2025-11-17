@@ -19,6 +19,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -49,8 +50,11 @@ type PrintRunner struct {
 	// Defaults to YAML.
 	outputFormat string
 
-	// The path to the input yaml config file. Value assigned via --input-file flag
-	inputFile string
+	// inputFiles contains the paths to YAML manifest files to process. Value assigned via --input-files flag.
+	inputPaths []string
+
+	// recursive enables recursive directory traversal when using --input-dir.
+	recursive bool
 
 	// The namespace used to query Gateway API objects. Value assigned via
 	// --namespace/-n flag.
@@ -88,7 +92,43 @@ func (pr *PrintRunner) PrintGatewayAPIObjects(cmd *cobra.Command, _ []string) er
 		return fmt.Errorf("failed to initialize namespace filter: %w", err)
 	}
 
-	gatewayResources, notificationTablesMap, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers, pr.getProviderSpecificFlags())
+	allFiles := []string{}
+
+	for _, path := range pr.inputPaths {
+		// Check if path is a directory
+		if info, err := os.Stat(path); err == nil && info.IsDir() {
+			// Discover manifest files in directory
+			dirFiles, err := discoverManifestFiles(path, pr.recursive)
+			if err != nil {
+				return fmt.Errorf("error reading directory %s: %w", path, err)
+			}
+			allFiles = append(allFiles, dirFiles...)
+		} else {
+			allFiles = append(allFiles, path)
+		}
+	}
+
+	if len(allFiles) > 0 {
+		for _, inputFile := range allFiles {
+			fmt.Fprintf(os.Stdout, "=== File: %s ===\n", inputFile)
+			gatewayResources, notificationTablesMap, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, inputFile, pr.providers, pr.getProviderSpecificFlags())
+
+			for _, table := range notificationTablesMap {
+				fmt.Fprintln(os.Stderr, table)
+			}
+
+			if err != nil {
+				fmt.Fprintf(os.Stdout, "# Error: %v\n", err)
+			} else {
+				pr.outputResult(gatewayResources)
+			}
+
+			fmt.Fprintf(os.Stdout, "=== End: %s ===\n\n", inputFile)
+		}
+		return nil
+	}
+
+	gatewayResources, notificationTablesMap, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, "", pr.providers, pr.getProviderSpecificFlags())
 	if err != nil {
 		return err
 	}
@@ -281,8 +321,10 @@ func (pr *PrintRunner) initializeResourcePrinter() error {
 // 3. If namespace is specified, it filters resources based on that namespace.
 // 4. If no namespace is specified and reading from the cluster, it attempts to get the namespace from the cluster; if unsuccessful, initialization fails.
 func (pr *PrintRunner) initializeNamespaceFilter() error {
+	hasFileInput := len(pr.inputPaths) > 0
+
 	// When we should use all namespaces, empty string is used as the filter.
-	if pr.allNamespaces || (pr.inputFile != "" && pr.namespace == "") {
+	if pr.allNamespaces || (hasFileInput && pr.namespace == "") {
 		pr.namespaceFilter = ""
 		return nil
 	}
@@ -290,7 +332,7 @@ func (pr *PrintRunner) initializeNamespaceFilter() error {
 	// If namespace flag is not specified, try to use the default namespace from the cluster
 	if pr.namespace == "" {
 		ns, err := getNamespaceInCurrentContext()
-		if err != nil && pr.inputFile == "" {
+		if err != nil && len(pr.inputPaths) == 0 {
 			// When asked to read from the cluster, but getting the current namespace
 			// failed for whatever reason - do not process the request.
 			return err
@@ -326,8 +368,11 @@ func newPrintCommand() *cobra.Command {
 	cmd.Flags().StringVarP(&pr.outputFormat, "output", "o", "yaml",
 		"Output format. One of: (yaml, json, kyaml).")
 
-	cmd.Flags().StringVar(&pr.inputFile, "input-file", "",
-		`Path to the manifest file. When set, the tool will read ingresses from the file instead of reading from the cluster. Supported files are yaml and json.`)
+	cmd.Flags().StringSliceVar(&pr.inputPaths, "input-file", []string{},
+		`Path to manifest file(s) or directory(s). When set, the tool will read ingresses from the specified files or all YAML files in directories. Supported files are yaml and json.`)
+
+	cmd.Flags().BoolVar(&pr.recursive, "recursive", false,
+		`When used with --input-file, recursively explore nested directories.`)
 
 	cmd.Flags().StringVarP(&pr.namespace, "namespace", "n", "",
 		`If present, the namespace scope for this CLI request.`)
@@ -396,4 +441,34 @@ func PrintUnstructuredAsYaml(obj *unstructured.Unstructured) error {
 	}
 
 	return nil
+}
+
+// discoverManifestFiles finds all manifest files in a directory
+func discoverManifestFiles(dir string, recursive bool) ([]string, error) {
+	var files []string
+
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Skip other directories if not in recursive mode
+		if info.IsDir() && !recursive && path != dir {
+			return filepath.SkipDir
+		}
+
+		if !info.IsDir() && isManifestFile(path) {
+			files = append(files, path)
+		}
+
+		return nil
+	})
+
+	return files, err
+}
+
+// isManifestFile checks if a file is a YAML or JSON manifest
+func isManifestFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".yaml" || ext == ".yml" || ext == ".json"
 }
