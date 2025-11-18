@@ -61,6 +61,7 @@ type ProviderSpecificGatewayIR struct {
 	Istio        *IstioGatewayIR
 	Kong         *KongGatewayIR
 	Openapi3     *Openapi3GatewayIR
+	Kgateway     *KGatewayIR
 }
 
 // HTTPRouteContext contains the Gateway-API HTTPRoute object and HTTPRouteIR,
@@ -84,6 +85,7 @@ type ProviderSpecificHTTPRouteIR struct {
 	Istio        *IstioHTTPRouteIR
 	Kong         *KongHTTPRouteIR
 	Openapi3     *Openapi3HTTPRouteIR
+	Kgateway     *KgatewayHTTPRouteIR
 }
 
 // ServiceIR contains a dedicated field for each provider to specify their
@@ -97,6 +99,7 @@ type ProviderSpecificServiceIR struct {
 	Kong         *KongServiceIR
 	Openapi3     *Openapi3ServiceIR
 	Nginx        *NginxServiceIR
+	Kgateway     *KgatewayServiceIR
 }
 
 // BackendSource tracks the source Ingress resource that contributed

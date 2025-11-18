@@ -36,6 +36,7 @@ import (
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/gce"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
+	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kgateway"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/nginx"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/openapi3"
