@@ -36,7 +36,13 @@ const GeneratorAnnotationKey = "gateway.networking.k8s.io/generator"
 // Examples: "v0.4.0", "v0.4.0-5-gabcdef", "v0.4.0-5-gabcdef-dirty"
 var Version = "dev" // Default value if not built with linker flags
 
-func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string, providers []string, providerSpecificFlags map[string]map[string]string) ([]GatewayResources, map[string]string, error) {
+func ToGatewayAPIResources(
+	ctx context.Context,
+	namespace string,
+	inputFile string,
+	providers []string,
+	providerSpecificFlags map[string]map[string]string,
+	implementations []string) ([]GatewayResources, map[string]string, error) {
 	var clusterClient client.Client
 
 	if inputFile == "" {
@@ -78,13 +84,40 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 	for _, provider := range providerByName {
 		ir, conversionErrs := provider.ToIR()
 		errs = append(errs, conversionErrs...)
+
+		// Run implementations on the IR before rendering GatewayResources.
+		var implObjs []client.Object
+		for _, implName := range implementations {
+			emitter, ok := ImplementationEmitters[implName]
+			if !ok {
+				continue // already validated in CLI
+			}
+			objs, err := emitter.Emit(&ir)
+			if err != nil {
+				errs = append(errs, field.InternalError(field.NewPath("implementation", implName), err))
+			}
+			implObjs = append(implObjs, objs...)
+		}
+
 		providerGatewayResources, conversionErrs := provider.ToGatewayResources(ir)
 		errs = append(errs, conversionErrs...)
+
+		// Convert client.Objects to unstructured and append to GatewayExtensions.
+		for _, obj := range implObjs {
+			u, err := CastToUnstructured(obj)
+			if err != nil {
+				// TODO [danehans]: log/notify about this conversion error.
+				continue
+			}
+			providerGatewayResources.GatewayExtensions = append(providerGatewayResources.GatewayExtensions, *u)
+		}
+
 		gatewayResources = append(gatewayResources, providerGatewayResources)
 	}
+
 	notificationTablesMap := notifications.NotificationAggr.CreateNotificationTables()
 	if len(errs) > 0 {
-		return nil, notificationTablesMap, aggregatedErrs(errs)
+		return nil, notificationTablesMap, AggregatedErrs(errs)
 	}
 
 	return gatewayResources, notificationTablesMap, nil
@@ -126,7 +159,7 @@ func constructProviders(conf *ProviderConf, providers []string) (map[ProviderNam
 	return providerByName, nil
 }
 
-func aggregatedErrs(errs field.ErrorList) error {
+func AggregatedErrs(errs field.ErrorList) error {
 	errMsg := fmt.Errorf("\n# Encountered %d errors", len(errs))
 	for _, err := range errs {
 		errMsg = fmt.Errorf("\n%w # %s", errMsg, err.Error())
