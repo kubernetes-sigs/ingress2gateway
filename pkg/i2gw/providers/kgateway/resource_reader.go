@@ -18,8 +18,8 @@ type resourceReader struct {
 }
 
 // newResourceReader returns a resourceReader instance.
-func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
-	return &resourceReader{
+func newResourceReader(conf *i2gw.ProviderConf) resourceReader {
+	return resourceReader{
 		conf: conf,
 	}
 }

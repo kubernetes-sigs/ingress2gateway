@@ -20,11 +20,11 @@ type resourcesToIRConverter struct {
 	ing2pol                       map[string]intermediate.KgatewayPolicy
 }
 
-// newResourcesToIRConverter returns an ingress-gce resourcesToIRConverter instance.
-func newResourcesToIRConverter(conf *i2gw.ProviderConf) *resourcesToIRConverter {
+// newResourcesToIRConverter returns an ingress-kgateway resourcesToIRConverter instance.
+func newResourcesToIRConverter(conf *i2gw.ProviderConf) resourcesToIRConverter {
 
 	ing2pol := make(map[string]intermediate.KgatewayPolicy)
-	return &resourcesToIRConverter{
+	return resourcesToIRConverter{
 		conf:                          conf,
 		implementationSpecificOptions: i2gw.ProviderImplementationSpecificOptions{},
 		ctx:                           context.Background(),
