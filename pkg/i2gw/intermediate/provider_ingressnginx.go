@@ -32,5 +32,25 @@ type Policy struct {
 	Buffer *resource.Quantity
 	Cors   *CorsPolicy
 
+	// RateLimit is a generic rate limit policy derived from ingress-nginx annotations.
+	RateLimit *RateLimitPolicy
+
 	RuleBackendSources []PolicyIndex
+}
+
+type RateLimitUnit string
+
+const (
+	RateLimitUnitRPS RateLimitUnit = "rps"
+	RateLimitUnitRPM RateLimitUnit = "rpm"
+)
+
+type RateLimitPolicy struct {
+	// Exactly one of RPS/RPM should be set by the provider.
+	Limit int32         // normalized numeric limit
+	Unit  RateLimitUnit // "rps" or "rpm"
+
+	// BurstMultiplier is applied on top of the base limit to compute the bucket size.
+	// If zero, treat as 1.
+	BurstMultiplier int32
 }

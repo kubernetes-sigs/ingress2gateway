@@ -39,6 +39,7 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 			canaryFeature,
 			bufferPolicyFeature,
 			corsPolicyFeature,
+			rateLimitPolicyFeature,
 		},
 	}
 }

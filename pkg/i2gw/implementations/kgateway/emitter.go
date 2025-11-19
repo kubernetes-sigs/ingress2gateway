@@ -1,6 +1,8 @@
 package kgateway
 
 import (
+	"time"
+
 	kgwv1a1 "github.com/kgateway-dev/kgateway/v2/api/v1alpha1"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
@@ -63,6 +65,9 @@ func (e *KgatewayEmitter) Emit(ir *intermediate.IR) ([]client.Object, error) {
 				touched = true
 			}
 			if applyCorsPolicy(pol, polSourceIngressName, httpRouteKey.Namespace, tp) {
+				touched = true
+			}
+			if applyRateLimitPolicy(pol, polSourceIngressName, httpRouteKey.Namespace, tp) {
 				touched = true
 			}
 
@@ -209,4 +214,67 @@ func numRules(hr gwv1.HTTPRoute) int {
 		n += len(r.BackendRefs)
 	}
 	return n
+}
+
+func applyRateLimitPolicy(
+	pol intermediate.Policy,
+	ingressName, namespace string,
+	tp map[string]*kgwv1a1.TrafficPolicy,
+) bool {
+	if pol.RateLimit == nil {
+		return false
+	}
+
+	rl := pol.RateLimit
+	if rl.Limit <= 0 {
+		return false
+	}
+
+	// Default burst multiplier to 1 if unset/zero.
+	burstMult := rl.BurstMultiplier
+	if burstMult <= 0 {
+		burstMult = 1
+	}
+
+	var (
+		maxTokens     int32
+		tokensPerFill int32
+		fillInterval  metav1.Duration
+	)
+
+	switch rl.Unit {
+	case intermediate.RateLimitUnitRPS:
+		// Requests per second.
+		tokensPerFill = rl.Limit
+		maxTokens = rl.Limit * burstMult
+		fillInterval = metav1.Duration{Duration: time.Second}
+	case intermediate.RateLimitUnitRPM:
+		// Requests per minute.
+		tokensPerFill = rl.Limit
+		maxTokens = rl.Limit * burstMult
+		fillInterval = metav1.Duration{Duration: time.Minute}
+	default:
+		// Unknown unit; ignore for now.
+		return false
+	}
+
+	t := ensureTrafficPolicy(tp, ingressName, namespace)
+
+	if t.Spec.RateLimit == nil {
+		t.Spec.RateLimit = &kgwv1a1.RateLimit{}
+	}
+	if t.Spec.RateLimit.Local == nil {
+		t.Spec.RateLimit.Local = &kgwv1a1.LocalRateLimitPolicy{}
+	}
+
+	// Helper to create *int32 without extra imports.
+	int32Ptr := func(v int32) *int32 { return &v }
+
+	t.Spec.RateLimit.Local.TokenBucket = &kgwv1a1.TokenBucket{
+		MaxTokens:     maxTokens,
+		TokensPerFill: int32Ptr(tokensPerFill),
+		FillInterval:  fillInterval,
+	}
+
+	return true
 }
