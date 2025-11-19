@@ -1,19 +1,3 @@
-/*
-Copyright 2024 The Kubernetes Authors.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package kgateway
 
 import (
@@ -68,33 +52,34 @@ func (e *KgatewayEmitter) Emit(ir *intermediate.IR) ([]client.Object, error) {
 			continue
 		}
 
+		// One TrafficPolicy per source Ingress name.
 		tp := map[string]*kgwv1a1.TrafficPolicy{}
-		createIfNeeded := func(name string) {
-			if tp[name] == nil {
-				tp[name] = &kgwv1a1.TrafficPolicy{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      name,
-						Namespace: httpRouteKey.Namespace,
-					},
-					Spec: kgwv1a1.TrafficPolicySpec{},
-				}
-				tp[name].SetGroupVersionKind(TrafficPolicyGVK)
-			}
-		}
 
 		for polSourceIngressName, pol := range ingx.Policies {
-			var t *kgwv1a1.TrafficPolicy
-			if pol.Buffer != nil {
-				createIfNeeded(polSourceIngressName)
-				t = tp[polSourceIngressName]
-				t.Spec.Buffer = &kgwv1a1.Buffer{
-					MaxRequestSize: pol.Buffer,
-				}
+			// Apply feature-specific projections (buffer, CORS, etc.).
+			touched := false
+
+			if applyBufferPolicy(pol, polSourceIngressName, httpRouteKey.Namespace, tp) {
+				touched = true
 			}
-			if t == nil {
+			if applyCorsPolicy(pol, polSourceIngressName, httpRouteKey.Namespace, tp) {
+				touched = true
+			}
+
+			if !touched {
+				// No TrafficPolicy fields set for this policy; skip coverage wiring.
 				continue
 			}
 
+			t := tp[polSourceIngressName]
+			if t == nil {
+				// Should not happen, but guard just in case.
+				continue
+			}
+
+			// Coverage logic is shared across all features:
+			// - If this policy covers all route backends, attach via targetRefs.
+			// - Otherwise, attach via ExtensionRef filters on the covered backendRefs.
 			if len(pol.RuleBackendSources) == numRules(httpRouteContext.HTTPRoute) {
 				// Full coverage via targetRefs.
 				t.Spec.TargetRefs = []kgwv1a1.LocalPolicyTargetReferenceWithSectionName{{
@@ -124,7 +109,7 @@ func (e *KgatewayEmitter) Emit(ir *intermediate.IR) ([]client.Object, error) {
 		// Write back the mutated HTTPRouteContext into the IR.
 		ir.HTTPRoutes[httpRouteKey] = httpRouteContext
 
-		// Collect TrafficPolicies.
+		// Collect TrafficPolicies for this HTTPRoute.
 		for _, tp := range tp {
 			out = append(out, tp)
 		}
@@ -134,6 +119,88 @@ func (e *KgatewayEmitter) Emit(ir *intermediate.IR) ([]client.Object, error) {
 		return out, i2gw.AggregatedErrs(errs)
 	}
 	return out, nil
+}
+
+// applyBufferPolicy projects the Buffer policy IR into a Kgateway TrafficPolicy,
+// returning true if it modified/created a TrafficPolicy for this ingress.
+func applyBufferPolicy(
+	pol intermediate.Policy,
+	ingressName, namespace string,
+	tp map[string]*kgwv1a1.TrafficPolicy,
+) bool {
+	if pol.Buffer == nil {
+		return false
+	}
+
+	t := ensureTrafficPolicy(tp, ingressName, namespace)
+	t.Spec.Buffer = &kgwv1a1.Buffer{
+		MaxRequestSize: pol.Buffer,
+	}
+	return true
+}
+
+// applyCorsPolicy projects the CORS policy IR into a Kgateway TrafficPolicy,
+// returning true if it modified/created a TrafficPolicy for the given ingress.
+func applyCorsPolicy(
+	pol intermediate.Policy,
+	ingressName, namespace string,
+	tp map[string]*kgwv1a1.TrafficPolicy,
+) bool {
+	if pol.Cors == nil || !pol.Cors.Enable || len(pol.Cors.AllowOrigin) == 0 {
+		return false
+	}
+
+	// Dedupe origins while preserving order.
+	seen := make(map[string]struct{}, len(pol.Cors.AllowOrigin))
+	var origins []gwv1.CORSOrigin
+	for _, o := range pol.Cors.AllowOrigin {
+		if o == "" {
+			continue
+		}
+		if _, ok := seen[o]; ok {
+			continue
+		}
+		seen[o] = struct{}{}
+		origins = append(origins, gwv1.CORSOrigin(o))
+	}
+	if len(origins) == 0 {
+		return false
+	}
+
+	t := ensureTrafficPolicy(tp, ingressName, namespace)
+
+	if t.Spec.Cors == nil {
+		t.Spec.Cors = &kgwv1a1.CorsPolicy{}
+	}
+	if t.Spec.Cors.HTTPCORSFilter == nil {
+		t.Spec.Cors.HTTPCORSFilter = &gwv1.HTTPCORSFilter{}
+	}
+
+	t.Spec.Cors.HTTPCORSFilter.AllowOrigins = origins
+	return true
+}
+
+// ensureTrafficPolicy returns the TrafficPolicy for the given ingressName,
+// creating and initializing it if needed.
+func ensureTrafficPolicy(
+	tp map[string]*kgwv1a1.TrafficPolicy,
+	ingressName, namespace string,
+) *kgwv1a1.TrafficPolicy {
+	if existing, ok := tp[ingressName]; ok {
+		return existing
+	}
+
+	newTP := &kgwv1a1.TrafficPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      ingressName,
+			Namespace: namespace,
+		},
+		Spec: kgwv1a1.TrafficPolicySpec{},
+	}
+	newTP.SetGroupVersionKind(TrafficPolicyGVK)
+
+	tp[ingressName] = newTP
+	return newTP
 }
 
 func numRules(hr gwv1.HTTPRoute) int {
