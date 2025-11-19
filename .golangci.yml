@@ -1,4 +1,5 @@
 run:
+  go: "1.24"
   timeout: 10m
   issues-exit-code: 1
   tests: true
