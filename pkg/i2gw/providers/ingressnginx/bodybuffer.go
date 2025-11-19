@@ -64,7 +64,7 @@ func bufferPolicyFeature(
 			Name:      ing.Name,
 		}
 		ingressPolicies[key] = &intermediate.Policy{
-			Buffer: &qCopy,
+			ClientBodyBufferSize: &qCopy,
 		}
 	}
 
@@ -125,8 +125,8 @@ func bufferPolicyFeature(
 				// Get or initialize the Policy for this ingress name.
 				p := httpRouteContext.ProviderSpecificIR.IngressNginx.Policies[ingKey.Name]
 
-				if p.Buffer == nil && pol.Buffer != nil {
-					p.Buffer = pol.Buffer
+				if p.ClientBodyBufferSize == nil && pol.ClientBodyBufferSize != nil {
+					p.ClientBodyBufferSize = pol.ClientBodyBufferSize
 				}
 
 				p.RuleBackendSources = append(p.RuleBackendSources, intermediate.PolicyIndex{

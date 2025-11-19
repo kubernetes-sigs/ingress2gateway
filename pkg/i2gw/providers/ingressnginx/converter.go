@@ -40,6 +40,7 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 			bufferPolicyFeature,
 			corsPolicyFeature,
 			rateLimitPolicyFeature,
+			proxyBodySizeFeature,
 		},
 	}
 }

@@ -29,8 +29,11 @@ type CorsPolicy struct {
 // Policy describes all per-Ingress policy knobs that ingress-nginx projects into the
 // IR (buffer, CORS, etc.).
 type Policy struct {
-	Buffer *resource.Quantity
-	Cors   *CorsPolicy
+	// ClientBodyBufferSize defines the size of the buffer used for client request bodies.
+	ClientBodyBufferSize *resource.Quantity
+	// ProxyBodySize defines the maximum allowed size of the client request body.
+	ProxyBodySize *resource.Quantity
+	Cors          *CorsPolicy
 
 	// RateLimit is a generic rate limit policy derived from ingress-nginx annotations.
 	RateLimit *RateLimitPolicy

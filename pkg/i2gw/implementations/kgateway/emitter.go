@@ -126,20 +126,40 @@ func (e *KgatewayEmitter) Emit(ir *intermediate.IR) ([]client.Object, error) {
 	return out, nil
 }
 
-// applyBufferPolicy projects the Buffer policy IR into a Kgateway TrafficPolicy,
+// applyBufferPolicy projects the buffer-related policy IR into a Kgateway TrafficPolicy,
 // returning true if it modified/created a TrafficPolicy for this ingress.
+//
+// Semantics are as follows:
+//   - If the "nginx.ingress.kubernetes.io/proxy-body-size" annotation is present, that value
+//     is used as the effective max request size.
+//   - Otherwise, if the "nginx.ingress.kubernetes.io/client-body-buffer-size" annotation is present,
+//     that value is used.
+//   - If neither is set, no Kgateway Buffer policy is emitted.
+//
+// Note: Kgateway's Buffer.MaxRequestSize has "max body size" semantics (413 on exceed),
+// which matches NGINX's proxy-body-size more directly. client-body-buffer-size is
+// treated as a fallback when proxy-body-size is not configured.
 func applyBufferPolicy(
 	pol intermediate.Policy,
 	ingressName, namespace string,
 	tp map[string]*kgwv1a1.TrafficPolicy,
 ) bool {
-	if pol.Buffer == nil {
+	if pol.ClientBodyBufferSize == nil && pol.ProxyBodySize == nil {
+		return false
+	}
+
+	// Prefer proxy-body-size if present; otherwise fall back to client-body-buffer-size.
+	size := pol.ProxyBodySize
+	if size == nil {
+		size = pol.ClientBodyBufferSize
+	}
+	if size == nil {
 		return false
 	}
 
 	t := ensureTrafficPolicy(tp, ingressName, namespace)
 	t.Spec.Buffer = &kgwv1a1.Buffer{
-		MaxRequestSize: pol.Buffer,
+		MaxRequestSize: size,
 	}
 	return true
 }
