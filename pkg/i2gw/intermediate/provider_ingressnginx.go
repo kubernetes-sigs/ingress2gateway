@@ -2,6 +2,7 @@ package intermediate
 
 import (
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Provider-specific IR for ingress-nginx.
@@ -38,6 +39,15 @@ type Policy struct {
 	// RateLimit is a generic rate limit policy derived from ingress-nginx annotations.
 	RateLimit *RateLimitPolicy
 
+	// ProxySendTimeout defines the timeout for transmitting a request to the proxied server.
+	ProxySendTimeout *metav1.Duration
+
+	// ProxyReadTimeout defines the timeout for reading a response from a proxied server.
+	ProxyReadTimeout *metav1.Duration
+
+	// ProxySendTimeout defines the timeout for establishing a connection to a proxied server.
+	ProxyConnectTimeout *metav1.Duration
+
 	RuleBackendSources []PolicyIndex
 
 	// ruleBackendIndexSet is an internal helper used to deduplicate RuleBackendSources entries.
@@ -61,9 +71,9 @@ type RateLimitPolicy struct {
 	BurstMultiplier int32
 }
 
-// AddPolicyRuleBackendSources returns a copy of p with idxs added to
+// AddRuleBackendSources returns a copy of p with idxs added to
 // RuleBackendSources, ensuring each (Rule, Backend) pair is unique.
-func (p Policy) AddPolicyRuleBackendSources(idxs []PolicyIndex) Policy {
+func (p Policy) AddRuleBackendSources(idxs []PolicyIndex) Policy {
 	pCopy := p
 
 	// Initialize the internal set from any existing slice contents.

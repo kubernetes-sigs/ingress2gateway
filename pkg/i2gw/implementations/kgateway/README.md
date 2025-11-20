@@ -29,6 +29,17 @@ Each TrafficPolicy is attached to routes/backends via:
 - targetRefs (when the policy applies to the entire route), or
 - extensionRef backend filters (when the policy applies to specific backends).
 
+The command will also produce notification messages to provide user feedback. For example:
+
+```bash
+Notifications from INGRESS-NGINX:
++--------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------+
+| MESSAGE TYPE |                                                                              NOTIFICATION                                                                              | CALLING OBJECT |
++--------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------+
+| WARNING      | Multiple Ingresses set conflicting proxy-connect-timeout for Service default/myservicea. Using lowest value. Values: ingress-myservicea1=30s, ingress-myservicea2=1m0s |                |
++--------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------+
+```
+
 ## Supported Annotations
 
 ### Implementation Selection

@@ -130,7 +130,7 @@ func bufferPolicyFeature(
 				}
 
 				// Dedupe (rule, backend) pairs.
-				p = p.AddPolicyRuleBackendSources([]intermediate.PolicyIndex{
+				p = p.AddRuleBackendSources([]intermediate.PolicyIndex{
 					{
 						Rule:    ruleIdx,
 						Backend: backendIdx,

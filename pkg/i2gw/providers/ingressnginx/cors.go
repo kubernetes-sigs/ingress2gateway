@@ -116,7 +116,7 @@ func corsPolicyFeature(
 			}
 
 			// Dedupe (rule, backend) pairs.
-			existing = existing.AddPolicyRuleBackendSources(idxs)
+			existing = existing.AddRuleBackendSources(idxs)
 
 			httpCtx.ProviderSpecificIR.IngressNginx.Policies[ingressName] = existing
 		}

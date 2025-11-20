@@ -1,14 +1,17 @@
 package kgateway
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	kgwv1a1 "github.com/kgateway-dev/kgateway/v2/api/v1alpha1"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gwv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -46,7 +49,11 @@ func (e *KgatewayEmitter) Name() string {
 // via targetRefs; partial policies are attached as ExtensionRef filters on backendRefs.
 func (e *KgatewayEmitter) Emit(ir *intermediate.IR) ([]client.Object, error) {
 	var out []client.Object
-	var errs field.ErrorList
+
+	// One BackendConfigPolicy per Ingress name (per namespace), aggregating all
+	// Services that Ingress routes to, when BackendConfigPolicy applicable is set.
+	backendCfg := map[types.NamespacedName]*kgwv1a1.BackendConfigPolicy{}
+	svcTimeouts := map[types.NamespacedName]map[string]*metav1.Duration{}
 
 	for httpRouteKey, httpRouteContext := range ir.HTTPRoutes {
 		ingx := httpRouteContext.ProviderSpecificIR.IngressNginx
@@ -74,6 +81,20 @@ func (e *KgatewayEmitter) Emit(ir *intermediate.IR) ([]client.Object, error) {
 			if applyRateLimitPolicy(pol, polSourceIngressName, httpRouteKey.Namespace, tp) {
 				touched = true
 			}
+			if applyTimeoutPolicy(pol, polSourceIngressName, httpRouteKey.Namespace, tp) {
+				touched = true
+			}
+
+			// Apply proxy-connect-timeout via BackendConfigPolicy.
+			// Note: "touched" is not updated here, as this does not affect TrafficPolicy.
+			applyProxyConnectTimeoutPolicy(
+				pol,
+				polSourceIngressName,
+				httpRouteKey,
+				httpRouteContext,
+				backendCfg,
+				svcTimeouts,
+			)
 
 			if !touched {
 				// No TrafficPolicy fields set for this policy; skip coverage wiring.
@@ -124,9 +145,39 @@ func (e *KgatewayEmitter) Emit(ir *intermediate.IR) ([]client.Object, error) {
 		}
 	}
 
-	if len(errs) > 0 {
-		return out, i2gw.AggregatedErrs(errs)
+	// Collect all BackendConfigPolicies computed across HTTPRoutes.
+	for _, bcp := range backendCfg {
+		out = append(out, bcp)
 	}
+
+	// Emit warnings for conflicting service timeouts
+	for svc, ingressMap := range svcTimeouts {
+		if len(ingressMap) <= 1 {
+			continue
+		}
+
+		// Build message
+		parts := []string{}
+		for ing, d := range ingressMap {
+			parts = append(parts, fmt.Sprintf("%s=%s", ing, d.Duration))
+		}
+
+		msg := fmt.Sprintf(
+			"Multiple Ingresses set conflicting proxy-connect-timeout for Service %s/%s. Using lowest value. Values: %s",
+			svc.Namespace,
+			svc.Name,
+			strings.Join(parts, ", "),
+		)
+
+		notifications.NotificationAggr.DispatchNotification(
+			notifications.NewNotification(
+				notifications.WarningNotification,
+				msg,
+			),
+			"ingress-nginx",
+		)
+	}
+
 	return out, nil
 }
 
@@ -322,6 +373,129 @@ func applyRateLimitPolicy(
 		MaxTokens:     maxTokens,
 		TokensPerFill: int32Ptr(tokensPerFill),
 		FillInterval:  fillInterval,
+	}
+
+	return true
+}
+
+// applyTimeoutPolicy projects the timeout-related policy IR into a Kgateway TrafficPolicy,
+// returning true if it modified/created a TrafficPolicy for this ingress.
+//
+// Semantics:
+//   - If ProxySendTimeout is set, it is mapped to the Request timeout in Kgateway.
+//   - If ProxyReadTimeout is set, it is mapped to the StreamIdle timeout in Kgateway.
+func applyTimeoutPolicy(
+	pol intermediate.Policy,
+	ingressName, namespace string,
+	tp map[string]*kgwv1a1.TrafficPolicy,
+) bool {
+	if pol.ProxySendTimeout == nil && pol.ProxyReadTimeout == nil {
+		return false
+	}
+
+	t := ensureTrafficPolicy(tp, ingressName, namespace)
+
+	if t.Spec.Timeouts == nil {
+		t.Spec.Timeouts = &kgwv1a1.Timeouts{}
+	}
+
+	// Map proxy-send-timeout → Timeouts.Request
+	if pol.ProxySendTimeout != nil {
+		// "last writer wins" semantics: latest policy overwrites previous value.
+		t.Spec.Timeouts.Request = pol.ProxySendTimeout
+	}
+
+	// Map proxy-read-timeout → Timeouts.StreamIdle
+	if pol.ProxyReadTimeout != nil {
+		t.Spec.Timeouts.StreamIdle = pol.ProxyReadTimeout
+	}
+
+	return true
+}
+
+// applyProxyConnectTimeoutPolicy projects the ProxyConnectTimeout IR policy into one or more
+// Kgateway BackendConfigPolicies.
+//
+// Semantics:
+//   - We create at most one BackendConfigPolicy per (namespace, ingressName).
+//   - That policy's Spec.ConnectTimeout is taken from the Policy.ProxyConnectTimeout.
+//   - TargetRefs are populated with all core Service backends that this Policy covers
+//     (based on RuleBackendSources).
+func applyProxyConnectTimeoutPolicy(
+	pol intermediate.Policy,
+	ingressName string,
+	httpRouteKey types.NamespacedName,
+	httpRouteCtx intermediate.HTTPRouteContext,
+	backendCfg map[types.NamespacedName]*kgwv1a1.BackendConfigPolicy,
+	svcTimeouts map[types.NamespacedName]map[string]*metav1.Duration,
+) bool {
+	if pol.ProxyConnectTimeout == nil {
+		return false
+	}
+
+	for _, idx := range pol.RuleBackendSources {
+		if idx.Rule >= len(httpRouteCtx.Spec.Rules) {
+			continue
+		}
+		rule := httpRouteCtx.Spec.Rules[idx.Rule]
+		if idx.Backend >= len(rule.BackendRefs) {
+			continue
+		}
+
+		br := rule.BackendRefs[idx.Backend]
+
+		if br.BackendRef.Group != nil && *br.BackendRef.Group != "" {
+			continue
+		}
+		if br.BackendRef.Kind != nil && *br.BackendRef.Kind != "Service" {
+			continue
+		}
+
+		svcName := string(br.BackendRef.Name)
+		if svcName == "" {
+			continue
+		}
+
+		svcKey := types.NamespacedName{
+			Namespace: httpRouteKey.Namespace,
+			Name:      svcName,
+		}
+
+		// Track per-Service timeout contributors
+		if svcTimeouts[svcKey] == nil {
+			svcTimeouts[svcKey] = map[string]*metav1.Duration{}
+		}
+		svcTimeouts[svcKey][ingressName] = pol.ProxyConnectTimeout
+
+		// Create or reuse BackendConfigPolicy per Service
+		bcp, exists := backendCfg[svcKey]
+		if !exists {
+			bcp = &kgwv1a1.BackendConfigPolicy{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      svcName + "-connect-timeout",
+					Namespace: httpRouteKey.Namespace,
+				},
+				Spec: kgwv1a1.BackendConfigPolicySpec{
+					TargetRefs: []kgwv1a1.LocalPolicyTargetReference{
+						{
+							Group: "",
+							Kind:  "Service",
+							Name:  gwv1.ObjectName(svcName),
+						},
+					},
+					ConnectTimeout: pol.ProxyConnectTimeout,
+				},
+			}
+			bcp.SetGroupVersionKind(BackendConfigPolicyGVK)
+			backendCfg[svcKey] = bcp
+		} else {
+			// enforce "lowest timeout wins"
+			cur := bcp.Spec.ConnectTimeout.Duration
+			next := pol.ProxyConnectTimeout.Duration
+			if next < cur {
+				bcp.Spec.ConnectTimeout = pol.ProxyConnectTimeout
+			}
+		}
 	}
 
 	return true

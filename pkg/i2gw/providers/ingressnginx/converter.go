@@ -41,6 +41,9 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 			corsPolicyFeature,
 			rateLimitPolicyFeature,
 			proxyBodySizeFeature,
+			proxySendTimeoutFeature,
+			proxyReadTimeoutFeature,
+			proxyConnectTimeoutFeature,
 		},
 	}
 }

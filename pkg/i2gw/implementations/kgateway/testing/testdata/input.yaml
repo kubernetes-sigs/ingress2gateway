@@ -7,7 +7,9 @@ metadata:
     nginx.ingress.kubernetes.io/enable-cors: "true"
     nginx.ingress.kubernetes.io/cors-allow-origin: "https://example.com, https://another.com"
     nginx.ingress.kubernetes.io/limit-rpm: "600"
-    nginx.ingress.kubernetes.io/client-body-buffer-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "30s"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "45s"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30s"
   name: ingress-myservicea1
   namespace: default
 spec:
@@ -33,7 +35,9 @@ metadata:
     nginx.ingress.kubernetes.io/enable-cors: "true"
     nginx.ingress.kubernetes.io/cors-allow-origin: "https://example.com, https://another.com"
     nginx.ingress.kubernetes.io/limit-rps: "10"
-    nginx.ingress.kubernetes.io/client-body-buffer-size: "8m"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60" # No "s" suffix, should still be parsed correctly
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60" # No "s" suffix, should still be parsed correctly
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60" # Will be ignored since it's higher than ingress-myservicea1 Ingress
   name: ingress-myservicea2
   namespace: default
 spec:
@@ -60,8 +64,10 @@ metadata:
     ingress2gateway.kubernetes.io/implementation: kgateway
     nginx.ingress.kubernetes.io/limit-rps: "50"
     nginx.ingress.kubernetes.io/limit-burst-multiplier: "5"
-    nginx.ingress.kubernetes.io/client-body-buffer-size: "75m"
     nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "90s"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "90s"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "120"
   name: ingress-myserviceb
   namespace: default
 spec:

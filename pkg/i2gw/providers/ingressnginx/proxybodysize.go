@@ -116,7 +116,7 @@ func proxyBodySizeFeature(
 				}
 
 				// Dedupe (rule, backend) pairs.
-				existing = existing.AddPolicyRuleBackendSources([]intermediate.PolicyIndex{
+				existing = existing.AddRuleBackendSources([]intermediate.PolicyIndex{
 					{Rule: ruleIdx, Backend: backendIdx},
 				})
 
