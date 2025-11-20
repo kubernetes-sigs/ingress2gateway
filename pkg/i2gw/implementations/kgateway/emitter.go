@@ -58,6 +58,10 @@ func (e *KgatewayEmitter) Emit(ir *intermediate.IR) ([]client.Object, error) {
 		tp := map[string]*kgwv1a1.TrafficPolicy{}
 
 		for polSourceIngressName, pol := range ingx.Policies {
+			// Normalize (rule, backend) coverage to unique pairs to avoid
+			// generating duplicate filters on the same backendRef.
+			coverage := uniquePolicyIndices(pol.RuleBackendSources)
+
 			// Apply feature-specific projections (buffer, CORS, etc.).
 			touched := false
 
@@ -85,7 +89,7 @@ func (e *KgatewayEmitter) Emit(ir *intermediate.IR) ([]client.Object, error) {
 			// Coverage logic is shared across all features:
 			// - If this policy covers all route backends, attach via targetRefs.
 			// - Otherwise, attach via ExtensionRef filters on the covered backendRefs.
-			if len(pol.RuleBackendSources) == numRules(httpRouteContext.HTTPRoute) {
+			if len(coverage) == numRules(httpRouteContext.HTTPRoute) {
 				// Full coverage via targetRefs.
 				t.Spec.TargetRefs = []kgwv1a1.LocalPolicyTargetReferenceWithSectionName{{
 					LocalPolicyTargetReference: kgwv1a1.LocalPolicyTargetReference{
@@ -94,7 +98,7 @@ func (e *KgatewayEmitter) Emit(ir *intermediate.IR) ([]client.Object, error) {
 				}}
 			} else {
 				// Partial coverage via ExtensionRef filters on backendRefs.
-				for _, idx := range pol.RuleBackendSources {
+				for _, idx := range coverage {
 					httpRouteContext.Spec.Rules[idx.Rule].BackendRefs[idx.Backend].Filters =
 						append(
 							httpRouteContext.Spec.Rules[idx.Rule].BackendRefs[idx.Backend].Filters,
@@ -124,6 +128,30 @@ func (e *KgatewayEmitter) Emit(ir *intermediate.IR) ([]client.Object, error) {
 		return out, i2gw.AggregatedErrs(errs)
 	}
 	return out, nil
+}
+
+// uniquePolicyIndices returns a slice of PolicyIndex values with duplicates
+// removed. Uniqueness is defined by the (Rule, Backend) pair.
+//
+// This is used to ensure we only attach a single TrafficPolicy ExtensionRef
+// filter per backendRef for a given policy, even if the provider populated
+// RuleBackendSources with duplicate entries for the same (rule, backend).
+func uniquePolicyIndices(indices []intermediate.PolicyIndex) []intermediate.PolicyIndex {
+	if len(indices) == 0 {
+		return indices
+	}
+
+	seen := make(map[intermediate.PolicyIndex]struct{}, len(indices))
+	out := make([]intermediate.PolicyIndex, 0, len(indices))
+
+	for _, idx := range indices {
+		if _, ok := seen[idx]; ok {
+			continue
+		}
+		seen[idx] = struct{}{}
+		out = append(out, idx)
+	}
+	return out
 }
 
 // applyBufferPolicy projects the buffer-related policy IR into a Kgateway TrafficPolicy,

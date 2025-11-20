@@ -144,7 +144,9 @@ func rateLimitPolicyFeature(
 				}
 			}
 
-			existing.RuleBackendSources = append(existing.RuleBackendSources, idxs...)
+			// Dedupe (rule, backend) pairs.
+			existing = existing.AddPolicyRuleBackendSources(idxs)
+
 			httpCtx.ProviderSpecificIR.IngressNginx.Policies[ingressName] = existing
 		}
 

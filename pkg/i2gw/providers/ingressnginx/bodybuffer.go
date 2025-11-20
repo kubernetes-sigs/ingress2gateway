@@ -129,9 +129,12 @@ func bufferPolicyFeature(
 					p.ClientBodyBufferSize = pol.ClientBodyBufferSize
 				}
 
-				p.RuleBackendSources = append(p.RuleBackendSources, intermediate.PolicyIndex{
-					Rule:    ruleIdx,
-					Backend: backendIdx,
+				// Dedupe (rule, backend) pairs.
+				p = p.AddPolicyRuleBackendSources([]intermediate.PolicyIndex{
+					{
+						Rule:    ruleIdx,
+						Backend: backendIdx,
+					},
 				})
 
 				httpRouteContext.ProviderSpecificIR.IngressNginx.Policies[ingKey.Name] = p

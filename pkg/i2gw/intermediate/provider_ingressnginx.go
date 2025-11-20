@@ -39,6 +39,9 @@ type Policy struct {
 	RateLimit *RateLimitPolicy
 
 	RuleBackendSources []PolicyIndex
+
+	// ruleBackendIndexSet is an internal helper used to deduplicate RuleBackendSources entries.
+	ruleBackendIndexSet map[PolicyIndex]struct{}
 }
 
 type RateLimitUnit string
@@ -56,4 +59,31 @@ type RateLimitPolicy struct {
 	// BurstMultiplier is applied on top of the base limit to compute the bucket size.
 	// If zero, treat as 1.
 	BurstMultiplier int32
+}
+
+// AddPolicyRuleBackendSources returns a copy of p with idxs added to
+// RuleBackendSources, ensuring each (Rule, Backend) pair is unique.
+func (p Policy) AddPolicyRuleBackendSources(idxs []PolicyIndex) Policy {
+	pCopy := p
+
+	// Initialize the internal set from any existing slice contents.
+	if len(pCopy.RuleBackendSources) > 0 && pCopy.ruleBackendIndexSet == nil {
+		pCopy.ruleBackendIndexSet = make(map[PolicyIndex]struct{}, len(pCopy.RuleBackendSources))
+		for _, existing := range pCopy.RuleBackendSources {
+			pCopy.ruleBackendIndexSet[existing] = struct{}{}
+		}
+	}
+	if pCopy.ruleBackendIndexSet == nil {
+		pCopy.ruleBackendIndexSet = make(map[PolicyIndex]struct{})
+	}
+
+	for _, idx := range idxs {
+		if _, exists := pCopy.ruleBackendIndexSet[idx]; exists {
+			continue
+		}
+		pCopy.RuleBackendSources = append(pCopy.RuleBackendSources, idx)
+		pCopy.ruleBackendIndexSet[idx] = struct{}{}
+	}
+
+	return pCopy
 }

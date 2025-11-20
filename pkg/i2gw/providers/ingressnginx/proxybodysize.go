@@ -106,6 +106,8 @@ func proxyBodySizeFeature(
 					httpCtx.ProviderSpecificIR.IngressNginx = &intermediate.IngressNginxHTTPRouteIR{
 						Policies: map[string]intermediate.Policy{},
 					}
+				} else if httpCtx.ProviderSpecificIR.IngressNginx.Policies == nil {
+					httpCtx.ProviderSpecificIR.IngressNginx.Policies = map[string]intermediate.Policy{}
 				}
 
 				existing := httpCtx.ProviderSpecificIR.IngressNginx.Policies[ingKey.Name]
@@ -113,9 +115,10 @@ func proxyBodySizeFeature(
 					existing.ProxyBodySize = pol.ProxyBodySize
 				}
 
-				existing.RuleBackendSources = append(existing.RuleBackendSources,
-					intermediate.PolicyIndex{Rule: ruleIdx, Backend: backendIdx},
-				)
+				// Dedupe (rule, backend) pairs.
+				existing = existing.AddPolicyRuleBackendSources([]intermediate.PolicyIndex{
+					{Rule: ruleIdx, Backend: backendIdx},
+				})
 
 				httpCtx.ProviderSpecificIR.IngressNginx.Policies[ingKey.Name] = existing
 			}
