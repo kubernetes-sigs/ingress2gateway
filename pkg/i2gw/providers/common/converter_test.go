@@ -446,8 +446,47 @@ func Test_ToIR(t *testing.T) {
 				{Namespace: "test", Name: "example2"}: {"http": 8080},
 			},
 			expectedIR: intermediate.IR{
-				Gateways:   map[types.NamespacedName]intermediate.GatewayContext{},
-				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{},
+				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+					{Namespace: "test", Name: "named-ports"}: {
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: "named-ports", Namespace: "test"},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: "named-ports",
+								Listeners: []gatewayv1.Listener{{
+									Name:     "example-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: PtrTo(gatewayv1.Hostname("example.com")),
+								}},
+							},
+						},
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+					{Namespace: "test", Name: "named-ports-example-com"}: {
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: "named-ports-example-com", Namespace: "test"},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: "named-ports",
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{"example.com"},
+								Rules: []gatewayv1.HTTPRouteRule{{
+									Matches: []gatewayv1.HTTPRouteMatch{{
+										Path: &gatewayv1.HTTPPathMatch{
+											Type:  &gPathPrefix,
+											Value: PtrTo("/foo"),
+										},
+									}},
+									BackendRefs: []gatewayv1.HTTPBackendRef{},
+								}},
+							},
+						},
+						RuleBackendSources: [][]intermediate.BackendSource{{}},
+					},
+				},
 			},
 			expectedErrors: field.ErrorList{field.Invalid(field.NewPath(""), "", "")},
 		},

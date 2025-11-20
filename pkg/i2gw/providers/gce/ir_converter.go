@@ -74,15 +74,12 @@ func (c *resourcesToIRConverter) convertToIR(storage *storage) (intermediate.IR,
 
 	// Convert plain ingress resources to gateway resources, ignoring all
 	// provider-specific features.
+	// Continue processing even with errors to support best-effort conversion
 	ir, errs := common.ToIR(ingressList, storage.ServicePorts, c.implementationSpecificOptions)
-	if len(errs) > 0 {
-		return intermediate.IR{}, errs
-	}
 
-	errs = setGCEGatewayClasses(ingressList, ir.Gateways)
-	if len(errs) > 0 {
-		return intermediate.IR{}, errs
-	}
+	// Accumulate errors from setting GCE gateway classes but continue processing
+	setGCEErrs := setGCEGatewayClasses(ingressList, ir.Gateways)
+	errs = append(errs, setGCEErrs...)
 	buildGceGatewayIR(c.ctx, storage, &ir)
 	buildGceServiceIR(c.ctx, storage, &ir)
 	return ir, errs
