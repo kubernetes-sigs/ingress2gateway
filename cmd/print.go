@@ -89,15 +89,20 @@ func (pr *PrintRunner) PrintGatewayAPIObjects(cmd *cobra.Command, _ []string) er
 	}
 
 	gatewayResources, notificationTablesMap, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers, pr.getProviderSpecificFlags())
-	if err != nil {
-		return err
-	}
 
 	for _, table := range notificationTablesMap {
 		fmt.Fprintln(os.Stderr, table)
 	}
 
+	// Output partial results even if there are conversion errors (best-effort conversion)
 	pr.outputResult(gatewayResources)
+
+	// Return error after outputting partial results
+	if err != nil {
+		// Silence usage on conversion errors since these are not command usage errors
+		cmd.SilenceUsage = true
+		return err
+	}
 
 	return nil
 }

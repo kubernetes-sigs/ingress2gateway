@@ -51,9 +51,6 @@ func ToIR(ingresses []networkingv1.Ingress, servicePorts map[types.NamespacedNam
 	}
 
 	routes, gateways, errs := aggregator.toHTTPRoutesAndGateways(options)
-	if len(errs) > 0 {
-		return intermediate.IR{}, errs
-	}
 
 	routeByKey := make(map[types.NamespacedName]intermediate.HTTPRouteContext)
 	for _, routeWithSources := range routes {
@@ -81,7 +78,7 @@ func ToIR(ingresses []networkingv1.Ingress, servicePorts map[types.NamespacedNam
 		GRPCRoutes:         make(map[types.NamespacedName]gatewayv1.GRPCRoute),
 		BackendTLSPolicies: make(map[types.NamespacedName]gatewayv1.BackendTLSPolicy),
 		ReferenceGrants:    make(map[types.NamespacedName]gatewayv1beta1.ReferenceGrant),
-	}, nil
+	}, errs
 }
 
 var (

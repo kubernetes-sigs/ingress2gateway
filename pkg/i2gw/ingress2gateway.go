@@ -84,7 +84,8 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 	}
 	notificationTablesMap := notifications.NotificationAggr.CreateNotificationTables()
 	if len(errs) > 0 {
-		return nil, notificationTablesMap, aggregatedErrs(errs)
+		// Return partial results along with errors to support best-effort conversion
+		return gatewayResources, notificationTablesMap, aggregatedErrs(errs)
 	}
 
 	return gatewayResources, notificationTablesMap, nil

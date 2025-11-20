@@ -57,9 +57,6 @@ func (c *resourcesToIRConverter) convert(storage *storage) (intermediate.IR, fie
 	}
 
 	ir, errorList := common.ToIR(ingressList, storage.ServicePorts, c.implementationSpecificOptions)
-	if len(errorList) > 0 {
-		return intermediate.IR{}, errorList
-	}
 
 	for _, parseFeatureFunc := range c.featureParsers {
 		errs := parseFeatureFunc(ingressList, storage.ServicePorts, &ir)

@@ -337,7 +337,42 @@ func Test_ToIR(t *testing.T) {
 					},
 				},
 			},
-			expectedIR: intermediate.IR{},
+			expectedIR: intermediate.IR{
+				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+					{Namespace: "default", Name: "ingress-nginx"}: {
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: "ingress-nginx", Namespace: "default"},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: "ingress-nginx",
+								Listeners: []gatewayv1.Listener{{
+									Name:     "test-mydomain-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: ptrTo(gatewayv1.Hostname("test.mydomain.com")),
+								}},
+							},
+						},
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+					{Namespace: "default", Name: "implementation-specific-regex-test-mydomain-com"}: {
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: "implementation-specific-regex-test-mydomain-com", Namespace: "default"},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: "ingress-nginx",
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{"test.mydomain.com"},
+								// Rules is empty because the path conversion failed
+								Rules: []gatewayv1.HTTPRouteRule{},
+							},
+						},
+						RuleBackendSources: [][]intermediate.BackendSource{},
+					},
+				},
+			},
 			expectedErrors: field.ErrorList{
 				{
 					Type:     field.ErrorTypeInvalid,
