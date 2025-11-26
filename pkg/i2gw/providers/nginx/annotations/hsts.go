@@ -25,14 +25,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
 // HSTSFeature converts HSTS annotations to HTTPRoute ResponseHeaderModifier filters.
 // Supports nginx.org/hsts, nginx.org/hsts-max-age, and nginx.org/hsts-include-subdomains annotations.
-func HSTSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *intermediate.IR) field.ErrorList {
+func HSTSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *provider_intermediate.IR) field.ErrorList {
 	var errs field.ErrorList
 
 	ruleGroups := common.GetRuleGroups(ingresses)
@@ -48,7 +48,7 @@ func HSTSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]ma
 }
 
 //nolint:unparam // ErrorList return type maintained for consistency
-func processHSTSAnnotation(ingress networkingv1.Ingress, ir *intermediate.IR) field.ErrorList {
+func processHSTSAnnotation(ingress networkingv1.Ingress, ir *provider_intermediate.IR) field.ErrorList {
 	var errs field.ErrorList
 
 	hstsHeader := "Strict-Transport-Security"

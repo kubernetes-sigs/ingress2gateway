@@ -20,7 +20,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -57,7 +57,6 @@ type ProviderConf struct {
 type Provider interface {
 	CustomResourceReader
 	ResourcesToIRConverter
-	IRToGatewayAPIConverter
 }
 
 type CustomResourceReader interface {
@@ -75,15 +74,7 @@ type CustomResourceReader interface {
 // and extensions into IR.
 type ResourcesToIRConverter interface {
 	// ToIR converts stored API entities associated with the Provider into IR.
-	ToIR() (intermediate.IR, field.ErrorList)
-}
-
-// The IRToGatewayAPIConverter interface specifies conversion functions from IR
-// into Gateway and Gateway extensions.
-type IRToGatewayAPIConverter interface {
-	// ToGatewayResources converts stored IR with the Provider into
-	// Gateway API resources and extensions
-	ToGatewayResources(intermediate.IR) (GatewayResources, field.ErrorList)
+	ToIR() (provider_intermediate.IR, field.ErrorList)
 }
 
 // ImplementationSpecificHTTPPathTypeMatchConverter is an option to customize the ingress implementationSpecific
@@ -120,7 +111,7 @@ type GatewayResources struct {
 //
 // Different FeatureParsers will run in undetermined order. The function must
 // modify / create only the required fields of the gateway resources and nothing else.
-type FeatureParser func([]networkingv1.Ingress, map[types.NamespacedName]map[string]int32, *intermediate.IR) field.ErrorList
+type FeatureParser func([]networkingv1.Ingress, map[types.NamespacedName]map[string]int32, *provider_intermediate.IR) field.ErrorList
 
 var providerSpecificFlagDefinitions = providerSpecificFlags{
 	flags: make(map[ProviderName]map[string]ProviderSpecificFlag),

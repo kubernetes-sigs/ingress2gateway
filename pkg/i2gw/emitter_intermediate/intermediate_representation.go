@@ -1,0 +1,79 @@
+/*
+Copyright 2024 The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package emitter_intermediate
+
+import (
+	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/types"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+)
+
+// IR holds specifications of Gateway Objects for supporting Ingress extensions,
+// annotations, and proprietary API features not supported as Gateway core
+// features. An IR field can be mapped to core Gateway-API fields,
+// or provider-specific Gateway extensions.
+type IR struct {
+	Gateways   map[types.NamespacedName]GatewayContext
+	HTTPRoutes map[types.NamespacedName]HTTPRouteContext
+
+	GatewayClasses map[types.NamespacedName]GatewayClassContext
+	TLSRoutes      map[types.NamespacedName]TLSRouteContext
+	TCPRoutes      map[types.NamespacedName]TCPRouteContext
+	UDPRoutes      map[types.NamespacedName]UDPRouteContext
+	GRPCRoutes     map[types.NamespacedName]networkingv1.Ingress
+
+	BackendTLSPolicies map[types.NamespacedName]BackendTLSPolicyContext
+	ReferenceGrants    map[types.NamespacedName]ReferenceGrantContext
+}
+
+type GatewayContext struct {
+	gatewayv1.Gateway
+}
+
+type HTTPRouteContext struct {
+	gatewayv1.HTTPRoute
+}
+
+type GatewayClassContext struct {
+	gatewayv1.GatewayClass
+}
+
+type TLSRouteContext struct {
+	gatewayv1alpha2.TLSRoute
+}
+
+type TCPRouteContext struct {
+	gatewayv1alpha2.TCPRoute
+}
+
+type UDPRouteContext struct {
+	gatewayv1alpha2.UDPRoute
+}
+
+type GRPCRouteContext struct {
+	gatewayv1.GRPCRoute
+}
+
+type BackendTLSPolicyContext struct {
+	gatewayv1.BackendTLSPolicy
+}
+
+type ReferenceGrantContext struct {
+	gatewayv1beta1.ReferenceGrant
+}

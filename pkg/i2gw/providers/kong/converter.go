@@ -21,7 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong/crds"
 )
@@ -46,7 +46,7 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 	}
 }
 
-func (c *resourcesToIRConverter) convert(storage *storage) (intermediate.IR, field.ErrorList) {
+func (c *resourcesToIRConverter) convert(storage *storage) (provider_intermediate.IR, field.ErrorList) {
 	ingressList := []networkingv1.Ingress{}
 	for _, ingress := range storage.Ingresses {
 		ingressList = append(ingressList, *ingress)
@@ -56,7 +56,7 @@ func (c *resourcesToIRConverter) convert(storage *storage) (intermediate.IR, fie
 	// provider-specific features.
 	ir, errorList := common.ToIR(ingressList, storage.ServicePorts, c.implementationSpecificOptions)
 	if len(errorList) > 0 {
-		return intermediate.IR{}, errorList
+		return provider_intermediate.IR{}, errorList
 	}
 
 	tcpGatewayIR, notificationsAggregator, errs := crds.TCPIngressToGatewayIR(storage.TCPIngresses)
@@ -67,13 +67,13 @@ func (c *resourcesToIRConverter) convert(storage *storage) (intermediate.IR, fie
 	dispatchNotification(notificationsAggregator)
 
 	if len(errorList) > 0 {
-		return intermediate.IR{}, errorList
+		return provider_intermediate.IR{}, errorList
 	}
 
-	ir, errs = intermediate.MergeIRs(ir, tcpGatewayIR)
+	ir, errs = provider_intermediate.MergeIRs(ir, tcpGatewayIR)
 
 	if len(errs) > 0 {
-		return intermediate.IR{}, errs
+		return provider_intermediate.IR{}, errs
 	}
 
 	for _, parseFeatureFunc := range c.featureParsers {

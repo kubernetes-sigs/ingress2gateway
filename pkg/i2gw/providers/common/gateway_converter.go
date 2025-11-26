@@ -18,7 +18,7 @@ package common
 
 import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -26,7 +26,7 @@ import (
 
 // ToGatewayResources converts the received intermediate.IR to i2gw.GatewayResource
 // without taking into consideration any provider specific logic.
-func ToGatewayResources(ir intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
+func ToGatewayResources(ir provider_intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
 	gatewayResources := i2gw.GatewayResources{
 		Gateways:           make(map[types.NamespacedName]gatewayv1.Gateway),
 		HTTPRoutes:         make(map[types.NamespacedName]gatewayv1.HTTPRoute),

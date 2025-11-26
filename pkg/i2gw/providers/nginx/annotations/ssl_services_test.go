@@ -26,7 +26,7 @@ import (
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 )
 
 func TestSSLServicesAnnotation(t *testing.T) {
@@ -103,7 +103,7 @@ func TestSSLServicesAnnotation(t *testing.T) {
 				},
 			}
 
-			ir := intermediate.IR{
+			ir := provider_intermediate.IR{
 				BackendTLSPolicies: make(map[types.NamespacedName]gatewayv1.BackendTLSPolicy),
 			}
 
@@ -192,7 +192,7 @@ func TestSSLServicesFeature(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ir := intermediate.IR{
+			ir := provider_intermediate.IR{
 				BackendTLSPolicies: make(map[types.NamespacedName]gatewayv1.BackendTLSPolicy),
 			}
 

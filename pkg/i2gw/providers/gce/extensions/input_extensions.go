@@ -19,7 +19,7 @@ package extensions
 import (
 	"fmt"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"k8s.io/apimachinery/pkg/util/sets"
 	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
 	frontendconfigv1beta1 "k8s.io/ingress-gce/pkg/apis/frontendconfig/v1beta1"
@@ -60,27 +60,27 @@ func validateHealthCheck(beConfig *backendconfigv1.BackendConfig) error {
 	return nil
 }
 
-func BuildIRSessionAffinityConfig(beConfig *backendconfigv1.BackendConfig) *intermediate.SessionAffinityConfig {
-	return &intermediate.SessionAffinityConfig{
+func BuildIRSessionAffinityConfig(beConfig *backendconfigv1.BackendConfig) *provider_intermediate.SessionAffinityConfig {
+	return &provider_intermediate.SessionAffinityConfig{
 		AffinityType: beConfig.Spec.SessionAffinity.AffinityType,
 		CookieTTLSec: beConfig.Spec.SessionAffinity.AffinityCookieTtlSec,
 	}
 }
 
-func BuildIRSecurityPolicyConfig(beConfig *backendconfigv1.BackendConfig) *intermediate.SecurityPolicyConfig {
-	return &intermediate.SecurityPolicyConfig{
+func BuildIRSecurityPolicyConfig(beConfig *backendconfigv1.BackendConfig) *provider_intermediate.SecurityPolicyConfig {
+	return &provider_intermediate.SecurityPolicyConfig{
 		Name: beConfig.Spec.SecurityPolicy.Name,
 	}
 }
 
-func BuildIRSslPolicyConfig(feConfig *frontendconfigv1beta1.FrontendConfig) *intermediate.SslPolicyConfig {
-	return &intermediate.SslPolicyConfig{
+func BuildIRSslPolicyConfig(feConfig *frontendconfigv1beta1.FrontendConfig) *provider_intermediate.SslPolicyConfig {
+	return &provider_intermediate.SslPolicyConfig{
 		Name: *feConfig.Spec.SslPolicy,
 	}
 }
 
-func BuildIRHealthCheckConfig(beConfig *backendconfigv1.BackendConfig) *intermediate.HealthCheckConfig {
-	return &intermediate.HealthCheckConfig{
+func BuildIRHealthCheckConfig(beConfig *backendconfigv1.BackendConfig) *provider_intermediate.HealthCheckConfig {
+	return &provider_intermediate.HealthCheckConfig{
 		CheckIntervalSec:   beConfig.Spec.HealthCheck.CheckIntervalSec,
 		TimeoutSec:         beConfig.Spec.HealthCheck.TimeoutSec,
 		HealthyThreshold:   beConfig.Spec.HealthCheck.HealthyThreshold,

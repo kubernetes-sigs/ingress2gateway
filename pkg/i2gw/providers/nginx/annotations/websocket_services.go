@@ -21,11 +21,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 )
 
-func WebSocketServicesFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, _ *intermediate.IR) field.ErrorList {
+func WebSocketServicesFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, _ *provider_intermediate.IR) field.ErrorList {
 	for _, ingress := range ingresses {
 		if webSocketServices, exists := ingress.Annotations[nginxWebSocketServicesAnnotation]; exists && webSocketServices != "" {
 			message := "nginx.org/websocket-services: Please make sure the services are configured to support WebSocket connections. This annotation does not create any Gateway API resources."

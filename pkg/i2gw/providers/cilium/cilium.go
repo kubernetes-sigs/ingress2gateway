@@ -21,7 +21,7 @@ import (
 	"fmt"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -52,11 +52,11 @@ func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 
 // ToIR converts stored Cilium API entities to intermediate.IR
 // including the cilium specific features.
-func (p *Provider) ToIR() (intermediate.IR, field.ErrorList) {
+func (p *Provider) ToIR() (provider_intermediate.IR, field.ErrorList) {
 	return p.resourcesToIRConverter.convertToIR(p.storage)
 }
 
-func (p *Provider) ToGatewayResources(ir intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
+func (p *Provider) ToGatewayResources(ir provider_intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
 	return common.ToGatewayResources(ir)
 }
 

@@ -22,7 +22,7 @@ import (
 	"encoding/json"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/gce/extensions"
@@ -60,7 +60,7 @@ func newResourcesToIRConverter(conf *i2gw.ProviderConf) resourcesToIRConverter {
 	}
 }
 
-func (c *resourcesToIRConverter) convertToIR(storage *storage) (intermediate.IR, field.ErrorList) {
+func (c *resourcesToIRConverter) convertToIR(storage *storage) (provider_intermediate.IR, field.ErrorList) {
 	ingressList := []networkingv1.Ingress{}
 	for _, ing := range storage.Ingresses {
 		if ing != nil && common.GetIngressClass(*ing) == "" {
@@ -76,21 +76,21 @@ func (c *resourcesToIRConverter) convertToIR(storage *storage) (intermediate.IR,
 	// provider-specific features.
 	ir, errs := common.ToIR(ingressList, storage.ServicePorts, c.implementationSpecificOptions)
 	if len(errs) > 0 {
-		return intermediate.IR{}, errs
+		return provider_intermediate.IR{}, errs
 	}
 
 	errs = setGCEGatewayClasses(ingressList, ir.Gateways)
 	if len(errs) > 0 {
-		return intermediate.IR{}, errs
+		return provider_intermediate.IR{}, errs
 	}
 	buildGceGatewayIR(c.ctx, storage, &ir)
 	buildGceServiceIR(c.ctx, storage, &ir)
 	return ir, errs
 }
 
-func buildGceGatewayIR(ctx context.Context, storage *storage, ir *intermediate.IR) {
+func buildGceGatewayIR(ctx context.Context, storage *storage, ir *provider_intermediate.IR) {
 	if ir.Gateways == nil {
-		ir.Gateways = make(map[types.NamespacedName]intermediate.GatewayContext)
+		ir.Gateways = make(map[types.NamespacedName]provider_intermediate.GatewayContext)
 	}
 
 	feConfigToGwys := getFrontendConfigMapping(ctx, storage)
@@ -140,8 +140,8 @@ func getFrontendConfigAnnotation(ing *networkingv1.Ingress) (string, bool) {
 	return val, true
 }
 
-func feConfigToGceGatewayIR(feConfig *frontendconfigv1beta1.FrontendConfig) intermediate.GceGatewayIR {
-	var gceGatewayIR intermediate.GceGatewayIR
+func feConfigToGceGatewayIR(feConfig *frontendconfigv1beta1.FrontendConfig) provider_intermediate.GceGatewayIR {
+	var gceGatewayIR provider_intermediate.GceGatewayIR
 	if feConfig.Spec.SslPolicy != nil {
 		gceGatewayIR.SslPolicy = extensions.BuildIRSslPolicyConfig(feConfig)
 	}
@@ -150,9 +150,9 @@ func feConfigToGceGatewayIR(feConfig *frontendconfigv1beta1.FrontendConfig) inte
 
 type serviceNames []types.NamespacedName
 
-func buildGceServiceIR(ctx context.Context, storage *storage, ir *intermediate.IR) {
+func buildGceServiceIR(ctx context.Context, storage *storage, ir *provider_intermediate.IR) {
 	if ir.Services == nil {
-		ir.Services = make(map[types.NamespacedName]intermediate.ProviderSpecificServiceIR)
+		ir.Services = make(map[types.NamespacedName]provider_intermediate.ProviderSpecificServiceIR)
 	}
 
 	beConfigToSvcs := getBackendConfigMapping(ctx, storage)
@@ -258,8 +258,8 @@ func parseBackendConfigName(ctx context.Context, val string) (string, bool) {
 	return configs.Default, true
 }
 
-func beConfigToGceServiceIR(beConfig *backendconfigv1.BackendConfig) intermediate.GceServiceIR {
-	var gceServiceIR intermediate.GceServiceIR
+func beConfigToGceServiceIR(beConfig *backendconfigv1.BackendConfig) provider_intermediate.GceServiceIR {
+	var gceServiceIR provider_intermediate.GceServiceIR
 	if beConfig.Spec.SessionAffinity != nil {
 		gceServiceIR.SessionAffinity = extensions.BuildIRSessionAffinityConfig(beConfig)
 	}

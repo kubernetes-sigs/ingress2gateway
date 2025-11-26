@@ -1,5 +1,5 @@
 /*
-Copyright 2024 The Kubernetes Authors.
+Copyright 2023 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,8 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package intermediate
+package i2gw
 
-type KongGatewayIR struct{}
-type KongHTTPRouteIR struct{}
-type KongServiceIR struct{}
+import (
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
+	"k8s.io/apimachinery/pkg/util/validation/field"
+)
+
+type Emitter interface {
+	// ToGatewayResources converts stored IR with the Provider into
+	// Gateway API resources and extensions
+	Emit(provider_intermediate.IR) (GatewayResources, field.ErrorList)
+}

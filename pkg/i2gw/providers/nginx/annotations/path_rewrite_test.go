@@ -25,7 +25,7 @@ import (
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
@@ -125,8 +125,8 @@ func TestRewriteTarget(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ir := intermediate.IR{
-				HTTPRoutes: make(map[types.NamespacedName]intermediate.HTTPRouteContext),
+			ir := provider_intermediate.IR{
+				HTTPRoutes: make(map[types.NamespacedName]provider_intermediate.HTTPRouteContext),
 			}
 
 			routeName := common.RouteName(tt.ingress.Name, tt.ingress.Spec.Rules[0].Host)
@@ -153,7 +153,7 @@ func TestRewriteTarget(t *testing.T) {
 				},
 			}
 
-			ir.HTTPRoutes[routeKey] = intermediate.HTTPRouteContext{
+			ir.HTTPRoutes[routeKey] = provider_intermediate.HTTPRouteContext{
 				HTTPRoute: httpRoute,
 			}
 

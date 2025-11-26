@@ -26,7 +26,7 @@ import (
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 )
 
 func TestExtractListenPorts(t *testing.T) {
@@ -264,9 +264,9 @@ func TestListenPortsFeature(t *testing.T) {
 				},
 			}
 
-			ir := intermediate.IR{
-				Gateways:   make(map[types.NamespacedName]intermediate.GatewayContext),
-				HTTPRoutes: make(map[types.NamespacedName]intermediate.HTTPRouteContext),
+			ir := provider_intermediate.IR{
+				Gateways:   make(map[types.NamespacedName]provider_intermediate.GatewayContext),
+				HTTPRoutes: make(map[types.NamespacedName]provider_intermediate.HTTPRouteContext),
 			}
 
 			errs := ListenPortsFeature([]networkingv1.Ingress{ingress}, nil, &ir)
@@ -385,8 +385,8 @@ func TestListenPortsReplacesDefaultListeners(t *testing.T) {
 
 	// Start with IR that has a Gateway with default listeners (simulating what common converter creates)
 	gatewayKey := types.NamespacedName{Namespace: "default", Name: "nginx"}
-	ir := intermediate.IR{
-		Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+	ir := provider_intermediate.IR{
+		Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
 			gatewayKey: {
 				Gateway: gatewayv1.Gateway{
 					ObjectMeta: metav1.ObjectMeta{
@@ -413,7 +413,7 @@ func TestListenPortsReplacesDefaultListeners(t *testing.T) {
 				},
 			},
 		},
-		HTTPRoutes: make(map[types.NamespacedName]intermediate.HTTPRouteContext),
+		HTTPRoutes: make(map[types.NamespacedName]provider_intermediate.HTTPRouteContext),
 	}
 
 	// Apply listen-ports feature
@@ -490,9 +490,9 @@ func TestListenPortsConflictResolution(t *testing.T) {
 		},
 	}
 
-	ir := intermediate.IR{
-		Gateways:   make(map[types.NamespacedName]intermediate.GatewayContext),
-		HTTPRoutes: make(map[types.NamespacedName]intermediate.HTTPRouteContext),
+	ir := provider_intermediate.IR{
+		Gateways:   make(map[types.NamespacedName]provider_intermediate.GatewayContext),
+		HTTPRoutes: make(map[types.NamespacedName]provider_intermediate.HTTPRouteContext),
 	}
 
 	errs := ListenPortsFeature([]networkingv1.Ingress{ingress}, nil, &ir)

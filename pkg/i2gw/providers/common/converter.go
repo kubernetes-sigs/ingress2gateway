@@ -23,7 +23,7 @@ import (
 	"strings"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -36,7 +36,7 @@ import (
 
 // ToIR converts the received ingresses to intermediate.IR without taking into
 // consideration any provider specific logic.
-func ToIR(ingresses []networkingv1.Ingress, servicePorts map[types.NamespacedName]map[string]int32, options i2gw.ProviderImplementationSpecificOptions) (intermediate.IR, field.ErrorList) {
+func ToIR(ingresses []networkingv1.Ingress, servicePorts map[types.NamespacedName]map[string]int32, options i2gw.ProviderImplementationSpecificOptions) (provider_intermediate.IR, field.ErrorList) {
 	aggregator := ingressAggregator{
 		ruleGroups:   map[ruleGroupKey]*ingressRuleGroup{},
 		servicePorts: servicePorts,
@@ -47,33 +47,33 @@ func ToIR(ingresses []networkingv1.Ingress, servicePorts map[types.NamespacedNam
 		aggregator.addIngress(ingress)
 	}
 	if len(errs) > 0 {
-		return intermediate.IR{}, errs
+		return provider_intermediate.IR{}, errs
 	}
 
 	routes, gateways, errs := aggregator.toHTTPRoutesAndGateways(options)
 	if len(errs) > 0 {
-		return intermediate.IR{}, errs
+		return provider_intermediate.IR{}, errs
 	}
 
-	routeByKey := make(map[types.NamespacedName]intermediate.HTTPRouteContext)
+	routeByKey := make(map[types.NamespacedName]provider_intermediate.HTTPRouteContext)
 	for _, routeWithSources := range routes {
 		key := types.NamespacedName{Namespace: routeWithSources.route.Namespace, Name: routeWithSources.route.Name}
-		routeByKey[key] = intermediate.HTTPRouteContext{
+		routeByKey[key] = provider_intermediate.HTTPRouteContext{
 			HTTPRoute:          routeWithSources.route,
 			RuleBackendSources: routeWithSources.sources,
 		}
 	}
 
-	gatewayByKey := make(map[types.NamespacedName]intermediate.GatewayContext)
+	gatewayByKey := make(map[types.NamespacedName]provider_intermediate.GatewayContext)
 	for _, gateway := range gateways {
 		key := types.NamespacedName{Namespace: gateway.Namespace, Name: gateway.Name}
-		gatewayByKey[key] = intermediate.GatewayContext{Gateway: gateway}
+		gatewayByKey[key] = provider_intermediate.GatewayContext{Gateway: gateway}
 	}
 
-	return intermediate.IR{
+	return provider_intermediate.IR{
 		Gateways:           gatewayByKey,
 		HTTPRoutes:         routeByKey,
-		Services:           make(map[types.NamespacedName]intermediate.ProviderSpecificServiceIR),
+		Services:           make(map[types.NamespacedName]provider_intermediate.ProviderSpecificServiceIR),
 		GatewayClasses:     make(map[types.NamespacedName]gatewayv1.GatewayClass),
 		TLSRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
 		TCPRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
@@ -198,7 +198,7 @@ func (a *ingressAggregator) addIngressRule(ingress networkingv1.Ingress, ingress
 
 type httpRouteWithSources struct {
 	route   gatewayv1.HTTPRoute
-	sources [][]intermediate.BackendSource
+	sources [][]provider_intermediate.BackendSource
 }
 
 func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImplementationSpecificOptions) ([]httpRouteWithSources, []gatewayv1.Gateway, field.ErrorList) {
@@ -269,7 +269,7 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImpleme
 			})
 		}
 		// Set the single source for this default backend.
-		sources := [][]intermediate.BackendSource{
+		sources := [][]provider_intermediate.BackendSource{
 			{
 				{
 					Ingress:        db.sourceIngress,
@@ -333,7 +333,7 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImpleme
 	return httpRoutes, gateways, errors
 }
 
-func (rg *ingressRuleGroup) toHTTPRoute(servicePorts map[types.NamespacedName]map[string]int32, options i2gw.ProviderImplementationSpecificOptions) (gatewayv1.HTTPRoute, [][]intermediate.BackendSource, field.ErrorList) {
+func (rg *ingressRuleGroup) toHTTPRoute(servicePorts map[types.NamespacedName]map[string]int32, options i2gw.ProviderImplementationSpecificOptions) (gatewayv1.HTTPRoute, [][]provider_intermediate.BackendSource, field.ErrorList) {
 	ingressPathsByMatchKey := groupIngressPathsByMatchKey(rg.rules)
 	httpRoute := gatewayv1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
@@ -357,7 +357,7 @@ func (rg *ingressRuleGroup) toHTTPRoute(servicePorts map[types.NamespacedName]ma
 	}
 
 	var errors field.ErrorList
-	var allRuleBackendSources [][]intermediate.BackendSource
+	var allRuleBackendSources [][]provider_intermediate.BackendSource
 
 	for _, key := range ingressPathsByMatchKey.keys {
 		paths := ingressPathsByMatchKey.data[key]
@@ -383,10 +383,10 @@ func (rg *ingressRuleGroup) toHTTPRoute(servicePorts map[types.NamespacedName]ma
 	return httpRoute, allRuleBackendSources, errors
 }
 
-func (rg *ingressRuleGroup) configureBackendRef(servicePorts map[types.NamespacedName]map[string]int32, paths []ingressPath) ([]gatewayv1.HTTPBackendRef, []intermediate.BackendSource, field.ErrorList) {
+func (rg *ingressRuleGroup) configureBackendRef(servicePorts map[types.NamespacedName]map[string]int32, paths []ingressPath) ([]gatewayv1.HTTPBackendRef, []provider_intermediate.BackendSource, field.ErrorList) {
 	var errors field.ErrorList
 	var backendRefs []gatewayv1.HTTPBackendRef
-	var sources []intermediate.BackendSource
+	var sources []provider_intermediate.BackendSource
 
 	for i, path := range paths {
 		backendRef, err := ToBackendRef(rg.namespace, path.path.Backend, servicePorts, field.NewPath("paths", "backends").Index(i))
@@ -397,7 +397,7 @@ func (rg *ingressRuleGroup) configureBackendRef(servicePorts map[types.Namespace
 		backendRefs = append(backendRefs, gatewayv1.HTTPBackendRef{BackendRef: *backendRef})
 
 		// Track source for this backend
-		sources = append(sources, intermediate.BackendSource{
+		sources = append(sources, provider_intermediate.BackendSource{
 			Ingress: path.sourceIngress,
 			Path:    &path.path,
 		})
