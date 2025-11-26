@@ -23,7 +23,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	istiov1beta1 "istio.io/api/networking/v1beta1"
@@ -57,12 +57,12 @@ func newResourcesToIRConverter() resourcesToIRConverter {
 	}
 }
 
-func (c *resourcesToIRConverter) convertToIR(storage *storage) (intermediate.IR, field.ErrorList) {
+func (c *resourcesToIRConverter) convertToIR(storage *storage) (provider_intermediate.IR, field.ErrorList) {
 	var errList field.ErrorList
 
-	gatewayResources := intermediate.IR{
-		Gateways:        make(map[types.NamespacedName]intermediate.GatewayContext),
-		HTTPRoutes:      make(map[types.NamespacedName]intermediate.HTTPRouteContext),
+	gatewayResources := provider_intermediate.IR{
+		Gateways:        make(map[types.NamespacedName]provider_intermediate.GatewayContext),
+		HTTPRoutes:      make(map[types.NamespacedName]provider_intermediate.HTTPRouteContext),
 		TLSRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
 		TCPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
 		ReferenceGrants: make(map[types.NamespacedName]gatewayv1beta1.ReferenceGrant),
@@ -80,7 +80,7 @@ func (c *resourcesToIRConverter) convertToIR(storage *storage) (intermediate.IR,
 		gatewayResources.Gateways[types.NamespacedName{
 			Namespace: gw.Namespace,
 			Name:      gw.Name,
-		}] = intermediate.GatewayContext{Gateway: *gw}
+		}] = provider_intermediate.GatewayContext{Gateway: *gw}
 	}
 
 	for _, vs := range storage.VirtualServices {
@@ -104,7 +104,7 @@ func (c *resourcesToIRConverter) convertToIR(storage *storage) (intermediate.IR,
 				gatewayResources.HTTPRoutes[types.NamespacedName{
 					Namespace: httpRoute.Namespace,
 					Name:      httpRoute.Name,
-				}] = intermediate.HTTPRouteContext{HTTPRoute: *httpRoute}
+				}] = provider_intermediate.HTTPRouteContext{HTTPRoute: *httpRoute}
 			}
 		}
 

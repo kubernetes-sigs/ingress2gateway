@@ -27,7 +27,7 @@ import (
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
@@ -186,14 +186,14 @@ func TestHideHeaders(t *testing.T) {
 				nginxProxyHideHeadersAnnotation: tt.hideHeaders,
 			})
 
-			ir := intermediate.IR{
-				Gateways:   make(map[types.NamespacedName]intermediate.GatewayContext),
-				HTTPRoutes: make(map[types.NamespacedName]intermediate.HTTPRouteContext),
+			ir := provider_intermediate.IR{
+				Gateways:   make(map[types.NamespacedName]provider_intermediate.GatewayContext),
+				HTTPRoutes: make(map[types.NamespacedName]provider_intermediate.HTTPRouteContext),
 			}
 
 			routeName := common.RouteName(ingress.Name, ingress.Spec.Rules[0].Host)
 			routeKey := types.NamespacedName{Namespace: ingress.Namespace, Name: routeName}
-			ir.HTTPRoutes[routeKey] = intermediate.HTTPRouteContext{
+			ir.HTTPRoutes[routeKey] = provider_intermediate.HTTPRouteContext{
 				HTTPRoute: gatewayv1.HTTPRoute{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      routeName,
@@ -324,14 +324,14 @@ func TestSetHeaders(t *testing.T) {
 				nginxProxySetHeadersAnnotation: tt.setHeaders,
 			})
 
-			ir := intermediate.IR{
-				Gateways:   make(map[types.NamespacedName]intermediate.GatewayContext),
-				HTTPRoutes: make(map[types.NamespacedName]intermediate.HTTPRouteContext),
+			ir := provider_intermediate.IR{
+				Gateways:   make(map[types.NamespacedName]provider_intermediate.GatewayContext),
+				HTTPRoutes: make(map[types.NamespacedName]provider_intermediate.HTTPRouteContext),
 			}
 
 			routeName := common.RouteName(ingress.Name, ingress.Spec.Rules[0].Host)
 			routeKey := types.NamespacedName{Namespace: ingress.Namespace, Name: routeName}
-			ir.HTTPRoutes[routeKey] = intermediate.HTTPRouteContext{
+			ir.HTTPRoutes[routeKey] = provider_intermediate.HTTPRouteContext{
 				HTTPRoute: gatewayv1.HTTPRoute{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      routeName,
@@ -466,14 +466,14 @@ func TestHeaderManipulationFeature(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ingress := createTestIngress("test-ingress", "default", tt.annotations)
 
-			ir := intermediate.IR{
-				Gateways:   make(map[types.NamespacedName]intermediate.GatewayContext),
-				HTTPRoutes: make(map[types.NamespacedName]intermediate.HTTPRouteContext),
+			ir := provider_intermediate.IR{
+				Gateways:   make(map[types.NamespacedName]provider_intermediate.GatewayContext),
+				HTTPRoutes: make(map[types.NamespacedName]provider_intermediate.HTTPRouteContext),
 			}
 
 			routeName := common.RouteName(ingress.Name, ingress.Spec.Rules[0].Host)
 			routeKey := types.NamespacedName{Namespace: ingress.Namespace, Name: routeName}
-			ir.HTTPRoutes[routeKey] = intermediate.HTTPRouteContext{
+			ir.HTTPRoutes[routeKey] = provider_intermediate.HTTPRouteContext{
 				HTTPRoute: gatewayv1.HTTPRoute{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      routeName,
@@ -807,11 +807,11 @@ func TestHeaderManipulationWithSourceIngressMapping(t *testing.T) {
 		},
 	}
 
-	ir := intermediate.IR{
-		HTTPRoutes: make(map[types.NamespacedName]intermediate.HTTPRouteContext),
+	ir := provider_intermediate.IR{
+		HTTPRoutes: make(map[types.NamespacedName]provider_intermediate.HTTPRouteContext),
 	}
 	routeKey := types.NamespacedName{Namespace: "test", Name: "app1-example-com"}
-	ir.HTTPRoutes[routeKey] = intermediate.HTTPRouteContext{HTTPRoute: httpRoute}
+	ir.HTTPRoutes[routeKey] = provider_intermediate.HTTPRouteContext{HTTPRoute: httpRoute}
 
 	// Apply header manipulation
 	errs := HeaderManipulationFeature([]networkingv1.Ingress{ingress1, ingress2}, nil, &ir)

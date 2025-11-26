@@ -27,7 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
@@ -37,7 +37,7 @@ type portConfiguration struct {
 }
 
 // ListenPortsFeature processes nginx.org/listen-ports and nginx.org/listen-ports-ssl annotations
-func ListenPortsFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *intermediate.IR) field.ErrorList {
+func ListenPortsFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *provider_intermediate.IR) field.ErrorList {
 	var errs field.ErrorList
 
 	ruleGroups := common.GetRuleGroups(ingresses)
@@ -91,7 +91,7 @@ func extractListenPorts(portsAnnotation string) []int32 {
 // This follows NIC behavior where listen-ports annotations REPLACE default ports, not add to them
 //
 //nolint:unparam // ErrorList return type maintained for consistency
-func replaceGatewayPortsWithCustom(ingress networkingv1.Ingress, portConfiguration portConfiguration, ir *intermediate.IR) field.ErrorList {
+func replaceGatewayPortsWithCustom(ingress networkingv1.Ingress, portConfiguration portConfiguration, ir *provider_intermediate.IR) field.ErrorList {
 	var errs field.ErrorList //nolint:unparam // ErrorList return type maintained for consistency
 
 	gatewayClassName := getGatewayClassName(ingress)
@@ -99,7 +99,7 @@ func replaceGatewayPortsWithCustom(ingress networkingv1.Ingress, portConfigurati
 
 	gatewayContext, exists := ir.Gateways[gatewayKey]
 	if !exists {
-		gatewayContext = intermediate.GatewayContext{
+		gatewayContext = provider_intermediate.GatewayContext{
 			Gateway: gatewayv1.Gateway{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      gatewayClassName,

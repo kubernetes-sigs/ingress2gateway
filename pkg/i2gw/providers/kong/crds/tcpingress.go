@@ -21,7 +21,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
@@ -35,7 +35,7 @@ import (
 )
 
 // TCPIngressToGatewayIR converts the received TCPingresses to intermediate.IR,
-func TCPIngressToGatewayIR(ingresses []kongv1beta1.TCPIngress) (intermediate.IR, []notifications.Notification, field.ErrorList) {
+func TCPIngressToGatewayIR(ingresses []kongv1beta1.TCPIngress) (provider_intermediate.IR, []notifications.Notification, field.ErrorList) {
 	aggregator := tcpIngressAggregator{ruleGroups: map[ruleGroupKey]*tcpIngressRuleGroup{}}
 	var notificationsAggregator []notifications.Notification
 
@@ -44,12 +44,12 @@ func TCPIngressToGatewayIR(ingresses []kongv1beta1.TCPIngress) (intermediate.IR,
 		aggregator.addIngress(ingress, &notificationsAggregator)
 	}
 	if len(errs) > 0 {
-		return intermediate.IR{}, notificationsAggregator, errs
+		return provider_intermediate.IR{}, notificationsAggregator, errs
 	}
 
 	tcpRoutes, tlsRoutes, gateways, errs := aggregator.toRoutesAndGateways()
 	if len(errs) > 0 {
-		return intermediate.IR{}, notificationsAggregator, errs
+		return provider_intermediate.IR{}, notificationsAggregator, errs
 	}
 
 	tcpRouteByKey := make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute)
@@ -64,13 +64,13 @@ func TCPIngressToGatewayIR(ingresses []kongv1beta1.TCPIngress) (intermediate.IR,
 		tlsRouteByKey[key] = route
 	}
 
-	gatewayByKey := make(map[types.NamespacedName]intermediate.GatewayContext)
+	gatewayByKey := make(map[types.NamespacedName]provider_intermediate.GatewayContext)
 	for _, gateway := range gateways {
 		key := types.NamespacedName{Namespace: gateway.Namespace, Name: gateway.Name}
-		gatewayByKey[key] = intermediate.GatewayContext{Gateway: gateway}
+		gatewayByKey[key] = provider_intermediate.GatewayContext{Gateway: gateway}
 	}
 
-	return intermediate.IR{
+	return provider_intermediate.IR{
 		Gateways:  gatewayByKey,
 		TCPRoutes: tcpRouteByKey,
 		TLSRoutes: tlsRouteByKey,

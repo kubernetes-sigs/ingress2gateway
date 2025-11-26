@@ -21,7 +21,7 @@ import (
 	"fmt"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
@@ -82,10 +82,10 @@ func (p *Provider) ReadResourcesFromFile(_ context.Context, filename string) err
 
 // ToIR converts stored Ingress GCE API entities to intermediate.IR including the
 // ingress-gce specific features.
-func (p *Provider) ToIR() (intermediate.IR, field.ErrorList) {
+func (p *Provider) ToIR() (provider_intermediate.IR, field.ErrorList) {
 	return p.irConverter.convertToIR(p.storage)
 }
 
-func (p *Provider) ToGatewayResources(ir intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
+func (p *Provider) ToGatewayResources(ir provider_intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
 	return p.gatewayConverter.irToGateway(ir)
 }

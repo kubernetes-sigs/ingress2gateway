@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package intermediate
+package provider_intermediate
 
 import (
 	networkingv1 "k8s.io/api/networking/v1"
@@ -54,13 +54,7 @@ type GatewayContext struct {
 }
 
 type ProviderSpecificGatewayIR struct {
-	Apisix       *ApisixGatewayIR
-	Cilium       *CiliumGatewayIR
 	Gce          *GceGatewayIR
-	IngressNginx *IngressNginxGatewayIR
-	Istio        *IstioGatewayIR
-	Kong         *KongGatewayIR
-	Openapi3     *Openapi3GatewayIR
 }
 
 // HTTPRouteContext contains the Gateway-API HTTPRoute object and HTTPRouteIR,
@@ -77,26 +71,13 @@ type HTTPRouteContext struct {
 }
 
 type ProviderSpecificHTTPRouteIR struct {
-	Apisix       *ApisixHTTPRouteIR
-	Cilium       *CiliumHTTPRouteIR
 	Gce          *GceHTTPRouteIR
-	IngressNginx *IngressNginxHTTPRouteIR
-	Istio        *IstioHTTPRouteIR
-	Kong         *KongHTTPRouteIR
-	Openapi3     *Openapi3HTTPRouteIR
 }
 
 // ServiceIR contains a dedicated field for each provider to specify their
 // extension features on Service.
 type ProviderSpecificServiceIR struct {
-	Apisix       *ApisixServiceIR
-	Cilium       *CiliumServiceIR
 	Gce          *GceServiceIR
-	IngressNginx *IngressNginxServiceIR
-	Istio        *IstioServiceIR
-	Kong         *KongServiceIR
-	Openapi3     *Openapi3ServiceIR
-	Nginx        *NginxServiceIR
 }
 
 // BackendSource tracks the source Ingress resource that contributed

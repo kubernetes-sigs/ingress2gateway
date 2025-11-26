@@ -19,7 +19,7 @@ package gce
 import (
 	gkegatewayv1 "github.com/GoogleCloudPlatform/gke-gateway-api/apis/networking/v1"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/gce/extensions"
@@ -37,7 +37,7 @@ func newIRToGatewayResourcesConverter() irToGatewayResourcesConverter {
 	return irToGatewayResourcesConverter{}
 }
 
-func (c *irToGatewayResourcesConverter) irToGateway(ir intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
+func (c *irToGatewayResourcesConverter) irToGateway(ir provider_intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
 	gatewayResources, errs := common.ToGatewayResources(ir)
 	if len(errs) != 0 {
 		return i2gw.GatewayResources{}, errs
@@ -47,7 +47,7 @@ func (c *irToGatewayResourcesConverter) irToGateway(ir intermediate.IR) (i2gw.Ga
 	return gatewayResources, nil
 }
 
-func buildGceGatewayExtensions(ir intermediate.IR, gatewayResources *i2gw.GatewayResources) {
+func buildGceGatewayExtensions(ir provider_intermediate.IR, gatewayResources *i2gw.GatewayResources) {
 	for gwyKey, gatewayContext := range ir.Gateways {
 		gwyPolicy := addGatewayPolicyIfConfigured(gwyKey, gatewayContext.ProviderSpecificIR)
 		if gwyPolicy == nil {
@@ -62,7 +62,7 @@ func buildGceGatewayExtensions(ir intermediate.IR, gatewayResources *i2gw.Gatewa
 	}
 }
 
-func addGatewayPolicyIfConfigured(gatewayNamespacedName types.NamespacedName, gatewayIR intermediate.ProviderSpecificGatewayIR) *gkegatewayv1.GCPGatewayPolicy {
+func addGatewayPolicyIfConfigured(gatewayNamespacedName types.NamespacedName, gatewayIR provider_intermediate.ProviderSpecificGatewayIR) *gkegatewayv1.GCPGatewayPolicy {
 	if gatewayIR.Gce == nil {
 		return nil
 	}
@@ -91,7 +91,7 @@ func addGatewayPolicyIfConfigured(gatewayNamespacedName types.NamespacedName, ga
 	return &gcpGatewayPolicy
 }
 
-func buildGceServiceExtensions(ir intermediate.IR, gatewayResources *i2gw.GatewayResources) {
+func buildGceServiceExtensions(ir provider_intermediate.IR, gatewayResources *i2gw.GatewayResources) {
 	for svcKey, serviceIR := range ir.Services {
 		bePolicy := addGCPBackendPolicyIfConfigured(svcKey, serviceIR)
 		if bePolicy != nil {
@@ -115,7 +115,7 @@ func buildGceServiceExtensions(ir intermediate.IR, gatewayResources *i2gw.Gatewa
 	}
 }
 
-func addGCPBackendPolicyIfConfigured(serviceNamespacedName types.NamespacedName, serviceIR intermediate.ProviderSpecificServiceIR) *gkegatewayv1.GCPBackendPolicy {
+func addGCPBackendPolicyIfConfigured(serviceNamespacedName types.NamespacedName, serviceIR provider_intermediate.ProviderSpecificServiceIR) *gkegatewayv1.GCPBackendPolicy {
 	if serviceIR.Gce == nil {
 		return nil
 	}
@@ -150,7 +150,7 @@ func addGCPBackendPolicyIfConfigured(serviceNamespacedName types.NamespacedName,
 	return &gcpBackendPolicy
 }
 
-func addHealthCheckPolicyIfConfigured(serviceNamespacedName types.NamespacedName, serviceIR intermediate.ProviderSpecificServiceIR) *gkegatewayv1.HealthCheckPolicy {
+func addHealthCheckPolicyIfConfigured(serviceNamespacedName types.NamespacedName, serviceIR provider_intermediate.ProviderSpecificServiceIR) *gkegatewayv1.HealthCheckPolicy {
 	if serviceIR.Gce == nil {
 		return nil
 	}
