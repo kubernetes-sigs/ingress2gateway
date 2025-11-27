@@ -1,4 +1,4 @@
-# Emitters: Design and Policy
+# Emitters: Design and Governance
 
 ## Motivation
 
