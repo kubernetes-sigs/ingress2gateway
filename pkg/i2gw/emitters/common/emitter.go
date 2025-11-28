@@ -1,5 +1,5 @@
 /*
-Copyright 2024 The Kubernetes Authors.
+Copyright 2025 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,9 +24,22 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
+// Emitter is the default emitter that converts intermediate representation (IR)
+// to standard Gateway API resources without any implementation-specific customizations.
+// This emitter is used when no specific emitter is specified via the --emitter flag.
+type Emitter struct{}
+
+var _ i2gw.Emitter = &Emitter{}
+
+// init registers the common emitter as the default emitter in the registry.
+// It is registered with an empty string key, making it the default when --emitter flag is not specified.
+func init() {
+	i2gw.EmitterByName[""] = &Emitter{}
+}
+
 // ToGatewayResources converts the received intermediate.IR to i2gw.GatewayResource
 // without taking into consideration any provider specific logic.
-func ToGatewayResources(ir intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
+func (e *Emitter) ToGatewayResources(ir intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
 	gatewayResources := i2gw.GatewayResources{
 		Gateways:           make(map[types.NamespacedName]gatewayv1.Gateway),
 		HTTPRoutes:         make(map[types.NamespacedName]gatewayv1.HTTPRoute),

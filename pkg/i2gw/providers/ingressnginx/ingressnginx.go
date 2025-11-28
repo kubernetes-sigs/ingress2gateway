@@ -22,7 +22,6 @@ import (
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -60,11 +59,6 @@ func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 // including the ingress-nginx specific features.
 func (p *Provider) ToIR() (intermediate.IR, field.ErrorList) {
 	return p.resourcesToIRConverter.convert(p.storage)
-}
-
-func (p *Provider) ToGatewayResources(ir intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
-	return common.ToGatewayResources(ir)
-
 }
 
 func (p *Provider) ReadResourcesFromCluster(ctx context.Context) error {

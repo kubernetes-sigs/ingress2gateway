@@ -23,6 +23,7 @@ import (
 	gkegatewayv1 "github.com/GoogleCloudPlatform/gke-gateway-api/apis/networking/v1"
 	"github.com/google/go-cmp/cmp"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/gvk"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -495,10 +496,10 @@ func Test_irToGateway(t *testing.T) {
 					len(tc.expectedGatewayResources.HTTPRoutes), len(gatewayResources.HTTPRoutes), gatewayResources.HTTPRoutes)
 			} else {
 				for i, got := range gatewayResources.HTTPRoutes {
-					got.SetGroupVersionKind(common.HTTPRouteGVK)
+					got.SetGroupVersionKind(gvk.HTTPRouteGVK)
 					key := types.NamespacedName{Namespace: got.Namespace, Name: got.Name}
 					want := tc.expectedGatewayResources.HTTPRoutes[key]
-					want.SetGroupVersionKind(common.HTTPRouteGVK)
+					want.SetGroupVersionKind(gvk.HTTPRouteGVK)
 					if !apiequality.Semantic.DeepEqual(got, want) {
 						t.Errorf("Expected HTTPRoute %s to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))
 					}
@@ -510,10 +511,10 @@ func Test_irToGateway(t *testing.T) {
 					len(tc.expectedGatewayResources.Gateways), len(gatewayResources.Gateways), gatewayResources.Gateways)
 			} else {
 				for i, got := range gatewayResources.Gateways {
-					got.SetGroupVersionKind(common.GatewayGVK)
+					got.SetGroupVersionKind(gvk.GatewayGVK)
 					key := types.NamespacedName{Namespace: got.Namespace, Name: got.Name}
 					want := tc.expectedGatewayResources.Gateways[key]
-					want.SetGroupVersionKind(common.GatewayGVK)
+					want.SetGroupVersionKind(gvk.GatewayGVK)
 					if !apiequality.Semantic.DeepEqual(got, want) {
 						t.Errorf("Expected Gateway %s to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))
 					}

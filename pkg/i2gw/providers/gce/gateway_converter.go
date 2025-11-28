@@ -19,9 +19,9 @@ package gce
 import (
 	gkegatewayv1 "github.com/GoogleCloudPlatform/gke-gateway-api/apis/networking/v1"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	ecommon "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/common"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/gce/extensions"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -38,7 +38,8 @@ func newIRToGatewayResourcesConverter() irToGatewayResourcesConverter {
 }
 
 func (c *irToGatewayResourcesConverter) irToGateway(ir intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
-	gatewayResources, errs := common.ToGatewayResources(ir)
+	CommonEmitter := ecommon.Emitter{}
+	gatewayResources, errs := CommonEmitter.ToGatewayResources(ir)
 	if len(errs) != 0 {
 		return i2gw.GatewayResources{}, errs
 	}

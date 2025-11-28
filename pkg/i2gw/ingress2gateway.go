@@ -36,7 +36,14 @@ const GeneratorAnnotationKey = "gateway.networking.k8s.io/generator"
 // Examples: "v0.4.0", "v0.4.0-5-gabcdef", "v0.4.0-5-gabcdef-dirty"
 var Version = "dev" // Default value if not built with linker flags
 
-func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string, providers []string, providerSpecificFlags map[string]map[string]string) ([]GatewayResources, map[string]string, error) {
+func ToGatewayAPIResources(
+	ctx context.Context,
+	namespace string,
+	inputFile string,
+	providers []string,
+	providerSpecificFlags map[string]map[string]string,
+	emitterName string,
+) ([]GatewayResources, map[string]string, error) {
 	var clusterClient client.Client
 
 	if inputFile == "" {
@@ -61,6 +68,11 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 		return nil, nil, err
 	}
 
+	emitter, ok := EmitterByName[EmitterName(emitterName)]
+	if !ok {
+		return nil, nil, fmt.Errorf("emitter %q is not supported", EmitterName(emitterName))
+	}
+
 	if inputFile != "" {
 		if err = readProviderResourcesFromFile(ctx, providerByName, inputFile); err != nil {
 			return nil, nil, err
@@ -78,7 +90,7 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 	for _, provider := range providerByName {
 		ir, conversionErrs := provider.ToIR()
 		errs = append(errs, conversionErrs...)
-		providerGatewayResources, conversionErrs := provider.ToGatewayResources(ir)
+		providerGatewayResources, conversionErrs := emitter.ToGatewayResources(ir)
 		errs = append(errs, conversionErrs...)
 		gatewayResources = append(gatewayResources, providerGatewayResources)
 	}

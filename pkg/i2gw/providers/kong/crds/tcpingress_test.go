@@ -24,6 +24,7 @@ import (
 	kongv1beta1 "github.com/kong/kubernetes-ingress-controller/v2/pkg/apis/configuration/v1beta1"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/gvk"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -213,7 +214,7 @@ func TestTCPIngressToGatewayAPI(t *testing.T) {
 				for i, gotGatewayContext := range ir.Gateways {
 					key := types.NamespacedName{Namespace: gotGatewayContext.Gateway.Namespace, Name: gotGatewayContext.Gateway.Name}
 					want := tc.expectedGatewayResources.Gateways[key]
-					want.SetGroupVersionKind(common.GatewayGVK)
+					want.SetGroupVersionKind(gvk.GatewayGVK)
 					if !apiequality.Semantic.DeepEqual(gotGatewayContext.Gateway, want) {
 						t.Errorf("Expected Gateway %s to be %+v\n Got: %+v\n Diff: %s", i, want, gotGatewayContext.Gateway, cmp.Diff(want, gotGatewayContext.Gateway))
 					}
@@ -227,7 +228,7 @@ func TestTCPIngressToGatewayAPI(t *testing.T) {
 				for i, gotHTTPRouteContext := range ir.HTTPRoutes {
 					key := types.NamespacedName{Namespace: gotHTTPRouteContext.HTTPRoute.Namespace, Name: gotHTTPRouteContext.HTTPRoute.Name}
 					want := tc.expectedGatewayResources.HTTPRoutes[key]
-					want.SetGroupVersionKind(common.HTTPRouteGVK)
+					want.SetGroupVersionKind(gvk.HTTPRouteGVK)
 					if !apiequality.Semantic.DeepEqual(gotHTTPRouteContext.HTTPRoute, want) {
 						t.Errorf("Expected HTTPRoute %s to be %+v\n Got: %+v\n Diff: %s", i, want, gotHTTPRouteContext.HTTPRoute, cmp.Diff(want, gotHTTPRouteContext.HTTPRoute))
 					}
@@ -241,7 +242,7 @@ func TestTCPIngressToGatewayAPI(t *testing.T) {
 				for i, got := range ir.TCPRoutes {
 					key := types.NamespacedName{Namespace: got.Namespace, Name: got.Name}
 					want := tc.expectedGatewayResources.TCPRoutes[key]
-					want.SetGroupVersionKind(common.TCPRouteGVK)
+					want.SetGroupVersionKind(gvk.TCPRouteGVK)
 					if !apiequality.Semantic.DeepEqual(got, want) {
 						t.Errorf("Expected TCPRoute %s to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))
 					}
@@ -255,7 +256,7 @@ func TestTCPIngressToGatewayAPI(t *testing.T) {
 				for i, got := range ir.TLSRoutes {
 					key := types.NamespacedName{Namespace: got.Namespace, Name: got.Name}
 					want := tc.expectedGatewayResources.TLSRoutes[key]
-					want.SetGroupVersionKind(common.TLSRouteGVK)
+					want.SetGroupVersionKind(gvk.TLSRouteGVK)
 					if !apiequality.Semantic.DeepEqual(got, want) {
 						t.Errorf("Expected TLSRoute %s to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))
 					}
