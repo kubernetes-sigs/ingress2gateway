@@ -1,5 +1,5 @@
 /*
-Copyright 2024 The Kubernetes Authors.
+Copyright 2025 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ package gce
 import (
 	gkegatewayv1 "github.com/GoogleCloudPlatform/gke-gateway-api/apis/networking/v1"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	ecommon "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/common"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/common"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/gce/extensions"
@@ -30,16 +30,27 @@ import (
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
-type irToGatewayResourcesConverter struct{}
+// The Name of the provider.
+const Name = "gce"
 
-// newIRToGatewayResourcesConverter returns an gce irToGatewayResourcesConverter instance.
-func newIRToGatewayResourcesConverter() irToGatewayResourcesConverter {
-	return irToGatewayResourcesConverter{}
+// Emitter implements the i2gw.Emitter interface.
+type Emitter struct {
+	common common.Emitter
 }
 
-func (c *irToGatewayResourcesConverter) irToGateway(ir intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
-	CommonEmitter := ecommon.Emitter{}
-	gatewayResources, errs := CommonEmitter.ToGatewayResources(ir)
+var _ i2gw.Emitter = &Emitter{}
+
+// init registers the emitter as the gce emitter in the registry.
+func init() {
+	i2gw.EmitterByName[i2gw.EmitterName(Name)] = NewEmitter()
+}
+
+func NewEmitter() i2gw.Emitter {
+	return &Emitter{common.Emitter{}}
+}
+
+func (e *Emitter) ToGatewayResources(ir intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
+	gatewayResources, errs := e.common.ToGatewayResources(ir)
 	if len(errs) != 0 {
 		return i2gw.GatewayResources{}, errs
 	}

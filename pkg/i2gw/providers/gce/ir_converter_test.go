@@ -62,8 +62,6 @@ const (
 	testHealthyThreshold   = int64(2)
 	testUnhealthyThreshold = int64(3)
 	protocolHTTP           = "HTTP"
-	protocolHTTPS          = "HTTPS"
-	protocolHTTP2          = "HTTP2"
 	testPort               = int64(8081)
 	testRequestPath        = "/foo"
 )

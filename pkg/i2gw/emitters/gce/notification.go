@@ -1,5 +1,5 @@
 /*
-Copyright 2024 The Kubernetes Authors.
+Copyright 2025 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,13 +16,12 @@ limitations under the License.
 
 package gce
 
-const (
-	gceIngressClass      = "gce"
-	gceL7ILBIngressClass = "gce-internal"
-
-	gceL7GlobalExternalManagedGatewayClass = "gke-l7-global-external-managed"
-	gceL7RegionalInternalGatewayClass      = "gke-l7-rilb"
-	backendConfigKey                       = "cloud.google.com/backend-config"
-	betaBackendConfigKey                   = "beta.cloud.google.com/backend-config"
-	frontendConfigKey                      = "networking.gke.io/v1beta1.FrontendConfig"
+import (
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+func notify(mType notifications.MessageType, message string, callingObject ...client.Object) {
+	newNotification := notifications.NewNotification(mType, message, callingObject...)
+	notifications.NotificationAggr.DispatchNotification(newNotification, string(Name))
+}

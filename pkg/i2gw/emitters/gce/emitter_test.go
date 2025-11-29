@@ -1,5 +1,5 @@
 /*
-Copyright 2024 The Kubernetes Authors.
+Copyright 2025 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -37,10 +37,29 @@ import (
 )
 
 const (
+	saTypeClientIP = "CLIENT_IP"
+	saTypeCookie   = "GENERATED_COOKIE"
+	gPathPrefix    = gatewayv1.PathMatchPathPrefix
+
+	testNamespace               = "default"
+	testHost                    = "test.mydomain.com"
+	testServiceName             = "test-service"
 	testGatewayName             = "test-gateway"
 	testHTTPRouteName           = "test-http-route"
-	testSaGCPBackendPolicyName  = testServiceName
+	testSaGCPBackendPolicyName  = "test-service"
 	testSslGCPGatewayPolicyName = testGatewayName
+	testSecurityPolicy          = "test-security-policy"
+	testCookieTTLSec            = int64(10)
+	testSslPolicy               = "test-ssl-policy"
+	testCheckIntervalSec        = int64(5)
+	testTimeoutSec              = int64(10)
+	testHealthyThreshold        = int64(2)
+	testUnhealthyThreshold      = int64(3)
+	protocolHTTP                = "HTTP"
+	protocolHTTPS               = "HTTPS"
+	protocolHTTP2               = "HTTP2"
+	testPort                    = int64(8081)
+	testRequestPath             = "/foo"
 )
 
 var (
@@ -181,7 +200,7 @@ var (
 	}
 )
 
-func Test_irToGateway(t *testing.T) {
+func Test_ToGatewayResources(t *testing.T) {
 	testSaGCPBackendPolicyCookieUnstructured, err := i2gw.CastToUnstructured(&testSaGCPBackendPolicyCookie)
 	if err != nil {
 		t.Errorf("Failed to generate unstructured GCP Backend Policy with Cookie-based session affinity feature: %v", err)
@@ -477,9 +496,8 @@ func Test_irToGateway(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			provider := NewProvider(&i2gw.ProviderConf{})
-			gceProvider := provider.(*Provider)
-			gatewayResources, errs := gceProvider.gatewayConverter.irToGateway(tc.ir)
+			emitter := NewEmitter()
+			gatewayResources, errs := emitter.ToGatewayResources(tc.ir)
 
 			if len(errs) != len(tc.expectedErrors) {
 				t.Errorf("Expected %d errors, got %d: %+v", len(tc.expectedErrors), len(errs), errs)
