@@ -18,10 +18,22 @@ package intermediate
 
 import (
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+)
+
+const (
+	IndexAttachAllRules    = -1
+	IndexAttachAllBackends = -1
+)
+
+type ExtensionFeature string
+
+const (
+	ExtensionFeatureBodyBuffer ExtensionFeature = "BodyBuffer"
 )
 
 // IR holds specifications of Gateway Objects for supporting Ingress extensions,
@@ -54,13 +66,7 @@ type GatewayContext struct {
 }
 
 type ProviderSpecificGatewayIR struct {
-	Apisix       *ApisixGatewayIR
-	Cilium       *CiliumGatewayIR
-	Gce          *GceGatewayIR
-	IngressNginx *IngressNginxGatewayIR
-	Istio        *IstioGatewayIR
-	Kong         *KongGatewayIR
-	Openapi3     *Openapi3GatewayIR
+	Gce *GceGatewayIR
 }
 
 // HTTPRouteContext contains the Gateway-API HTTPRoute object and HTTPRouteIR,
@@ -72,31 +78,66 @@ type HTTPRouteContext struct {
 	gatewayv1.HTTPRoute
 	ProviderSpecificIR ProviderSpecificHTTPRouteIR
 
+	// ExtensionSettings maps attachment points to their extension settings.
+	// The key specifies where the setting should be applied (rule/backend index).
+	// Use IndexAttachAllRules (-1) for Rule to apply to all rules.
+	// Use IndexAttachAllBackends (-1) for Backend to apply to all backends in a rule.
+	ExtensionSettings map[RouteSettingsAttachment]*HTTPRouteExtensionSetting
+
 	// RuleBackendSources[i][j] is the source of the jth backend in the ith element of HTTPRoute.Spec.Rules.
 	RuleBackendSources [][]BackendSource
 }
 
 type ProviderSpecificHTTPRouteIR struct {
-	Apisix       *ApisixHTTPRouteIR
-	Cilium       *CiliumHTTPRouteIR
-	Gce          *GceHTTPRouteIR
-	IngressNginx *IngressNginxHTTPRouteIR
-	Istio        *IstioHTTPRouteIR
-	Kong         *KongHTTPRouteIR
-	Openapi3     *Openapi3HTTPRouteIR
+	Gce *GceHTTPRouteIR
+}
+
+// HTTPRouteExtensionSetting represents provider-agnostic configuration settings
+// that can be applied to an HTTPRoute or specific parts of it (rules/backends).
+// Providers populate these settings from Ingress annotations or provider-specific CRDs,
+// and Emitters convert them into implementation-specific resources (e.g. Policy CRDs).
+type HTTPRouteExtensionSetting struct {
+	// Buffer specifies the buffer size limit for request bodies.
+	Buffer *resource.Quantity
+
+	// ProcessingStatus tracks which provider created each extension feature and which emitter processed it.
+	// This enables ingress2gateway to detect and warn about unsupported features.
+	ProcessingStatus map[ExtensionFeature]*ExtensionSettingMetadata
+}
+
+type ExtensionSettingMetadata struct {
+	// Provider is the name of the provider that generated this extension setting
+	Provider string
+
+	// Emitter is the name of the emitter that processed this extension setting
+	Emitter string
+
+	// Attached indicates whether the emitter successfully attached this setting to a resource
+	Attached bool
+}
+
+// RouteSettingsAttachment specifies the target location within a Route
+// where an extension setting should be applied.
+type RouteSettingsAttachment struct {
+	// Rule is the index into HTTPRoute.Spec.Rules that this setting targets.
+	// Use IndexAttachAllRules (-1) to apply to all rules.
+	// Otherwise, must be a valid zero-based index into the Rules array.
+	Rule int
+
+	// Backend is the index into HTTPRoute.Spec.Rules[Rule].BackendRefs that this setting targets.
+	// Use IndexAttachAllBackends (-1) to apply to all backends in the specified rule.
+	// Otherwise, must be a valid zero-based index into the BackendRefs array.
+	Backend int
+}
+
+type ServiceContext struct {
+	ProviderSpecificIR ProviderSpecificServiceIR
 }
 
 // ServiceIR contains a dedicated field for each provider to specify their
 // extension features on Service.
 type ProviderSpecificServiceIR struct {
-	Apisix       *ApisixServiceIR
-	Cilium       *CiliumServiceIR
-	Gce          *GceServiceIR
-	IngressNginx *IngressNginxServiceIR
-	Istio        *IstioServiceIR
-	Kong         *KongServiceIR
-	Openapi3     *Openapi3ServiceIR
-	Nginx        *NginxServiceIR
+	Gce *GceServiceIR
 }
 
 // BackendSource tracks the source Ingress resource that contributed

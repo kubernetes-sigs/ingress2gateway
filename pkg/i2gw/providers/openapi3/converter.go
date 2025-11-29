@@ -35,6 +35,7 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/gvk"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
@@ -191,7 +192,7 @@ func (c *resourcesToIRConverter) toHTTPRoutesAndGateways(spec *openapi3.T, resou
 			GatewayClassName: gatewayv1.ObjectName(c.gatewayClassName),
 		},
 	}
-	gateway.SetGroupVersionKind(common.GatewayGVK)
+	gateway.SetGroupVersionKind(gvk.GatewayGVK)
 	if c.namespace != "" {
 		gateway.SetNamespace(c.namespace)
 	}
@@ -366,7 +367,7 @@ func (c *resourcesToIRConverter) toHTTPRoute(name, gatewayName string, listenerN
 // buildHTTPRouteBackendReferenceGrant builds a Gateway API ReferenceGrant object for the general backend reference
 // to be used in all HTTPRoute rules.
 func (c *resourcesToIRConverter) buildHTTPRouteBackendReferenceGrant() *gatewayv1beta1.ReferenceGrant {
-	return c.buildReferenceGrant(common.HTTPRouteGVK, gatewayv1.Kind("Service"), c.backendRef.NamespacedName)
+	return c.buildReferenceGrant(gvk.HTTPRouteGVK, gatewayv1.Kind("Service"), c.backendRef.NamespacedName)
 }
 
 // buildGatewayTLSSecretReferenceGrant builds a Gateway API ReferenceGrant object for the general TLS secret
@@ -375,7 +376,7 @@ func (c *resourcesToIRConverter) buildGatewayTLSSecretReferenceGrant(gateway gat
 	if slices.IndexFunc(gateway.Spec.Listeners, func(listener gatewayv1.Listener) bool { return listener.TLS != nil }) == -1 {
 		return nil
 	}
-	return c.buildReferenceGrant(common.GatewayGVK, gatewayv1.Kind("Secret"), c.tlsSecretRef)
+	return c.buildReferenceGrant(gvk.GatewayGVK, gatewayv1.Kind("Secret"), c.tlsSecretRef)
 }
 
 // buildReferenceGrant builds a Gateway API ReferenceGrant object for a given source and destination resource.
@@ -405,7 +406,7 @@ func (c *resourcesToIRConverter) buildReferenceGrant(fromGVK schema.GroupVersion
 			},
 		},
 	}
-	rg.SetGroupVersionKind(common.ReferenceGrantGVK)
+	rg.SetGroupVersionKind(gvk.ReferenceGrantGVK)
 	return rg
 }
 

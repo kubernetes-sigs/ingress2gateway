@@ -1,5 +1,5 @@
 /*
-Copyright 2024 The Kubernetes Authors.
+Copyright 2025 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,11 +22,13 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/gvk"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -58,7 +60,7 @@ func Test_ToGatewayResources(t *testing.T) {
 									Name:     "example-com-http",
 									Port:     80,
 									Protocol: gatewayv1.HTTPProtocolType,
-									Hostname: PtrTo(gatewayv1.Hostname("example.com")),
+									Hostname: ptr.To(gatewayv1.Hostname("example.com")),
 								}},
 							},
 						},
@@ -79,14 +81,14 @@ func Test_ToGatewayResources(t *testing.T) {
 									Matches: []gatewayv1.HTTPRouteMatch{{
 										Path: &gatewayv1.HTTPPathMatch{
 											Type:  &gPathPrefix,
-											Value: PtrTo("/foo"),
+											Value: ptr.To("/foo"),
 										},
 									}},
 									BackendRefs: []gatewayv1.HTTPBackendRef{{
 										BackendRef: gatewayv1.BackendRef{
 											BackendObjectReference: gatewayv1.BackendObjectReference{
 												Name: "example",
-												Port: PtrTo(gatewayv1.PortNumber(3000)),
+												Port: ptr.To(gatewayv1.PortNumber(3000)),
 											},
 										},
 									}},
@@ -106,7 +108,7 @@ func Test_ToGatewayResources(t *testing.T) {
 								Name:     "example-com-http",
 								Port:     80,
 								Protocol: gatewayv1.HTTPProtocolType,
-								Hostname: PtrTo(gatewayv1.Hostname("example.com")),
+								Hostname: ptr.To(gatewayv1.Hostname("example.com")),
 							}},
 						},
 					},
@@ -125,14 +127,14 @@ func Test_ToGatewayResources(t *testing.T) {
 								Matches: []gatewayv1.HTTPRouteMatch{{
 									Path: &gatewayv1.HTTPPathMatch{
 										Type:  &gPathPrefix,
-										Value: PtrTo("/foo"),
+										Value: ptr.To("/foo"),
 									},
 								}},
 								BackendRefs: []gatewayv1.HTTPBackendRef{{
 									BackendRef: gatewayv1.BackendRef{
 										BackendObjectReference: gatewayv1.BackendObjectReference{
 											Name: "example",
-											Port: PtrTo(gatewayv1.PortNumber(3000)),
+											Port: ptr.To(gatewayv1.PortNumber(3000)),
 										},
 									},
 								}},
@@ -155,7 +157,7 @@ func Test_ToGatewayResources(t *testing.T) {
 									Name:     "example-com-http",
 									Port:     80,
 									Protocol: gatewayv1.HTTPProtocolType,
-									Hostname: PtrTo(gatewayv1.Hostname("example.com")),
+									Hostname: ptr.To(gatewayv1.Hostname("example.com")),
 								}},
 							},
 						},
@@ -176,7 +178,7 @@ func Test_ToGatewayResources(t *testing.T) {
 									Matches: []gatewayv1.HTTPRouteMatch{{
 										Path: &gatewayv1.HTTPPathMatch{
 											Type:  &gPathPrefix,
-											Value: PtrTo("/foo"),
+											Value: ptr.To("/foo"),
 										},
 									}},
 									BackendRefs: []gatewayv1.HTTPBackendRef{
@@ -184,7 +186,7 @@ func Test_ToGatewayResources(t *testing.T) {
 											BackendRef: gatewayv1.BackendRef{
 												BackendObjectReference: gatewayv1.BackendObjectReference{
 													Name: "example",
-													Port: PtrTo(gatewayv1.PortNumber(3000)),
+													Port: ptr.To(gatewayv1.PortNumber(3000)),
 												},
 											},
 										},
@@ -192,7 +194,7 @@ func Test_ToGatewayResources(t *testing.T) {
 											BackendRef: gatewayv1.BackendRef{
 												BackendObjectReference: gatewayv1.BackendObjectReference{
 													Name: "example",
-													Port: PtrTo(gatewayv1.PortNumber(3000)),
+													Port: ptr.To(gatewayv1.PortNumber(3000)),
 												},
 											},
 										},
@@ -217,7 +219,7 @@ func Test_ToGatewayResources(t *testing.T) {
 								Name:     "example-com-http",
 								Port:     80,
 								Protocol: gatewayv1.HTTPProtocolType,
-								Hostname: PtrTo(gatewayv1.Hostname("example.com")),
+								Hostname: ptr.To(gatewayv1.Hostname("example.com")),
 							}},
 						},
 					},
@@ -240,7 +242,7 @@ func Test_ToGatewayResources(t *testing.T) {
 								Matches: []gatewayv1.HTTPRouteMatch{{
 									Path: &gatewayv1.HTTPPathMatch{
 										Type:  &gPathPrefix,
-										Value: PtrTo("/foo"),
+										Value: ptr.To("/foo"),
 									},
 								}},
 								BackendRefs: []gatewayv1.HTTPBackendRef{
@@ -248,7 +250,7 @@ func Test_ToGatewayResources(t *testing.T) {
 										BackendRef: gatewayv1.BackendRef{
 											BackendObjectReference: gatewayv1.BackendObjectReference{
 												Name: "example",
-												Port: PtrTo(gatewayv1.PortNumber(3000)),
+												Port: ptr.To(gatewayv1.PortNumber(3000)),
 											},
 										},
 									},
@@ -269,7 +271,9 @@ func Test_ToGatewayResources(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			gatewayResouces, errs := ToGatewayResources(tc.ir)
+			emitter := &Emitter{}
+
+			gatewayResouces, errs := emitter.ToGatewayResources(tc.ir)
 
 			if len(errs) != len(tc.expectedErrors) {
 				t.Errorf("Expected %d errors, got %d: %+v", len(tc.expectedErrors), len(errs), errs)
@@ -286,10 +290,10 @@ func Test_ToGatewayResources(t *testing.T) {
 					len(tc.expectedGatewayResources.HTTPRoutes), len(gatewayResouces.HTTPRoutes), gatewayResouces.HTTPRoutes)
 			} else {
 				for i, got := range gatewayResouces.HTTPRoutes {
-					got.SetGroupVersionKind(HTTPRouteGVK)
+					got.SetGroupVersionKind(gvk.HTTPRouteGVK)
 					key := types.NamespacedName{Namespace: got.Namespace, Name: got.Name}
 					want := tc.expectedGatewayResources.HTTPRoutes[key]
-					want.SetGroupVersionKind(HTTPRouteGVK)
+					want.SetGroupVersionKind(gvk.HTTPRouteGVK)
 					if !apiequality.Semantic.DeepEqual(got, want) {
 						t.Errorf("Expected HTTPRoute %s to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))
 					}
@@ -301,10 +305,10 @@ func Test_ToGatewayResources(t *testing.T) {
 					len(tc.expectedGatewayResources.Gateways), len(gatewayResouces.Gateways), gatewayResouces.Gateways)
 			} else {
 				for i, got := range gatewayResouces.Gateways {
-					got.SetGroupVersionKind(GatewayGVK)
+					got.SetGroupVersionKind(gvk.GatewayGVK)
 					key := types.NamespacedName{Namespace: got.Namespace, Name: got.Name}
 					want := tc.expectedGatewayResources.Gateways[key]
-					want.SetGroupVersionKind(GatewayGVK)
+					want.SetGroupVersionKind(gvk.GatewayGVK)
 					if !apiequality.Semantic.DeepEqual(got, want) {
 						t.Errorf("Expected Gateway %s to be %+v\n Got: %+v\n Diff: %s", i, want, got, cmp.Diff(want, got))
 					}

@@ -23,10 +23,10 @@ import (
 	"strings"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/gvk"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -83,38 +83,6 @@ func ToIR(ingresses []networkingv1.Ingress, servicePorts map[types.NamespacedNam
 		ReferenceGrants:    make(map[types.NamespacedName]gatewayv1beta1.ReferenceGrant),
 	}, nil
 }
-
-var (
-	GatewayGVK = schema.GroupVersionKind{
-		Group:   "gateway.networking.k8s.io",
-		Version: "v1",
-		Kind:    "Gateway",
-	}
-
-	HTTPRouteGVK = schema.GroupVersionKind{
-		Group:   "gateway.networking.k8s.io",
-		Version: "v1",
-		Kind:    "HTTPRoute",
-	}
-
-	TLSRouteGVK = schema.GroupVersionKind{
-		Group:   "gateway.networking.k8s.io",
-		Version: "v1alpha2",
-		Kind:    "TLSRoute",
-	}
-
-	TCPRouteGVK = schema.GroupVersionKind{
-		Group:   "gateway.networking.k8s.io",
-		Version: "v1alpha2",
-		Kind:    "TCPRoute",
-	}
-
-	ReferenceGrantGVK = schema.GroupVersionKind{
-		Group:   "gateway.networking.k8s.io",
-		Version: "v1beta1",
-		Kind:    "ReferenceGrant",
-	}
-)
 
 type ruleGroupKey string
 
@@ -257,7 +225,7 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImpleme
 				},
 			},
 		}
-		httpRoute.SetGroupVersionKind(HTTPRouteGVK)
+		httpRoute.SetGroupVersionKind(gvk.HTTPRouteGVK)
 
 		// We create an HTTPRoute with a single rule and a single backend.
 		backendRef, err := ToBackendRef(db.namespace, db.backend, a.servicePorts, field.NewPath(db.name, "paths", "backends").Index(i))
@@ -298,7 +266,7 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImpleme
 					GatewayClassName: gatewayv1.ObjectName(parts[1]),
 				},
 			}
-			gateway.SetGroupVersionKind(GatewayGVK)
+			gateway.SetGroupVersionKind(gvk.GatewayGVK)
 			gatewaysByKey[gwKey] = gateway
 		}
 		for _, listener := range listeners {
@@ -347,7 +315,7 @@ func (rg *ingressRuleGroup) toHTTPRoute(servicePorts map[types.NamespacedName]ma
 			},
 		},
 	}
-	httpRoute.SetGroupVersionKind(HTTPRouteGVK)
+	httpRoute.SetGroupVersionKind(gvk.HTTPRouteGVK)
 
 	if rg.ingressClass != "" {
 		httpRoute.Spec.ParentRefs = []gatewayv1.ParentReference{{Name: gatewayv1.ObjectName(rg.ingressClass)}}

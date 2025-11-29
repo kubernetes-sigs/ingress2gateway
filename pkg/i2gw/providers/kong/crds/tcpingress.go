@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/gvk"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
@@ -169,7 +170,7 @@ func (a *tcpIngressAggregator) toRoutesAndGateways() ([]gatewayv1alpha2.TCPRoute
 					GatewayClassName: gatewayv1.ObjectName(parts[1]),
 				},
 			}
-			gateway.SetGroupVersionKind(common.GatewayGVK)
+			gateway.SetGroupVersionKind(gvk.GatewayGVK)
 			gatewaysByKey[gwKey] = gateway
 		}
 		for _, listener := range listeners {
@@ -217,7 +218,7 @@ func (rg *tcpIngressRuleGroup) toTCPRoute() gatewayv1alpha2.TCPRoute {
 			},
 		},
 	}
-	tcpRoute.SetGroupVersionKind(common.TCPRouteGVK)
+	tcpRoute.SetGroupVersionKind(gvk.TCPRouteGVK)
 
 	if rg.ingressClass != "" {
 		tcpRoute.Spec.ParentRefs = []gatewayv1.ParentReference{
@@ -259,7 +260,7 @@ func (rg *tcpIngressRuleGroup) toTLSRoute() gatewayv1alpha2.TLSRoute {
 			},
 		},
 	}
-	tlsRoute.SetGroupVersionKind(common.TLSRouteGVK)
+	tlsRoute.SetGroupVersionKind(gvk.TLSRouteGVK)
 
 	if rg.ingressClass != "" {
 		tlsRoute.Spec.ParentRefs = []gatewayv1.ParentReference{

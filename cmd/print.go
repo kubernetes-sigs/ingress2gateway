@@ -40,6 +40,10 @@ import (
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/nginx"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/openapi3"
 
+	// Call init function for the emitters
+	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/envoygateway"
+	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/gce"
+
 	// Call init for notifications
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 )
@@ -72,6 +76,9 @@ type PrintRunner struct {
 
 	// Provider specific flags --<provider>-<flag>.
 	providerSpecificFlags map[string]*string
+
+	// emitter indicates which emitter is used to generate implementation-specific (GEP-713 style) resources.
+	emitter string
 }
 
 // PrintGatewayAPIObjects performs necessary steps to digest and print
@@ -81,14 +88,21 @@ type PrintRunner struct {
 func (pr *PrintRunner) PrintGatewayAPIObjects(cmd *cobra.Command, _ []string) error {
 	err := pr.initializeResourcePrinter()
 	if err != nil {
-		return fmt.Errorf("failed to initialize resrouce printer: %w", err)
+		return fmt.Errorf("failed to initialize resource printer: %w", err)
 	}
 	err = pr.initializeNamespaceFilter()
 	if err != nil {
 		return fmt.Errorf("failed to initialize namespace filter: %w", err)
 	}
 
-	gatewayResources, notificationTablesMap, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers, pr.getProviderSpecificFlags())
+	gatewayResources, notificationTablesMap, err := i2gw.ToGatewayAPIResources(
+		cmd.Context(),
+		pr.namespaceFilter,
+		pr.inputFile,
+		pr.providers,
+		pr.getProviderSpecificFlags(),
+		pr.emitter,
+	)
 	if err != nil {
 		return err
 	}
@@ -338,6 +352,8 @@ if specified with --namespace.`)
 
 	cmd.Flags().StringSliceVar(&pr.providers, "providers", []string{},
 		fmt.Sprintf("If present, the tool will try to convert only resources related to the specified providers, supported values are %v.", i2gw.GetSupportedProviders()))
+
+	cmd.Flags().StringVar(&pr.emitter, "emitter", "", "emitter for which to generate implementation-specific resources.")
 
 	pr.providerSpecificFlags = make(map[string]*string)
 	for provider, flags := range i2gw.GetProviderSpecificFlagDefinitions() {

@@ -16,8 +16,6 @@ limitations under the License.
 
 package gce
 
-import "k8s.io/apimachinery/pkg/runtime/schema"
-
 const (
 	gceIngressClass      = "gce"
 	gceL7ILBIngressClass = "gce-internal"
@@ -27,24 +25,4 @@ const (
 	backendConfigKey                       = "cloud.google.com/backend-config"
 	betaBackendConfigKey                   = "beta.cloud.google.com/backend-config"
 	frontendConfigKey                      = "networking.gke.io/v1beta1.FrontendConfig"
-)
-
-var (
-	GCPBackendPolicyGVK = schema.GroupVersionKind{
-		Group:   "networking.gke.io",
-		Version: "v1",
-		Kind:    "GCPBackendPolicy",
-	}
-
-	GCPGatewayPolicyGVK = schema.GroupVersionKind{
-		Group:   "networking.gke.io",
-		Version: "v1",
-		Kind:    "GCPGatewayPolicy",
-	}
-
-	HealthCheckPolicyGVK = schema.GroupVersionKind{
-		Group:   "networking.gke.io",
-		Version: "v1",
-		Kind:    "HealthCheckPolicy",
-	}
 )

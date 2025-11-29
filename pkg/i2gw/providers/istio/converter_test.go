@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/gvk"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"google.golang.org/protobuf/types/known/durationpb"
 	istiov1beta1 "istio.io/api/networking/v1beta1"
@@ -124,8 +125,8 @@ func Test_resourcesToIRConverter_convertGateway(t *testing.T) {
 			},
 			wantGateway: &gatewayv1.Gateway{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: common.GatewayGVK.GroupVersion().String(),
-					Kind:       common.GatewayGVK.Kind,
+					APIVersion: gvk.GatewayGVK.GroupVersion().String(),
+					Kind:       gvk.GatewayGVK.Kind,
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        "name",
@@ -271,8 +272,8 @@ func Test_resourcesToIRConverter_convertGateway(t *testing.T) {
 			},
 			wantGateway: &gatewayv1.Gateway{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: common.GatewayGVK.GroupVersion().String(),
-					Kind:       common.GatewayGVK.Kind,
+					APIVersion: gvk.GatewayGVK.GroupVersion().String(),
+					Kind:       gvk.GatewayGVK.Kind,
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "name",
@@ -1727,8 +1728,8 @@ func Test_resourcesToIRConverter_generateReferenceGrants(t *testing.T) {
 			},
 			want: &gatewayv1beta1.ReferenceGrant{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: common.ReferenceGrantGVK.GroupVersion().String(),
-					Kind:       common.ReferenceGrantGVK.Kind,
+					APIVersion: gvk.ReferenceGrantGVK.GroupVersion().String(),
+					Kind:       gvk.ReferenceGrantGVK.Kind,
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "test",
@@ -1737,25 +1738,25 @@ func Test_resourcesToIRConverter_generateReferenceGrants(t *testing.T) {
 				Spec: gatewayv1beta1.ReferenceGrantSpec{
 					From: []gatewayv1beta1.ReferenceGrantFrom{
 						{
-							Group:     gatewayv1.Group(common.HTTPRouteGVK.Group),
-							Kind:      gatewayv1.Kind(common.HTTPRouteGVK.Kind),
+							Group:     gatewayv1.Group(gvk.HTTPRouteGVK.Group),
+							Kind:      gatewayv1.Kind(gvk.HTTPRouteGVK.Kind),
 							Namespace: gatewayv1.Namespace("ns1"),
 						},
 						{
-							Group:     gatewayv1.Group(common.TLSRouteGVK.Group),
-							Kind:      gatewayv1.Kind(common.TLSRouteGVK.Kind),
+							Group:     gatewayv1.Group(gvk.TLSRouteGVK.Group),
+							Kind:      gatewayv1.Kind(gvk.TLSRouteGVK.Kind),
 							Namespace: gatewayv1.Namespace("ns1"),
 						},
 						{
-							Group:     gatewayv1.Group(common.TCPRouteGVK.Group),
-							Kind:      gatewayv1.Kind(common.TCPRouteGVK.Kind),
+							Group:     gatewayv1.Group(gvk.TCPRouteGVK.Group),
+							Kind:      gatewayv1.Kind(gvk.TCPRouteGVK.Kind),
 							Namespace: gatewayv1.Namespace("ns1"),
 						},
 					},
 					To: []gatewayv1beta1.ReferenceGrantTo{
 						{
-							Group: gatewayv1.Group(common.GatewayGVK.Group),
-							Kind:  gatewayv1.Kind(common.GatewayGVK.Kind),
+							Group: gatewayv1.Group(gvk.GatewayGVK.Group),
+							Kind:  gatewayv1.Kind(gvk.GatewayGVK.Kind),
 							Name:  common.PtrTo[gatewayv1.ObjectName]("gwname"),
 						},
 					},

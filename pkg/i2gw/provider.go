@@ -57,7 +57,6 @@ type ProviderConf struct {
 type Provider interface {
 	CustomResourceReader
 	ResourcesToIRConverter
-	IRToGatewayAPIConverter
 }
 
 type CustomResourceReader interface {
@@ -76,14 +75,6 @@ type CustomResourceReader interface {
 type ResourcesToIRConverter interface {
 	// ToIR converts stored API entities associated with the Provider into IR.
 	ToIR() (intermediate.IR, field.ErrorList)
-}
-
-// The IRToGatewayAPIConverter interface specifies conversion functions from IR
-// into Gateway and Gateway extensions.
-type IRToGatewayAPIConverter interface {
-	// ToGatewayResources converts stored IR with the Provider into
-	// Gateway API resources and extensions
-	ToGatewayResources(intermediate.IR) (GatewayResources, field.ErrorList)
 }
 
 // ImplementationSpecificHTTPPathTypeMatchConverter is an option to customize the ingress implementationSpecific

@@ -35,15 +35,13 @@ type Provider struct {
 	*storage
 	*resourceReader
 	*resourcesToIRConverter
-	*gatewayResourcesConverter
 }
 
 // NewProvider constructs and returns the nginx implementation of i2gw.Provider
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 	return &Provider{
-		resourceReader:            newResourceReader(conf),
-		resourcesToIRConverter:    newResourcesToIRConverter(),
-		gatewayResourcesConverter: newGatewayResourcesConverter(),
+		resourceReader:         newResourceReader(conf),
+		resourcesToIRConverter: newResourcesToIRConverter(),
 	}
 }
 
@@ -70,9 +68,4 @@ func (p *Provider) ReadResourcesFromFile(_ context.Context, filename string) err
 // ToIR converts the provider resources to intermediate representation
 func (p *Provider) ToIR() (intermediate.IR, field.ErrorList) {
 	return p.resourcesToIRConverter.convert(p.storage)
-}
-
-// ToGatewayResources converts the IR to Gateway API resources
-func (p *Provider) ToGatewayResources(ir intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
-	return p.gatewayResourcesConverter.convert(ir)
 }

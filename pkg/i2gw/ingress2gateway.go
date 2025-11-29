@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -36,7 +37,14 @@ const GeneratorAnnotationKey = "gateway.networking.k8s.io/generator"
 // Examples: "v0.4.0", "v0.4.0-5-gabcdef", "v0.4.0-5-gabcdef-dirty"
 var Version = "dev" // Default value if not built with linker flags
 
-func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string, providers []string, providerSpecificFlags map[string]map[string]string) ([]GatewayResources, map[string]string, error) {
+func ToGatewayAPIResources(
+	ctx context.Context,
+	namespace string,
+	inputFile string,
+	providers []string,
+	providerSpecificFlags map[string]map[string]string,
+	emitterName string,
+) ([]GatewayResources, map[string]string, error) {
 	var clusterClient client.Client
 
 	if inputFile == "" {
@@ -61,6 +69,11 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 		return nil, nil, err
 	}
 
+	emitter, ok := EmitterByName[EmitterName(emitterName)]
+	if !ok {
+		return nil, nil, fmt.Errorf("emitter %q is not supported", EmitterName(emitterName))
+	}
+
 	if inputFile != "" {
 		if err = readProviderResourcesFromFile(ctx, providerByName, inputFile); err != nil {
 			return nil, nil, err
@@ -78,8 +91,11 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 	for _, provider := range providerByName {
 		ir, conversionErrs := provider.ToIR()
 		errs = append(errs, conversionErrs...)
-		providerGatewayResources, conversionErrs := provider.ToGatewayResources(ir)
+		providerGatewayResources, conversionErrs := emitter.ToGatewayResources(ir)
 		errs = append(errs, conversionErrs...)
+
+		checkUnprocessedExtensions(ir, EmitterName(emitterName))
+
 		gatewayResources = append(gatewayResources, providerGatewayResources)
 	}
 	notificationTablesMap := notifications.NotificationAggr.CreateNotificationTables()
@@ -153,4 +169,53 @@ func CastToUnstructured(obj runtime.Object) (*unstructured.Unstructured, error) 
 	}
 
 	return &unstructured.Unstructured{Object: unstructuredObj}, nil
+}
+
+// unprocessedSummary tracks the count of resources affected by an unprocessed extension feature
+type unprocessedSummary struct {
+	feature       intermediate.ExtensionFeature
+	provider      string
+	affectedCount int
+}
+
+// checkUnprocessedExtensions checks if any extension settings were not processed by the emitter
+// and dispatches warning notifications for unprocessed settings as a summary.
+func checkUnprocessedExtensions(ir intermediate.IR, emitterName EmitterName) {
+	if emitterName == "" {
+		emitterName = "default"
+	}
+
+	summaryMap := make(map[string]*unprocessedSummary)
+
+	for _, route := range ir.HTTPRoutes {
+		for _, setting := range route.ExtensionSettings {
+			for feature, metadata := range setting.ProcessingStatus {
+				if metadata.Emitter == "" {
+					key := fmt.Sprintf("%s_%s", feature, metadata.Provider)
+					if summary, ok := summaryMap[key]; ok {
+						summary.affectedCount++
+					} else {
+						summaryMap[key] = &unprocessedSummary{
+							feature:       feature,
+							provider:      metadata.Provider,
+							affectedCount: 1,
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Dispatch one notification per unprocessed feature
+	for _, summary := range summaryMap {
+		message := fmt.Sprintf(
+			"emitter %s does not support extension feature %s from provider %s (affects %d resources)",
+			emitterName, summary.feature, summary.provider, summary.affectedCount,
+		)
+		notification := notifications.NewNotification(
+			notifications.WarningNotification,
+			message,
+		)
+		notifications.NotificationAggr.DispatchNotification(notification, "INGRESS2GATEWAY")
+	}
 }

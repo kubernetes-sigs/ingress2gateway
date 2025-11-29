@@ -22,8 +22,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/gvk"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	apiv1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -982,7 +982,7 @@ func Test_ToIR(t *testing.T) {
 				for i, gotHTTPRouteContext := range ir.HTTPRoutes {
 					key := types.NamespacedName{Namespace: gotHTTPRouteContext.HTTPRoute.Namespace, Name: gotHTTPRouteContext.HTTPRoute.Name}
 					wantHTTPRouteContext := tc.expectedIR.HTTPRoutes[key]
-					wantHTTPRouteContext.HTTPRoute.SetGroupVersionKind(common.HTTPRouteGVK)
+					wantHTTPRouteContext.HTTPRoute.SetGroupVersionKind(gvk.HTTPRouteGVK)
 					if !apiequality.Semantic.DeepEqual(gotHTTPRouteContext.HTTPRoute, wantHTTPRouteContext.HTTPRoute) {
 						t.Errorf("Expected HTTPRoute %s to be %+v\n Got: %+v\n Diff: %s", i, wantHTTPRouteContext.HTTPRoute, gotHTTPRouteContext.HTTPRoute, cmp.Diff(wantHTTPRouteContext.HTTPRoute, gotHTTPRouteContext.HTTPRoute))
 					}
@@ -996,7 +996,7 @@ func Test_ToIR(t *testing.T) {
 				for i, gotGatewayContext := range ir.Gateways {
 					key := types.NamespacedName{Namespace: gotGatewayContext.Gateway.Namespace, Name: gotGatewayContext.Gateway.Name}
 					wantGatewayContext := tc.expectedIR.Gateways[key]
-					wantGatewayContext.Gateway.SetGroupVersionKind(common.GatewayGVK)
+					wantGatewayContext.Gateway.SetGroupVersionKind(gvk.GatewayGVK)
 					if !apiequality.Semantic.DeepEqual(gotGatewayContext.Gateway, wantGatewayContext.Gateway) {
 						t.Errorf("Expected Gateway %s to be %+v\n Got: %+v\n Diff: %s", i, wantGatewayContext.Gateway, gotGatewayContext.Gateway, cmp.Diff(wantGatewayContext.Gateway, gotGatewayContext.Gateway))
 					}

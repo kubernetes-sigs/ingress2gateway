@@ -23,6 +23,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/gvk"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
@@ -137,7 +138,7 @@ func (c *resourcesToIRConverter) convertToIR(storage *storage) (intermediate.IR,
 
 func (c *resourcesToIRConverter) convertGateway(gw *istioclientv1beta1.Gateway, fieldPath *field.Path) (*gatewayv1.Gateway, field.ErrorList) {
 	var errList field.ErrorList
-	apiVersion, kind := common.GatewayGVK.ToAPIVersionAndKind()
+	apiVersion, kind := gvk.GatewayGVK.ToAPIVersionAndKind()
 	gwPath := fieldPath.Child("Gateway").Key(gw.Name)
 
 	var listeners []gatewayv1.Listener
@@ -720,7 +721,7 @@ type createHTTPRouteParams struct {
 }
 
 func (c *resourcesToIRConverter) createHTTPRoute(params createHTTPRouteParams) *gatewayv1.HTTPRoute {
-	apiVersion, kind := common.HTTPRouteGVK.ToAPIVersionAndKind()
+	apiVersion, kind := gvk.HTTPRouteGVK.ToAPIVersionAndKind()
 
 	return &gatewayv1.HTTPRoute{
 		TypeMeta: metav1.TypeMeta{
@@ -874,7 +875,7 @@ func (c *resourcesToIRConverter) convertVsTLSRoutes(virtualService metav1.Object
 			}
 		}
 
-		apiVersion, kind := common.TLSRouteGVK.ToAPIVersionAndKind()
+		apiVersion, kind := gvk.TLSRouteGVK.ToAPIVersionAndKind()
 
 		routeName := fmt.Sprintf("%v-idx-%v", virtualService.Name, i)
 
@@ -954,7 +955,7 @@ func (c *resourcesToIRConverter) convertVsTCPRoutes(virtualService metav1.Object
 			}
 		}
 
-		apiVersion, kind := common.TCPRouteGVK.ToAPIVersionAndKind()
+		apiVersion, kind := gvk.TCPRouteGVK.ToAPIVersionAndKind()
 
 		routeName := fmt.Sprintf("%v-idx-%v", virtualService.Name, i)
 
@@ -1059,8 +1060,8 @@ func (c *resourcesToIRConverter) generateReferences(vs *istioclientv1beta1.Virtu
 			notify(notifications.InfoNotification, fmt.Sprintf("namespace of \"%v\" gateway taken from namesapce of VirtualService", gwName), vs)
 		}
 
-		g := gatewayv1.Group(common.GatewayGVK.Group)
-		k := gatewayv1.Kind(common.GatewayGVK.Kind)
+		g := gatewayv1.Group(gvk.GatewayGVK.Group)
+		k := gatewayv1.Kind(gvk.GatewayGVK.Kind)
 		ns := gatewayv1.Namespace(gateway.Namespace)
 
 		parentRef := gatewayv1.ParentReference{
@@ -1102,24 +1103,24 @@ func (c *resourcesToIRConverter) generateReferenceGrant(params generateReference
 
 	if params.forHTTPRoute {
 		fromGrants = append(fromGrants, gatewayv1beta1.ReferenceGrantFrom{
-			Group:     gatewayv1.Group(common.HTTPRouteGVK.Group),
-			Kind:      gatewayv1.Kind(common.HTTPRouteGVK.Kind),
+			Group:     gatewayv1.Group(gvk.HTTPRouteGVK.Group),
+			Kind:      gatewayv1.Kind(gvk.HTTPRouteGVK.Kind),
 			Namespace: gatewayv1.Namespace(params.fromNamespace),
 		})
 	}
 
 	if params.forTLSRoute {
 		fromGrants = append(fromGrants, gatewayv1beta1.ReferenceGrantFrom{
-			Group:     gatewayv1.Group(common.TLSRouteGVK.Group),
-			Kind:      gatewayv1.Kind(common.TLSRouteGVK.Kind),
+			Group:     gatewayv1.Group(gvk.TLSRouteGVK.Group),
+			Kind:      gatewayv1.Kind(gvk.TLSRouteGVK.Kind),
 			Namespace: gatewayv1.Namespace(params.fromNamespace),
 		})
 	}
 
 	if params.forTCPRoute {
 		fromGrants = append(fromGrants, gatewayv1beta1.ReferenceGrantFrom{
-			Group:     gatewayv1.Group(common.TCPRouteGVK.Group),
-			Kind:      gatewayv1.Kind(common.TCPRouteGVK.Kind),
+			Group:     gatewayv1.Group(gvk.TCPRouteGVK.Group),
+			Kind:      gatewayv1.Kind(gvk.TCPRouteGVK.Kind),
 			Namespace: gatewayv1.Namespace(params.fromNamespace),
 		})
 	}
@@ -1128,8 +1129,8 @@ func (c *resourcesToIRConverter) generateReferenceGrant(params generateReference
 
 	return &gatewayv1beta1.ReferenceGrant{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: common.ReferenceGrantGVK.GroupVersion().String(),
-			Kind:       common.ReferenceGrantGVK.Kind,
+			APIVersion: gvk.ReferenceGrantGVK.GroupVersion().String(),
+			Kind:       gvk.ReferenceGrantGVK.Kind,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: params.gateway.Namespace,
@@ -1139,8 +1140,8 @@ func (c *resourcesToIRConverter) generateReferenceGrant(params generateReference
 			From: fromGrants,
 			To: []gatewayv1beta1.ReferenceGrantTo{
 				{
-					Group: gatewayv1.Group(common.GatewayGVK.Group),
-					Kind:  gatewayv1.Kind(common.GatewayGVK.Kind),
+					Group: gatewayv1.Group(gvk.GatewayGVK.Group),
+					Kind:  gatewayv1.Kind(gvk.GatewayGVK.Kind),
 					Name:  &gwName,
 				},
 			},
