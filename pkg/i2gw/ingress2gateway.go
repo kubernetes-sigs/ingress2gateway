@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -92,6 +93,9 @@ func ToGatewayAPIResources(
 		errs = append(errs, conversionErrs...)
 		providerGatewayResources, conversionErrs := emitter.ToGatewayResources(ir)
 		errs = append(errs, conversionErrs...)
+
+		checkUnprocessedExtensions(ir, EmitterName(emitterName))
+
 		gatewayResources = append(gatewayResources, providerGatewayResources)
 	}
 	notificationTablesMap := notifications.NotificationAggr.CreateNotificationTables()
@@ -165,4 +169,53 @@ func CastToUnstructured(obj runtime.Object) (*unstructured.Unstructured, error) 
 	}
 
 	return &unstructured.Unstructured{Object: unstructuredObj}, nil
+}
+
+// unprocessedSummary tracks the count of resources affected by an unprocessed extension feature
+type unprocessedSummary struct {
+	feature       intermediate.ExtensionFeature
+	provider      string
+	affectedCount int
+}
+
+// checkUnprocessedExtensions checks if any extension settings were not processed by the emitter
+// and dispatches warning notifications for unprocessed settings as a summary.
+func checkUnprocessedExtensions(ir intermediate.IR, emitterName EmitterName) {
+	if emitterName == "" {
+		emitterName = "default"
+	}
+
+	summaryMap := make(map[string]*unprocessedSummary)
+
+	for _, route := range ir.HTTPRoutes {
+		for _, setting := range route.ExtensionSettings {
+			for feature, metadata := range setting.ProcessingStatus {
+				if metadata.Emitter == "" {
+					key := fmt.Sprintf("%s_%s", feature, metadata.Provider)
+					if summary, ok := summaryMap[key]; ok {
+						summary.affectedCount++
+					} else {
+						summaryMap[key] = &unprocessedSummary{
+							feature:       feature,
+							provider:      metadata.Provider,
+							affectedCount: 1,
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Dispatch one notification per unprocessed feature
+	for _, summary := range summaryMap {
+		message := fmt.Sprintf(
+			"emitter %s does not support extension feature %s from provider %s (affects %d resources)",
+			emitterName, summary.feature, summary.provider, summary.affectedCount,
+		)
+		notification := notifications.NewNotification(
+			notifications.WarningNotification,
+			message,
+		)
+		notifications.NotificationAggr.DispatchNotification(notification, "INGRESS2GATEWAY")
+	}
 }

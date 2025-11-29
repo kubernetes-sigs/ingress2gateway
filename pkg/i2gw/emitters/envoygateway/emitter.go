@@ -138,6 +138,18 @@ func (e *Emitter) bufferToProviderResource(
 				Limit: *setting.Buffer,
 			}
 
+			// Mark the setting as processed
+			if setting.ProcessingStatus == nil {
+				setting.ProcessingStatus = make(map[intermediate.ExtensionFeature]*intermediate.ExtensionSettingMetadata)
+			}
+			status, ok := setting.ProcessingStatus[intermediate.ExtensionFeatureBodyBuffer]
+			if !ok {
+				status = &intermediate.ExtensionSettingMetadata{}
+				setting.ProcessingStatus[intermediate.ExtensionFeatureBodyBuffer] = status
+			}
+			status.Emitter = Name
+			status.Attached = true
+
 			notify(notifications.InfoNotification,
 				fmt.Sprintf("generated BackendTrafficPolicy with buffer size %s for HTTPRoute %s/%s",
 					setting.Buffer.String(), httpRouteKey.Namespace, httpRouteKey.Name),

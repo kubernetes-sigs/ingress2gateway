@@ -146,9 +146,15 @@ func bufferPolicyFeature(
 					Backend: intermediate.IndexAttachAllBackends,
 				}
 				if _, ok := httpRouteContext.ExtensionSettings[idx]; !ok {
-					httpRouteContext.ExtensionSettings[idx] = &intermediate.HTTPRouteExtensionSetting{}
+					httpRouteContext.ExtensionSettings[idx] = &intermediate.HTTPRouteExtensionSetting{
+						ProcessingStatus: make(map[intermediate.ExtensionFeature]*intermediate.ExtensionSettingMetadata),
+					}
 				}
 				httpRouteContext.ExtensionSettings[idx].Buffer = firstBuffer
+				httpRouteContext.ExtensionSettings[idx].ProcessingStatus[intermediate.ExtensionFeatureBodyBuffer] =
+					&intermediate.ExtensionSettingMetadata{
+						Provider: Name,
+					}
 
 				notify(notifications.InfoNotification,
 					fmt.Sprintf("set client-body-buffer-size %s to all rules of HTTPRoute %s/%s",
@@ -162,9 +168,15 @@ func bufferPolicyFeature(
 						Backend: intermediate.IndexAttachAllBackends,
 					}
 					if _, ok := httpRouteContext.ExtensionSettings[idx]; !ok {
-						httpRouteContext.ExtensionSettings[idx] = &intermediate.HTTPRouteExtensionSetting{}
+						httpRouteContext.ExtensionSettings[idx] = &intermediate.HTTPRouteExtensionSetting{
+							ProcessingStatus: make(map[intermediate.ExtensionFeature]*intermediate.ExtensionSettingMetadata),
+						}
 					}
 					httpRouteContext.ExtensionSettings[idx].Buffer = bufferSize
+					httpRouteContext.ExtensionSettings[idx].ProcessingStatus[intermediate.ExtensionFeatureBodyBuffer] =
+						&intermediate.ExtensionSettingMetadata{
+							Provider: Name,
+						}
 
 					notify(notifications.InfoNotification,
 						fmt.Sprintf("set client-body-buffer-size %s to rule %d of HTTPRoute %s/%s",

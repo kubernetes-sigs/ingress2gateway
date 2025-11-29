@@ -30,6 +30,12 @@ const (
 	IndexAttachAllBackends = -1
 )
 
+type ExtensionFeature string
+
+const (
+	ExtensionFeatureBodyBuffer ExtensionFeature = "BodyBuffer"
+)
+
 // IR holds specifications of Gateway Objects for supporting Ingress extensions,
 // annotations, and proprietary API features not supported as Gateway core
 // features. An IR field can be mapped to core Gateway-API fields,
@@ -93,6 +99,21 @@ type ProviderSpecificHTTPRouteIR struct {
 type HTTPRouteExtensionSetting struct {
 	// Buffer specifies the buffer size limit for request bodies.
 	Buffer *resource.Quantity
+
+	// ProcessingStatus tracks which provider created each extension feature and which emitter processed it.
+	// This enables ingress2gateway to detect and warn about unsupported features.
+	ProcessingStatus map[ExtensionFeature]*ExtensionSettingMetadata
+}
+
+type ExtensionSettingMetadata struct {
+	// Provider is the name of the provider that generated this extension setting
+	Provider string
+
+	// Emitter is the name of the emitter that processed this extension setting
+	Emitter string
+
+	// Attached indicates whether the emitter successfully attached this setting to a resource
+	Attached bool
 }
 
 // RouteSettingsAttachment specifies the target location within a Route
