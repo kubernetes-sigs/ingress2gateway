@@ -40,6 +40,9 @@ import (
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/nginx"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/openapi3"
 
+	// Call init function for the emitters
+	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/envoygateway"
+
 	// Call init for notifications
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 )

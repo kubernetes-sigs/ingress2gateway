@@ -34,7 +34,11 @@ var _ i2gw.Emitter = &Emitter{}
 // init registers the common emitter as the default emitter in the registry.
 // It is registered with an empty string key, making it the default when --emitter flag is not specified.
 func init() {
-	i2gw.EmitterByName[""] = &Emitter{}
+	i2gw.EmitterByName[""] = NewEmitter()
+}
+
+func NewEmitter() i2gw.Emitter {
+	return &Emitter{}
 }
 
 // ToGatewayResources converts the received intermediate.IR to i2gw.GatewayResource
