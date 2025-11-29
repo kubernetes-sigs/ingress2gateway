@@ -18,10 +18,16 @@ package intermediate
 
 import (
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+)
+
+const (
+	IndexAttachAllRules    = -1
+	IndexAttachAllBackends = -1
 )
 
 // IR holds specifications of Gateway Objects for supporting Ingress extensions,
@@ -66,12 +72,41 @@ type HTTPRouteContext struct {
 	gatewayv1.HTTPRoute
 	ProviderSpecificIR ProviderSpecificHTTPRouteIR
 
+	// ExtensionSettings maps attachment points to their extension settings.
+	// The key specifies where the setting should be applied (rule/backend index).
+	// Use IndexAttachAllRules (-1) for Rule to apply to all rules.
+	// Use IndexAttachAllBackends (-1) for Backend to apply to all backends in a rule.
+	ExtensionSettings map[RouteSettingsAttachment]*HTTPRouteExtensionSetting
+
 	// RuleBackendSources[i][j] is the source of the jth backend in the ith element of HTTPRoute.Spec.Rules.
 	RuleBackendSources [][]BackendSource
 }
 
 type ProviderSpecificHTTPRouteIR struct {
 	Gce *GceHTTPRouteIR
+}
+
+// HTTPRouteExtensionSetting represents provider-agnostic configuration settings
+// that can be applied to an HTTPRoute or specific parts of it (rules/backends).
+// Providers populate these settings from Ingress annotations or provider-specific CRDs,
+// and Emitters convert them into implementation-specific resources (e.g. Policy CRDs).
+type HTTPRouteExtensionSetting struct {
+	// Buffer specifies the buffer size limit for request bodies.
+	Buffer *resource.Quantity
+}
+
+// RouteSettingsAttachment specifies the target location within a Route
+// where an extension setting should be applied.
+type RouteSettingsAttachment struct {
+	// Rule is the index into HTTPRoute.Spec.Rules that this setting targets.
+	// Use IndexAttachAllRules (-1) to apply to all rules.
+	// Otherwise, must be a valid zero-based index into the Rules array.
+	Rule int
+
+	// Backend is the index into HTTPRoute.Spec.Rules[Rule].BackendRefs that this setting targets.
+	// Use IndexAttachAllBackends (-1) to apply to all backends in the specified rule.
+	// Otherwise, must be a valid zero-based index into the BackendRefs array.
+	Backend int
 }
 
 type ServiceContext struct {
