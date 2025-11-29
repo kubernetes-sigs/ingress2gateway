@@ -20,6 +20,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/common"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/gvk"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
@@ -97,6 +98,8 @@ func (e *Emitter) bufferToProviderResource(
 			Rule:    intermediate.IndexAttachAllRules,
 			Backend: intermediate.IndexAttachAllBackends,
 		}
+
+		// Check if the settings apply to all rules
 		if setting, ok := settings[allAttachedKey]; ok && setting.Buffer != nil {
 			btpNN := types.NamespacedName{
 				Name:      httpRouteKey.Name,
@@ -134,12 +137,28 @@ func (e *Emitter) bufferToProviderResource(
 			btp.Spec.RequestBuffer = &egv1a1.RequestBuffer{
 				Limit: *setting.Buffer,
 			}
-		}
 
-		// TODO [kkk777-7]: Should handle per route rule name (sectionName) attachments.
-		// This would enable per-rule buffer configuration in a merged HTTPRoute, even when
-		// multiple Ingresses with different buffer sizes are consolidated into a single HTTPRoute.
-		// We can't support this until common HTTPRoute output supports route rule names.
+			notify(notifications.InfoNotification,
+				fmt.Sprintf("generated BackendTrafficPolicy with buffer size %s for HTTPRoute %s/%s",
+					setting.Buffer.String(), httpRouteKey.Namespace, httpRouteKey.Name),
+				btp)
+		} else {
+			// TODO [kkk777-7]: Should handle per route rule name (sectionName) attachments.
+			// This would enable per-rule buffer configuration in a merged HTTPRoute, even when
+			// multiple Ingresses with different buffer sizes are consolidated into a single HTTPRoute.
+			// We can't support this until common HTTPRoute output supports route rule names.
+
+			// Check if there are per-rule settings that we don't support yet
+			for attachment, setting := range settings {
+				if setting.Buffer != nil {
+					notify(notifications.WarningNotification,
+						fmt.Sprintf("per-rule buffer configuration is not supported yet for HTTPRoute %s/%s (rule %d), skipping",
+							httpRouteKey.Namespace, httpRouteKey.Name, attachment.Rule),
+						&httpRouteContext.HTTPRoute)
+					break
+				}
+			}
+		}
 	}
 	return errs
 }

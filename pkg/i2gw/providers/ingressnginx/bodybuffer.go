@@ -17,6 +17,7 @@ import (
 	"fmt"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
@@ -148,6 +149,11 @@ func bufferPolicyFeature(
 					httpRouteContext.ExtensionSettings[idx] = &intermediate.HTTPRouteExtensionSetting{}
 				}
 				httpRouteContext.ExtensionSettings[idx].Buffer = firstBuffer
+
+				notify(notifications.InfoNotification,
+					fmt.Sprintf("set client-body-buffer-size %s to all rules of HTTPRoute %s/%s",
+						firstBuffer.String(), routeKey.Namespace, routeKey.Name),
+					&httpRouteContext.HTTPRoute)
 			} else {
 				// Different settings per rule - apply individually
 				for ruleIdx, bufferSize := range ruleBufferSettings {
@@ -159,6 +165,11 @@ func bufferPolicyFeature(
 						httpRouteContext.ExtensionSettings[idx] = &intermediate.HTTPRouteExtensionSetting{}
 					}
 					httpRouteContext.ExtensionSettings[idx].Buffer = bufferSize
+
+					notify(notifications.InfoNotification,
+						fmt.Sprintf("set client-body-buffer-size %s to rule %d of HTTPRoute %s/%s",
+							bufferSize.String(), ruleIdx, routeKey.Namespace, routeKey.Name),
+						&httpRouteContext.HTTPRoute)
 				}
 			}
 		}
