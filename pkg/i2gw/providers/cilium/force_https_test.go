@@ -312,7 +312,7 @@ func Test_forceHTTPSFeature(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ingresses := []networkingv1.Ingress{tc.ingress}
-			ir := &provider_intermediate.IR{
+			ir := &provider_intermediate.ProviderIR{
 				HTTPRoutes: map[types.NamespacedName]provider_intermediate.HTTPRouteContext{
 					{Name: tc.expectedHTTPRoute.Name, Namespace: tc.expectedHTTPRoute.Namespace}: {
 						HTTPRoute: *tc.initialHTTPRoute,

@@ -35,7 +35,7 @@ import (
 )
 
 // TCPIngressToGatewayIR converts the received TCPingresses to intermediate.IR,
-func TCPIngressToGatewayIR(ingresses []kongv1beta1.TCPIngress) (provider_intermediate.IR, []notifications.Notification, field.ErrorList) {
+func TCPIngressToGatewayIR(ingresses []kongv1beta1.TCPIngress) (provider_intermediate.ProviderIR, []notifications.Notification, field.ErrorList) {
 	aggregator := tcpIngressAggregator{ruleGroups: map[ruleGroupKey]*tcpIngressRuleGroup{}}
 	var notificationsAggregator []notifications.Notification
 
@@ -44,12 +44,12 @@ func TCPIngressToGatewayIR(ingresses []kongv1beta1.TCPIngress) (provider_interme
 		aggregator.addIngress(ingress, &notificationsAggregator)
 	}
 	if len(errs) > 0 {
-		return provider_intermediate.IR{}, notificationsAggregator, errs
+		return provider_intermediate.ProviderIR{}, notificationsAggregator, errs
 	}
 
 	tcpRoutes, tlsRoutes, gateways, errs := aggregator.toRoutesAndGateways()
 	if len(errs) > 0 {
-		return provider_intermediate.IR{}, notificationsAggregator, errs
+		return provider_intermediate.ProviderIR{}, notificationsAggregator, errs
 	}
 
 	tcpRouteByKey := make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute)
@@ -70,7 +70,7 @@ func TCPIngressToGatewayIR(ingresses []kongv1beta1.TCPIngress) (provider_interme
 		gatewayByKey[key] = provider_intermediate.GatewayContext{Gateway: gateway}
 	}
 
-	return provider_intermediate.IR{
+	return provider_intermediate.ProviderIR{
 		Gateways:  gatewayByKey,
 		TCPRoutes: tcpRouteByKey,
 		TLSRoutes: tlsRouteByKey,

@@ -32,7 +32,7 @@ import (
 
 // SSLRedirectFeature converts SSL redirect annotations to Gateway API RequestRedirect filters.
 // Both nginx.org/redirect-to-https and ingress.kubernetes.io/ssl-redirect function identically.
-func SSLRedirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *provider_intermediate.IR) field.ErrorList {
+func SSLRedirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *provider_intermediate.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 
 	ruleGroups := common.GetRuleGroups(ingresses)
@@ -86,7 +86,7 @@ func SSLRedirectFeature(ingresses []networkingv1.Ingress, _ map[types.Namespaced
 
 // ensureHTTPSListener ensures that a Gateway resource has an HTTPS listener configured
 // for the specified Ingress rule. If it doesn't, one is created.
-func ensureHTTPSListener(ingress networkingv1.Ingress, rule networkingv1.IngressRule, ir *provider_intermediate.IR) {
+func ensureHTTPSListener(ingress networkingv1.Ingress, rule networkingv1.IngressRule, ir *provider_intermediate.ProviderIR) {
 	gatewayName := NginxIngressClass
 	if ingress.Spec.IngressClassName != nil {
 		gatewayName = *ingress.Spec.IngressClassName

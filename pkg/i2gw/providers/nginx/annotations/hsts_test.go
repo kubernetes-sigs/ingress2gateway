@@ -138,7 +138,7 @@ func TestHSTSFeature(t *testing.T) {
 			routeName := common.RouteName(ingress.Name, ingress.Spec.Rules[0].Host)
 			routeKey := types.NamespacedName{Namespace: ingress.Namespace, Name: routeName}
 
-			ir := provider_intermediate.IR{
+			ir := provider_intermediate.ProviderIR{
 				HTTPRoutes: map[types.NamespacedName]provider_intermediate.HTTPRouteContext{
 					routeKey: {
 						HTTPRoute: gatewayv1.HTTPRoute{

@@ -37,7 +37,7 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 	}
 }
 
-func (c *resourcesToIRConverter) convert(storage *storage) (provider_intermediate.IR, field.ErrorList) {
+func (c *resourcesToIRConverter) convert(storage *storage) (provider_intermediate.ProviderIR, field.ErrorList) {
 
 	// TODO(liorliberman) temporary until we decide to change ToIR and featureParsers to get a map of [types.NamespacedName]*networkingv1.Ingress instead of a list
 	ingressList := storage.Ingresses.List()
@@ -46,7 +46,7 @@ func (c *resourcesToIRConverter) convert(storage *storage) (provider_intermediat
 	// provider-specific features.
 	ir, errs := common.ToIR(ingressList, storage.ServicePorts, i2gw.ProviderImplementationSpecificOptions{})
 	if len(errs) > 0 {
-		return provider_intermediate.IR{}, errs
+		return provider_intermediate.ProviderIR{}, errs
 	}
 
 	for _, parseFeatureFunc := range c.featureParsers {

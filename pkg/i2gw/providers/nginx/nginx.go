@@ -68,6 +68,6 @@ func (p *Provider) ReadResourcesFromFile(_ context.Context, filename string) err
 }
 
 // ToIR converts the provider resources to intermediate representation
-func (p *Provider) ToIR() (provider_intermediate.IR, field.ErrorList) {
+func (p *Provider) ToIR() (provider_intermediate.ProviderIR, field.ErrorList) {
 	return p.resourcesToIRConverter.convert(p.storage)
 }

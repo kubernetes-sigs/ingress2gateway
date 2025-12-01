@@ -41,7 +41,7 @@ func Test_ToGateway(t *testing.T) {
 	testCases := []struct {
 		name           string
 		ingresses      map[types.NamespacedName]*networkingv1.Ingress
-		expectedIR     provider_intermediate.IR
+		expectedIR     provider_intermediate.ProviderIR
 		expectedErrors field.ErrorList
 	}{
 		{
@@ -81,7 +81,7 @@ func Test_ToGateway(t *testing.T) {
 					},
 				},
 			},
-			expectedIR: provider_intermediate.IR{
+			expectedIR: provider_intermediate.ProviderIR{
 				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
 					{Namespace: "default", Name: "ingress-kong"}: {
 						Gateway: gatewayv1.Gateway{
@@ -216,7 +216,7 @@ func Test_ToGateway(t *testing.T) {
 					},
 				},
 			},
-			expectedIR: provider_intermediate.IR{
+			expectedIR: provider_intermediate.ProviderIR{
 				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
 					{Namespace: "default", Name: "ingress-kong"}: {
 						Gateway: gatewayv1.Gateway{
@@ -365,7 +365,7 @@ func Test_ToGateway(t *testing.T) {
 					},
 				},
 			},
-			expectedIR: provider_intermediate.IR{
+			expectedIR: provider_intermediate.ProviderIR{
 				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
 					{Namespace: "default", Name: "ingress-kong"}: {
 						Gateway: gatewayv1.Gateway{
@@ -454,7 +454,7 @@ func Test_ToGateway(t *testing.T) {
 					},
 				},
 			},
-			expectedIR: provider_intermediate.IR{
+			expectedIR: provider_intermediate.ProviderIR{
 				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
 					{Namespace: "default", Name: "ingress-kong"}: {
 						Gateway: gatewayv1.Gateway{

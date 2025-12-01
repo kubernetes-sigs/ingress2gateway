@@ -264,7 +264,7 @@ func TestListenPortsFeature(t *testing.T) {
 				},
 			}
 
-			ir := provider_intermediate.IR{
+			ir := provider_intermediate.ProviderIR{
 				Gateways:   make(map[types.NamespacedName]provider_intermediate.GatewayContext),
 				HTTPRoutes: make(map[types.NamespacedName]provider_intermediate.HTTPRouteContext),
 			}
@@ -385,7 +385,7 @@ func TestListenPortsReplacesDefaultListeners(t *testing.T) {
 
 	// Start with IR that has a Gateway with default listeners (simulating what common converter creates)
 	gatewayKey := types.NamespacedName{Namespace: "default", Name: "nginx"}
-	ir := provider_intermediate.IR{
+	ir := provider_intermediate.ProviderIR{
 		Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
 			gatewayKey: {
 				Gateway: gatewayv1.Gateway{
@@ -490,7 +490,7 @@ func TestListenPortsConflictResolution(t *testing.T) {
 		},
 	}
 
-	ir := provider_intermediate.IR{
+	ir := provider_intermediate.ProviderIR{
 		Gateways:   make(map[types.NamespacedName]provider_intermediate.GatewayContext),
 		HTTPRoutes: make(map[types.NamespacedName]provider_intermediate.HTTPRouteContext),
 	}

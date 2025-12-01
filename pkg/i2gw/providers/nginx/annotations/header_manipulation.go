@@ -30,7 +30,7 @@ import (
 )
 
 // HeaderManipulationFeature converts header manipulation annotations to HTTPRoute filters
-func HeaderManipulationFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *provider_intermediate.IR) field.ErrorList {
+func HeaderManipulationFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *provider_intermediate.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 
 	ruleGroups := common.GetRuleGroups(ingresses)

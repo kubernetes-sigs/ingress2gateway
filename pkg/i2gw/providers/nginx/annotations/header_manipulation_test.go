@@ -186,7 +186,7 @@ func TestHideHeaders(t *testing.T) {
 				nginxProxyHideHeadersAnnotation: tt.hideHeaders,
 			})
 
-			ir := provider_intermediate.IR{
+			ir := provider_intermediate.ProviderIR{
 				Gateways:   make(map[types.NamespacedName]provider_intermediate.GatewayContext),
 				HTTPRoutes: make(map[types.NamespacedName]provider_intermediate.HTTPRouteContext),
 			}
@@ -324,7 +324,7 @@ func TestSetHeaders(t *testing.T) {
 				nginxProxySetHeadersAnnotation: tt.setHeaders,
 			})
 
-			ir := provider_intermediate.IR{
+			ir := provider_intermediate.ProviderIR{
 				Gateways:   make(map[types.NamespacedName]provider_intermediate.GatewayContext),
 				HTTPRoutes: make(map[types.NamespacedName]provider_intermediate.HTTPRouteContext),
 			}
@@ -466,7 +466,7 @@ func TestHeaderManipulationFeature(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ingress := createTestIngress("test-ingress", "default", tt.annotations)
 
-			ir := provider_intermediate.IR{
+			ir := provider_intermediate.ProviderIR{
 				Gateways:   make(map[types.NamespacedName]provider_intermediate.GatewayContext),
 				HTTPRoutes: make(map[types.NamespacedName]provider_intermediate.HTTPRouteContext),
 			}
@@ -807,7 +807,7 @@ func TestHeaderManipulationWithSourceIngressMapping(t *testing.T) {
 		},
 	}
 
-	ir := provider_intermediate.IR{
+	ir := provider_intermediate.ProviderIR{
 		HTTPRoutes: make(map[types.NamespacedName]provider_intermediate.HTTPRouteContext),
 	}
 	routeKey := types.NamespacedName{Namespace: "test", Name: "app1-example-com"}

@@ -125,7 +125,7 @@ func TestRewriteTarget(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ir := provider_intermediate.IR{
+			ir := provider_intermediate.ProviderIR{
 				HTTPRoutes: make(map[types.NamespacedName]provider_intermediate.HTTPRouteContext),
 			}
 

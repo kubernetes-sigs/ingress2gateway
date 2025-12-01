@@ -36,7 +36,7 @@ import (
 
 // ToIR converts the received ingresses to intermediate.IR without taking into
 // consideration any provider specific logic.
-func ToIR(ingresses []networkingv1.Ingress, servicePorts map[types.NamespacedName]map[string]int32, options i2gw.ProviderImplementationSpecificOptions) (provider_intermediate.IR, field.ErrorList) {
+func ToIR(ingresses []networkingv1.Ingress, servicePorts map[types.NamespacedName]map[string]int32, options i2gw.ProviderImplementationSpecificOptions) (provider_intermediate.ProviderIR, field.ErrorList) {
 	aggregator := ingressAggregator{
 		ruleGroups:   map[ruleGroupKey]*ingressRuleGroup{},
 		servicePorts: servicePorts,
@@ -47,12 +47,12 @@ func ToIR(ingresses []networkingv1.Ingress, servicePorts map[types.NamespacedNam
 		aggregator.addIngress(ingress)
 	}
 	if len(errs) > 0 {
-		return provider_intermediate.IR{}, errs
+		return provider_intermediate.ProviderIR{}, errs
 	}
 
 	routes, gateways, errs := aggregator.toHTTPRoutesAndGateways(options)
 	if len(errs) > 0 {
-		return provider_intermediate.IR{}, errs
+		return provider_intermediate.ProviderIR{}, errs
 	}
 
 	routeByKey := make(map[types.NamespacedName]provider_intermediate.HTTPRouteContext)
@@ -70,7 +70,7 @@ func ToIR(ingresses []networkingv1.Ingress, servicePorts map[types.NamespacedNam
 		gatewayByKey[key] = provider_intermediate.GatewayContext{Gateway: gateway}
 	}
 
-	return provider_intermediate.IR{
+	return provider_intermediate.ProviderIR{
 		Gateways:           gatewayByKey,
 		HTTPRoutes:         routeByKey,
 		Services:           make(map[types.NamespacedName]provider_intermediate.ProviderSpecificServiceIR),

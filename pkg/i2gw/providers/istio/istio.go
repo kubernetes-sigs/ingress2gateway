@@ -49,7 +49,7 @@ func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 
 // ToIR converts stored Istio API entities to intermediate.IR
 // K8S Ingress resources are not needed, only Istio-based are converted
-func (p *Provider) ToIR() (provider_intermediate.IR, field.ErrorList) {
+func (p *Provider) ToIR() (provider_intermediate.ProviderIR, field.ErrorList) {
 	return p.resourcesToIRConverter.convertToIR(p.storage)
 }
 

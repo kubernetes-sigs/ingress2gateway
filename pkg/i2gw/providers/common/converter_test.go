@@ -42,14 +42,14 @@ func Test_ToIR(t *testing.T) {
 		name           string
 		ingresses      []networkingv1.Ingress
 		servicePorts   map[types.NamespacedName]map[string]int32
-		expectedIR     provider_intermediate.IR
+		expectedIR     provider_intermediate.ProviderIR
 		expectedErrors field.ErrorList
 	}{
 		{
 			name:           "empty",
 			ingresses:      []networkingv1.Ingress{},
 			servicePorts:   map[types.NamespacedName]map[string]int32{},
-			expectedIR:     provider_intermediate.IR{},
+			expectedIR:     provider_intermediate.ProviderIR{},
 			expectedErrors: field.ErrorList{},
 		},
 		{
@@ -80,7 +80,7 @@ func Test_ToIR(t *testing.T) {
 				},
 			}},
 			servicePorts: map[types.NamespacedName]map[string]int32{},
-			expectedIR: provider_intermediate.IR{
+			expectedIR: provider_intermediate.ProviderIR{
 				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
 					{Namespace: "test", Name: "simple"}: {
 						Gateway: gatewayv1.Gateway{
@@ -163,7 +163,7 @@ func Test_ToIR(t *testing.T) {
 				},
 			}},
 			servicePorts: map[types.NamespacedName]map[string]int32{},
-			expectedIR: provider_intermediate.IR{
+			expectedIR: provider_intermediate.ProviderIR{
 				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
 					{Namespace: "test", Name: "with-tls"}: {
 						Gateway: gatewayv1.Gateway{
@@ -259,7 +259,7 @@ func Test_ToIR(t *testing.T) {
 				},
 			}},
 			servicePorts: map[types.NamespacedName]map[string]int32{},
-			expectedIR: provider_intermediate.IR{
+			expectedIR: provider_intermediate.ProviderIR{
 				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
 					{Namespace: "different", Name: "example-proxy"}: {
 						Gateway: gatewayv1.Gateway{
@@ -364,7 +364,7 @@ func Test_ToIR(t *testing.T) {
 				{Namespace: "test", Name: "example"}:  {"http": 3000},
 				{Namespace: "test", Name: "example2"}: {"http": 8080},
 			},
-			expectedIR: provider_intermediate.IR{
+			expectedIR: provider_intermediate.ProviderIR{
 				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
 					{Namespace: "test", Name: "named-ports"}: {
 						Gateway: gatewayv1.Gateway{
@@ -445,7 +445,7 @@ func Test_ToIR(t *testing.T) {
 			servicePorts: map[types.NamespacedName]map[string]int32{
 				{Namespace: "test", Name: "example2"}: {"http": 8080},
 			},
-			expectedIR: provider_intermediate.IR{
+			expectedIR: provider_intermediate.ProviderIR{
 				Gateways:   map[types.NamespacedName]provider_intermediate.GatewayContext{},
 				HTTPRoutes: map[types.NamespacedName]provider_intermediate.HTTPRouteContext{},
 			},

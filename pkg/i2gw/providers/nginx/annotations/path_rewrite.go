@@ -30,7 +30,7 @@ import (
 )
 
 // RewriteTargetFeature converts nginx.org/rewrites annotation to URLRewrite filter
-func RewriteTargetFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *provider_intermediate.IR) field.ErrorList {
+func RewriteTargetFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *provider_intermediate.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 
 	ruleGroups := common.GetRuleGroups(ingresses)

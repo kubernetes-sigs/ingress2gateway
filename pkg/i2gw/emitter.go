@@ -29,7 +29,7 @@ import (
 type Emitter interface {
 	// Emit converts stored IR with the Provider into
 	// Gateway API resources and extensions
-	Emit(provider_intermediate.IR) (GatewayResources, field.ErrorList)
+	Emit(provider_intermediate.ProviderIR) (GatewayResources, field.ErrorList)
 }
 
 // GatewayResources contains all Gateway-API objects and provider Gateway

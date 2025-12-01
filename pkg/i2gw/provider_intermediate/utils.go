@@ -36,8 +36,8 @@ import (
 //     a unique Gateway.
 //
 // This behavior is likely to change after https://github.com/kubernetes-sigs/gateway-api/pull/1863 takes place.
-func MergeIRs(irs ...IR) (IR, field.ErrorList) {
-	mergedIRs := IR{
+func MergeIRs(irs ...ProviderIR) (ProviderIR, field.ErrorList) {
+	mergedIRs := ProviderIR{
 		Gateways:           make(map[types.NamespacedName]GatewayContext),
 		GatewayClasses:     make(map[types.NamespacedName]gatewayv1.GatewayClass),
 		HTTPRoutes:         make(map[types.NamespacedName]HTTPRouteContext),
@@ -52,7 +52,7 @@ func MergeIRs(irs ...IR) (IR, field.ErrorList) {
 	var errs field.ErrorList
 	mergedIRs.Gateways, errs = mergeGatewayContexts(irs)
 	if len(errs) > 0 {
-		return IR{}, errs
+		return ProviderIR{}, errs
 	}
 	// TODO(issue #189): Perform merge on HTTPRoute and Service like Gateway.
 	for _, gr := range irs {
@@ -69,7 +69,7 @@ func MergeIRs(irs ...IR) (IR, field.ErrorList) {
 	return mergedIRs, errs
 }
 
-func mergeGatewayContexts(irs []IR) (map[types.NamespacedName]GatewayContext, field.ErrorList) {
+func mergeGatewayContexts(irs []ProviderIR) (map[types.NamespacedName]GatewayContext, field.ErrorList) {
 	newGatewayContexts := make(map[types.NamespacedName]GatewayContext)
 	errs := field.ErrorList{}
 

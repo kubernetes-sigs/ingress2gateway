@@ -24,11 +24,11 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-// IR holds specifications of Gateway Objects for supporting Ingress extensions,
+// ProviderIR holds specifications of Gateway Objects for supporting Ingress extensions,
 // annotations, and proprietary API features not supported as Gateway core
-// features. An IR field can be mapped to core Gateway-API fields,
+// features. An ProviderIR field can be mapped to core Gateway-API fields,
 // or provider-specific Gateway extensions.
-type IR struct {
+type ProviderIR struct {
 	Gateways   map[types.NamespacedName]GatewayContext
 	HTTPRoutes map[types.NamespacedName]HTTPRouteContext
 	Services   map[types.NamespacedName]ProviderSpecificServiceIR

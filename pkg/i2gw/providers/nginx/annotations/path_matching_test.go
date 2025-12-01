@@ -132,7 +132,7 @@ func TestPathRegex(t *testing.T) {
 				},
 			}
 
-			ir := provider_intermediate.IR{
+			ir := provider_intermediate.ProviderIR{
 				HTTPRoutes: make(map[types.NamespacedName]provider_intermediate.HTTPRouteContext),
 			}
 
@@ -247,7 +247,7 @@ func TestPathRegexMultipleMatches(t *testing.T) {
 		},
 	}
 
-	ir := provider_intermediate.IR{
+	ir := provider_intermediate.ProviderIR{
 		HTTPRoutes: make(map[types.NamespacedName]provider_intermediate.HTTPRouteContext),
 	}
 
@@ -343,7 +343,7 @@ func TestPathRegexCaseInsensitiveNotification(t *testing.T) {
 		},
 	}
 
-	ir := provider_intermediate.IR{
+	ir := provider_intermediate.ProviderIR{
 		HTTPRoutes: make(map[types.NamespacedName]provider_intermediate.HTTPRouteContext),
 	}
 
@@ -434,7 +434,7 @@ func TestPathRegexCaseInsensitiveFlagInjection(t *testing.T) {
 	routeKey := types.NamespacedName{Namespace: ingress.Namespace, Name: routeName}
 
 	originalPath := "/api/v[0-9]+"
-	ir := provider_intermediate.IR{
+	ir := provider_intermediate.ProviderIR{
 		HTTPRoutes: map[types.NamespacedName]provider_intermediate.HTTPRouteContext{
 			routeKey: {
 				HTTPRoute: gatewayv1.HTTPRoute{
@@ -543,7 +543,7 @@ func TestPathRegexCaseInsensitiveFlagNotDuplicated(t *testing.T) {
 	routeKey := types.NamespacedName{Namespace: ingress.Namespace, Name: routeName}
 
 	originalPath := "(?i)/api/v[0-9]+"
-	ir := provider_intermediate.IR{
+	ir := provider_intermediate.ProviderIR{
 		HTTPRoutes: map[types.NamespacedName]provider_intermediate.HTTPRouteContext{
 			routeKey: {
 				HTTPRoute: gatewayv1.HTTPRoute{

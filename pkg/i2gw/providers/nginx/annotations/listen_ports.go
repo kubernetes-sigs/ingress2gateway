@@ -37,7 +37,7 @@ type portConfiguration struct {
 }
 
 // ListenPortsFeature processes nginx.org/listen-ports and nginx.org/listen-ports-ssl annotations
-func ListenPortsFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *provider_intermediate.IR) field.ErrorList {
+func ListenPortsFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *provider_intermediate.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 
 	ruleGroups := common.GetRuleGroups(ingresses)
@@ -91,7 +91,7 @@ func extractListenPorts(portsAnnotation string) []int32 {
 // This follows NIC behavior where listen-ports annotations REPLACE default ports, not add to them
 //
 //nolint:unparam // ErrorList return type maintained for consistency
-func replaceGatewayPortsWithCustom(ingress networkingv1.Ingress, portConfiguration portConfiguration, ir *provider_intermediate.IR) field.ErrorList {
+func replaceGatewayPortsWithCustom(ingress networkingv1.Ingress, portConfiguration portConfiguration, ir *provider_intermediate.ProviderIR) field.ErrorList {
 	var errs field.ErrorList //nolint:unparam // ErrorList return type maintained for consistency
 
 	gatewayClassName := getGatewayClassName(ingress)

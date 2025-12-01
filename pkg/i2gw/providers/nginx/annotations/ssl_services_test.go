@@ -103,7 +103,7 @@ func TestSSLServicesAnnotation(t *testing.T) {
 				},
 			}
 
-			ir := provider_intermediate.IR{
+			ir := provider_intermediate.ProviderIR{
 				BackendTLSPolicies: make(map[types.NamespacedName]gatewayv1.BackendTLSPolicy),
 			}
 
@@ -192,7 +192,7 @@ func TestSSLServicesFeature(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ir := provider_intermediate.IR{
+			ir := provider_intermediate.ProviderIR{
 				BackendTLSPolicies: make(map[types.NamespacedName]gatewayv1.BackendTLSPolicy),
 			}
 

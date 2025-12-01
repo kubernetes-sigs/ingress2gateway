@@ -42,7 +42,7 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 	}
 }
 
-func (c *resourcesToIRConverter) convertToIR(storage *storage) (provider_intermediate.IR, field.ErrorList) {
+func (c *resourcesToIRConverter) convertToIR(storage *storage) (provider_intermediate.ProviderIR, field.ErrorList) {
 	ingressList := []networkingv1.Ingress{}
 	for _, ing := range storage.Ingresses {
 		ingressList = append(ingressList, *ing)
@@ -51,7 +51,7 @@ func (c *resourcesToIRConverter) convertToIR(storage *storage) (provider_interme
 	// provider-specific features.
 	ir, errs := common.ToIR(ingressList, storage.ServicePorts, c.implementationSpecificOptions)
 	if len(errs) > 0 {
-		return provider_intermediate.IR{}, errs
+		return provider_intermediate.ProviderIR{}, errs
 	}
 
 	for _, parseFeatureFunc := range c.featureParsers {

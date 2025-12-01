@@ -94,7 +94,7 @@ func TestSSLRedirectFeature(t *testing.T) {
 			routeKey := types.NamespacedName{Namespace: ingress.Namespace, Name: routeName}
 			gatewayKey := types.NamespacedName{Namespace: ingress.Namespace, Name: "nginx"}
 
-			ir := provider_intermediate.IR{
+			ir := provider_intermediate.ProviderIR{
 				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
 					gatewayKey: {
 						Gateway: gatewayv1.Gateway{

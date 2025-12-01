@@ -57,10 +57,10 @@ func newResourcesToIRConverter() resourcesToIRConverter {
 	}
 }
 
-func (c *resourcesToIRConverter) convertToIR(storage *storage) (provider_intermediate.IR, field.ErrorList) {
+func (c *resourcesToIRConverter) convertToIR(storage *storage) (provider_intermediate.ProviderIR, field.ErrorList) {
 	var errList field.ErrorList
 
-	gatewayResources := provider_intermediate.IR{
+	gatewayResources := provider_intermediate.ProviderIR{
 		Gateways:        make(map[types.NamespacedName]provider_intermediate.GatewayContext),
 		HTTPRoutes:      make(map[types.NamespacedName]provider_intermediate.HTTPRouteContext),
 		TLSRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),

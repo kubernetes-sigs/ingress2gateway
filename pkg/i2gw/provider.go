@@ -72,7 +72,7 @@ type CustomResourceReader interface {
 // and extensions into IR.
 type ResourcesToIRConverter interface {
 	// ToIR converts stored API entities associated with the Provider into IR.
-	ToIR() (provider_intermediate.IR, field.ErrorList)
+	ToIR() (provider_intermediate.ProviderIR, field.ErrorList)
 }
 
 // ImplementationSpecificHTTPPathTypeMatchConverter is an option to customize the ingress implementationSpecific
@@ -91,7 +91,7 @@ type ProviderImplementationSpecificOptions struct {
 //
 // Different FeatureParsers will run in undetermined order. The function must
 // modify / create only the required fields of the IR and nothing else.
-type FeatureParser func([]networkingv1.Ingress, map[types.NamespacedName]map[string]int32, *provider_intermediate.IR) field.ErrorList
+type FeatureParser func([]networkingv1.Ingress, map[types.NamespacedName]map[string]int32, *provider_intermediate.ProviderIR) field.ErrorList
 
 var providerSpecificFlagDefinitions = providerSpecificFlags{
 	flags: make(map[ProviderName]map[string]ProviderSpecificFlag),

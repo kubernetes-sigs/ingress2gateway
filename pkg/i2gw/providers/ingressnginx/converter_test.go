@@ -44,7 +44,7 @@ func Test_ToIR(t *testing.T) {
 	testCases := []struct {
 		name           string
 		ingresses      OrderedIngressMap
-		expectedIR     provider_intermediate.IR
+		expectedIR     provider_intermediate.ProviderIR
 		expectedErrors field.ErrorList
 	}{
 		{
@@ -109,7 +109,7 @@ func Test_ToIR(t *testing.T) {
 					},
 				},
 			},
-			expectedIR: provider_intermediate.IR{
+			expectedIR: provider_intermediate.ProviderIR{
 				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
 					{Namespace: "default", Name: "ingress-nginx"}: {
 						Gateway: gatewayv1.Gateway{
@@ -237,7 +237,7 @@ func Test_ToIR(t *testing.T) {
 					},
 				},
 			},
-			expectedIR: provider_intermediate.IR{
+			expectedIR: provider_intermediate.ProviderIR{
 				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
 					{Namespace: "default", Name: "ingress-nginx"}: {
 						Gateway: gatewayv1.Gateway{
@@ -337,7 +337,7 @@ func Test_ToIR(t *testing.T) {
 					},
 				},
 			},
-			expectedIR: provider_intermediate.IR{},
+			expectedIR: provider_intermediate.ProviderIR{},
 			expectedErrors: field.ErrorList{
 				{
 					Type:     field.ErrorTypeInvalid,
@@ -417,7 +417,7 @@ func Test_ToIR(t *testing.T) {
 					},
 				},
 			},
-			expectedIR: provider_intermediate.IR{
+			expectedIR: provider_intermediate.ProviderIR{
 				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
 					{Namespace: "default", Name: "nginx"}: {
 						Gateway: gatewayv1.Gateway{
@@ -651,7 +651,7 @@ func Test_ToIR(t *testing.T) {
 					},
 				},
 			},
-			expectedIR: provider_intermediate.IR{
+			expectedIR: provider_intermediate.ProviderIR{
 				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
 					{Namespace: "default", Name: "nginx"}: {
 						Gateway: gatewayv1.Gateway{
@@ -857,7 +857,7 @@ func Test_ToIR(t *testing.T) {
 					},
 				},
 			},
-			expectedIR: provider_intermediate.IR{
+			expectedIR: provider_intermediate.ProviderIR{
 				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
 					{Namespace: "default", Name: "nginx"}: {
 						Gateway: gatewayv1.Gateway{

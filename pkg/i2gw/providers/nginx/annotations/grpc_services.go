@@ -29,7 +29,7 @@ import (
 )
 
 // GRPCServicesFeature processes nginx.org/grpc-services annotation
-func GRPCServicesFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *provider_intermediate.IR) field.ErrorList {
+func GRPCServicesFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *provider_intermediate.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 
 	ruleGroups := common.GetRuleGroups(ingresses)
@@ -47,7 +47,7 @@ func GRPCServicesFeature(ingresses []networkingv1.Ingress, _ map[types.Namespace
 // processGRPCServicesAnnotation handles gRPC backend services
 //
 //nolint:unparam // ErrorList return type maintained for consistency
-func processGRPCServicesAnnotation(ingress networkingv1.Ingress, grpcServices string, ir *provider_intermediate.IR) field.ErrorList {
+func processGRPCServicesAnnotation(ingress networkingv1.Ingress, grpcServices string, ir *provider_intermediate.ProviderIR) field.ErrorList {
 	var errs field.ErrorList //nolint:unparam // ErrorList return type maintained for consistency
 
 	// Parse comma-separated service names that should use gRPC

@@ -91,7 +91,7 @@ func (p *Provider) ReadResourcesFromFile(ctx context.Context, filename string) e
 }
 
 // ToIR converts stored OpenAPI specs to IR.
-func (p *Provider) ToIR() (provider_intermediate.IR, field.ErrorList) {
+func (p *Provider) ToIR() (provider_intermediate.ProviderIR, field.ErrorList) {
 	return p.resourcesToIRConverter.Convert(p.storage)
 }
 

@@ -36,7 +36,7 @@ const GeneratorAnnotationKey = "gateway.networking.k8s.io/generator"
 // Examples: "v0.4.0", "v0.4.0-5-gabcdef", "v0.4.0-5-gabcdef-dirty"
 var Version = "dev" // Default value if not built with linker flags
 
-func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string, providers []string, providerSpecificFlags map[string]map[string]string) ([]GatewayResources, map[string]string, error) {
+func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string, providers []string, emitterName string, providerSpecificFlags map[string]map[string]string) ([]GatewayResources, map[string]string, error) {
 	var clusterClient client.Client
 
 	if inputFile == "" {
@@ -72,7 +72,11 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 	}
 
 	emitterConf := &EmitterConf{}
-	emitter := EmitterConstructorByName["default"](emitterConf)
+	newEmitterFunc, ok := EmitterConstructorByName[EmitterName(emitterName)]
+	if !ok {
+		return nil, nil, fmt.Errorf("%s is not a supported emitter", emitterName)
+	}
+	emitter := newEmitterFunc(emitterConf)
 
 	var (
 		gatewayResources []GatewayResources
@@ -146,6 +150,17 @@ func GetSupportedProviders() []string {
 	// Sort the provider names for consistent output.
 	sort.Strings(supportedProviders)
 	return supportedProviders
+}
+
+// GetSupportedEmitters returns the names of all emitters that are supported now
+func GetSupportedEmitters() []string {
+	supportedEmitters := make([]string, 0, len(EmitterConstructorByName))
+	for key := range EmitterConstructorByName {
+		supportedEmitters = append(supportedEmitters, string(key))
+	}
+	// Sort the emitter names for consistent output.
+	sort.Strings(supportedEmitters)
+	return supportedEmitters
 }
 
 func CastToUnstructured(obj runtime.Object) (*unstructured.Unstructured, error) {
