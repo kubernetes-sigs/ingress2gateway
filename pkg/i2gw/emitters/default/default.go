@@ -18,6 +18,7 @@ package default_emitter
 
 import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/common"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -34,7 +35,5 @@ func NewDefaultEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
 
 // Stub implementation
 func (e *DefaultEmitter) Emit(ir provider_intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
-	gatewayResources := i2gw.GatewayResources{}
-	var allErrs field.ErrorList
-	return gatewayResources, allErrs
+	return common.ToGatewayResources(ir)
 }

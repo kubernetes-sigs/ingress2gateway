@@ -18,7 +18,7 @@ package common
 
 import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -78,7 +78,7 @@ func removeBackendRefsDuplicates(backendRefs []gatewayv1.HTTPBackendRef) []gatew
 
 // ToGatewayResources converts the received intermediate.IR to i2gw.GatewayResource
 // without taking into consideration any emitter specific logic.
-func ToGatewayResources(ir emitter_intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
+func ToGatewayResources(ir provider_intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
 	gatewayResources := i2gw.GatewayResources{
 		Gateways:           make(map[types.NamespacedName]gatewayv1.Gateway),
 		HTTPRoutes:         make(map[types.NamespacedName]gatewayv1.HTTPRoute),
@@ -100,6 +100,27 @@ func ToGatewayResources(ir emitter_intermediate.IR) (i2gw.GatewayResources, fiel
 			hr.Spec.Rules[i].BackendRefs = removeBackendRefsDuplicates(hr.Spec.Rules[i].BackendRefs)
 		}
 		gatewayResources.HTTPRoutes[key] = hr
+	}
+	for key, val := range ir.GatewayClasses {
+		gatewayResources.GatewayClasses[key] = val
+	}
+	for key, val := range ir.GRPCRoutes {
+		gatewayResources.GRPCRoutes[key] = val
+	}
+	for key, val := range ir.TLSRoutes {
+		gatewayResources.TLSRoutes[key] = val
+	}
+	for key, val := range ir.TCPRoutes {
+		gatewayResources.TCPRoutes[key] = val
+	}
+	for key, val := range ir.UDPRoutes {
+		gatewayResources.UDPRoutes[key] = val
+	}
+	for key, val := range ir.BackendTLSPolicies {
+		gatewayResources.BackendTLSPolicies[key] = val
+	}
+	for key, val := range ir.ReferenceGrants {
+		gatewayResources.ReferenceGrants[key] = val
 	}
 	return gatewayResources, nil
 }

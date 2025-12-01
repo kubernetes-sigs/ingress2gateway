@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package common
+package default_emitter
 
 import (
 	"errors"
@@ -25,10 +25,29 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
+
+var (
+	GatewayGVK = schema.GroupVersionKind{
+		Group:   "gateway.networking.k8s.io",
+		Version: "v1",
+		Kind:    "Gateway",
+	}
+
+	HTTPRouteGVK = schema.GroupVersionKind{
+		Group:   "gateway.networking.k8s.io",
+		Version: "v1",
+		Kind:    "HTTPRoute",
+	}
+)
+
+func PtrTo[T any](a T) *T {
+	return &a
+}
 
 func Test_ToGatewayResources(t *testing.T) {
 	gPathPrefix := gatewayv1.PathMatchPathPrefix
@@ -269,7 +288,8 @@ func Test_ToGatewayResources(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			gatewayResouces, errs := ToGatewayResources(tc.ir)
+			emitter := DefaultEmitter{}
+			gatewayResouces, errs := emitter.Emit(tc.ir)
 
 			if len(errs) != len(tc.expectedErrors) {
 				t.Errorf("Expected %d errors, got %d: %+v", len(tc.expectedErrors), len(errs), errs)
