@@ -22,13 +22,11 @@ import (
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+
 )
 
 // ProviderConstructorByName is a map of ProviderConstructor functions by a
@@ -86,24 +84,6 @@ type ImplementationSpecificHTTPPathTypeMatchConverter func(*gatewayv1.HTTPPathMa
 // implementation-specific fields of the ingress API.
 type ProviderImplementationSpecificOptions struct {
 	ToImplementationSpecificHTTPPathTypeMatch ImplementationSpecificHTTPPathTypeMatchConverter
-}
-
-// GatewayResources contains all Gateway-API objects and provider Gateway
-// extensions.
-type GatewayResources struct {
-	Gateways       map[types.NamespacedName]gatewayv1.Gateway
-	GatewayClasses map[types.NamespacedName]gatewayv1.GatewayClass
-
-	HTTPRoutes map[types.NamespacedName]gatewayv1.HTTPRoute
-	GRPCRoutes map[types.NamespacedName]gatewayv1.GRPCRoute
-	TLSRoutes  map[types.NamespacedName]gatewayv1alpha2.TLSRoute
-	TCPRoutes  map[types.NamespacedName]gatewayv1alpha2.TCPRoute
-	UDPRoutes  map[types.NamespacedName]gatewayv1alpha2.UDPRoute
-
-	BackendTLSPolicies map[types.NamespacedName]gatewayv1.BackendTLSPolicy
-	ReferenceGrants    map[types.NamespacedName]gatewayv1beta1.ReferenceGrant
-
-	GatewayExtensions []unstructured.Unstructured
 }
 
 // FeatureParser is a function that reads the Ingresses, and applies

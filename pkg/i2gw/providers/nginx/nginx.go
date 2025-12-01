@@ -71,8 +71,3 @@ func (p *Provider) ReadResourcesFromFile(_ context.Context, filename string) err
 func (p *Provider) ToIR() (provider_intermediate.IR, field.ErrorList) {
 	return p.resourcesToIRConverter.convert(p.storage)
 }
-
-// ToGatewayResources converts the IR to Gateway API resources
-func (p *Provider) ToGatewayResources(ir provider_intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
-	return p.gatewayResourcesConverter.convert(ir)
-}

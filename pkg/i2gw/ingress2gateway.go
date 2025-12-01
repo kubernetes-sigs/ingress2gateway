@@ -71,6 +71,9 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 		}
 	}
 
+	emitterConf := &EmitterConf{}
+	emitter := EmitterConstructorByName["default"](emitterConf)
+
 	var (
 		gatewayResources []GatewayResources
 		errs             field.ErrorList
@@ -78,7 +81,7 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 	for _, provider := range providerByName {
 		ir, conversionErrs := provider.ToIR()
 		errs = append(errs, conversionErrs...)
-		providerGatewayResources, conversionErrs := provider.ToGatewayResources(ir)
+		providerGatewayResources, conversionErrs := emitter.Emit(ir)
 		errs = append(errs, conversionErrs...)
 		gatewayResources = append(gatewayResources, providerGatewayResources)
 	}

@@ -16,28 +16,10 @@ limitations under the License.
 
 package nginx
 
-import (
-	"k8s.io/apimachinery/pkg/util/validation/field"
-
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
-)
-
 // gatewayResourcesConverter converts intermediate representation to Gateway API resources with NGINX-specific extensions
 type gatewayResourcesConverter struct{}
 
 // newGatewayResourcesConverter creates a new gateway resources converter
 func newGatewayResourcesConverter() *gatewayResourcesConverter {
 	return &gatewayResourcesConverter{}
-}
-
-// convert converts IR to Gateway API resources including NGINX Gateway Fabric custom policies
-func (c *gatewayResourcesConverter) convert(ir provider_intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
-	// Start with standard Gateway API resources
-	gatewayResources, errs := common.ToGatewayResources(ir)
-	if len(errs) != 0 {
-		return i2gw.GatewayResources{}, errs
-	}
-	return gatewayResources, errs
 }

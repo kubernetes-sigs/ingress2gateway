@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package emitter
+package default_emitter
 
 import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
@@ -22,9 +22,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
+func init() {
+	i2gw.EmitterConstructorByName["default"] = NewDefaultEmitter
+}
+
 type DefaultEmitter struct{}
 
-func NewDefaultEmitter() i2gw.Emitter {
+func NewDefaultEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
 	return &DefaultEmitter{}
 }
 
