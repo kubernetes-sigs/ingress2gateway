@@ -87,10 +87,10 @@ type ProviderImplementationSpecificOptions struct {
 }
 
 // FeatureParser is a function that reads the Ingresses, and applies
-// the appropriate modifications to the GatewayResources.
+// the appropriate modifications to the provider_intermediate.IR.
 //
 // Different FeatureParsers will run in undetermined order. The function must
-// modify / create only the required fields of the gateway resources and nothing else.
+// modify / create only the required fields of the IR and nothing else.
 type FeatureParser func([]networkingv1.Ingress, map[types.NamespacedName]map[string]int32, *provider_intermediate.IR) field.ErrorList
 
 var providerSpecificFlagDefinitions = providerSpecificFlags{

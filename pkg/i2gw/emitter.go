@@ -27,7 +27,7 @@ import (
 )
 
 type Emitter interface {
-	// ToGatewayResources converts stored IR with the Provider into
+	// Emit converts stored IR with the Provider into
 	// Gateway API resources and extensions
 	Emit(provider_intermediate.IR) (GatewayResources, field.ErrorList)
 }
@@ -50,8 +50,8 @@ type GatewayResources struct {
 	GatewayExtensions []unstructured.Unstructured
 }
 
-// ProviderConstructorByName is a map of ProviderConstructor functions by a
-// provider name. Different Provider implementations should add their construction
+// EmitterConstructorByName is a map of EmitterConstructor functions by a
+// emitter name. Different Emitter implementations should add their construction
 // func at startup.
 var EmitterConstructorByName = map[EmitterName]EmitterConstructor{}
 

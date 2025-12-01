@@ -33,7 +33,7 @@ func NewDefaultEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
 	return &DefaultEmitter{}
 }
 
-// Stub implementation
+// Emit converts the provider intermediate representation to Gateway API resources.
 func (e *DefaultEmitter) Emit(ir provider_intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
 	return common.ToGatewayResources(ir)
 }
