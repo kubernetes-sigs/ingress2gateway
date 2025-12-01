@@ -34,7 +34,7 @@ import (
 	kongv1beta1 "github.com/kong/kubernetes-ingress-controller/v2/pkg/apis/configuration/v1beta1"
 )
 
-// TCPIngressToGatewayIR converts the received TCPingresses to intermediate.IR,
+// TCPIngressToGatewayIR converts the received TCPingresses to provider_intermediate.ProviderIR,
 func TCPIngressToGatewayIR(ingresses []kongv1beta1.TCPIngress) (provider_intermediate.ProviderIR, []notifications.Notification, field.ErrorList) {
 	aggregator := tcpIngressAggregator{ruleGroups: map[ruleGroupKey]*tcpIngressRuleGroup{}}
 	var notificationsAggregator []notifications.Notification

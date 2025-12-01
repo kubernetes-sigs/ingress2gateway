@@ -49,7 +49,7 @@ func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 	}
 }
 
-// ToIR converts stored Cilium API entities to intermediate.IR
+// ToIR converts stored Cilium API entities to provider_intermediate.ProviderIR
 // including the cilium specific features.
 func (p *Provider) ToIR() (provider_intermediate.ProviderIR, field.ErrorList) {
 	return p.resourcesToIRConverter.convertToIR(p.storage)

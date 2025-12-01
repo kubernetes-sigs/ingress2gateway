@@ -76,7 +76,7 @@ func removeBackendRefsDuplicates(backendRefs []gatewayv1.HTTPBackendRef) []gatew
 	return result
 }
 
-// ToGatewayResources converts the received provider_intermediate.IR to i2gw.GatewayResource
+// ToGatewayResources converts the received provider_intermediate.ProviderIR to i2gw.GatewayResource
 // without taking into consideration any emitter specific logic.
 func ToGatewayResources(ir provider_intermediate.ProviderIR) (i2gw.GatewayResources, field.ErrorList) {
 	gatewayResources := i2gw.GatewayResources{

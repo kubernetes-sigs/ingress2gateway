@@ -87,7 +87,7 @@ type ProviderImplementationSpecificOptions struct {
 }
 
 // FeatureParser is a function that reads the Ingresses, and applies
-// the appropriate modifications to the provider_intermediate.IR.
+// the appropriate modifications to the provider_intermediate.ProviderIR.
 //
 // Different FeatureParsers will run in undetermined order. The function must
 // modify / create only the required fields of the IR and nothing else.

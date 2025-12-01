@@ -34,7 +34,7 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-// ToIR converts the received ingresses to intermediate.IR without taking into
+// ToIR converts the received ingresses to provider_intermediate.ProviderIR without taking into
 // consideration any provider specific logic.
 func ToIR(ingresses []networkingv1.Ingress, servicePorts map[types.NamespacedName]map[string]int32, options i2gw.ProviderImplementationSpecificOptions) (provider_intermediate.ProviderIR, field.ErrorList) {
 	aggregator := ingressAggregator{
