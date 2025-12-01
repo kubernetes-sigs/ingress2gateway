@@ -22,7 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -54,20 +54,20 @@ func Test_ToGatewayResources(t *testing.T) {
 
 	testCases := []struct {
 		desc                     string
-		ir                       provider_intermediate.ProviderIR
+		ir                       emitter_intermediate.IR
 		expectedGatewayResources i2gw.GatewayResources
 		expectedErrors           field.ErrorList
 	}{
 		{
 			desc:                     "empty",
-			ir:                       provider_intermediate.ProviderIR{},
+			ir:                       emitter_intermediate.IR{},
 			expectedGatewayResources: i2gw.GatewayResources{},
 			expectedErrors:           field.ErrorList{},
 		},
 		{
 			desc: "no additional extensions",
-			ir: provider_intermediate.ProviderIR{
-				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
+			ir: emitter_intermediate.IR{
+				Gateways: map[types.NamespacedName]emitter_intermediate.GatewayContext{
 					{Namespace: "test", Name: "simple"}: {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{Name: "simple", Namespace: "test"},
@@ -83,7 +83,7 @@ func Test_ToGatewayResources(t *testing.T) {
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]provider_intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]emitter_intermediate.HTTPRouteContext{
 					{Namespace: "test", Name: "simple-example-com"}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{Name: "simple-example-com", Namespace: "test"},
@@ -163,8 +163,8 @@ func Test_ToGatewayResources(t *testing.T) {
 		},
 		{
 			desc: "duplicated backends",
-			ir: provider_intermediate.ProviderIR{
-				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
+			ir: emitter_intermediate.IR{
+				Gateways: map[types.NamespacedName]emitter_intermediate.GatewayContext{
 					{Namespace: "test", Name: "example-proxy"}: {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{Name: "example-proxy", Namespace: "test"},
@@ -180,7 +180,7 @@ func Test_ToGatewayResources(t *testing.T) {
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]provider_intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]emitter_intermediate.HTTPRouteContext{
 					{Namespace: "test", Name: "duplicate-example-com"}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{Name: "duplicate-example-com", Namespace: "test"},

@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -49,10 +50,11 @@ func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 	}
 }
 
-// ToIR converts stored Cilium API entities to provider_intermediate.ProviderIR
+// ToIR converts stored Cilium API entities to emitter_intermediate.IR
 // including the cilium specific features.
-func (p *Provider) ToIR() (provider_intermediate.ProviderIR, field.ErrorList) {
-	return p.resourcesToIRConverter.convertToIR(p.storage)
+func (p *Provider) ToIR() (emitter_intermediate.IR, field.ErrorList) {
+	ir, errs := p.resourcesToIRConverter.convertToIR(p.storage)
+	return provider_intermediate.ToEmitterIR(ir), errs
 }
 
 func (p *Provider) ReadResourcesFromCluster(ctx context.Context) error {

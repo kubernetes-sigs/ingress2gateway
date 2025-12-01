@@ -18,7 +18,7 @@ package common
 
 import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -76,9 +76,9 @@ func removeBackendRefsDuplicates(backendRefs []gatewayv1.HTTPBackendRef) []gatew
 	return result
 }
 
-// ToGatewayResources converts the received provider_intermediate.ProviderIR to i2gw.GatewayResource
+// ToGatewayResources converts the received emitter_intermediate.IR to i2gw.GatewayResource
 // without taking into consideration any emitter specific logic.
-func ToGatewayResources(ir provider_intermediate.ProviderIR) (i2gw.GatewayResources, field.ErrorList) {
+func ToGatewayResources(ir emitter_intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
 	gatewayResources := i2gw.GatewayResources{
 		Gateways:           make(map[types.NamespacedName]gatewayv1.Gateway),
 		HTTPRoutes:         make(map[types.NamespacedName]gatewayv1.HTTPRoute),
@@ -102,25 +102,25 @@ func ToGatewayResources(ir provider_intermediate.ProviderIR) (i2gw.GatewayResour
 		gatewayResources.HTTPRoutes[key] = hr
 	}
 	for key, val := range ir.GatewayClasses {
-		gatewayResources.GatewayClasses[key] = val
+		gatewayResources.GatewayClasses[key] = val.GatewayClass
 	}
 	for key, val := range ir.GRPCRoutes {
-		gatewayResources.GRPCRoutes[key] = val
+		gatewayResources.GRPCRoutes[key] = val.GRPCRoute
 	}
 	for key, val := range ir.TLSRoutes {
-		gatewayResources.TLSRoutes[key] = val
+		gatewayResources.TLSRoutes[key] = val.TLSRoute
 	}
 	for key, val := range ir.TCPRoutes {
-		gatewayResources.TCPRoutes[key] = val
+		gatewayResources.TCPRoutes[key] = val.TCPRoute
 	}
 	for key, val := range ir.UDPRoutes {
-		gatewayResources.UDPRoutes[key] = val
+		gatewayResources.UDPRoutes[key] = val.UDPRoute
 	}
 	for key, val := range ir.BackendTLSPolicies {
-		gatewayResources.BackendTLSPolicies[key] = val
+		gatewayResources.BackendTLSPolicies[key] = val.BackendTLSPolicy
 	}
 	for key, val := range ir.ReferenceGrants {
-		gatewayResources.ReferenceGrants[key] = val
+		gatewayResources.ReferenceGrants[key] = val.ReferenceGrant
 	}
 	return gatewayResources, nil
 }

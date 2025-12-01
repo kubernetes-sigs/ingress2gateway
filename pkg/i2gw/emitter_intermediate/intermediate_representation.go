@@ -17,18 +17,17 @@ limitations under the License.
 package emitter_intermediate
 
 import (
-	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-// EmitterIR holds specifications of Gateway Objects for supporting Ingress extensions,
+// IR holds specifications of Gateway Objects for supporting Ingress extensions,
 // annotations, and proprietary API features not supported as Gateway core
-// features. An EmitterIR field can be mapped to core Gateway-API fields,
+// features. An IR field can be mapped to core Gateway-API fields,
 // or provider-specific Gateway extensions.
-type EmitterIR struct {
+type IR struct {
 	Gateways   map[types.NamespacedName]GatewayContext
 	HTTPRoutes map[types.NamespacedName]HTTPRouteContext
 
@@ -36,7 +35,7 @@ type EmitterIR struct {
 	TLSRoutes      map[types.NamespacedName]TLSRouteContext
 	TCPRoutes      map[types.NamespacedName]TCPRouteContext
 	UDPRoutes      map[types.NamespacedName]UDPRouteContext
-	GRPCRoutes     map[types.NamespacedName]networkingv1.Ingress
+	GRPCRoutes     map[types.NamespacedName]GRPCRouteContext
 
 	BackendTLSPolicies map[types.NamespacedName]BackendTLSPolicyContext
 	ReferenceGrants    map[types.NamespacedName]ReferenceGrantContext

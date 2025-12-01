@@ -20,6 +20,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -72,7 +73,7 @@ type CustomResourceReader interface {
 // and extensions into IR.
 type ResourcesToIRConverter interface {
 	// ToIR converts stored API entities associated with the Provider into IR.
-	ToIR() (provider_intermediate.ProviderIR, field.ErrorList)
+	ToIR() (emitter_intermediate.IR, field.ErrorList)
 }
 
 // ImplementationSpecificHTTPPathTypeMatchConverter is an option to customize the ingress implementationSpecific

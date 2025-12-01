@@ -17,7 +17,7 @@ limitations under the License.
 package i2gw
 
 import (
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -29,7 +29,7 @@ import (
 type Emitter interface {
 	// Emit converts stored IR with the Provider into
 	// Gateway API resources and extensions
-	Emit(provider_intermediate.ProviderIR) (GatewayResources, field.ErrorList)
+	Emit(emitter_intermediate.IR) (GatewayResources, field.ErrorList)
 }
 
 // GatewayResources contains all Gateway-API objects and provider Gateway

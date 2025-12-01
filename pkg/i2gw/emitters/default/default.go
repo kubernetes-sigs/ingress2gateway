@@ -18,8 +18,8 @@ package default_emitter
 
 import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/common"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -34,6 +34,6 @@ func NewDefaultEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
 }
 
 // Emit converts the provider intermediate representation to Gateway API resources.
-func (e *DefaultEmitter) Emit(ir provider_intermediate.ProviderIR) (i2gw.GatewayResources, field.ErrorList) {
+func (e *DefaultEmitter) Emit(ir emitter_intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
 	return common.ToGatewayResources(ir)
 }

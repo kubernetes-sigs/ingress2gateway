@@ -35,7 +35,7 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
@@ -61,7 +61,7 @@ const (
 var uriRegexp = regexp.MustCompile(`^((https?)://([^/]+))?(/.*)?$`)
 
 type ResourcesToIRConverter interface {
-	Convert(Storage) (provider_intermediate.ProviderIR, field.ErrorList)
+	Convert(Storage) (emitter_intermediate.IR, field.ErrorList)
 }
 
 // NewResourcesToIRConverter returns a resourcesToIRConverter of OpenAPI Specifications 3.x from a storage into Gateway API resources.
@@ -95,11 +95,11 @@ type resourcesToIRConverter struct {
 
 var _ ResourcesToIRConverter = &resourcesToIRConverter{}
 
-func (c *resourcesToIRConverter) Convert(storage Storage) (provider_intermediate.ProviderIR, field.ErrorList) {
-	ir := provider_intermediate.ProviderIR{
-		Gateways:        make(map[types.NamespacedName]provider_intermediate.GatewayContext),
-		HTTPRoutes:      make(map[types.NamespacedName]provider_intermediate.HTTPRouteContext),
-		ReferenceGrants: make(map[types.NamespacedName]gatewayv1beta1.ReferenceGrant),
+func (c *resourcesToIRConverter) Convert(storage Storage) (emitter_intermediate.IR, field.ErrorList) {
+	ir := emitter_intermediate.IR{
+		Gateways:        make(map[types.NamespacedName]emitter_intermediate.GatewayContext),
+		HTTPRoutes:      make(map[types.NamespacedName]emitter_intermediate.HTTPRouteContext),
+		ReferenceGrants: make(map[types.NamespacedName]emitter_intermediate.ReferenceGrantContext),
 	}
 
 	var errors field.ErrorList
@@ -121,19 +121,19 @@ func (c *resourcesToIRConverter) Convert(storage Storage) (provider_intermediate
 		// convert the spec to Gateway API resources
 		httpRoutes, gateways := c.toHTTPRoutesAndGateways(spec, resourcesNamePrefix, errors)
 		for _, httpRoute := range httpRoutes {
-			ir.HTTPRoutes[types.NamespacedName{Name: httpRoute.GetName(), Namespace: httpRoute.GetNamespace()}] = provider_intermediate.HTTPRouteContext{HTTPRoute: httpRoute}
+			ir.HTTPRoutes[types.NamespacedName{Name: httpRoute.GetName(), Namespace: httpRoute.GetNamespace()}] = emitter_intermediate.HTTPRouteContext{HTTPRoute: httpRoute}
 			notify(notifications.InfoNotification, fmt.Sprintf("successfully created HTTPRoute \"%v/%v\" from OpenAPI spec \"%v\"", httpRoute.Namespace, httpRoute.Name, spec.Info.Title))
 		}
 
 		// build reference grants for the resources
 		if referenceGrant := c.buildHTTPRouteBackendReferenceGrant(); referenceGrant != nil {
-			ir.ReferenceGrants[types.NamespacedName{Name: referenceGrant.GetName(), Namespace: referenceGrant.GetNamespace()}] = *referenceGrant
+			ir.ReferenceGrants[types.NamespacedName{Name: referenceGrant.GetName(), Namespace: referenceGrant.GetNamespace()}] = emitter_intermediate.ReferenceGrantContext{ReferenceGrant: *referenceGrant}
 			notify(notifications.InfoNotification, fmt.Sprintf("successfully created ReferenceGrant \"%v/%v\" from OpenAPI spec \"%v\"", referenceGrant.Namespace, referenceGrant.Name, spec.Info.Title))
 		}
 		for _, gateway := range gateways {
-			ir.Gateways[types.NamespacedName{Name: gateway.GetName(), Namespace: gateway.GetNamespace()}] = provider_intermediate.GatewayContext{Gateway: gateway}
+			ir.Gateways[types.NamespacedName{Name: gateway.GetName(), Namespace: gateway.GetNamespace()}] = emitter_intermediate.GatewayContext{Gateway: gateway}
 			if referenceGrant := c.buildGatewayTLSSecretReferenceGrant(gateway); referenceGrant != nil {
-				ir.ReferenceGrants[types.NamespacedName{Name: referenceGrant.GetName(), Namespace: referenceGrant.GetNamespace()}] = *referenceGrant
+				ir.ReferenceGrants[types.NamespacedName{Name: referenceGrant.GetName(), Namespace: referenceGrant.GetNamespace()}] = emitter_intermediate.ReferenceGrantContext{ReferenceGrant: *referenceGrant}
 				notify(notifications.InfoNotification, fmt.Sprintf("successfully created ReferenceGrant \"%v/%v\" from OpenAPI spec \"%v\"", referenceGrant.Namespace, referenceGrant.Name, spec.Info.Title))
 			}
 			notify(notifications.InfoNotification, fmt.Sprintf("successfully created Gateway \"%v/%v\" from OpenAPI spec \"%v\"", gateway.Namespace, gateway.Name, spec.Info.Title))
