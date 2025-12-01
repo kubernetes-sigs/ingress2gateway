@@ -26,9 +26,9 @@ import (
 
 const clientBodyBufferSizeAnnotation = "nginx.ingress.kubernetes.io/client-body-buffer-size"
 
-// bufferPolicyFeature parses the "nginx.ingress.kubernetes.io/client-body-buffer-size" annotation
+// bodyBufferFeature parses the "nginx.ingress.kubernetes.io/client-body-buffer-size" annotation
 // from Ingresses and records them as extension settings in HTTPRoute IR.
-func bufferPolicyFeature(
+func bodyBufferFeature(
 	ingresses []networkingv1.Ingress,
 	_ map[types.NamespacedName]map[string]int32,
 	ir *intermediate.IR,
