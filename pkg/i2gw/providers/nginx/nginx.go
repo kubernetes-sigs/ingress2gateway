@@ -35,7 +35,6 @@ type Provider struct {
 	*storage
 	*resourceReader
 	*resourcesToIRConverter
-	*gatewayResourcesConverter
 }
 
 // NewProvider constructs and returns the nginx implementation of i2gw.Provider
@@ -43,7 +42,6 @@ func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 	return &Provider{
 		resourceReader:            newResourceReader(conf),
 		resourcesToIRConverter:    newResourcesToIRConverter(),
-		gatewayResourcesConverter: newGatewayResourcesConverter(),
 	}
 }
 
