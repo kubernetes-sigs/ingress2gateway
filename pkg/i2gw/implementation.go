@@ -17,7 +17,7 @@ limitations under the License.
 package i2gw
 
 import (
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kgateway-dev/ingress2gateway/pkg/i2gw/intermediate"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )

@@ -17,7 +17,7 @@ limitations under the License.
 package ingressnginx
 
 import (
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"github.com/kgateway-dev/ingress2gateway/pkg/i2gw/notifications"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 

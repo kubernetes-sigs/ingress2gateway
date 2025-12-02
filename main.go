@@ -17,7 +17,7 @@ limitations under the License.
 package main
 
 import (
-	"github.com/kubernetes-sigs/ingress2gateway/cmd"
+	"github.com/kgateway-dev/ingress2gateway/cmd"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 

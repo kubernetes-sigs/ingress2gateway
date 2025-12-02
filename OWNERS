@@ -1,14 +1,5 @@
 # See the OWNERS docs at https://go.k8s.io/owners
 
 approvers:
-  - LiorLieberman
-  - robscott
-  - youngnick
-
-reviewers:
-  - LiorLieberman
-  - rikatz
-emeritus_approvers:
-  - bowei
-  - shaneutt
-  - mlavacca
+  - danehans
+  - puertomontt

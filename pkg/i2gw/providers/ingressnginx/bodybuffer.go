@@ -19,8 +19,8 @@ package ingressnginx
 import (
 	"fmt"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
+	"github.com/kgateway-dev/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kgateway-dev/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"

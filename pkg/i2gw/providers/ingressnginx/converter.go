@@ -17,9 +17,9 @@ limitations under the License.
 package ingressnginx
 
 import (
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
+	"github.com/kgateway-dev/ingress2gateway/pkg/i2gw"
+	"github.com/kgateway-dev/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kgateway-dev/ingress2gateway/pkg/i2gw/providers/common"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
