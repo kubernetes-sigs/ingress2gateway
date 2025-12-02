@@ -1,3 +1,19 @@
+/*
+Copyright 2023 The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package kgateway
 
 import (
@@ -5,10 +21,10 @@ import (
 	"strings"
 	"time"
 
-	kgwv1a1 "github.com/kgateway-dev/kgateway/v2/api/v1alpha1"
 	"github.com/kgateway-dev/ingress2gateway/pkg/i2gw"
 	"github.com/kgateway-dev/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kgateway-dev/ingress2gateway/pkg/i2gw/notifications"
+	kgwv1a1 "github.com/kgateway-dev/kgateway/v2/api/v1alpha1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -17,15 +33,16 @@ import (
 )
 
 const (
+	// Name is the name of the kgateway implementation.
 	Name = "kgateway"
 )
 
-// KgatewayEmitter implements ImplementationEmitter and generates Kgateway
+// Emitter implements ImplementationEmitter and generates Kgateway
 // resources from the merged IR, using provider output as the source.
-type KgatewayEmitter struct{}
+type Emitter struct{}
 
 // Ensure KgatewayEmitter satisfies the ImplementationEmitter interface.
-var _ i2gw.ImplementationEmitter = &KgatewayEmitter{}
+var _ i2gw.ImplementationEmitter = &Emitter{}
 
 func init() {
 	// Register the kgateway emitter.
@@ -34,11 +51,11 @@ func init() {
 
 // NewKgatewayEmitter returns a new instance of KgatewayEmitter.
 func NewKgatewayEmitter() i2gw.ImplementationEmitter {
-	return &KgatewayEmitter{}
+	return &Emitter{}
 }
 
 // Name returns the name of the kgateway implementation.
-func (e *KgatewayEmitter) Name() string {
+func (e *Emitter) Name() string {
 	return Name
 }
 
@@ -47,7 +64,7 @@ func (e *KgatewayEmitter) Name() string {
 // provider-specific IR. It reads generic Policies from the provider IR and turns them
 // into Kgateway resources and/or mutates the given IR. Whole-route policies are attached
 // via targetRefs; partial policies are attached as ExtensionRef filters on backendRefs.
-func (e *KgatewayEmitter) Emit(ir *intermediate.IR) ([]client.Object, error) {
+func (e *Emitter) Emit(ir *intermediate.IR) ([]client.Object, error) {
 	var out []client.Object
 
 	// One BackendConfigPolicy per Ingress name (per namespace), aggregating all

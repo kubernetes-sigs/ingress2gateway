@@ -23,6 +23,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+// OrderedIngressMap is a map-like structure that maintains the order of Ingresses
+// based on their NamespacedName.
 type OrderedIngressMap struct {
 	ingressNames   []types.NamespacedName
 	ingressObjects map[types.NamespacedName]*networkingv1.Ingress
@@ -42,6 +44,7 @@ func newResourcesStorage() *storage {
 	}
 }
 
+// List returns the list of Ingresses in the order they were added.
 func (oim *OrderedIngressMap) List() []networkingv1.Ingress {
 	ingressList := []networkingv1.Ingress{}
 	for _, ing := range oim.ingressNames {
@@ -50,6 +53,7 @@ func (oim *OrderedIngressMap) List() []networkingv1.Ingress {
 	return ingressList
 }
 
+// FromMap initializes the OrderedIngressMap from a map of Ingresses.
 func (oim *OrderedIngressMap) FromMap(ingresses map[types.NamespacedName]*networkingv1.Ingress) {
 	ingNames := []types.NamespacedName{}
 	for ing := range ingresses {

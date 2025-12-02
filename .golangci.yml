@@ -1,45 +1,45 @@
+version: "2"
 run:
-  go: "1.24"
+  go: "1.25"
   timeout: 10m
   issues-exit-code: 1
   tests: true
-  exclude-dirs-use-default: true
   modules-download-mode: readonly
   allow-parallel-runners: false
-
 linters:
-  fast: false
+  # Start from no linters and explicitly enable what you care about.
+  default: none
   enable:
-  - gofmt
-  - goimports
-  - revive
-  - govet
-  - misspell
-  disable-all: false
-  presets:
-  - bugs
-  - unused
-
-# all available settings of specific linters
-linters-settings:
-  gofmt:
-    # simplify code: gofmt with `-s` option, true by default
-    simplify: true
-  golint:
-    min-confidence: 0.9
-  govet:
-    # report about shadowed variables
-    shadow: true
-  misspell:
-    locale: US
-  # (rkatz) - Added as we have a couple of APIs conversion (eg Istio, Kong) that convert uint->int and there's no solution
-  gosec:
-    excludes:
-      - G115
-
+    - revive
+    - govet
+    - misspell
+    - unused
+  # Settings for linters (v2: moved here from `linters-settings`)
+  settings:
+    govet:
+      shadow: true
+    misspell:
+      locale: US
+    gosec:
+      excludes:
+        - G115
+    revive:
+      rules:
+        - name: package-comments
+          disabled: true
+        - name: var-naming
+          disabled: true
+formatters:
+  # In v2, gofmt/goimports live under "formatters", not "linters.enable"
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      simplify: true
 issues:
   exclude-rules:
-    # Exclude some linters from running on tests files.
+    # Same as before: skip some linters on *_test.go
     - path: _test\.go
       linters:
         - gocyclo

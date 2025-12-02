@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
+// GeneratorAnnotationKey is the annotation key used to indicate the generator of a Gateway API resource.
 const GeneratorAnnotationKey = "gateway.networking.k8s.io/generator"
 
 // Version holds the version string (injected by ldflags during build).
@@ -36,6 +37,8 @@ const GeneratorAnnotationKey = "gateway.networking.k8s.io/generator"
 // Examples: "v0.1.0", "v0.1.0-5-gabcdef", "v0.1.0-5-gabcdef-dirty"
 var Version = "dev" // Default value if not built with linker flags
 
+// ToGatewayAPIResources converts Ingress and other provider-specific resources
+// to Gateway API resources.
 func ToGatewayAPIResources(
 	ctx context.Context,
 	namespace string,
@@ -159,6 +162,7 @@ func constructProviders(conf *ProviderConf, providers []string) (map[ProviderNam
 	return providerByName, nil
 }
 
+// AggregatedErrs aggregates multiple field.Error into a single error.
 func AggregatedErrs(errs field.ErrorList) error {
 	errMsg := fmt.Errorf("\n# Encountered %d errors", len(errs))
 	for _, err := range errs {
@@ -178,6 +182,7 @@ func GetSupportedProviders() []string {
 	return supportedProviders
 }
 
+// CastToUnstructured converts a runtime.Object to an unstructured.Unstructured object.
 func CastToUnstructured(obj runtime.Object) (*unstructured.Unstructured, error) {
 	// Convert the Kubernetes object to unstructured.Unstructured
 	unstructuredObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)

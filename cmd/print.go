@@ -40,6 +40,7 @@ import (
 	_ "github.com/kgateway-dev/ingress2gateway/pkg/i2gw/implementations/kgateway"
 )
 
+// PrintRunner holds the necessary information to perform the print action.
 type PrintRunner struct {
 	// outputFormat contains currently set output format. Value assigned via --output/-o flag.
 	// Defaults to YAML.
@@ -414,6 +415,7 @@ func (pr *PrintRunner) getProviderSpecificFlags() map[string]map[string]string {
 	return providerSpecificFlags
 }
 
+// PrintUnstructuredAsYaml prints an unstructured.Unstructured object as YAML to stdout.
 func PrintUnstructuredAsYaml(obj *unstructured.Unstructured) error {
 	// Create a YAML serializer
 	serializer := json.NewSerializerWithOptions(json.DefaultMetaFactory, nil, nil,

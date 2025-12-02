@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// ReadIngressesFromCluster reads Ingress resources from the cluster, filtering by the specified ingress classes.
 func ReadIngressesFromCluster(ctx context.Context, client client.Client, ingressClasses sets.Set[string]) (map[types.NamespacedName]*networkingv1.Ingress, error) {
 	var ingressList networkingv1.IngressList
 	err := client.List(ctx, &ingressList)
@@ -52,6 +53,7 @@ func ReadIngressesFromCluster(ctx context.Context, client client.Client, ingress
 	return ingresses, nil
 }
 
+// ReadIngressesFromFile reads Ingress resources from a file, filtering by the specified ingress classes.
 func ReadIngressesFromFile(filename, namespace string, ingressClasses sets.Set[string]) (map[types.NamespacedName]*networkingv1.Ingress, error) {
 	stream, err := os.ReadFile(filename)
 	if err != nil {
@@ -82,6 +84,7 @@ func ReadIngressesFromFile(filename, namespace string, ingressClasses sets.Set[s
 	return ingresses, nil
 }
 
+// ReadServicesFromCluster reads Service resources from the cluster.
 func ReadServicesFromCluster(ctx context.Context, client client.Client) (map[types.NamespacedName]*apiv1.Service, error) {
 	var serviceList apiv1.ServiceList
 	err := client.List(ctx, &serviceList)
@@ -97,6 +100,7 @@ func ReadServicesFromCluster(ctx context.Context, client client.Client) (map[typ
 	return services, nil
 }
 
+// ReadServicesFromFile reads Service resources from a file.
 func ReadServicesFromFile(filename, namespace string) (map[types.NamespacedName]*apiv1.Service, error) {
 	stream, err := os.ReadFile(filename)
 	if err != nil {
