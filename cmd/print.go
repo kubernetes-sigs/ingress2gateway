@@ -42,6 +42,9 @@ import (
 
 	// Call init for notifications
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+
+	// Call init function for the implementations
+	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/implementations/kgateway"
 )
 
 type PrintRunner struct {
@@ -72,6 +75,10 @@ type PrintRunner struct {
 
 	// Provider specific flags --<provider>-<flag>.
 	providerSpecificFlags map[string]*string
+
+	// implementations indicates which implementations are used to generate
+	// implementation-specific (GEP-713 style) resources.
+	implementations []string
 }
 
 // PrintGatewayAPIObjects performs necessary steps to digest and print
@@ -81,14 +88,21 @@ type PrintRunner struct {
 func (pr *PrintRunner) PrintGatewayAPIObjects(cmd *cobra.Command, _ []string) error {
 	err := pr.initializeResourcePrinter()
 	if err != nil {
-		return fmt.Errorf("failed to initialize resrouce printer: %w", err)
+		return fmt.Errorf("failed to initialize resource printer: %w", err)
 	}
 	err = pr.initializeNamespaceFilter()
 	if err != nil {
 		return fmt.Errorf("failed to initialize namespace filter: %w", err)
 	}
 
-	gatewayResources, notificationTablesMap, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers, pr.getProviderSpecificFlags())
+	gatewayResources, notificationTablesMap, err := i2gw.ToGatewayAPIResources(
+		cmd.Context(),
+		pr.namespaceFilter,
+		pr.inputFile,
+		pr.providers,
+		pr.getProviderSpecificFlags(),
+		pr.implementations,
+	)
 	if err != nil {
 		return err
 	}
@@ -319,6 +333,26 @@ func newPrintCommand() *cobra.Command {
 			if openAPIExist && len(pr.providers) != 1 {
 				return fmt.Errorf("openapi3 must be the only provider when specified")
 			}
+
+			// Validate implementations (if any) against registered emitters.
+			if len(pr.implementations) > 0 {
+				// Build a list of supported implementations from the registry.
+				supported := make([]string, 0, len(i2gw.ImplementationEmitters))
+				for name := range i2gw.ImplementationEmitters {
+					supported = append(supported, name)
+				}
+
+				for _, impl := range pr.implementations {
+					if _, ok := i2gw.ImplementationEmitters[impl]; !ok {
+						return fmt.Errorf(
+							"unsupported implementation %q; supported implementations are: %s",
+							impl,
+							strings.Join(supported, ", "),
+						)
+					}
+				}
+			}
+
 			return nil
 		},
 	}
@@ -338,6 +372,13 @@ if specified with --namespace.`)
 
 	cmd.Flags().StringSliceVar(&pr.providers, "providers", []string{},
 		fmt.Sprintf("If present, the tool will try to convert only resources related to the specified providers, supported values are %v.", i2gw.GetSupportedProviders()))
+
+	cmd.Flags().StringSliceVar(
+		&pr.implementations,
+		"implementations",
+		[]string{},
+		"Comma-separated list of implementations for which to generate implementation-specific resources.",
+	)
 
 	pr.providerSpecificFlags = make(map[string]*string)
 	for provider, flags := range i2gw.GetProviderSpecificFlagDefinitions() {
