@@ -6,9 +6,9 @@ import (
 	"time"
 
 	kgwv1a1 "github.com/kgateway-dev/kgateway/v2/api/v1alpha1"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"github.com/kgateway-dev/ingress2gateway/pkg/i2gw"
+	"github.com/kgateway-dev/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kgateway-dev/ingress2gateway/pkg/i2gw/notifications"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"

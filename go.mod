@@ -1,4 +1,4 @@
-module github.com/kubernetes-sigs/ingress2gateway
+module github.com/kgateway-dev/ingress2gateway
 
 go 1.25.3
 

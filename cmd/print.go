@@ -22,7 +22,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kgateway-dev/ingress2gateway/pkg/i2gw"
 	"github.com/samber/lo"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -31,20 +31,13 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 
 	// Call init function for the providers
-	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/apisix"
-	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/cilium"
-	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/gce"
-	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
-	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
-	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
-	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/nginx"
-	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/openapi3"
+	_ "github.com/kgateway-dev/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 
 	// Call init for notifications
-	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	_ "github.com/kgateway-dev/ingress2gateway/pkg/i2gw/notifications"
 
 	// Call init function for the implementations
-	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/implementations/kgateway"
+	_ "github.com/kgateway-dev/ingress2gateway/pkg/i2gw/implementations/kgateway"
 )
 
 type PrintRunner struct {

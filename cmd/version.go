@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"runtime/debug"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kgateway-dev/ingress2gateway/pkg/i2gw"
 	"github.com/spf13/cobra"
 )
 
