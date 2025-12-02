@@ -20,7 +20,7 @@ an issue and describe your use case.
 
 ## Installation
 
-### Via go install (TODO)
+### Via go install
 
 If you have a Go development environment locally, you can install ingress2gateway
 with `go install github.com/kgateway-dev/ingress2gateway@v0.1.0`
