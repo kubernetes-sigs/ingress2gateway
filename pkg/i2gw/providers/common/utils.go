@@ -30,6 +30,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
+// GetIngressClass returns the IngressClass name for the given Ingress.
 func GetIngressClass(ingress networkingv1.Ingress) string {
 	var ingressClass string
 
@@ -44,6 +45,7 @@ func GetIngressClass(ingress networkingv1.Ingress) string {
 	return ingressClass
 }
 
+// IngressRuleGroup groups Ingress rules by (namespace, ingressClass, host).
 type IngressRuleGroup struct {
 	Namespace    string
 	Name         string
@@ -53,11 +55,13 @@ type IngressRuleGroup struct {
 	Rules        []Rule
 }
 
+// Rule represents a single Ingress rule within an IngressRuleGroup.
 type Rule struct {
 	Ingress     networkingv1.Ingress
 	IngressRule networkingv1.IngressRule
 }
 
+// GetRuleGroups groups Ingress rules by (namespace, ingressClass, host).
 func GetRuleGroups(ingresses []networkingv1.Ingress) map[string]IngressRuleGroup {
 	ruleGroups := make(map[string]IngressRuleGroup)
 
@@ -91,6 +95,7 @@ func GetRuleGroups(ingresses []networkingv1.Ingress) map[string]IngressRuleGroup
 	return ruleGroups
 }
 
+// NameFromHost generates a name from the given host by replacing special characters with hyphens.
 func NameFromHost(host string) string {
 	// replace all special chars with -
 	reg, _ := regexp.Compile("[^a-zA-Z0-9]+")
@@ -105,10 +110,12 @@ func NameFromHost(host string) string {
 	return step2
 }
 
+// RouteName generates a route name based on the ingress name and host.
 func RouteName(ingressName, host string) string {
 	return fmt.Sprintf("%s-%s", ingressName, NameFromHost(host))
 }
 
+// ToBackendRef converts an IngressBackend to a Gateway API BackendRef.
 func ToBackendRef(namespace string, ib networkingv1.IngressBackend, servicePorts map[types.NamespacedName]map[string]int32, path *field.Path) (*gatewayv1.BackendRef, *field.Error) {
 	if ib.Service != nil {
 		if ib.Service.Port.Name == "" {
@@ -173,6 +180,7 @@ func groupIngressPathsByMatchKey(rules []ingressRule) orderedIngressPathsByMatch
 	return ingressPathsByMatchKey
 }
 
+// GroupServicePortsByPortName groups service ports by their port names.
 func GroupServicePortsByPortName(services map[types.NamespacedName]*apiv1.Service) map[types.NamespacedName]map[string]int32 {
 	servicePorts := map[types.NamespacedName]map[string]int32{}
 
@@ -186,6 +194,7 @@ func GroupServicePortsByPortName(services map[types.NamespacedName]*apiv1.Servic
 	return servicePorts
 }
 
+// PtrTo returns a pointer to the given value.
 func PtrTo[T any](a T) *T {
 	return &a
 }

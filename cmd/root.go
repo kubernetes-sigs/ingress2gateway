@@ -45,6 +45,7 @@ func getKubeconfig() {
 	}
 }
 
+// Execute runs the root command.
 func Execute() {
 	rootCmd := newRootCmd()
 	rootCmd.AddCommand(newPrintCommand())

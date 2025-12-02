@@ -53,14 +53,11 @@ type GatewayContext struct {
 	ProviderSpecificIR ProviderSpecificGatewayIR
 }
 
+// ProviderSpecificGatewayIR contains a dedicated field for each provider to
+// specify their extension features on Gateway.
 type ProviderSpecificGatewayIR struct {
-	Apisix       *ApisixGatewayIR
-	Cilium       *CiliumGatewayIR
 	Gce          *GceGatewayIR
 	IngressNginx *IngressNginxGatewayIR
-	Istio        *IstioGatewayIR
-	Kong         *KongGatewayIR
-	Openapi3     *Openapi3GatewayIR
 }
 
 // HTTPRouteContext contains the Gateway-API HTTPRoute object and HTTPRouteIR,
@@ -76,27 +73,18 @@ type HTTPRouteContext struct {
 	RuleBackendSources [][]BackendSource
 }
 
+// ProviderSpecificHTTPRouteIR contains a dedicated field for each provider to
+// specify their extension features on HTTPRoute.
 type ProviderSpecificHTTPRouteIR struct {
-	Apisix       *ApisixHTTPRouteIR
-	Cilium       *CiliumHTTPRouteIR
 	Gce          *GceHTTPRouteIR
 	IngressNginx *IngressNginxHTTPRouteIR
-	Istio        *IstioHTTPRouteIR
-	Kong         *KongHTTPRouteIR
-	Openapi3     *Openapi3HTTPRouteIR
 }
 
-// ServiceIR contains a dedicated field for each provider to specify their
-// extension features on Service.
+// ProviderSpecificServiceIR contains a dedicated field for each provider to
+// specify their extension features on Service.
 type ProviderSpecificServiceIR struct {
-	Apisix       *ApisixServiceIR
-	Cilium       *CiliumServiceIR
 	Gce          *GceServiceIR
 	IngressNginx *IngressNginxServiceIR
-	Istio        *IstioServiceIR
-	Kong         *KongServiceIR
-	Openapi3     *Openapi3ServiceIR
-	Nginx        *NginxServiceIR
 }
 
 // BackendSource tracks the source Ingress resource that contributed

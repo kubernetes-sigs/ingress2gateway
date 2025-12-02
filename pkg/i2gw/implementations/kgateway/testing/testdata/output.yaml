@@ -1,0 +1,188 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: nginx
+  namespace: default
+spec:
+  gatewayClassName: kgateway
+  listeners:
+  - hostname: myservicea.foo.org
+    name: myservicea-foo-org-http
+    port: 80
+    protocol: HTTP
+  - hostname: myserviceb.foo.org
+    name: myserviceb-foo-org-http
+    port: 80
+    protocol: HTTP
+status: {}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: ingress-myservicea1-myservicea-foo-org
+  namespace: default
+spec:
+  hostnames:
+  - myservicea.foo.org
+  parentRefs:
+  - name: nginx
+  rules:
+  - backendRefs:
+    - filters:
+      - extensionRef:
+          group: gateway.kgateway.dev
+          kind: TrafficPolicy
+          name: ingress-myservicea1
+        type: ExtensionRef
+      name: myservicea
+      port: 80
+    matches:
+    - path:
+        type: PathPrefix
+        value: /
+  - backendRefs:
+    - filters:
+      - extensionRef:
+          group: gateway.kgateway.dev
+          kind: TrafficPolicy
+          name: ingress-myservicea2
+        type: ExtensionRef
+      name: myservicea
+      port: 80
+    matches:
+    - path:
+        type: PathPrefix
+        value: /2
+status:
+  parents: []
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: ingress-myserviceb-myserviceb-foo-org
+  namespace: default
+spec:
+  hostnames:
+  - myserviceb.foo.org
+  parentRefs:
+  - name: nginx
+  rules:
+  - backendRefs:
+    - name: myserviceb
+      port: 80
+    matches:
+    - path:
+        type: PathPrefix
+        value: /
+status:
+  parents: []
+---
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: TrafficPolicy
+metadata:
+  name: ingress-myservicea1
+  namespace: default
+spec:
+  buffer:
+    maxRequestSize: 10m
+  cors:
+    allowOrigins:
+    - https://example.com
+    - https://another.com
+  rateLimit:
+    local:
+      tokenBucket:
+        fillInterval: 1m0s
+        maxTokens: 600
+        tokensPerFill: 600
+  timeouts:
+    request: 30s
+    streamIdle: 45s
+status:
+  ancestors: null
+---
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: TrafficPolicy
+metadata:
+  name: ingress-myservicea2
+  namespace: default
+spec:
+  buffer:
+    maxRequestSize: 20m
+  cors:
+    allowOrigins:
+    - https://example.com
+    - https://another.com
+  rateLimit:
+    local:
+      tokenBucket:
+        fillInterval: 1s
+        maxTokens: 10
+        tokensPerFill: 10
+  timeouts:
+    request: 1m0s
+    streamIdle: 1m0s
+status:
+  ancestors: null
+---
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: TrafficPolicy
+metadata:
+  name: ingress-myserviceb
+  namespace: default
+spec:
+  buffer:
+    maxRequestSize: 100m
+  cors:
+    allowOrigins:
+    - https://example.com
+    - https://another.com
+  rateLimit:
+    local:
+      tokenBucket:
+        fillInterval: 1s
+        maxTokens: 250
+        tokensPerFill: 50
+  targetRefs:
+  - group: ""
+    kind: ""
+    name: ingress-myserviceb-myserviceb-foo-org
+  timeouts:
+    request: 1m30s
+    streamIdle: 1m30s
+status:
+  ancestors: null
+---
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: BackendConfigPolicy
+metadata:
+  name: myservicea-connect-timeout
+  namespace: default
+spec:
+  connectTimeout: 30s
+  targetRefs:
+  - group: ""
+    kind: Service
+    name: myservicea
+status:
+  ancestors: null
+---
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: BackendConfigPolicy
+metadata:
+  name: myserviceb-connect-timeout
+  namespace: default
+spec:
+  connectTimeout: 2m0s
+  targetRefs:
+  - group: ""
+    kind: Service
+    name: myserviceb
+status:
+  ancestors: null

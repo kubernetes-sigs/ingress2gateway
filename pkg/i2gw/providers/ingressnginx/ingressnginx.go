@@ -26,9 +26,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-// The Name of the provider.
+// Name is the name of the provider.
 const Name = "ingress-nginx"
+
+// NginxIngressClass is the default IngressClass name for ingress-nginx.
 const NginxIngressClass = "nginx"
+
+// NginxIngressClassFlag is the flag name for specifying the IngressClass name.
 const NginxIngressClassFlag = "ingress-class"
 
 func init() {
@@ -62,11 +66,13 @@ func (p *Provider) ToIR() (intermediate.IR, field.ErrorList) {
 	return p.resourcesToIRConverter.convert(p.storage)
 }
 
+// ToGatewayResources converts intermediate.IR to Gateway API resources.
 func (p *Provider) ToGatewayResources(ir intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
 	return common.ToGatewayResources(ir)
 
 }
 
+// ReadResourcesFromCluster reads ingress-nginx related resources from the cluster.
 func (p *Provider) ReadResourcesFromCluster(ctx context.Context) error {
 	storage, err := p.resourceReader.readResourcesFromCluster(ctx)
 	if err != nil {
@@ -77,6 +83,7 @@ func (p *Provider) ReadResourcesFromCluster(ctx context.Context) error {
 	return nil
 }
 
+// ReadResourcesFromFile reads ingress-nginx related resources from a file.
 func (p *Provider) ReadResourcesFromFile(_ context.Context, filename string) error {
 	storage, err := p.resourceReader.readResourcesFromFile(filename)
 	if err != nil {

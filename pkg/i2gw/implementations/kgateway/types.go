@@ -19,11 +19,13 @@ package kgateway
 import "k8s.io/apimachinery/pkg/runtime/schema"
 
 var (
+	// TrafficPolicyGVK is the GroupVersionKind for TrafficPolicy.
 	TrafficPolicyGVK = schema.GroupVersionKind{
 		Group:   "gateway.kgateway.dev",
 		Version: "v1alpha1",
 		Kind:    "TrafficPolicy",
 	}
+	// BackendConfigPolicyGVK is the GroupVersionKind for BackendConfigPolicy.
 	BackendConfigPolicyGVK = schema.GroupVersionKind{
 		Group:   "gateway.kgateway.dev",
 		Version: "v1alpha1",

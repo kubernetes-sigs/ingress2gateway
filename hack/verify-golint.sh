@@ -18,7 +18,7 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-readonly VERSION="v1.64.7"
+readonly VERSION="v2.6.2"
 readonly KUBE_ROOT=$(dirname "${BASH_SOURCE}")/..
 
 cd "${KUBE_ROOT}"
@@ -26,6 +26,11 @@ cd "${KUBE_ROOT}"
 # See configuration file in ${KUBE_ROOT}/.golangci.yml.
 mkdir -p cache
 
-docker run --rm -v $(pwd)/cache:/cache -v $(pwd):/app --security-opt="label=disable" -e GOLANGCI_LINT_CACHE=/cache -w /app "golangci/golangci-lint:$VERSION" golangci-lint run
+docker run --rm \
+  -v "$(pwd)/cache:/cache" \
+  -v "$(pwd):/workspace" \
+  -w /workspace \
+  golangci/golangci-lint:${VERSION} \
+  golangci-lint run ./...
 
 # ex: ts=2 sw=2 et filetype=sh

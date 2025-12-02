@@ -83,10 +83,9 @@ func detectImplementation(ingresses []networkingv1.Ingress) string {
 		if v, ok := ing.Annotations[implementationAnnotation]; ok && v != "" {
 			if impl == "" {
 				impl = v
-			} else if impl != v {
-				// TODO [danehans]: log or collect a warning about conflicting
-				// implementation annotations.
 			}
+			// TODO [danehans]: log or collect a warning about conflicting
+			// implementation annotations.
 		}
 	}
 	return impl

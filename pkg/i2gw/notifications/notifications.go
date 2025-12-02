@@ -31,24 +31,31 @@ func init() {
 }
 
 const (
-	InfoNotification    MessageType = "INFO"
+	// InfoNotification represents an informational message type.
+	InfoNotification MessageType = "INFO"
+	// WarningNotification represents a warning message type.
 	WarningNotification MessageType = "WARNING"
-	ErrorNotification   MessageType = "ERROR"
+	// ErrorNotification represents an error message type.
+	ErrorNotification MessageType = "ERROR"
 )
 
+// MessageType defines the type of notification message.
 type MessageType string
 
+// Notification represents a notification message generated during the conversion process.
 type Notification struct {
 	Type           MessageType
 	Message        string
 	CallingObjects []client.Object
 }
 
+// NotificationAggregator aggregates notifications from different providers.
 type NotificationAggregator struct {
 	mutex         sync.Mutex
 	Notifications map[string][]Notification
 }
 
+// NotificationAggr is a global instance of NotificationAggregator used to collect notifications.
 var NotificationAggr NotificationAggregator
 
 // DispatchNotification is used to send a notification to the NotificationAggregator
@@ -98,6 +105,7 @@ func convertObjectsToStr(ob []client.Object) string {
 	return sb.String()
 }
 
+// NewNotification constructs and returns a Notification.
 func NewNotification(mType MessageType, message string, callingObject ...client.Object) Notification {
 	return Notification{Type: mType, Message: message, CallingObjects: callingObject}
 }

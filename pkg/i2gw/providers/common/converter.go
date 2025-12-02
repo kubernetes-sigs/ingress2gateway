@@ -85,30 +85,31 @@ func ToIR(ingresses []networkingv1.Ingress, servicePorts map[types.NamespacedNam
 }
 
 var (
+	// GatewayGVK is the the GroupVersionKinds for the respective Gateway API resources.
 	GatewayGVK = schema.GroupVersionKind{
 		Group:   "gateway.networking.k8s.io",
 		Version: "v1",
 		Kind:    "Gateway",
 	}
-
+	// HTTPRouteGVK is the the GroupVersionKinds for the respective Gateway API resources.
 	HTTPRouteGVK = schema.GroupVersionKind{
 		Group:   "gateway.networking.k8s.io",
 		Version: "v1",
 		Kind:    "HTTPRoute",
 	}
-
+	// TLSRouteGVK is the the GroupVersionKinds for the respective Gateway API resources.
 	TLSRouteGVK = schema.GroupVersionKind{
 		Group:   "gateway.networking.k8s.io",
 		Version: "v1alpha2",
 		Kind:    "TLSRoute",
 	}
-
+	// TCPRouteGVK is the the GroupVersionKinds for the respective Gateway API resources.
 	TCPRouteGVK = schema.GroupVersionKind{
 		Group:   "gateway.networking.k8s.io",
 		Version: "v1alpha2",
 		Kind:    "TCPRoute",
 	}
-
+	// ReferenceGrantGVK is the the GroupVersionKinds for the respective Gateway API resources.
 	ReferenceGrantGVK = schema.GroupVersionKind{
 		Group:   "gateway.networking.k8s.io",
 		Version: "v1beta1",

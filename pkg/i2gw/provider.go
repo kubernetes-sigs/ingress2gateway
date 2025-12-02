@@ -60,6 +60,8 @@ type Provider interface {
 	IRToGatewayAPIConverter
 }
 
+// The CustomResourceReader interface specifies functions to read custom resources
+// associated with the underlying Provider implementation.
 type CustomResourceReader interface {
 
 	// ReadResourcesFromCluster reads custom resources associated with
@@ -136,6 +138,7 @@ type providerSpecificFlags struct {
 	mu    sync.RWMutex // thread-safe, so provider-specific flags can be registered concurrently.
 }
 
+// ProviderSpecificFlag defines a provider-specific flag.
 type ProviderSpecificFlag struct {
 	Name         string
 	Description  string
