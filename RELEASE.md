@@ -46,8 +46,7 @@ release.
 1. Create a tag using the `HEAD` of the `release-x.x` branch. This can be done using `git tag -sa $VERSION` CLI or
   Github's [release][release] page.
 1. Run `git push origin $VERSION`, this will trigger a github workflow that will create the release.
-1. Verify the [releases page](https://github.com/kubernetes-sigs/ingress2gateway/releases) to ensure that the release meets the expectations.
-1. Optional: Send an annoncement email to `kubernetes-sig-network@googlegroups.com` with the subject `[ANNOUNCE] ingress2gateway $VERSION is released`
+1. Verify the [releases page](https://github.com/kgateway-dev/ingress2gateway/releases) to ensure that the release meets the expectations.
 
 ### Release a RC release
 
@@ -56,5 +55,4 @@ release.
 1. Merge the PR
 1. Tag the release using the commit on main where the PR merged. This can be done using the git CLI `git tag -sa $VERSION`.
 1. Run `git push origin $VERSION`, this will trigger a github workflow that will create the release.
-1. Verify the [releases page](https://github.com/kubernetes-sigs/ingress2gateway/releases) to ensure that the release meets the expectations.
-1. Optional: Send an annoncement email to `kubernetes-sig-network@googlegroups.com` with the subject `[ANNOUNCE] ingress2gateway $VERSION is released`
+1. Verify the [releases page](https://github.com/kgateway-dev/ingress2gateway/releases) to ensure that the release meets the expectations.
