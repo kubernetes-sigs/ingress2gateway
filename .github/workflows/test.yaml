@@ -1,0 +1,28 @@
+name: test
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  push:
+    branches:
+      - main
+permissions:
+  contents: read
+jobs:
+  make-all:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          # The same version used by the other workflows
+          go-version: '1.21'
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Run tests
+        run: make all
