@@ -28,6 +28,7 @@ require (
 	github.com/x448/float16 v0.8.4 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
+	go.yaml.in/yaml/v4 v4.0.0-rc.3 // indirect
 	golang.org/x/exp v0.0.0-20250506013437-ce4c2cf36ca6 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	istio.io/api v1.26.0-alpha.0.0.20251002142010-859b66f07fad // indirect
