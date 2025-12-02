@@ -20,8 +20,8 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          # The same version used by the other workflows
-          go-version: '1.21'
+          go-version: '1.25.3'
+          cache: true
       - name: Check out code
         uses: actions/checkout@v4
       - name: Run tests
