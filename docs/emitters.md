@@ -71,4 +71,4 @@ spec:
 ```
 
 But, we would not allow anything resembling raw Envoy config, such as [Istio's EnvoyFilter](https://istio.io/latest/docs/reference/config/networking/envoy-filter/),
-because such a resource conflicts with Gateway API's goal of being implementation-neutral.
+because such a resource is out of scope of the Gateway API project.
