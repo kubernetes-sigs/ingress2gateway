@@ -51,7 +51,7 @@ We restrict the output of ingress2gateway to keep the project maintainable.
 Emitters MUST only output:
 
 * upstream Gateway API resources
-* any GEP 713-compatible resource that is in the scope of upstream Gateway API, **but not yet part of it**.
+* any GEP 713-compatible resource that is in the scope of upstream Gateway API, **but not yet part of it**, as determined by the maintainers of ingress2gateway.
 
 For example, we would allow [EnvoyGateway's `HTTPRouteFilter`](https://gateway.envoyproxy.io/docs/api/extension_types/#httproutefilter)
 with a [`replaceRegexMatch`](https://gateway.envoyproxy.io/docs/api/extension_types/#replaceregexmatch):
