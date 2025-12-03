@@ -18,6 +18,7 @@ package kgateway
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -194,6 +195,26 @@ func (e *Emitter) Emit(ir *intermediate.IR) ([]client.Object, error) {
 			"ingress-nginx",
 		)
 	}
+
+	// Sort by Kind, then Namespace, then Name to make output deterministic for testing.
+	sort.SliceStable(out, func(i, j int) bool {
+		oi, oj := out[i], out[j]
+
+		gvki := oi.GetObjectKind().GroupVersionKind()
+		gvkj := oj.GetObjectKind().GroupVersionKind()
+
+		ki, kj := gvki.Kind, gvkj.Kind
+		if ki != kj {
+			return ki < kj
+		}
+
+		nsi, nsj := oi.GetNamespace(), oj.GetNamespace()
+		if nsi != nsj {
+			return nsi < nsj
+		}
+
+		return oi.GetName() < oj.GetName()
+	})
 
 	return out, nil
 }
