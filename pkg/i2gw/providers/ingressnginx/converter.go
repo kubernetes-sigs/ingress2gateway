@@ -44,6 +44,7 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 			proxySendTimeoutFeature,
 			proxyReadTimeoutFeature,
 			proxyConnectTimeoutFeature,
+			enableAccessLogFeature,
 		},
 	}
 }

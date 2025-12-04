@@ -31,4 +31,9 @@ var (
 		Version: "v1alpha1",
 		Kind:    "BackendConfigPolicy",
 	}
+	HTTPListenerPolicyGVK = schema.GroupVersionKind{
+		Group:   "gateway.kgateway.dev",
+		Version: "v1alpha1",
+		Kind:    "HTTPListenerPolicy",
+	}
 )

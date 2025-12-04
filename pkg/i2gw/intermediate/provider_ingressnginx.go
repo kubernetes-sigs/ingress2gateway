@@ -66,6 +66,9 @@ type Policy struct {
 	// ProxySendTimeout defines the timeout for establishing a connection to a proxied server.
 	ProxyConnectTimeout *metav1.Duration
 
+	// EnableAccessLog defines whether access logging is enabled for the ingress.
+	EnableAccessLog *bool
+
 	RuleBackendSources []PolicyIndex
 
 	// ruleBackendIndexSet is an internal helper used to deduplicate RuleBackendSources entries.

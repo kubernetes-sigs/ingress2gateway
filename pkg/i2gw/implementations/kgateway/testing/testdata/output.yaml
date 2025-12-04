@@ -86,30 +86,6 @@ status:
 apiVersion: gateway.kgateway.dev/v1alpha1
 kind: TrafficPolicy
 metadata:
-  name: ingress-myservicea1
-  namespace: default
-spec:
-  buffer:
-    maxRequestSize: 10m
-  cors:
-    allowOrigins:
-    - https://example.com
-    - https://another.com
-  rateLimit:
-    local:
-      tokenBucket:
-        fillInterval: 1m0s
-        maxTokens: 600
-        tokensPerFill: 600
-  timeouts:
-    request: 30s
-    streamIdle: 45s
-status:
-  ancestors: null
----
-apiVersion: gateway.kgateway.dev/v1alpha1
-kind: TrafficPolicy
-metadata:
   name: ingress-myservicea2
   namespace: default
 spec:
@@ -128,6 +104,30 @@ spec:
   timeouts:
     request: 1m0s
     streamIdle: 1m0s
+status:
+  ancestors: null
+---
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: TrafficPolicy
+metadata:
+  name: ingress-myservicea1
+  namespace: default
+spec:
+  buffer:
+    maxRequestSize: 10m
+  cors:
+    allowOrigins:
+    - https://example.com
+    - https://another.com
+  rateLimit:
+    local:
+      tokenBucket:
+        fillInterval: 1m0s
+        maxTokens: 600
+        tokensPerFill: 600
+  timeouts:
+    request: 30s
+    streamIdle: 45s
 status:
   ancestors: null
 ---
@@ -184,5 +184,25 @@ spec:
   - group: ""
     kind: Service
     name: myserviceb
+status:
+  ancestors: null
+---
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: HTTPListenerPolicy
+metadata:
+  name: nginx-access-log
+  namespace: default
+spec:
+  accessLog:
+  - fileSink:
+      path: /dev/stdout
+      stringFormat: '[%START_TIME%] "%REQ(:METHOD)% %REQ(X-ENVOY-ORIGINAL-PATH?:PATH)%
+        %PROTOCOL%" %RESPONSE_CODE% %RESPONSE_FLAGS% %BYTES_RECEIVED% %BYTES_SENT%
+        %DURATION% %RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)% "%REQ(X-FORWARDED-FOR)%"
+        "%REQ(USER-AGENT)%" "%REQ(X-REQUEST-ID)%" "%REQ(:AUTHORITY)%" "%UPSTREAM_HOST%"%n'
+  targetRefs:
+  - group: ""
+    kind: Gateway
+    name: nginx
 status:
   ancestors: null

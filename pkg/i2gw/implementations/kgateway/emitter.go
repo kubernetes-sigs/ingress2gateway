@@ -25,7 +25,7 @@ import (
 	"github.com/kgateway-dev/ingress2gateway/pkg/i2gw"
 	"github.com/kgateway-dev/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kgateway-dev/ingress2gateway/pkg/i2gw/notifications"
-	kgwv1a1 "github.com/kgateway-dev/kgateway/v2/api/v1alpha1"
+	kgwv1a1 "github.com/kgateway-dev/kgateway/v2/api/v1alpha1/kgateway"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -73,6 +73,9 @@ func (e *Emitter) Emit(ir *intermediate.IR) ([]client.Object, error) {
 	backendCfg := map[types.NamespacedName]*kgwv1a1.BackendConfigPolicy{}
 	svcTimeouts := map[types.NamespacedName]map[string]*metav1.Duration{}
 
+	// Track HTTPListenerPolicies per Gateway (for access logging).
+	httpListenerPolicies := map[types.NamespacedName]*kgwv1a1.HTTPListenerPolicy{}
+
 	for httpRouteKey, httpRouteContext := range ir.HTTPRoutes {
 		ingx := httpRouteContext.ProviderSpecificIR.IngressNginx
 		if ingx == nil {
@@ -112,6 +115,14 @@ func (e *Emitter) Emit(ir *intermediate.IR) ([]client.Object, error) {
 				httpRouteContext,
 				backendCfg,
 				svcTimeouts,
+			)
+
+			// Apply enable-access-log via HTTPListenerPolicy.
+			applyAccessLogPolicy(
+				pol,
+				httpRouteKey,
+				httpRouteContext,
+				httpListenerPolicies,
 			)
 
 			if !touched {
@@ -166,6 +177,11 @@ func (e *Emitter) Emit(ir *intermediate.IR) ([]client.Object, error) {
 	// Collect all BackendConfigPolicies computed across HTTPRoutes.
 	for _, bcp := range backendCfg {
 		out = append(out, bcp)
+	}
+
+	// Collect all HTTPListenerPolicies computed across HTTPRoutes.
+	for _, hlp := range httpListenerPolicies {
+		out = append(out, hlp)
 	}
 
 	// Emit warnings for conflicting service timeouts
@@ -534,6 +550,80 @@ func applyProxyConnectTimeoutPolicy(
 				bcp.Spec.ConnectTimeout = pol.ProxyConnectTimeout
 			}
 		}
+	}
+
+	return true
+}
+
+// applyAccessLogPolicy projects the EnableAccessLog IR policy into one or more
+// Kgateway HTTPListenerPolicies.
+//
+// Semantics:
+//   - We create at most one HTTPListenerPolicy per Gateway (identified by ParentRefs).
+//   - That policy's Spec.AccessLog is configured with FileSink when EnableAccessLog is true.
+//   - TargetRefs are populated with the Gateway reference from HTTPRoute's ParentRefs.
+func applyAccessLogPolicy(
+	pol intermediate.Policy,
+	httpRouteKey types.NamespacedName,
+	httpRouteCtx intermediate.HTTPRouteContext,
+	httpListenerPolicies map[types.NamespacedName]*kgwv1a1.HTTPListenerPolicy,
+) bool {
+	if pol.EnableAccessLog == nil || !*pol.EnableAccessLog {
+		return false
+	}
+
+	// Get Gateway references from HTTPRoute ParentRefs.
+	if len(httpRouteCtx.Spec.ParentRefs) == 0 {
+		return false
+	}
+
+	// Process each ParentRef (Gateway reference).
+	for _, parentRef := range httpRouteCtx.Spec.ParentRefs {
+		// Determine Gateway namespace (defaults to HTTPRoute namespace if not specified).
+		gatewayNamespace := httpRouteKey.Namespace
+		if parentRef.Namespace != nil {
+			gatewayNamespace = string(*parentRef.Namespace)
+		}
+
+		gatewayName := string(parentRef.Name)
+		if gatewayName == "" {
+			continue
+		}
+
+		gatewayKey := types.NamespacedName{
+			Namespace: gatewayNamespace,
+			Name:      gatewayName,
+		}
+
+		// Create HTTPListenerPolicy per Gateway if it doesn't exist.
+		if _, exists := httpListenerPolicies[gatewayKey]; !exists {
+			hlp := &kgwv1a1.HTTPListenerPolicy{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      gatewayName + "-access-log",
+					Namespace: gatewayNamespace,
+				},
+				Spec: kgwv1a1.HTTPListenerPolicySpec{
+					TargetRefs: []kgwv1a1.LocalPolicyTargetReference{
+						{
+							Group: "",
+							Kind:  "Gateway",
+							Name:  gwv1.ObjectName(gatewayName),
+						},
+					},
+					AccessLog: []kgwv1a1.AccessLog{
+						{
+							FileSink: &kgwv1a1.FileSink{
+								Path:         "/dev/stdout",
+								StringFormat: `[%START_TIME%] "%REQ(:METHOD)% %REQ(X-ENVOY-ORIGINAL-PATH?:PATH)% %PROTOCOL%" %RESPONSE_CODE% %RESPONSE_FLAGS% %BYTES_RECEIVED% %BYTES_SENT% %DURATION% %RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)% "%REQ(X-FORWARDED-FOR)%" "%REQ(USER-AGENT)%" "%REQ(X-REQUEST-ID)%" "%REQ(:AUTHORITY)%" "%UPSTREAM_HOST%"%n`,
+							},
+						},
+					},
+				},
+			}
+			hlp.SetGroupVersionKind(HTTPListenerPolicyGVK)
+			httpListenerPolicies[gatewayKey] = hlp
+		}
+		// If policy already exists, we don't need to modify it since access log is already enabled.
 	}
 
 	return true

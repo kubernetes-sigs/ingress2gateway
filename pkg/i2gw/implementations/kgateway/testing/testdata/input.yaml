@@ -10,6 +10,7 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-send-timeout: "30s"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "45s"
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "30s"
+    nginx.ingress.kubernetes.io/enable-access-log: "true"
   name: ingress-myservicea1
   namespace: default
 spec:
