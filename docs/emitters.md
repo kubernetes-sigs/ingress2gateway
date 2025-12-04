@@ -2,7 +2,7 @@
 
 ## Motivation
 
-At Kubecon 2025, SIG Networking announced the [retirement of Ingress NGINX](https://kubernetes.io/blog/2025/11/11/ingress-nginx-retirement/), giving users only four months to migrate to another solution.
+At KubeCon NA 2025 in Atlanta, SIG Network announced the [retirement of Ingress NGINX](https://kubernetes.io/blog/2025/11/11/ingress-nginx-retirement/), giving users only four months to migrate to another solution.
 Ingress NGINX has ~100 custom annotations that extend the Kubernetes Ingress resource that don't have a direct mapping to Gateway API.
 Thus, for ingress2gateway to be useful at helping users migrate, we need to output implementation-specific resources to maximize coverage of said annotations.
 
@@ -51,7 +51,10 @@ We restrict the output of ingress2gateway to keep the project maintainable.
 Emitters MUST only output:
 
 * upstream Gateway API resources
-* any GEP 713-compatible resource that is in the scope of upstream Gateway API, **but not yet part of it**, as determined by the maintainers of ingress2gateway.
+* any GEP 713-compatible Policy resource that is in the scope of upstream Gateway API, but not yet part of it
+* any extensionRef-compatible resource that is in scope of upstream Gateway API, but not yet part of it (this includes things like HTTPRoute filter extensionRefs)
+
+as determined by the maintainers of ingress2gateway and the Gateway API maintainers together.
 
 For example, we would allow [EnvoyGateway's `HTTPRouteFilter`](https://gateway.envoyproxy.io/docs/api/extension_types/#httproutefilter)
 with a [`replaceRegexMatch`](https://gateway.envoyproxy.io/docs/api/extension_types/#replaceregexmatch):
