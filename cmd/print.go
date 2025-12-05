@@ -33,7 +33,7 @@ import (
 	// Call init function for the providers
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/apisix"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/cilium"
-	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/gce"
+	// _ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/gce"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
@@ -42,6 +42,9 @@ import (
 
 	// Call init for notifications
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	
+	// Call init for emitters
+	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/default"
 )
 
 type PrintRunner struct {
@@ -72,6 +75,9 @@ type PrintRunner struct {
 
 	// Provider specific flags --<provider>-<flag>.
 	providerSpecificFlags map[string]*string
+
+	// emitter indicates which emitter is used to generate the Gateway API resources.
+	emitter string
 }
 
 // PrintGatewayAPIObjects performs necessary steps to digest and print
@@ -88,7 +94,7 @@ func (pr *PrintRunner) PrintGatewayAPIObjects(cmd *cobra.Command, _ []string) er
 		return fmt.Errorf("failed to initialize namespace filter: %w", err)
 	}
 
-	gatewayResources, notificationTablesMap, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers, pr.getProviderSpecificFlags())
+	gatewayResources, notificationTablesMap, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers, pr.emitter, pr.getProviderSpecificFlags())
 	if err != nil {
 		return err
 	}
@@ -335,6 +341,9 @@ func newPrintCommand() *cobra.Command {
 	cmd.Flags().BoolVarP(&pr.allNamespaces, "all-namespaces", "A", false,
 		`If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even
 if specified with --namespace.`)
+
+	cmd.Flags().StringVar(&pr.emitter, "emitter", "default",
+		fmt.Sprintf("If present, the tool will try to use the specified emitter to generate the Gateway API resources, supported values are %v.", i2gw.GetSupportedEmitters()))
 
 	cmd.Flags().StringSliceVar(&pr.providers, "providers", []string{},
 		fmt.Sprintf("If present, the tool will try to convert only resources related to the specified providers, supported values are %v.", i2gw.GetSupportedProviders()))
