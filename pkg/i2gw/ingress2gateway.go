@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/common_emitter"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -77,6 +78,7 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 		return nil, nil, fmt.Errorf("%s is not a supported emitter", emitterName)
 	}
 	emitter := newEmitterFunc(emitterConf)
+	commonEmitter := common_emitter.NewEmitter()
 
 	var (
 		gatewayResources []GatewayResources
@@ -85,6 +87,10 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 	for _, provider := range providerByName {
 		ir, conversionErrs := provider.ToIR()
 		errs = append(errs, conversionErrs...)
+
+		ir, conversionErrs = commonEmitter.Emit(ir)
+		errs = append(errs, conversionErrs...)
+
 		providerGatewayResources, conversionErrs := emitter.Emit(ir)
 		errs = append(errs, conversionErrs...)
 		gatewayResources = append(gatewayResources, providerGatewayResources)
