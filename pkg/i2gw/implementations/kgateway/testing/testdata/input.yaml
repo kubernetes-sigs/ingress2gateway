@@ -11,6 +11,8 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "45s"
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "30s"
     nginx.ingress.kubernetes.io/enable-access-log: "true"
+    nginx.ingress.kubernetes.io/auth-url: "https://auth.example.com"
+    nginx.ingress.kubernetes.io/auth-response-headers: "X-Auth-Token, X-User-ID"
   name: ingress-myservicea1
   namespace: default
 spec:
@@ -69,6 +71,8 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-send-timeout: "90s"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "90s"
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "120"
+    nginx.ingress.kubernetes.io/auth-type: "basic"
+    nginx.ingress.kubernetes.io/auth-secret: "default/basic-auth-secret"
   name: ingress-myserviceb
   namespace: default
 spec:

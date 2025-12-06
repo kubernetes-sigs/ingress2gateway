@@ -60,6 +60,18 @@ The ingress-nginx provider currently supports translating the following annotati
 
 ---
 
+### External Auth
+
+- `nginx.ingress.kubernetes.io/auth-url`: Specifies the URL of an external authentication service. For the Kgateway implementation, this maps to `GatewayExtension.spec.extAuth.httpService`.
+- `nginx.ingress.kubernetes.io/auth-response-headers`: Comma-separated list of headers to pass to backend once authentication request completes. For the Kgateway implementation, this maps to `GatewayExtension.spec.extAuth.httpService.authorizationResponse.headersToBackend`.
+
+### Basic Auth
+
+- `nginx.ingress.kubernetes.io/auth-type`: Must be set to `"basic"` to enable basic authentication. For the Kgateway implementation, this maps to `TrafficPolicy.spec.basicAuth`.
+- `nginx.ingress.kubernetes.io/auth-secret`: Specifies the secret containing basic auth credentials in `namespace/name` format (or just `name` if in the same namespace). For the Kgateway implementation, this maps to `TrafficPolicy.spec.basicAuth.secretRef.name`.
+
+---
+
 ### Backend (Upstream) Configuration
 
 - `nginx.ingress.kubernetes.io/proxy-connect-timeout`: Controls the upstream connection timeout. For the Kgateway implementation, this maps to `BackendConfigPolicy.spec.connectTimeout`.

@@ -45,6 +45,20 @@ type CorsPolicy struct {
 	AllowOrigin []string
 }
 
+// ExtAuthPolicy defines an external authentication policy that has been extracted from ingress-nginx annotations.
+type ExtAuthPolicy struct {
+	// AuthURL defines the URL of an external authentication service.
+	AuthURL string
+	// ResponseHeaders defines the headers to pass to backend once authentication request completes.
+	ResponseHeaders []string
+}
+
+// BasicAuthPolicy defines a basic authentication policy that has been extracted from ingress-nginx annotations.
+type BasicAuthPolicy struct {
+	// SecretName defines the name of the secret containing basic auth credentials.
+	SecretName string
+}
+
 // Policy describes all per-Ingress policy knobs that ingress-nginx projects into the
 // IR (buffer, CORS, etc.).
 type Policy struct {
@@ -68,6 +82,12 @@ type Policy struct {
 
 	// EnableAccessLog defines whether access logging is enabled for the ingress.
 	EnableAccessLog *bool
+
+	// ExtAuth defines the external authentication policy.
+	ExtAuth *ExtAuthPolicy
+
+	// BasicAuth defines the basic authentication policy.
+	BasicAuth *BasicAuthPolicy
 
 	RuleBackendSources []PolicyIndex
 

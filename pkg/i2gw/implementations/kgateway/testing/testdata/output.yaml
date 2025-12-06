@@ -84,80 +84,17 @@ status:
   parents: []
 ---
 apiVersion: gateway.kgateway.dev/v1alpha1
-kind: TrafficPolicy
+kind: Backend
 metadata:
-  name: ingress-myservicea2
+  name: auth-example-com-backend
   namespace: default
 spec:
-  buffer:
-    maxRequestSize: 20m
-  cors:
-    allowOrigins:
-    - https://example.com
-    - https://another.com
-  rateLimit:
-    local:
-      tokenBucket:
-        fillInterval: 1s
-        maxTokens: 10
-        tokensPerFill: 10
-  timeouts:
-    request: 1m0s
-    streamIdle: 1m0s
-status:
-  ancestors: null
----
-apiVersion: gateway.kgateway.dev/v1alpha1
-kind: TrafficPolicy
-metadata:
-  name: ingress-myservicea1
-  namespace: default
-spec:
-  buffer:
-    maxRequestSize: 10m
-  cors:
-    allowOrigins:
-    - https://example.com
-    - https://another.com
-  rateLimit:
-    local:
-      tokenBucket:
-        fillInterval: 1m0s
-        maxTokens: 600
-        tokensPerFill: 600
-  timeouts:
-    request: 30s
-    streamIdle: 45s
-status:
-  ancestors: null
----
-apiVersion: gateway.kgateway.dev/v1alpha1
-kind: TrafficPolicy
-metadata:
-  name: ingress-myserviceb
-  namespace: default
-spec:
-  buffer:
-    maxRequestSize: 100m
-  cors:
-    allowOrigins:
-    - https://example.com
-    - https://another.com
-  rateLimit:
-    local:
-      tokenBucket:
-        fillInterval: 1s
-        maxTokens: 250
-        tokensPerFill: 50
-  targetRefs:
-  - group: ""
-    kind: ""
-    name: ingress-myserviceb-myserviceb-foo-org
-  timeouts:
-    request: 1m30s
-    streamIdle: 1m30s
-status:
-  ancestors: null
+  static:
+    hosts:
+    - host: auth.example.com
+      port: 443
+  type: Static
+status: {}
 ---
 apiVersion: gateway.kgateway.dev/v1alpha1
 kind: BackendConfigPolicy
@@ -188,6 +125,25 @@ status:
   ancestors: null
 ---
 apiVersion: gateway.kgateway.dev/v1alpha1
+kind: GatewayExtension
+metadata:
+  name: auth-example-com-extauth
+  namespace: default
+spec:
+  extAuth:
+    httpService:
+      authorizationResponse:
+        headersToBackend:
+        - X-Auth-Token
+        - X-User-ID
+      backendRef:
+        group: gateway.kgateway.dev
+        kind: Backend
+        name: auth-example-com-backend
+      pathPrefix: /
+status: {}
+---
+apiVersion: gateway.kgateway.dev/v1alpha1
 kind: HTTPListenerPolicy
 metadata:
   name: nginx-access-log
@@ -204,5 +160,88 @@ spec:
   - group: ""
     kind: Gateway
     name: nginx
+status:
+  ancestors: null
+---
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: TrafficPolicy
+metadata:
+  name: ingress-myservicea1
+  namespace: default
+spec:
+  buffer:
+    maxRequestSize: 10m
+  cors:
+    allowOrigins:
+    - https://example.com
+    - https://another.com
+  extAuth:
+    extensionRef:
+      name: auth-example-com-extauth
+      namespace: default
+  rateLimit:
+    local:
+      tokenBucket:
+        fillInterval: 1m0s
+        maxTokens: 600
+        tokensPerFill: 600
+  timeouts:
+    request: 30s
+    streamIdle: 45s
+status:
+  ancestors: null
+---
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: TrafficPolicy
+metadata:
+  name: ingress-myservicea2
+  namespace: default
+spec:
+  buffer:
+    maxRequestSize: 20m
+  cors:
+    allowOrigins:
+    - https://example.com
+    - https://another.com
+  rateLimit:
+    local:
+      tokenBucket:
+        fillInterval: 1s
+        maxTokens: 10
+        tokensPerFill: 10
+  timeouts:
+    request: 1m0s
+    streamIdle: 1m0s
+status:
+  ancestors: null
+---
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: TrafficPolicy
+metadata:
+  name: ingress-myserviceb
+  namespace: default
+spec:
+  basicAuth:
+    secretRef:
+      name: basic-auth-secret
+  buffer:
+    maxRequestSize: 100m
+  cors:
+    allowOrigins:
+    - https://example.com
+    - https://another.com
+  rateLimit:
+    local:
+      tokenBucket:
+        fillInterval: 1s
+        maxTokens: 250
+        tokensPerFill: 50
+  targetRefs:
+  - group: ""
+    kind: ""
+    name: ingress-myserviceb-myserviceb-foo-org
+  timeouts:
+    request: 1m30s
+    streamIdle: 1m30s
 status:
   ancestors: null

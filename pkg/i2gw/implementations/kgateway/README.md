@@ -59,6 +59,19 @@ The command should generate Gateway API and Kgateway resources.
 
 - `nginx.ingress.kubernetes.io/proxy-connect-timeout`
 
+### External Auth
+
+- `nginx.ingress.kubernetes.io/auth-url`: Specifies the URL of an external authentication service.
+- `nginx.ingress.kubernetes.io/auth-response-headers`: Comma-separated list of headers to pass to backend once authentication request completes.
+
+### Basic Auth
+
+- `nginx.ingress.kubernetes.io/auth-type`: Must be set to `"basic"` to enable basic authentication. Maps to `TrafficPolicy.spec.basicAuth`.
+- `nginx.ingress.kubernetes.io/auth-secret`: Specifies the secret containing basic auth credentials in `namespace/name` format (or just `name` if in the same namespace). Maps to `TrafficPolicy.spec.basicAuth.secretRef.name`.
+
+### Access Logging
+- `nginx.ingress.kubernetes.io/enable-access-log`
+
 ## TrafficPolicy Projection
 
 Annotations in the **Traffic Behavior** category are converted into
@@ -98,3 +111,28 @@ the lowest timeout wins and a warning is emitted.
 
 - Only the **ingress-nginx provider** is currently supported by the Kgateway emitter.
 - Some NGINX behaviors cannot be reproduced exactly due to Envoy/Kgateway differences.
+
+
+## Supported but not tranlated Annotations 
+
+The following annotations have equivalents in kgateway but are not (as of yet) translated by this tool.
+
+`nginx.ingress.kubernetes.io/auth-proxy-set-headers`
+
+Supported in TrafficPolicy
+
+```
+spec:
+  extAuth:
+    httpService:
+      authorizationRequest:
+        headersToAdd:
+        - key: x-forwarded-host
+          value: "%DOWNSTREAM_REMOTE_ADDRESS%"
+```
+
+`nginx.ingress.kubernetes.io/affinity`
+
+This annotation sets all upstreams to use session cookie affinity.
+This is supported in kgateway by the sessionPersistence HTTPRoute rule or by using the LoadBalancer configuration on BackendConfigPolicy.
+
