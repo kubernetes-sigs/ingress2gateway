@@ -42,7 +42,7 @@ import (
 
 	// Call init for notifications
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
-	
+
 	// Call init for emitters
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/default"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/gce"

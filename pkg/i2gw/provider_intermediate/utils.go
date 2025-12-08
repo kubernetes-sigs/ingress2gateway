@@ -78,7 +78,6 @@ func mergeGatewayContexts(irs []ProviderIR) (map[types.NamespacedName]GatewayCon
 			if existingGatewayContext, ok := newGatewayContexts[nn]; ok {
 				g.Gateway.Spec.Listeners = append(g.Gateway.Spec.Listeners, existingGatewayContext.Gateway.Spec.Listeners...)
 				g.Gateway.Spec.Addresses = append(g.Gateway.Spec.Addresses, existingGatewayContext.Gateway.Spec.Addresses...)
-				// g.ProviderSpecificIR = mergedGatewayIR(g.ProviderSpecificIR, existingGatewayContext.ProviderSpecificIR)
 			}
 			newGatewayContexts[nn] = GatewayContext{Gateway: g.Gateway}
 			// 64 is the maximum number of listeners a Gateway can have

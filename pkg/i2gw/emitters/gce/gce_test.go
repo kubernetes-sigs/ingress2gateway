@@ -37,26 +37,26 @@ import (
 )
 
 const (
-	saTypeClientIP       = "CLIENT_IP"
-	saTypeCookie         = "GENERATED_COOKIE"
-	gPathPrefix          = gatewayv1.PathMatchPathPrefix
+	saTypeClientIP = "CLIENT_IP"
+	saTypeCookie   = "GENERATED_COOKIE"
+	gPathPrefix    = gatewayv1.PathMatchPathPrefix
 
-	testNamespace                            = "default"
-	testHost                                 = "test.mydomain.com"
-	testServiceName                          = "test-service"
-	testSecurityPolicy                       = "test-security-policy"
-	testCookieTTLSec                         = int64(10)
-	testSslPolicy                            = "test-ssl-policy"
-	testCheckIntervalSec                     = int64(5)
-	testTimeoutSec                           = int64(10)
-	testHealthyThreshold                     = int64(2)
-	testUnhealthyThreshold                   = int64(3)
-	protocolHTTP                             = "HTTP"
-	protocolHTTPS                            = "HTTPS"
-	protocolHTTP2                            = "HTTP2"
-	testPort                                 = int64(8081)
-	testRequestPath                          = "/foo"
-	gceL7GlobalExternalManagedGatewayClass   = gatewayv1.ObjectName("gke-l7-global-external-managed")
+	testNamespace                          = "default"
+	testHost                               = "test.mydomain.com"
+	testServiceName                        = "test-service"
+	testSecurityPolicy                     = "test-security-policy"
+	testCookieTTLSec                       = int64(10)
+	testSslPolicy                          = "test-ssl-policy"
+	testCheckIntervalSec                   = int64(5)
+	testTimeoutSec                         = int64(10)
+	testHealthyThreshold                   = int64(2)
+	testUnhealthyThreshold                 = int64(3)
+	protocolHTTP                           = "HTTP"
+	protocolHTTPS                          = "HTTPS"
+	protocolHTTP2                          = "HTTP2"
+	testPort                               = int64(8081)
+	testRequestPath                        = "/foo"
+	gceL7GlobalExternalManagedGatewayClass = gatewayv1.ObjectName("gke-l7-global-external-managed")
 
 	testGatewayName             = "test-gateway"
 	testHTTPRouteName           = "test-http-route"
@@ -484,7 +484,7 @@ func Test_irToGateway(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			emitter := &GceEmitter{}
+			emitter := &Emitter{}
 			gatewayResources, errs := emitter.Emit(tc.ir)
 
 			if len(errs) != len(tc.expectedErrors) {

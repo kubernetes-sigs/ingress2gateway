@@ -22,9 +22,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/common"
-	// "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
-	// "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
-	// "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/gce/extensions"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -54,16 +52,16 @@ var (
 )
 
 func init() {
-	i2gw.EmitterConstructorByName["gce"] = NewGceEmitter
+	i2gw.EmitterConstructorByName["gce"] = NewEmitter
 }
 
-type GceEmitter struct{}
+type Emitter struct{}
 
-func NewGceEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
-	return &GceEmitter{}
+func NewEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
+	return &Emitter{}
 }
 
-func (c *GceEmitter) Emit(ir emitter_intermediate.EmitterIR) (i2gw.GatewayResources, field.ErrorList) {
+func (c *Emitter) Emit(ir emitter_intermediate.EmitterIR) (i2gw.GatewayResources, field.ErrorList) {
 	gatewayResources, errs := common.ToGatewayResources(ir)
 	if len(errs) != 0 {
 		return i2gw.GatewayResources{}, errs
@@ -81,8 +79,7 @@ func buildGceGatewayExtensions(ir emitter_intermediate.EmitterIR, gatewayResourc
 		}
 		obj, err := i2gw.CastToUnstructured(gwyPolicy)
 		if err != nil {
-			// Fixme
-			// notify(notifications.ErrorNotification, "Failed to cast GCPGatewayPolicy to unstructured", gwyPolicy)
+			notify(notifications.ErrorNotification, "Failed to cast GCPGatewayPolicy to unstructured")
 			continue
 		}
 		gatewayResources.GatewayExtensions = append(gatewayResources.GatewayExtensions, *obj)
@@ -124,8 +121,7 @@ func buildGceServiceExtensions(ir emitter_intermediate.EmitterIR, gatewayResourc
 		if bePolicy != nil {
 			obj, err := i2gw.CastToUnstructured(bePolicy)
 			if err != nil {
-				// FIXME
-				// notify(notifications.ErrorNotification, "Failed to cast GCPBackendPolicy to unstructured", bePolicy)
+				notify(notifications.ErrorNotification, "Failed to cast GCPBackendPolicy to unstructured")
 				continue
 			}
 			gatewayResources.GatewayExtensions = append(gatewayResources.GatewayExtensions, *obj)
@@ -135,8 +131,7 @@ func buildGceServiceExtensions(ir emitter_intermediate.EmitterIR, gatewayResourc
 		if hcPolicy != nil {
 			obj, err := i2gw.CastToUnstructured(hcPolicy)
 			if err != nil {
-				// FIXME
-				// notify(notifications.ErrorNotification, "Failed to cast HealthCheckPolicy to unstructured", hcPolicy)
+				notify(notifications.ErrorNotification, "Failed to cast HealthCheckPolicy to unstructured")
 				continue
 			}
 			gatewayResources.GatewayExtensions = append(gatewayResources.GatewayExtensions, *obj)

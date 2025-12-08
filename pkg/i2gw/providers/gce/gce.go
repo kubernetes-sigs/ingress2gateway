@@ -37,9 +37,9 @@ func init() {
 
 // Provider implements the i2gw.Provider interface.
 type Provider struct {
-	storage          *storage
-	reader           reader
-	irConverter      resourcesToIRConverter
+	storage     *storage
+	reader      reader
+	irConverter resourcesToIRConverter
 	// gatewayConverter irToGatewayResourcesConverter
 }
 
@@ -55,9 +55,9 @@ func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 		}
 	}
 	return &Provider{
-		storage:          newResourcesStorage(),
-		reader:           newResourceReader(conf),
-		irConverter:      newResourcesToIRConverter(conf),
+		storage:     newResourcesStorage(),
+		reader:      newResourceReader(conf),
+		irConverter: newResourcesToIRConverter(conf),
 		// gatewayConverter: newIRToGatewayResourcesConverter(),
 	}
 }
