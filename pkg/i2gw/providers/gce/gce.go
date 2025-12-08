@@ -40,7 +40,6 @@ type Provider struct {
 	storage     *storage
 	reader      reader
 	irConverter resourcesToIRConverter
-	// gatewayConverter irToGatewayResourcesConverter
 }
 
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
@@ -58,7 +57,6 @@ func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 		storage:     newResourcesStorage(),
 		reader:      newResourceReader(conf),
 		irConverter: newResourcesToIRConverter(conf),
-		// gatewayConverter: newIRToGatewayResourcesConverter(),
 	}
 }
 
@@ -87,7 +85,3 @@ func (p *Provider) ToIR() (emitter_intermediate.EmitterIR, field.ErrorList) {
 	ir, errs := p.irConverter.convertToIR(p.storage)
 	return provider_intermediate.ToEmitterIR(ir), errs
 }
-
-// func (p *Provider) ToGatewayResources(ir provider_intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
-// 	return p.gatewayConverter.irToGateway(ir)
-// }
