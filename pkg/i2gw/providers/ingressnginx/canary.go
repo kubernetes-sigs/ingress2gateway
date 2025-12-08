@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -31,12 +31,16 @@ import (
 
 const (
 	canaryAnnotation            = "nginx.ingress.kubernetes.io/canary"
+	canaryByHeader              = "nginx.ingress.kubernetes.io/canary-by-header"
+	canaryByHeaderValue         = "nginx.ingress.kubernetes.io/canary-by-header-value"
 	canaryWeightAnnotation      = "nginx.ingress.kubernetes.io/canary-weight"
 	canaryWeightTotalAnnotation = "nginx.ingress.kubernetes.io/canary-weight-total"
 )
 
 // canaryConfig holds the parsed canary configuration from a single Ingress
 type canaryConfig struct {
+	header      string
+	headerValue string
 	weight      int32
 	weightTotal int32
 }
@@ -47,6 +51,9 @@ func parseCanaryConfig(ingress *networkingv1.Ingress) (canaryConfig, error) {
 		weight:      0,
 		weightTotal: 100, // default
 	}
+
+	config.header = ingress.Annotations[canaryByHeader]
+	config.headerValue = ingress.Annotations[canaryByHeaderValue]
 
 	if weight := ingress.Annotations[canaryWeightAnnotation]; weight != "" {
 		w, err := strconv.ParseInt(weight, 10, 32)
@@ -167,6 +174,32 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 
 				notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set weights (canary: %d, non-canary: %d, total: %d)",
 					canarySourceIngress.Namespace, canarySourceIngress.Name, canaryWeight, nonCanaryWeight, canaryConfig.weightTotal), &httpRouteContext.HTTPRoute)
+			}
+			if canaryConfig.header != "" {
+				var header string = "always"
+				if canaryConfig.headerValue != "" {
+					header = canaryConfig.headerValue
+				}
+				canaryBackendCopy := *canaryBackend
+				newRule := gatewayv1.HTTPRouteRule{
+					Matches: []gatewayv1.HTTPRouteMatch{
+						{
+							Headers: []gatewayv1.HTTPHeaderMatch{
+								{
+									Name:  gatewayv1.HTTPHeaderName(canaryConfig.header),
+									Value: header,
+								},
+							},
+						},
+					},
+					BackendRefs: []gatewayv1.HTTPBackendRef{canaryBackendCopy},
+				}
+
+				// Add the new rule to HTTPRoute
+				httpRouteContext.HTTPRoute.Spec.Rules = append(httpRouteContext.HTTPRoute.Spec.Rules, newRule)
+
+				// Update the IR
+				ir.HTTPRoutes[key] = httpRouteContext
 			}
 		}
 	}
