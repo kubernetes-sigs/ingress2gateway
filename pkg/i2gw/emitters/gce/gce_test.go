@@ -23,7 +23,8 @@ import (
 	gkegatewayv1 "github.com/GoogleCloudPlatform/gke-gateway-api/apis/networking/v1"
 	"github.com/google/go-cmp/cmp"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,6 +37,27 @@ import (
 )
 
 const (
+	saTypeClientIP       = "CLIENT_IP"
+	saTypeCookie         = "GENERATED_COOKIE"
+	gPathPrefix          = gatewayv1.PathMatchPathPrefix
+
+	testNamespace                            = "default"
+	testHost                                 = "test.mydomain.com"
+	testServiceName                          = "test-service"
+	testSecurityPolicy                       = "test-security-policy"
+	testCookieTTLSec                         = int64(10)
+	testSslPolicy                            = "test-ssl-policy"
+	testCheckIntervalSec                     = int64(5)
+	testTimeoutSec                           = int64(10)
+	testHealthyThreshold                     = int64(2)
+	testUnhealthyThreshold                   = int64(3)
+	protocolHTTP                             = "HTTP"
+	protocolHTTPS                            = "HTTPS"
+	protocolHTTP2                            = "HTTP2"
+	testPort                                 = int64(8081)
+	testRequestPath                          = "/foo"
+	gceL7GlobalExternalManagedGatewayClass   = gatewayv1.ObjectName("gke-l7-global-external-managed")
+
 	testGatewayName             = "test-gateway"
 	testHTTPRouteName           = "test-http-route"
 	testSaGCPBackendPolicyName  = testServiceName
@@ -200,29 +222,27 @@ func Test_irToGateway(t *testing.T) {
 
 	testCases := []struct {
 		name                     string
-		ir                       intermediate.IR
+		ir                       emitter_intermediate.EmitterIR
 		expectedGatewayResources i2gw.GatewayResources
 		expectedErrors           field.ErrorList
 	}{
 		{
 			name: "ingress with a Backend Config specifying CLIENT_IP type session affinity config",
-			ir: intermediate.IR{
-				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+			ir: emitter_intermediate.EmitterIR{
+				Gateways: map[types.NamespacedName]emitter_intermediate.GatewayContext{
 					{Namespace: testNamespace, Name: testGatewayName}: {
 						Gateway: testGateway,
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]emitter_intermediate.HTTPRouteContext{
 					{Namespace: testNamespace, Name: testHTTPRouteName}: {
 						HTTPRoute: testHTTPRoute,
 					},
 				},
-				Services: map[types.NamespacedName]intermediate.ProviderSpecificServiceIR{
+				GceServices: map[types.NamespacedName]gce.GceServiceIR{
 					{Namespace: testNamespace, Name: testServiceName}: {
-						Gce: &intermediate.GceServiceIR{
-							SessionAffinity: &intermediate.SessionAffinityConfig{
-								AffinityType: saTypeClientIP,
-							},
+						SessionAffinity: &gce.SessionAffinityConfig{
+							AffinityType: saTypeClientIP,
 						},
 					},
 				},
@@ -242,24 +262,22 @@ func Test_irToGateway(t *testing.T) {
 		},
 		{
 			name: "ingress with a Backend Config specifying GENERATED_COOKIE type session affinity config",
-			ir: intermediate.IR{
-				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+			ir: emitter_intermediate.EmitterIR{
+				Gateways: map[types.NamespacedName]emitter_intermediate.GatewayContext{
 					{Namespace: testNamespace, Name: testGatewayName}: {
 						Gateway: testGateway,
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]emitter_intermediate.HTTPRouteContext{
 					{Namespace: testNamespace, Name: testHTTPRouteName}: {
 						HTTPRoute: testHTTPRoute,
 					},
 				},
-				Services: map[types.NamespacedName]intermediate.ProviderSpecificServiceIR{
+				GceServices: map[types.NamespacedName]gce.GceServiceIR{
 					{Namespace: testNamespace, Name: testServiceName}: {
-						Gce: &intermediate.GceServiceIR{
-							SessionAffinity: &intermediate.SessionAffinityConfig{
-								AffinityType: saTypeCookie,
-								CookieTTLSec: common.PtrTo(testCookieTTLSec),
-							},
+						SessionAffinity: &gce.SessionAffinityConfig{
+							AffinityType: saTypeCookie,
+							CookieTTLSec: common.PtrTo(testCookieTTLSec),
 						},
 					},
 				},
@@ -279,23 +297,21 @@ func Test_irToGateway(t *testing.T) {
 		},
 		{
 			name: "ingress with a Backend Config specifying Security Policy",
-			ir: intermediate.IR{
-				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+			ir: emitter_intermediate.EmitterIR{
+				Gateways: map[types.NamespacedName]emitter_intermediate.GatewayContext{
 					{Namespace: testNamespace, Name: testGatewayName}: {
 						Gateway: testGateway,
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]emitter_intermediate.HTTPRouteContext{
 					{Namespace: testNamespace, Name: testHTTPRouteName}: {
 						HTTPRoute: testHTTPRoute,
 					},
 				},
-				Services: map[types.NamespacedName]intermediate.ProviderSpecificServiceIR{
+				GceServices: map[types.NamespacedName]gce.GceServiceIR{
 					{Namespace: testNamespace, Name: testServiceName}: {
-						Gce: &intermediate.GceServiceIR{
-							SecurityPolicy: &intermediate.SecurityPolicyConfig{
-								Name: testSecurityPolicy,
-							},
+						SecurityPolicy: &gce.SecurityPolicyConfig{
+							Name: testSecurityPolicy,
 						},
 					},
 				},
@@ -315,18 +331,16 @@ func Test_irToGateway(t *testing.T) {
 		},
 		{
 			name: "ingress with a Frontend Config specifying Ssl Policy",
-			ir: intermediate.IR{
-				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+			ir: emitter_intermediate.EmitterIR{
+				Gateways: map[types.NamespacedName]emitter_intermediate.GatewayContext{
 					{Namespace: testNamespace, Name: testGatewayName}: {
 						Gateway: testGateway,
-						ProviderSpecificIR: intermediate.ProviderSpecificGatewayIR{
-							Gce: &intermediate.GceGatewayIR{
-								SslPolicy: &intermediate.SslPolicyConfig{Name: testSslPolicy},
-							},
+						Gce: &gce.GceGatewayIR{
+							SslPolicy: &gce.SslPolicyConfig{Name: testSslPolicy},
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]emitter_intermediate.HTTPRouteContext{
 					{Namespace: testNamespace, Name: testHTTPRouteName}: {
 						HTTPRoute: testHTTPRoute,
 					},
@@ -347,29 +361,27 @@ func Test_irToGateway(t *testing.T) {
 		},
 		{
 			name: "ingress with a Backend Config specifying custom HTTP health check",
-			ir: intermediate.IR{
-				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+			ir: emitter_intermediate.EmitterIR{
+				Gateways: map[types.NamespacedName]emitter_intermediate.GatewayContext{
 					{Namespace: testNamespace, Name: testGatewayName}: {
 						Gateway: testGateway,
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]emitter_intermediate.HTTPRouteContext{
 					{Namespace: testNamespace, Name: testHTTPRouteName}: {
 						HTTPRoute: testHTTPRoute,
 					},
 				},
-				Services: map[types.NamespacedName]intermediate.ProviderSpecificServiceIR{
+				GceServices: map[types.NamespacedName]gce.GceServiceIR{
 					{Namespace: testNamespace, Name: testServiceName}: {
-						Gce: &intermediate.GceServiceIR{
-							HealthCheck: &intermediate.HealthCheckConfig{
-								CheckIntervalSec:   common.PtrTo(testCheckIntervalSec),
-								TimeoutSec:         common.PtrTo(testTimeoutSec),
-								HealthyThreshold:   common.PtrTo(testHealthyThreshold),
-								UnhealthyThreshold: common.PtrTo(testUnhealthyThreshold),
-								Type:               common.PtrTo(protocolHTTP),
-								Port:               common.PtrTo(testPort),
-								RequestPath:        common.PtrTo(testRequestPath),
-							},
+						HealthCheck: &gce.HealthCheckConfig{
+							CheckIntervalSec:   common.PtrTo(testCheckIntervalSec),
+							TimeoutSec:         common.PtrTo(testTimeoutSec),
+							HealthyThreshold:   common.PtrTo(testHealthyThreshold),
+							UnhealthyThreshold: common.PtrTo(testUnhealthyThreshold),
+							Type:               common.PtrTo(protocolHTTP),
+							Port:               common.PtrTo(testPort),
+							RequestPath:        common.PtrTo(testRequestPath),
 						},
 					},
 				},
@@ -389,29 +401,27 @@ func Test_irToGateway(t *testing.T) {
 		},
 		{
 			name: "ingress with a Backend Config specifying custom HTTPS health check",
-			ir: intermediate.IR{
-				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+			ir: emitter_intermediate.EmitterIR{
+				Gateways: map[types.NamespacedName]emitter_intermediate.GatewayContext{
 					{Namespace: testNamespace, Name: testGatewayName}: {
 						Gateway: testGateway,
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]emitter_intermediate.HTTPRouteContext{
 					{Namespace: testNamespace, Name: testHTTPRouteName}: {
 						HTTPRoute: testHTTPRoute,
 					},
 				},
-				Services: map[types.NamespacedName]intermediate.ProviderSpecificServiceIR{
+				GceServices: map[types.NamespacedName]gce.GceServiceIR{
 					{Namespace: testNamespace, Name: testServiceName}: {
-						Gce: &intermediate.GceServiceIR{
-							HealthCheck: &intermediate.HealthCheckConfig{
-								CheckIntervalSec:   common.PtrTo(testCheckIntervalSec),
-								TimeoutSec:         common.PtrTo(testTimeoutSec),
-								HealthyThreshold:   common.PtrTo(testHealthyThreshold),
-								UnhealthyThreshold: common.PtrTo(testUnhealthyThreshold),
-								Type:               common.PtrTo(protocolHTTPS),
-								Port:               common.PtrTo(testPort),
-								RequestPath:        common.PtrTo(testRequestPath),
-							},
+						HealthCheck: &gce.HealthCheckConfig{
+							CheckIntervalSec:   common.PtrTo(testCheckIntervalSec),
+							TimeoutSec:         common.PtrTo(testTimeoutSec),
+							HealthyThreshold:   common.PtrTo(testHealthyThreshold),
+							UnhealthyThreshold: common.PtrTo(testUnhealthyThreshold),
+							Type:               common.PtrTo(protocolHTTPS),
+							Port:               common.PtrTo(testPort),
+							RequestPath:        common.PtrTo(testRequestPath),
 						},
 					},
 				},
@@ -431,29 +441,27 @@ func Test_irToGateway(t *testing.T) {
 		},
 		{
 			name: "ingress with a Backend Config specifying custom HTTP2 health check",
-			ir: intermediate.IR{
-				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+			ir: emitter_intermediate.EmitterIR{
+				Gateways: map[types.NamespacedName]emitter_intermediate.GatewayContext{
 					{Namespace: testNamespace, Name: testGatewayName}: {
 						Gateway: testGateway,
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]emitter_intermediate.HTTPRouteContext{
 					{Namespace: testNamespace, Name: testHTTPRouteName}: {
 						HTTPRoute: testHTTPRoute,
 					},
 				},
-				Services: map[types.NamespacedName]intermediate.ProviderSpecificServiceIR{
+				GceServices: map[types.NamespacedName]gce.GceServiceIR{
 					{Namespace: testNamespace, Name: testServiceName}: {
-						Gce: &intermediate.GceServiceIR{
-							HealthCheck: &intermediate.HealthCheckConfig{
-								CheckIntervalSec:   common.PtrTo(testCheckIntervalSec),
-								TimeoutSec:         common.PtrTo(testTimeoutSec),
-								HealthyThreshold:   common.PtrTo(testHealthyThreshold),
-								UnhealthyThreshold: common.PtrTo(testUnhealthyThreshold),
-								Type:               common.PtrTo(protocolHTTP2),
-								Port:               common.PtrTo(testPort),
-								RequestPath:        common.PtrTo(testRequestPath),
-							},
+						HealthCheck: &gce.HealthCheckConfig{
+							CheckIntervalSec:   common.PtrTo(testCheckIntervalSec),
+							TimeoutSec:         common.PtrTo(testTimeoutSec),
+							HealthyThreshold:   common.PtrTo(testHealthyThreshold),
+							UnhealthyThreshold: common.PtrTo(testUnhealthyThreshold),
+							Type:               common.PtrTo(protocolHTTP2),
+							Port:               common.PtrTo(testPort),
+							RequestPath:        common.PtrTo(testRequestPath),
 						},
 					},
 				},
@@ -476,9 +484,8 @@ func Test_irToGateway(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			provider := NewProvider(&i2gw.ProviderConf{})
-			gceProvider := provider.(*Provider)
-			gatewayResources, errs := gceProvider.gatewayConverter.irToGateway(tc.ir)
+			emitter := &GceEmitter{}
+			gatewayResources, errs := emitter.Emit(tc.ir)
 
 			if len(errs) != len(tc.expectedErrors) {
 				t.Errorf("Expected %d errors, got %d: %+v", len(tc.expectedErrors), len(errs), errs)

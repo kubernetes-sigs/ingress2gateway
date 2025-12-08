@@ -90,7 +90,7 @@ func buildGceGatewayExtensions(ir emitter_intermediate.EmitterIR, gatewayResourc
 }
 
 func addGatewayPolicyIfConfigured(gatewayNamespacedName types.NamespacedName, gatewayIR *emitter_intermediate.GatewayContext) *gkegatewayv1.GCPGatewayPolicy {
-	if gatewayIR == nil {
+	if gatewayIR == nil || gatewayIR.Gce == nil {
 		return nil
 	}
 	// If there is no specification related to GCPGatewayPolicy feature, return nil.
