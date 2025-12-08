@@ -54,19 +54,19 @@ func Test_ToGatewayResources(t *testing.T) {
 
 	testCases := []struct {
 		desc                     string
-		ir                       emitter_intermediate.IR
+		ir                       emitter_intermediate.EmitterIR
 		expectedGatewayResources i2gw.GatewayResources
 		expectedErrors           field.ErrorList
 	}{
 		{
 			desc:                     "empty",
-			ir:                       emitter_intermediate.IR{},
+			ir:                       emitter_intermediate.EmitterIR{},
 			expectedGatewayResources: i2gw.GatewayResources{},
 			expectedErrors:           field.ErrorList{},
 		},
 		{
 			desc: "no additional extensions",
-			ir: emitter_intermediate.IR{
+			ir: emitter_intermediate.EmitterIR{
 				Gateways: map[types.NamespacedName]emitter_intermediate.GatewayContext{
 					{Namespace: "test", Name: "simple"}: {
 						Gateway: gatewayv1.Gateway{
@@ -163,7 +163,7 @@ func Test_ToGatewayResources(t *testing.T) {
 		},
 		{
 			desc: "duplicated backends",
-			ir: emitter_intermediate.IR{
+			ir: emitter_intermediate.EmitterIR{
 				Gateways: map[types.NamespacedName]emitter_intermediate.GatewayContext{
 					{Namespace: "test", Name: "example-proxy"}: {
 						Gateway: gatewayv1.Gateway{

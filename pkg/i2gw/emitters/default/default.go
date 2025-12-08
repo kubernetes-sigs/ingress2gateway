@@ -34,6 +34,6 @@ func NewDefaultEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
 }
 
 // Emit converts the provider intermediate representation to Gateway API resources.
-func (e *DefaultEmitter) Emit(ir emitter_intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
+func (e *DefaultEmitter) Emit(ir emitter_intermediate.EmitterIR) (i2gw.GatewayResources, field.ErrorList) {
 	return common.ToGatewayResources(ir)
 }

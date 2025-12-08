@@ -61,7 +61,7 @@ const (
 var uriRegexp = regexp.MustCompile(`^((https?)://([^/]+))?(/.*)?$`)
 
 type ResourcesToIRConverter interface {
-	Convert(Storage) (emitter_intermediate.IR, field.ErrorList)
+	Convert(Storage) (emitter_intermediate.EmitterIR, field.ErrorList)
 }
 
 // NewResourcesToIRConverter returns a resourcesToIRConverter of OpenAPI Specifications 3.x from a storage into Gateway API resources.
@@ -95,8 +95,8 @@ type resourcesToIRConverter struct {
 
 var _ ResourcesToIRConverter = &resourcesToIRConverter{}
 
-func (c *resourcesToIRConverter) Convert(storage Storage) (emitter_intermediate.IR, field.ErrorList) {
-	ir := emitter_intermediate.IR{
+func (c *resourcesToIRConverter) Convert(storage Storage) (emitter_intermediate.EmitterIR, field.ErrorList) {
+	ir := emitter_intermediate.EmitterIR{
 		Gateways:        make(map[types.NamespacedName]emitter_intermediate.GatewayContext),
 		HTTPRoutes:      make(map[types.NamespacedName]emitter_intermediate.HTTPRouteContext),
 		ReferenceGrants: make(map[types.NamespacedName]emitter_intermediate.ReferenceGrantContext),

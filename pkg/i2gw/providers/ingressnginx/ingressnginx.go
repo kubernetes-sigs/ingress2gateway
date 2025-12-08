@@ -58,7 +58,7 @@ func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 
 // ToIR converts stored Ingress-Nginx API entities to emitter_intermediate.IR
 // including the ingress-nginx specific features.
-func (p *Provider) ToIR() (emitter_intermediate.IR, field.ErrorList) {
+func (p *Provider) ToIR() (emitter_intermediate.EmitterIR, field.ErrorList) {
 	ir, errs := p.resourcesToIRConverter.convert(p.storage)
 	return provider_intermediate.ToEmitterIR(ir), errs
 }

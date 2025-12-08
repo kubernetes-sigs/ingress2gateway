@@ -41,7 +41,7 @@ func MergeIRs(irs ...ProviderIR) (ProviderIR, field.ErrorList) {
 		Gateways:           make(map[types.NamespacedName]GatewayContext),
 		GatewayClasses:     make(map[types.NamespacedName]gatewayv1.GatewayClass),
 		HTTPRoutes:         make(map[types.NamespacedName]HTTPRouteContext),
-		Services:           make(map[types.NamespacedName]ProviderSpecificServiceIR),
+		// Services:           make(map[types.NamespacedName]ProviderSpecificServiceIR),
 		TLSRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
 		TCPRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
 		UDPRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.UDPRoute),
@@ -79,7 +79,7 @@ func mergeGatewayContexts(irs []ProviderIR) (map[types.NamespacedName]GatewayCon
 			if existingGatewayContext, ok := newGatewayContexts[nn]; ok {
 				g.Gateway.Spec.Listeners = append(g.Gateway.Spec.Listeners, existingGatewayContext.Gateway.Spec.Listeners...)
 				g.Gateway.Spec.Addresses = append(g.Gateway.Spec.Addresses, existingGatewayContext.Gateway.Spec.Addresses...)
-				g.ProviderSpecificIR = mergedGatewayIR(g.ProviderSpecificIR, existingGatewayContext.ProviderSpecificIR)
+				// g.ProviderSpecificIR = mergedGatewayIR(g.ProviderSpecificIR, existingGatewayContext.ProviderSpecificIR)
 			}
 			newGatewayContexts[nn] = GatewayContext{Gateway: g.Gateway}
 			// 64 is the maximum number of listeners a Gateway can have
@@ -97,10 +97,11 @@ func mergeGatewayContexts(irs []ProviderIR) (map[types.NamespacedName]GatewayCon
 	return newGatewayContexts, errs
 }
 
-func mergedGatewayIR(current, existing ProviderSpecificGatewayIR) ProviderSpecificGatewayIR {
-	var mergedGatewayIR ProviderSpecificGatewayIR
-	// TODO(issue #190): Find a different way to merge GatewayIR, instead of
-	// delegating them to each provider.
-	mergedGatewayIR.Gce = mergeGceGatewayIR(current.Gce, existing.Gce)
-	return mergedGatewayIR
-}
+// I THINK WE CAN REMOVE THIS FOR NOW
+// func mergedGatewayIR(current, existing ProviderSpecificGatewayIR) ProviderSpecificGatewayIR {
+// 	var mergedGatewayIR ProviderSpecificGatewayIR
+// 	// TODO(issue #190): Find a different way to merge GatewayIR, instead of
+// 	// delegating them to each provider.
+// 	mergedGatewayIR.Gce = mergeGceGatewayIR(current.Gce, existing.Gce)
+// 	return mergedGatewayIR
+// }

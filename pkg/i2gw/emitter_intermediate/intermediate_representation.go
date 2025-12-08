@@ -17,17 +17,18 @@ limitations under the License.
 package emitter_intermediate
 
 import (
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
 	"k8s.io/apimachinery/pkg/types"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-// IR holds specifications of Gateway Objects for supporting Ingress extensions,
+// EmitterIR holds specifications of Gateway Objects for supporting Ingress extensions,
 // annotations, and proprietary API features not supported as Gateway core
-// features. An IR field can be mapped to core Gateway-API fields,
+// features. An EmitterIR field can be mapped to core Gateway-API fields,
 // or provider-specific Gateway extensions.
-type IR struct {
+type EmitterIR struct {
 	Gateways   map[types.NamespacedName]GatewayContext
 	HTTPRoutes map[types.NamespacedName]HTTPRouteContext
 
@@ -39,10 +40,15 @@ type IR struct {
 
 	BackendTLSPolicies map[types.NamespacedName]BackendTLSPolicyContext
 	ReferenceGrants    map[types.NamespacedName]ReferenceGrantContext
+
+	GceServices map[types.NamespacedName]gce.GceServiceIR
 }
 
 type GatewayContext struct {
 	gatewayv1.Gateway
+	// Emitter IR should be provider/emitter neutral,
+	// But we have GCE for backcompatibility.
+	Gce *gce.GceGatewayIR
 }
 
 type HTTPRouteContext struct {

@@ -1,5 +1,5 @@
 /*
-Copyright 2025 The Kubernetes Authors.
+Copyright 2024 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,20 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package common_emitter
+package gce
 
 import (
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
-	"k8s.io/apimachinery/pkg/util/validation/field"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type Emitter struct{}
-
-func NewEmitter() *Emitter {
-	return &Emitter{}
-}
-
-// Emit processes the IR to apply common logic (like deduplication) and returns the modified IR.
-func (e *Emitter) Emit(ir emitter_intermediate.EmitterIR) (emitter_intermediate.EmitterIR, field.ErrorList) {
-	return ir, nil
+func notify(mType notifications.MessageType, message string, callingObject ...client.Object) {
+	newNotification := notifications.Notification{Type: mType, Message: message, CallingObjects: callingObject}
+	notifications.NotificationAggr.DispatchNotification(newNotification, string(ProviderName))
 }

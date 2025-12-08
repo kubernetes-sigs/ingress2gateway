@@ -21,8 +21,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func ToEmitterIR(pIR ProviderIR) emitter_intermediate.IR {
-	eIR := emitter_intermediate.IR{
+func ToEmitterIR(pIR ProviderIR) emitter_intermediate.EmitterIR {
+	eIR := emitter_intermediate.EmitterIR{
 		Gateways:           make(map[types.NamespacedName]emitter_intermediate.GatewayContext),
 		HTTPRoutes:         make(map[types.NamespacedName]emitter_intermediate.HTTPRouteContext),
 		GatewayClasses:     make(map[types.NamespacedName]emitter_intermediate.GatewayClassContext),

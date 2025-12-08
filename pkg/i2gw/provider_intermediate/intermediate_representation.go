@@ -19,6 +19,7 @@ package provider_intermediate
 import (
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
@@ -54,7 +55,7 @@ type GatewayContext struct {
 }
 
 type ProviderSpecificGatewayIR struct {
-	Gce          *GceGatewayIR
+	Gce          *gce.GceGatewayIR
 }
 
 // HTTPRouteContext contains the Gateway-API HTTPRoute object and HTTPRouteIR,
@@ -71,13 +72,13 @@ type HTTPRouteContext struct {
 }
 
 type ProviderSpecificHTTPRouteIR struct {
-	Gce          *GceHTTPRouteIR
+	Gce          *gce.GceHTTPRouteIR
 }
 
 // ServiceIR contains a dedicated field for each provider to specify their
 // extension features on Service.
 type ProviderSpecificServiceIR struct {
-	Gce          *GceServiceIR
+	Gce          *gce.GceServiceIR
 }
 
 // BackendSource tracks the source Ingress resource that contributed

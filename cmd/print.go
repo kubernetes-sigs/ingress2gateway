@@ -33,7 +33,7 @@ import (
 	// Call init function for the providers
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/apisix"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/cilium"
-	// _ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/gce"
+	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/gce"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
@@ -45,6 +45,7 @@ import (
 	
 	// Call init for emitters
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/default"
+	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/gce"
 )
 
 type PrintRunner struct {
@@ -320,11 +321,23 @@ func newPrintCommand() *cobra.Command {
 		Use:   "print",
 		Short: "Prints Gateway API objects generated from ingress and provider-specific resources.",
 		RunE:  pr.PrintGatewayAPIObjects,
-		PreRunE: func(_ *cobra.Command, _ []string) error {
+		PreRunE: func(cmd *cobra.Command, _ []string) error {
 			openAPIExist := slices.Contains(pr.providers, "openapi3")
 			if openAPIExist && len(pr.providers) != 1 {
 				return fmt.Errorf("openapi3 must be the only provider when specified")
 			}
+
+			// Auto-set emitter for GCE provider
+			gceProviderUsed := slices.Contains(pr.providers, "gce")
+			emitterFlagChanged := cmd.Flags().Changed("emitter")
+
+			if gceProviderUsed {
+				if emitterFlagChanged && pr.emitter != "gce" {
+					return fmt.Errorf("when using the gce provider, the emitter must be 'gce' (got '%s')", pr.emitter)
+				}
+				pr.emitter = "gce"
+			}
+
 			return nil
 		},
 	}

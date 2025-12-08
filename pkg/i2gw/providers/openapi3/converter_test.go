@@ -151,7 +151,7 @@ func TestFileConvertion(t *testing.T) {
 	})
 }
 
-func readGatewayResourcesFromFile(t *testing.T, filename string) (*emitter_intermediate.IR, error) {
+func readGatewayResourcesFromFile(t *testing.T, filename string) (*emitter_intermediate.EmitterIR, error) {
 	t.Helper()
 
 	stream, err := os.ReadFile(filename)
@@ -164,7 +164,7 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*emitter_inter
 		return nil, fmt.Errorf("failed to extract objects: %w", err)
 	}
 
-	res := emitter_intermediate.IR{
+	res := emitter_intermediate.EmitterIR{
 		Gateways:        make(map[types.NamespacedName]emitter_intermediate.GatewayContext),
 		HTTPRoutes:      make(map[types.NamespacedName]emitter_intermediate.HTTPRouteContext),
 		TLSRoutes:       make(map[types.NamespacedName]emitter_intermediate.TLSRouteContext),

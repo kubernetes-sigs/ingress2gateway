@@ -73,7 +73,7 @@ type CustomResourceReader interface {
 // and extensions into IR.
 type ResourcesToIRConverter interface {
 	// ToIR converts stored API entities associated with the Provider into IR.
-	ToIR() (emitter_intermediate.IR, field.ErrorList)
+	ToIR() (emitter_intermediate.EmitterIR, field.ErrorList)
 }
 
 // ImplementationSpecificHTTPPathTypeMatchConverter is an option to customize the ingress implementationSpecific

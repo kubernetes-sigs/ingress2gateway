@@ -78,7 +78,7 @@ func removeBackendRefsDuplicates(backendRefs []gatewayv1.HTTPBackendRef) []gatew
 
 // ToGatewayResources converts the received emitter_intermediate.IR to i2gw.GatewayResource
 // without taking into consideration any emitter specific logic.
-func ToGatewayResources(ir emitter_intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
+func ToGatewayResources(ir emitter_intermediate.EmitterIR) (i2gw.GatewayResources, field.ErrorList) {
 	gatewayResources := i2gw.GatewayResources{
 		Gateways:           make(map[types.NamespacedName]gatewayv1.Gateway),
 		HTTPRoutes:         make(map[types.NamespacedName]gatewayv1.HTTPRoute),
