@@ -16,6 +16,10 @@ spec:
     name: myserviceb-foo-org-http
     port: 80
     protocol: HTTP
+  - hostname: sessionaffinity.example.org
+    name: sessionaffinity-example-org-http
+    port: 80
+    protocol: HTTP
 status: {}
 ---
 apiVersion: gateway.networking.k8s.io/v1
@@ -83,6 +87,29 @@ spec:
 status:
   parents: []
 ---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: ingress-sessionaffinity-sessionaffinity-example-org
+  namespace: default
+spec:
+  hostnames:
+  - sessionaffinity.example.org
+  parentRefs:
+  - name: nginx
+  rules:
+  - backendRefs:
+    - name: httpbin
+      port: 80
+    matches:
+    - path:
+        type: PathPrefix
+        value: /
+status:
+  parents: []
+---
 apiVersion: gateway.kgateway.dev/v1alpha1
 kind: Backend
 metadata:
@@ -99,7 +126,29 @@ status: {}
 apiVersion: gateway.kgateway.dev/v1alpha1
 kind: BackendConfigPolicy
 metadata:
-  name: myservicea-connect-timeout
+  name: httpbin-backend-config
+  namespace: default
+spec:
+  loadBalancer:
+    ringHash:
+      hashPolicies:
+      - cookie:
+          name: session-id
+          path: /api
+          sameSite: Strict
+          secure: true
+          ttl: 168h0m0s
+  targetRefs:
+  - group: ""
+    kind: Service
+    name: httpbin
+status:
+  ancestors: null
+---
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: BackendConfigPolicy
+metadata:
+  name: myservicea-backend-config
   namespace: default
 spec:
   connectTimeout: 30s
@@ -113,7 +162,7 @@ status:
 apiVersion: gateway.kgateway.dev/v1alpha1
 kind: BackendConfigPolicy
 metadata:
-  name: myserviceb-connect-timeout
+  name: myserviceb-backend-config
   namespace: default
 spec:
   connectTimeout: 2m0s

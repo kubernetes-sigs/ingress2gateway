@@ -58,6 +58,14 @@ The command should generate Gateway API and Kgateway resources.
 ### Backend Behavior
 
 - `nginx.ingress.kubernetes.io/proxy-connect-timeout`
+- `nginx.ingress.kubernetes.io/affinity`: Enables session affinity (only "cookie" type is supported). Maps to `BackendConfigPolicy.spec.loadBalancer.ringHash.hashPolicies`.
+- `nginx.ingress.kubernetes.io/session-cookie-name`: Specifies the name of the cookie used for session affinity. Maps to `BackendConfigPolicy.spec.loadBalancer.ringHash.hashPolicies[].cookie.name`.
+- `nginx.ingress.kubernetes.io/session-cookie-path`: Defines the path that will be set on the cookie. Maps to `BackendConfigPolicy.spec.loadBalancer.ringHash.hashPolicies[].cookie.path`.
+- `nginx.ingress.kubernetes.io/session-cookie-domain`: Sets the Domain attribute of the sticky cookie. **Note:** This annotation is parsed but not currently mapped to kgateway as the Cookie type doesn't support domain.
+- `nginx.ingress.kubernetes.io/session-cookie-samesite`: Applies a SameSite attribute to the sticky cookie. Browser accepted values are None, Lax, and Strict. Maps to `BackendConfigPolicy.spec.loadBalancer.ringHash.hashPolicies[].cookie.sameSite`.
+- `nginx.ingress.kubernetes.io/session-cookie-expires`: Sets the TTL/expiration time for the cookie. Maps to `BackendConfigPolicy.spec.loadBalancer.ringHash.hashPolicies[].cookie.ttl`.
+- `nginx.ingress.kubernetes.io/session-cookie-max-age`: Sets the TTL/expiration time for the cookie (takes precedence over `session-cookie-expires`). Maps to `BackendConfigPolicy.spec.loadBalancer.ringHash.hashPolicies[].cookie.ttl`.
+- `nginx.ingress.kubernetes.io/session-cookie-secure`: Sets the Secure flag on the cookie. Maps to `BackendConfigPolicy.spec.loadBalancer.ringHash.hashPolicies[].cookie.secure`.
 
 ### External Auth
 
@@ -95,9 +103,10 @@ Annotations in the **Backend Behavior** category are converted into
 
 Currently supported:
 
-- `proxy-connect-timeout`
+- `proxy-connect-timeout`: Maps to `BackendConfigPolicy.spec.connectTimeout`
+- Session affinity annotations: Maps to `BackendConfigPolicy.spec.loadBalancer.ringHash.hashPolicies` with cookie-based hash policy
 
-If multiple Ingresses target the same Service with conflicting values,
+If multiple Ingresses target the same Service with conflicting `proxy-connect-timeout` values,
 the lowest timeout wins and a warning is emitted.
 
 ### Summary of Policy Types
@@ -131,8 +140,4 @@ spec:
           value: "%DOWNSTREAM_REMOTE_ADDRESS%"
 ```
 
-`nginx.ingress.kubernetes.io/affinity`
-
-This annotation sets all upstreams to use session cookie affinity.
-This is supported in kgateway by the sessionPersistence HTTPRoute rule or by using the LoadBalancer configuration on BackendConfigPolicy.
 

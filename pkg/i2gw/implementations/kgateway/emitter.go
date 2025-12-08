@@ -126,6 +126,15 @@ func (e *Emitter) Emit(ir *intermediate.IR) ([]client.Object, error) {
 				svcTimeouts,
 			)
 
+			// Apply session affinity via BackendConfigPolicy.
+			// Note: "touched" is not updated here, as this does not affect TrafficPolicy.
+			applySessionAffinityPolicy(
+				pol,
+				httpRouteKey,
+				httpRouteContext,
+				backendCfg,
+			)
+
 			// Apply enable-access-log via HTTPListenerPolicy.
 			applyAccessLogPolicy(
 				pol,
@@ -553,9 +562,11 @@ func applyProxyConnectTimeoutPolicy(
 		// Create or reuse BackendConfigPolicy per Service
 		bcp, exists := backendCfg[svcKey]
 		if !exists {
+			// Use a generic name that works for all backend config features
+			policyName := svcName + "-backend-config"
 			bcp = &kgateway.BackendConfigPolicy{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      svcName + "-connect-timeout",
+					Name:      policyName,
 					Namespace: httpRouteKey.Namespace,
 				},
 				Spec: kgateway.BackendConfigPolicySpec{
@@ -578,6 +589,120 @@ func applyProxyConnectTimeoutPolicy(
 			if next < cur {
 				bcp.Spec.ConnectTimeout = pol.ProxyConnectTimeout
 			}
+		}
+	}
+
+	return true
+}
+
+// applySessionAffinityPolicy projects the SessionAffinity IR policy into one or more
+// Kgateway BackendConfigPolicies.
+//
+// Semantics:
+//   - We create at most one BackendConfigPolicy per Service.
+//   - That policy's Spec.LoadBalancer.RingHash.HashPolicies is configured with cookie-based
+//     session affinity settings from the Policy.SessionAffinity.
+//   - TargetRefs are populated with all core Service backends that this Policy covers
+//     (based on RuleBackendSources).
+func applySessionAffinityPolicy(
+	pol intermediate.Policy,
+	httpRouteKey types.NamespacedName,
+	httpRouteCtx intermediate.HTTPRouteContext,
+	backendCfg map[types.NamespacedName]*kgateway.BackendConfigPolicy,
+) bool {
+	if pol.SessionAffinity == nil {
+		return false
+	}
+
+	sessionAffinity := pol.SessionAffinity
+
+	for _, idx := range pol.RuleBackendSources {
+		if idx.Rule >= len(httpRouteCtx.Spec.Rules) {
+			continue
+		}
+		rule := httpRouteCtx.Spec.Rules[idx.Rule]
+		if idx.Backend >= len(rule.BackendRefs) {
+			continue
+		}
+
+		br := rule.BackendRefs[idx.Backend]
+
+		if br.BackendRef.Group != nil && *br.BackendRef.Group != "" {
+			continue
+		}
+		if br.BackendRef.Kind != nil && *br.BackendRef.Kind != "Service" {
+			continue
+		}
+
+		svcName := string(br.BackendRef.Name)
+		if svcName == "" {
+			continue
+		}
+
+		svcKey := types.NamespacedName{
+			Namespace: httpRouteKey.Namespace,
+			Name:      svcName,
+		}
+
+		// Create or reuse BackendConfigPolicy per Service
+		bcp, exists := backendCfg[svcKey]
+		if !exists {
+			// Determine policy name - use a generic name that works for both
+			// session affinity and other backend config features
+			policyName := svcName + "-backend-config"
+			bcp = &kgateway.BackendConfigPolicy{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      policyName,
+					Namespace: httpRouteKey.Namespace,
+				},
+				Spec: kgateway.BackendConfigPolicySpec{
+					TargetRefs: []shared.LocalPolicyTargetReference{
+						{
+							Group: "",
+							Kind:  "Service",
+							Name:  gwv1.ObjectName(svcName),
+						},
+					},
+				},
+			}
+			bcp.SetGroupVersionKind(BackendConfigPolicyGVK)
+			backendCfg[svcKey] = bcp
+		}
+
+		// Build hash policy with cookie configuration
+		cookieHashPolicy := &kgateway.Cookie{
+			Name: sessionAffinity.CookieName,
+		}
+
+		if sessionAffinity.CookiePath != "" {
+			cookieHashPolicy.Path = ptr.To(sessionAffinity.CookiePath)
+		}
+
+		if sessionAffinity.CookieExpires != nil {
+			cookieHashPolicy.TTL = sessionAffinity.CookieExpires
+		}
+
+		if sessionAffinity.CookieSecure != nil {
+			cookieHashPolicy.Secure = ptr.To(*sessionAffinity.CookieSecure)
+		}
+
+		if sessionAffinity.CookieSameSite != "" {
+			cookieHashPolicy.SameSite = ptr.To(sessionAffinity.CookieSameSite)
+		}
+
+		// Set loadBalancer.ringHash.hashPolicies
+		if bcp.Spec.LoadBalancer == nil {
+			bcp.Spec.LoadBalancer = &kgateway.LoadBalancer{}
+		}
+		if bcp.Spec.LoadBalancer.RingHash == nil {
+			bcp.Spec.LoadBalancer.RingHash = &kgateway.LoadBalancerRingHashConfig{}
+		}
+		// Replace existing hash policies with the new cookie-based one
+		// (only one hash policy per service is typically needed)
+		bcp.Spec.LoadBalancer.RingHash.HashPolicies = []kgateway.HashPolicy{
+			{
+				Cookie: cookieHashPolicy,
+			},
 		}
 	}
 

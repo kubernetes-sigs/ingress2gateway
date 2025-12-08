@@ -47,6 +47,7 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 			enableAccessLogFeature,
 			extAuthFeature,
 			basicAuthFeature,
+			sessionAffinityFeature,
 		},
 	}
 }

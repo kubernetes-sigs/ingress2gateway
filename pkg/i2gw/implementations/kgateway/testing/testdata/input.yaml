@@ -88,3 +88,32 @@ spec:
               number: 80
         path: /
         pathType: Prefix
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    ingress2gateway.kubernetes.io/implementation: kgateway
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "session-id"
+    nginx.ingress.kubernetes.io/session-cookie-path: "/api"
+    nginx.ingress.kubernetes.io/session-cookie-domain: "example.com"
+    nginx.ingress.kubernetes.io/session-cookie-samesite: "Strict"
+    nginx.ingress.kubernetes.io/session-cookie-expires: "3600"
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "604800"
+    nginx.ingress.kubernetes.io/session-cookie-secure: "true"
+  name: ingress-sessionaffinity
+  namespace: default
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: sessionaffinity.example.org
+    http:
+      paths:
+      - backend:
+          service:
+            name: httpbin
+            port:
+              number: 80
+        path: /
+        pathType: Prefix

@@ -59,6 +59,22 @@ type BasicAuthPolicy struct {
 	SecretName string
 }
 
+// SessionAffinityPolicy defines a session affinity policy that has been extracted from ingress-nginx annotations.
+type SessionAffinityPolicy struct {
+	// CookieName defines the name of the cookie used for session affinity.
+	CookieName string
+	// CookiePath defines the path that will be set on the cookie.
+	CookiePath string
+	// CookieDomain defines the Domain attribute of the sticky cookie.
+	CookieDomain string
+	// CookieSameSite defines the SameSite attribute of the sticky cookie (None, Lax, Strict).
+	CookieSameSite string
+	// CookieExpires defines the TTL/expiration time for the cookie.
+	CookieExpires *metav1.Duration
+	// CookieSecure defines whether the Secure flag is set on the cookie.
+	CookieSecure *bool
+}
+
 // Policy describes all per-Ingress policy knobs that ingress-nginx projects into the
 // IR (buffer, CORS, etc.).
 type Policy struct {
@@ -88,6 +104,9 @@ type Policy struct {
 
 	// BasicAuth defines the basic authentication policy.
 	BasicAuth *BasicAuthPolicy
+
+	// SessionAffinity defines the session affinity policy.
+	SessionAffinity *SessionAffinityPolicy
 
 	RuleBackendSources []PolicyIndex
 
