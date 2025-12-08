@@ -41,7 +41,6 @@ func MergeIRs(irs ...ProviderIR) (ProviderIR, field.ErrorList) {
 		Gateways:           make(map[types.NamespacedName]GatewayContext),
 		GatewayClasses:     make(map[types.NamespacedName]gatewayv1.GatewayClass),
 		HTTPRoutes:         make(map[types.NamespacedName]HTTPRouteContext),
-		// Services:           make(map[types.NamespacedName]ProviderSpecificServiceIR),
 		TLSRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
 		TCPRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
 		UDPRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.UDPRoute),
@@ -96,12 +95,3 @@ func mergeGatewayContexts(irs []ProviderIR) (map[types.NamespacedName]GatewayCon
 	}
 	return newGatewayContexts, errs
 }
-
-// I THINK WE CAN REMOVE THIS FOR NOW
-// func mergedGatewayIR(current, existing ProviderSpecificGatewayIR) ProviderSpecificGatewayIR {
-// 	var mergedGatewayIR ProviderSpecificGatewayIR
-// 	// TODO(issue #190): Find a different way to merge GatewayIR, instead of
-// 	// delegating them to each provider.
-// 	mergedGatewayIR.Gce = mergeGceGatewayIR(current.Gce, existing.Gce)
-// 	return mergedGatewayIR
-// }

@@ -54,17 +54,13 @@ var (
 )
 
 func init() {
-	i2gw.EmitterConstructorByName["default"] = NewDefaultEmitter
+	i2gw.EmitterConstructorByName["gce"] = NewGceEmitter
 }
 
 type GceEmitter struct{}
 
-func NewDefaultEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
+func NewGceEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
 	return &GceEmitter{}
-}
-
-func newIRToGatewayResourcesConverter() GceEmitter {
-	return GceEmitter{}
 }
 
 func (c *GceEmitter) Emit(ir emitter_intermediate.EmitterIR) (i2gw.GatewayResources, field.ErrorList) {

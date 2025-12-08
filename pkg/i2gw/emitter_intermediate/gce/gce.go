@@ -45,18 +45,3 @@ type HealthCheckConfig struct {
 	Port               *int64
 	RequestPath        *string
 }
-
-func mergeGceGatewayIR(current, existing *GceGatewayIR) *GceGatewayIR {
-	// If either GceGatewayIR is nil, return the other one as the merged result.
-	if current == nil {
-		return existing
-	}
-	if existing == nil {
-		return current
-	}
-
-	// If both GceGatewayIRs are not nil, merge their fields.
-	var mergedGatewayIR GceGatewayIR
-	mergedGatewayIR.EnableHTTPSRedirect = current.EnableHTTPSRedirect || existing.EnableHTTPSRedirect
-	return &mergedGatewayIR
-}
