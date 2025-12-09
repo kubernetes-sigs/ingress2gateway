@@ -79,7 +79,7 @@ The above command will:
 | namespace      |                         | No       | If present, the namespace scope for the invocation.           |
 | output         | yaml                    | No       | The output format, either yaml or json.                       |
 | providers      |  | Yes       | Comma-separated list of providers (only ingress-nginx is supported in this downstream). |
-| implementations      |  | Yes       | Comma-separated list of providers (only kgateway is supported in this downstream). |
+| implementations      |  | Yes       | Comma-separated list of implementation emitters (only kgateway is supported in this downstream). |
 | kubeconfig     |                         | No       | The kubeconfig file to use when talking to the cluster. If the flag is not set, a set of standard locations can be searched for an existing kubeconfig file. |
 
 ## Conversion of Ingress resources to Gateway API
