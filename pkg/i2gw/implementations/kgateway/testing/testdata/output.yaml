@@ -110,23 +110,6 @@ spec:
 status:
   parents: []
 ---
-apiVersion: gateway.networking.k8s.io/v1
-kind: BackendTLSPolicy
-metadata:
-  annotations:
-    gateway.networking.k8s.io/generator: ingress2gateway-dev
-  name: httpbin2-backend-tls
-  namespace: default
-spec:
-  targetRefs:
-  - group: ""
-    kind: Service
-    name: httpbin2
-  validation:
-    hostname: tls.example.com
-status:
-  ancestors: null
----
 apiVersion: gateway.kgateway.dev/v1alpha1
 kind: Backend
 metadata:
@@ -139,6 +122,23 @@ spec:
       port: 443
   type: Static
 status: {}
+---
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: BackendConfigPolicy
+metadata:
+  name: httpbin2-backend-config
+  namespace: default
+spec:
+  targetRefs:
+  - group: ""
+    kind: Service
+    name: httpbin2
+  tls:
+    secretRef:
+      name: base-certificate-tls
+    sni: tls.example.com
+status:
+  ancestors: null
 ---
 apiVersion: gateway.kgateway.dev/v1alpha1
 kind: BackendConfigPolicy

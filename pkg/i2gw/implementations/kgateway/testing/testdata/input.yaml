@@ -127,6 +127,7 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-ssl-secret: default/base-certificate-tls
     nginx.ingress.kubernetes.io/proxy-ssl-server-name: "on"
     nginx.ingress.kubernetes.io/proxy-ssl-name: "tls.example.com"
+    nginx.ingress.kubernetes.io/proxy-ssl-verify: "on"
   name: ingress-sessionaffinity
   namespace: default
 spec:

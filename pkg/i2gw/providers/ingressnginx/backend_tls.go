@@ -23,10 +23,8 @@ import (
 	"github.com/kgateway-dev/ingress2gateway/pkg/i2gw/providers/common"
 
 	networkingv1 "k8s.io/api/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 const (
@@ -37,8 +35,8 @@ const (
 )
 
 // backendTLSFeature parses backend TLS annotations and stores them in the IR Policy.
-// It also creates BackendTLSPolicy resources in the IR for each unique service that
-// requires backend TLS configuration.
+// The TLS configuration is then applied to kgateway BackendConfigPolicy resources
+// in the kgateway emitter.
 //
 // Semantics:
 //   - proxy-ssl-secret: Specifies a Secret with tls.crt, tls.key, and ca.crt in PEM format.
@@ -46,8 +44,8 @@ const (
 //   - proxy-ssl-verify: Enables or disables verification of the proxied HTTPS server certificate.
 //     Values: "on" or "off" (default: "off")
 //   - proxy-ssl-name: Overrides the server name used to verify the certificate and passed via SNI.
-//     In Gateway API, this maps to Validation.Hostname, which enables SNI automatically.
-//   - proxy-ssl-server-name: Not handled separately. In Gateway API, SNI is enabled when Hostname is set.
+//     In kgateway BackendConfigPolicy, this maps to TLS configuration fields.
+//   - proxy-ssl-server-name: Not handled separately. SNI is enabled when hostname is set.
 func backendTLSFeature(
 	ingresses []networkingv1.Ingress,
 	servicePorts map[types.NamespacedName]map[string]int32,
@@ -57,10 +55,6 @@ func backendTLSFeature(
 
 	// Per-Ingress parsed backend TLS policy.
 	perIngress := map[types.NamespacedName]*intermediate.BackendTLSPolicy{}
-
-	// Track which services need BackendTLSPolicy resources.
-	// Key: service namespaced name, Value: backend TLS policy data
-	serviceBackendTLS := map[types.NamespacedName]*backendTLSPolicyData{}
 
 	for i := range ingresses {
 		ing := &ingresses[i]
@@ -116,9 +110,6 @@ func backendTLSFeature(
 		// If proxy-ssl-name is set, SNI is automatically enabled.
 
 		perIngress[key] = policy
-
-		// Collect services that need BackendTLSPolicy from this ingress
-		collectServicesFromIngress(ing, policy, serviceBackendTLS)
 	}
 
 	if len(perIngress) == 0 {
@@ -186,134 +177,5 @@ func backendTLSFeature(
 		ir.HTTPRoutes[routeKey] = httpCtx
 	}
 
-	// Create BackendTLSPolicy resources for each service
-	for svcKey, tlsData := range serviceBackendTLS {
-		policyName := generateBackendTLSPolicyName(svcKey)
-		policy := createBackendTLSPolicy(svcKey.Namespace, policyName, svcKey.Name, tlsData)
-
-		policyKey := types.NamespacedName{
-			Namespace: svcKey.Namespace,
-			Name:      policyName,
-		}
-		ir.BackendTLSPolicies[policyKey] = policy
-	}
-
 	return errs
-}
-
-// backendTLSPolicyData holds the data needed to create a BackendTLSPolicy.
-type backendTLSPolicyData struct {
-	// SecretNamespace and SecretName are parsed from the "namespace/secretName" format
-	SecretNamespace string
-	SecretName      string
-	// Verify enables certificate verification
-	Verify bool
-	// Hostname is the server name for SNI and certificate verification.
-	// In Gateway API, setting Hostname enables SNI automatically.
-	Hostname string
-}
-
-// collectServicesFromIngress collects all services referenced by an ingress that need BackendTLSPolicy.
-func collectServicesFromIngress(ing *networkingv1.Ingress, policy *intermediate.BackendTLSPolicy, serviceBackendTLS map[types.NamespacedName]*backendTLSPolicyData) {
-	// Parse secret name (format: "namespace/secretName")
-	secretNamespace := ing.Namespace
-	secretName := policy.SecretName
-	if parts := strings.SplitN(policy.SecretName, "/", 2); len(parts) == 2 {
-		secretNamespace = parts[0]
-		secretName = parts[1]
-	}
-
-	tlsData := &backendTLSPolicyData{
-		SecretNamespace: secretNamespace,
-		SecretName:      secretName,
-		Verify:          policy.Verify,
-		Hostname:        policy.Hostname,
-	}
-
-	// Collect services from default backend
-	if ing.Spec.DefaultBackend != nil && ing.Spec.DefaultBackend.Service != nil {
-		svcKey := types.NamespacedName{
-			Namespace: ing.Namespace,
-			Name:      ing.Spec.DefaultBackend.Service.Name,
-		}
-		serviceBackendTLS[svcKey] = tlsData
-	}
-
-	// Collect services from rules
-	for _, rule := range ing.Spec.Rules {
-		if rule.HTTP == nil {
-			continue
-		}
-		for _, path := range rule.HTTP.Paths {
-			if path.Backend.Service != nil {
-				svcKey := types.NamespacedName{
-					Namespace: ing.Namespace,
-					Name:      path.Backend.Service.Name,
-				}
-				serviceBackendTLS[svcKey] = tlsData
-			}
-		}
-	}
-}
-
-// generateBackendTLSPolicyName generates a name for the BackendTLSPolicy based on the service name.
-func generateBackendTLSPolicyName(svcKey types.NamespacedName) string {
-	return svcKey.Name + "-backend-tls"
-}
-
-// createBackendTLSPolicy creates a BackendTLSPolicy resource.
-func createBackendTLSPolicy(namespace, policyName, serviceName string, tlsData *backendTLSPolicyData) gatewayv1.BackendTLSPolicy {
-	policy := gatewayv1.BackendTLSPolicy{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: gatewayv1.GroupVersion.String(),
-			Kind:       "BackendTLSPolicy",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      policyName,
-			Namespace: namespace,
-		},
-		Spec: gatewayv1.BackendTLSPolicySpec{
-			TargetRefs: []gatewayv1.LocalPolicyTargetReferenceWithSectionName{
-				{
-					LocalPolicyTargetReference: gatewayv1.LocalPolicyTargetReference{
-						Group: "", // Core group
-						Kind:  "Service",
-						Name:  gatewayv1.ObjectName(serviceName),
-					},
-				},
-			},
-			Validation: gatewayv1.BackendTLSPolicyValidation{},
-		},
-	}
-
-	// Set CA certificate reference if secret is specified and verification is enabled
-	// Note: In Gateway API, the presence of CACertificateRefs implies certificate verification.
-	// If proxy-ssl-verify is "off", we don't set CACertificateRefs to match nginx behavior.
-	if tlsData.SecretName != "" && tlsData.Verify {
-		policy.Spec.Validation.CACertificateRefs = []gatewayv1.LocalObjectReference{
-			{
-				Group: "", // Core group
-				Kind:  "Secret",
-				Name:  gatewayv1.ObjectName(tlsData.SecretName),
-			},
-		}
-	}
-
-	// Set hostname if proxy-ssl-name is specified.
-	// In Gateway API, setting Validation.Hostname enables SNI automatically.
-	// The same hostname value is used for both SNI and certificate validation.
-	if tlsData.Hostname != "" {
-		policy.Spec.Validation.Hostname = gatewayv1.PreciseHostname(tlsData.Hostname)
-	}
-
-	// Note: Gateway API BackendTLSPolicy limitations:
-	// - Client certificates (tls.crt, tls.key from the secret) are not directly supported.
-	//   These are implementation-specific and may need to be configured separately.
-	// - proxy-ssl-verify is mapped to the presence/absence of CACertificateRefs.
-	//   If verify is "off", CACertificateRefs is not set.
-	// - proxy-ssl-name maps to Validation.Hostname, which enables SNI automatically.
-	//   There is no separate "enable SNI" boolean in Gateway API.
-	// - proxy-ssl-server-name is not handled separately since SNI is enabled when Hostname is set.
-
-	return policy
 }
