@@ -58,6 +58,27 @@ The command should generate Gateway API and Kgateway resources.
 ### Backend Behavior
 
 - `nginx.ingress.kubernetes.io/proxy-connect-timeout`
+- `nginx.ingress.kubernetes.io/affinity`: Enables session affinity (only "cookie" type is supported). Maps to `BackendConfigPolicy.spec.loadBalancer.ringHash.hashPolicies`.
+- `nginx.ingress.kubernetes.io/session-cookie-name`: Specifies the name of the cookie used for session affinity. Maps to `BackendConfigPolicy.spec.loadBalancer.ringHash.hashPolicies[].cookie.name`.
+- `nginx.ingress.kubernetes.io/session-cookie-path`: Defines the path that will be set on the cookie. Maps to `BackendConfigPolicy.spec.loadBalancer.ringHash.hashPolicies[].cookie.path`.
+- `nginx.ingress.kubernetes.io/session-cookie-domain`: Sets the Domain attribute of the sticky cookie. **Note:** This annotation is parsed but not currently mapped to kgateway as the Cookie type doesn't support domain.
+- `nginx.ingress.kubernetes.io/session-cookie-samesite`: Applies a SameSite attribute to the sticky cookie. Browser accepted values are None, Lax, and Strict. Maps to `BackendConfigPolicy.spec.loadBalancer.ringHash.hashPolicies[].cookie.sameSite`.
+- `nginx.ingress.kubernetes.io/session-cookie-expires`: Sets the TTL/expiration time for the cookie. Maps to `BackendConfigPolicy.spec.loadBalancer.ringHash.hashPolicies[].cookie.ttl`.
+- `nginx.ingress.kubernetes.io/session-cookie-max-age`: Sets the TTL/expiration time for the cookie (takes precedence over `session-cookie-expires`). Maps to `BackendConfigPolicy.spec.loadBalancer.ringHash.hashPolicies[].cookie.ttl`.
+- `nginx.ingress.kubernetes.io/session-cookie-secure`: Sets the Secure flag on the cookie. Maps to `BackendConfigPolicy.spec.loadBalancer.ringHash.hashPolicies[].cookie.secure`.
+
+### External Auth
+
+- `nginx.ingress.kubernetes.io/auth-url`: Specifies the URL of an external authentication service.
+- `nginx.ingress.kubernetes.io/auth-response-headers`: Comma-separated list of headers to pass to backend once authentication request completes.
+
+### Basic Auth
+
+- `nginx.ingress.kubernetes.io/auth-type`: Must be set to `"basic"` to enable basic authentication. Maps to `TrafficPolicy.spec.basicAuth`.
+- `nginx.ingress.kubernetes.io/auth-secret`: Specifies the secret containing basic auth credentials in `namespace/name` format (or just `name` if in the same namespace). Maps to `TrafficPolicy.spec.basicAuth.secretRef.name`.
+
+### Access Logging
+- `nginx.ingress.kubernetes.io/enable-access-log`: If enabled, will create an HTTPListenerPolicy that will configure a basic policy for envoy access logging. Maps to `HTTPListenerPolicy.spec.accessLog[].fileSink`. This can be further customized as needed, see [docs](https://kgateway.dev/docs/envoy/2.0.x/security/access-logging/).
 
 ## TrafficPolicy Projection
 
@@ -82,9 +103,10 @@ Annotations in the **Backend Behavior** category are converted into
 
 Currently supported:
 
-- `proxy-connect-timeout`
+- `proxy-connect-timeout`: Maps to `BackendConfigPolicy.spec.connectTimeout`
+- Session affinity annotations: Maps to `BackendConfigPolicy.spec.loadBalancer.ringHash.hashPolicies` with cookie-based hash policy
 
-If multiple Ingresses target the same Service with conflicting values,
+If multiple Ingresses target the same Service with conflicting `proxy-connect-timeout` values,
 the lowest timeout wins and a warning is emitted.
 
 ### Summary of Policy Types
@@ -98,3 +120,24 @@ the lowest timeout wins and a warning is emitted.
 
 - Only the **ingress-nginx provider** is currently supported by the Kgateway emitter.
 - Some NGINX behaviors cannot be reproduced exactly due to Envoy/Kgateway differences.
+
+
+## Supported but not tranlated Annotations 
+
+The following annotations have equivalents in kgateway but are not (as of yet) translated by this tool.
+
+`nginx.ingress.kubernetes.io/auth-proxy-set-headers`
+
+Supported in TrafficPolicy
+
+```
+spec:
+  extAuth:
+    httpService:
+      authorizationRequest:
+        headersToAdd:
+        - key: x-forwarded-host
+          value: "%DOWNSTREAM_REMOTE_ADDRESS%"
+```
+
+

@@ -44,6 +44,10 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 			proxySendTimeoutFeature,
 			proxyReadTimeoutFeature,
 			proxyConnectTimeoutFeature,
+			enableAccessLogFeature,
+			extAuthFeature,
+			basicAuthFeature,
+			sessionAffinityFeature,
 		},
 	}
 }

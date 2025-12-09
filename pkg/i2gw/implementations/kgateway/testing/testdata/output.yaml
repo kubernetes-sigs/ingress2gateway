@@ -16,6 +16,10 @@ spec:
     name: myserviceb-foo-org-http
     port: 80
     protocol: HTTP
+  - hostname: sessionaffinity.example.org
+    name: sessionaffinity-example-org-http
+    port: 80
+    protocol: HTTP
 status: {}
 ---
 apiVersion: gateway.networking.k8s.io/v1
@@ -83,6 +87,131 @@ spec:
 status:
   parents: []
 ---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: ingress-sessionaffinity-sessionaffinity-example-org
+  namespace: default
+spec:
+  hostnames:
+  - sessionaffinity.example.org
+  parentRefs:
+  - name: nginx
+  rules:
+  - backendRefs:
+    - name: httpbin
+      port: 80
+    matches:
+    - path:
+        type: PathPrefix
+        value: /
+status:
+  parents: []
+---
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: Backend
+metadata:
+  name: auth-example-com-backend
+  namespace: default
+spec:
+  static:
+    hosts:
+    - host: auth.example.com
+      port: 443
+  type: Static
+status: {}
+---
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: BackendConfigPolicy
+metadata:
+  name: httpbin-backend-config
+  namespace: default
+spec:
+  loadBalancer:
+    ringHash:
+      hashPolicies:
+      - cookie:
+          name: session-id
+          path: /api
+          sameSite: Strict
+          secure: true
+          ttl: 168h0m0s
+  targetRefs:
+  - group: ""
+    kind: Service
+    name: httpbin
+status:
+  ancestors: null
+---
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: BackendConfigPolicy
+metadata:
+  name: myservicea-backend-config
+  namespace: default
+spec:
+  connectTimeout: 30s
+  targetRefs:
+  - group: ""
+    kind: Service
+    name: myservicea
+status:
+  ancestors: null
+---
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: BackendConfigPolicy
+metadata:
+  name: myserviceb-backend-config
+  namespace: default
+spec:
+  connectTimeout: 2m0s
+  targetRefs:
+  - group: ""
+    kind: Service
+    name: myserviceb
+status:
+  ancestors: null
+---
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: GatewayExtension
+metadata:
+  name: auth-example-com-extauth
+  namespace: default
+spec:
+  extAuth:
+    httpService:
+      authorizationResponse:
+        headersToBackend:
+        - X-Auth-Token
+        - X-User-ID
+      backendRef:
+        group: gateway.kgateway.dev
+        kind: Backend
+        name: auth-example-com-backend
+      pathPrefix: /
+status: {}
+---
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: HTTPListenerPolicy
+metadata:
+  name: nginx-access-log
+  namespace: default
+spec:
+  accessLog:
+  - fileSink:
+      path: /dev/stdout
+      stringFormat: '[%START_TIME%] "%REQ(:METHOD)% %REQ(X-ENVOY-ORIGINAL-PATH?:PATH)%
+        %PROTOCOL%" %RESPONSE_CODE% %RESPONSE_FLAGS% %BYTES_RECEIVED% %BYTES_SENT%
+        %DURATION% %RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)% "%REQ(X-FORWARDED-FOR)%"
+        "%REQ(USER-AGENT)%" "%REQ(X-REQUEST-ID)%" "%REQ(:AUTHORITY)%" "%UPSTREAM_HOST%"%n'
+  targetRefs:
+  - group: ""
+    kind: Gateway
+    name: nginx
+status:
+  ancestors: null
+---
 apiVersion: gateway.kgateway.dev/v1alpha1
 kind: TrafficPolicy
 metadata:
@@ -95,6 +224,10 @@ spec:
     allowOrigins:
     - https://example.com
     - https://another.com
+  extAuth:
+    extensionRef:
+      name: auth-example-com-extauth
+      namespace: default
   rateLimit:
     local:
       tokenBucket:
@@ -137,6 +270,9 @@ metadata:
   name: ingress-myserviceb
   namespace: default
 spec:
+  basicAuth:
+    secretRef:
+      name: basic-auth-secret
   buffer:
     maxRequestSize: 100m
   cors:
@@ -156,33 +292,5 @@ spec:
   timeouts:
     request: 1m30s
     streamIdle: 1m30s
-status:
-  ancestors: null
----
-apiVersion: gateway.kgateway.dev/v1alpha1
-kind: BackendConfigPolicy
-metadata:
-  name: myservicea-connect-timeout
-  namespace: default
-spec:
-  connectTimeout: 30s
-  targetRefs:
-  - group: ""
-    kind: Service
-    name: myservicea
-status:
-  ancestors: null
----
-apiVersion: gateway.kgateway.dev/v1alpha1
-kind: BackendConfigPolicy
-metadata:
-  name: myserviceb-connect-timeout
-  namespace: default
-spec:
-  connectTimeout: 2m0s
-  targetRefs:
-  - group: ""
-    kind: Service
-    name: myserviceb
 status:
   ancestors: null
