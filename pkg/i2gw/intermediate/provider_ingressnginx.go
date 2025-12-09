@@ -75,6 +75,21 @@ type SessionAffinityPolicy struct {
 	CookieSecure *bool
 }
 
+// BackendTLSPolicy defines a backend TLS policy that has been extracted from ingress-nginx annotations.
+type BackendTLSPolicy struct {
+	// SecretName defines the name of the secret containing client certificate (tls.crt),
+	// client key (tls.key), and CA certificate (ca.crt) in PEM format.
+	// Format: "namespace/secretName"
+	SecretName string
+	// Verify enables or disables verification of the proxied HTTPS server certificate.
+	// Default: false (off)
+	Verify bool
+	// Hostname allows overriding the server name used to verify the certificate of the proxied HTTPS server.
+	// This value is also used for SNI when a connection is established.
+	// In Gateway API, setting Hostname enables SNI automatically.
+	Hostname string
+}
+
 // Policy describes all per-Ingress policy knobs that ingress-nginx projects into the
 // IR (buffer, CORS, etc.).
 type Policy struct {
@@ -107,6 +122,9 @@ type Policy struct {
 
 	// SessionAffinity defines the session affinity policy.
 	SessionAffinity *SessionAffinityPolicy
+
+	// BackendTLS defines the backend TLS policy.
+	BackendTLS *BackendTLSPolicy
 
 	RuleBackendSources []PolicyIndex
 

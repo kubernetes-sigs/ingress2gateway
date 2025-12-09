@@ -48,6 +48,7 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 			extAuthFeature,
 			basicAuthFeature,
 			sessionAffinityFeature,
+			backendTLSFeature,
 		},
 	}
 }
