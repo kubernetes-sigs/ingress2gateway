@@ -215,9 +215,18 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 				notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set header \"%s\" with value \"%s\"",
 					canarySourceIngress.Namespace, canarySourceIngress.Name, canaryConfig.header, canaryConfig.headerValue), &httpRouteContext.HTTPRoute)
 
-				// If weight isn't set, we need to remove the backendRef from the original non-canary rule
+				// If weight isn't set, we need to remove the canary backend from the original rule
+				// and only keep the non-canary backend
 				if !canaryConfig.isWeight {
-					httpRouteContext.HTTPRoute.Spec.Rules[ruleIdx].BackendRefs = []gatewayv1.HTTPBackendRef{*nonCanaryBackend}
+					// Find and remove the canary backend from the original rule's BackendRefs
+					var filteredBackendRefs []gatewayv1.HTTPBackendRef
+					for i := range httpRouteContext.HTTPRoute.Spec.Rules[ruleIdx].BackendRefs {
+						backendRef := &httpRouteContext.HTTPRoute.Spec.Rules[ruleIdx].BackendRefs[i]
+						if backendRef != canaryBackend {
+							filteredBackendRefs = append(filteredBackendRefs, *backendRef)
+						}
+					}
+					httpRouteContext.HTTPRoute.Spec.Rules[ruleIdx].BackendRefs = filteredBackendRefs
 				}
 			}
 		}
