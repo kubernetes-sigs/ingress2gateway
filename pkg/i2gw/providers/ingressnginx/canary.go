@@ -39,8 +39,10 @@ const (
 
 // canaryConfig holds the parsed canary configuration from a single Ingress
 type canaryConfig struct {
+	isHeader    bool
 	header      string
 	headerValue string
+	isWeight    bool
 	weight      int32
 	weightTotal int32
 }
@@ -52,10 +54,14 @@ func parseCanaryConfig(ingress *networkingv1.Ingress) (canaryConfig, error) {
 		weightTotal: 100, // default
 	}
 
+	if ingress.Annotations[canaryByHeader] != "" {
+		config.isHeader = true
+	}
 	config.header = ingress.Annotations[canaryByHeader]
 	config.headerValue = ingress.Annotations[canaryByHeaderValue]
 
 	if weight := ingress.Annotations[canaryWeightAnnotation]; weight != "" {
+		config.isWeight = true
 		w, err := strconv.ParseInt(weight, 10, 32)
 		if err != nil {
 			return config, fmt.Errorf("invalid canary-weight annotation %q: %w", weight, err)
@@ -155,17 +161,22 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 				}
 			}
 
-			// If there is a canary backend, validate and set weights
-			if canaryBackend != nil {
-				if nonCanaryBackend == nil {
-					errList = append(errList, field.Invalid(
-						field.NewPath("httproute", httpRouteContext.HTTPRoute.Name, "spec", "rules").Index(ruleIdx).Child("backendRefs"),
-						"canary backend without non-canary backend",
-						"a non-canary backend is required when using canary",
-					))
-					continue
-				}
+			// no canary backend, move to next rule
+			if canaryBackend == nil {
+				continue
+			}
 
+			// If there is a canary backend, there should be a non-canary backend too
+			if nonCanaryBackend == nil {
+				errList = append(errList, field.Invalid(
+					field.NewPath("httproute", httpRouteContext.HTTPRoute.Name, "spec", "rules").Index(ruleIdx).Child("backendRefs"),
+					"canary backend without non-canary backend",
+					"a non-canary backend is required when using canary",
+				))
+				continue
+			}
+
+			if canaryConfig.isWeight {
 				canaryWeight := canaryConfig.weight
 
 				canaryBackend.Weight = &canaryWeight
@@ -175,7 +186,8 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 				notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set weights (canary: %d, non-canary: %d, total: %d)",
 					canarySourceIngress.Namespace, canarySourceIngress.Name, canaryWeight, nonCanaryWeight, canaryConfig.weightTotal), &httpRouteContext.HTTPRoute)
 			}
-			if canaryConfig.header != "" {
+
+			if canaryConfig.isHeader {
 				var header string = "always"
 				if canaryConfig.headerValue != "" {
 					header = canaryConfig.headerValue
@@ -202,6 +214,11 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 				ir.HTTPRoutes[key] = httpRouteContext
 				notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set header \"%s\" with value \"%s\"",
 					canarySourceIngress.Namespace, canarySourceIngress.Name, canaryConfig.header, canaryConfig.headerValue), &httpRouteContext.HTTPRoute)
+
+				// If weight isn't set, we need to remove the backendRef from the original non-canary rule
+				if !canaryConfig.isWeight {
+					httpRouteContext.HTTPRoute.Spec.Rules[ruleIdx].BackendRefs = []gatewayv1.HTTPBackendRef{*nonCanaryBackend}
+				}
 			}
 		}
 	}
