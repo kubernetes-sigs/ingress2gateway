@@ -3,11 +3,13 @@
 approvers:
   - LiorLieberman
   - robscott
+  - Stevenjin8
   - youngnick
 
 reviewers:
   - LiorLieberman
   - rikatz
+  - Stevenjin8
 emeritus_approvers:
   - bowei
   - shaneutt
