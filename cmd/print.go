@@ -78,6 +78,7 @@ type PrintRunner struct {
 	providerSpecificFlags map[string]*string
 
 	// emitter indicates which emitter is used to generate the Gateway API resources.
+	// Defaults to "default".
 	emitter string
 }
 
@@ -356,7 +357,7 @@ func newPrintCommand() *cobra.Command {
 if specified with --namespace.`)
 
 	cmd.Flags().StringVar(&pr.emitter, "emitter", "default",
-		fmt.Sprintf("If present, the tool will try to use the specified emitter to generate the Gateway API resources, supported values are %v.", i2gw.GetSupportedEmitters()))
+		fmt.Sprintf("If present, the tool will try to use the specified emitter to generate the Gateway API resources, supported values are %v. The `default` emitter will only output Gateway API", i2gw.GetSupportedEmitters()))
 
 	cmd.Flags().StringSliceVar(&pr.providers, "providers", []string{},
 		fmt.Sprintf("If present, the tool will try to convert only resources related to the specified providers, supported values are %v.", i2gw.GetSupportedProviders()))

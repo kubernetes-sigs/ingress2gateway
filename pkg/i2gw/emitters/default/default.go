@@ -29,6 +29,8 @@ func init() {
 
 type DefaultEmitter struct{}
 
+// DefaultEmitter is the default emitter that converts the intermediate representation
+// to Gateway API resources without any provider-specific modifications.
 func NewDefaultEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
 	return &DefaultEmitter{}
 }
