@@ -95,6 +95,10 @@ type ImplementationSpecificHTTPPathTypeMatchConverter func(*gatewayv1.HTTPPathMa
 // implementation-specific fields of the ingress API.
 type ProviderImplementationSpecificOptions struct {
 	ToImplementationSpecificHTTPPathTypeMatch ImplementationSpecificHTTPPathTypeMatchConverter
+
+	// GatewayClassNameOverride, if non-empty, will be used as the GatewayClass name for generated Gateways.
+	// If empty, the provider's IngressClass is used.
+	GatewayClassNameOverride string
 }
 
 // GatewayResources contains all Gateway-API objects and provider Gateway

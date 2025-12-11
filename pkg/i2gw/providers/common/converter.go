@@ -289,13 +289,19 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImpleme
 		}
 		gateway := gatewaysByKey[gwKey]
 		if gateway == nil {
+			gwClass := parts[1]
+			if options.GatewayClassNameOverride != "" {
+				gwClass = options.GatewayClassNameOverride
+			}
 			gateway = &gatewayv1.Gateway{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: parts[0],
-					Name:      parts[1],
+					// TODO [danehans]: Should we have a better naming scheme for gateways
+					// or derive the name from the implementation-specific options (if defined)?
+					Name: parts[1],
 				},
 				Spec: gatewayv1.GatewaySpec{
-					GatewayClassName: gatewayv1.ObjectName(parts[1]),
+					GatewayClassName: gatewayv1.ObjectName(gwClass),
 				},
 			}
 			gateway.SetGroupVersionKind(GatewayGVK)

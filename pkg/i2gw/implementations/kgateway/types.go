@@ -14,26 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package intermediate
+package kgateway
 
-import (
-	"k8s.io/apimachinery/pkg/api/resource"
+import "k8s.io/apimachinery/pkg/runtime/schema"
+
+var (
+	TrafficPolicyGVK = schema.GroupVersionKind{
+		Group:   "gateway.kgateway.dev",
+		Version: "v1alpha1",
+		Kind:    "TrafficPolicy",
+	}
 )
-
-type IngressNginxGatewayIR struct{}
-
-type IngressNginxHTTPRouteIR struct {
-	Policies map[string]Policy // keyed by ingress name
-}
-
-type IngressNginxServiceIR struct{}
-
-type PolicyIndex struct {
-	Rule    int
-	Backend int
-}
-
-type Policy struct {
-	Buffer             *resource.Quantity
-	RuleBackendSources []PolicyIndex
-}
