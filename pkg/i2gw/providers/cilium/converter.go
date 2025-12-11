@@ -18,7 +18,7 @@ package cilium
 
 import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
+	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -42,7 +42,7 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 	}
 }
 
-func (c *resourcesToIRConverter) convertToIR(storage *storage) (provider_intermediate.ProviderIR, field.ErrorList) {
+func (c *resourcesToIRConverter) convertToIR(storage *storage) (providerir.ProviderIR, field.ErrorList) {
 	ingressList := []networkingv1.Ingress{}
 	for _, ing := range storage.Ingresses {
 		ingressList = append(ingressList, *ing)
@@ -51,7 +51,7 @@ func (c *resourcesToIRConverter) convertToIR(storage *storage) (provider_interme
 	// provider-specific features.
 	ir, errs := common.ToIR(ingressList, storage.ServicePorts, c.implementationSpecificOptions)
 	if len(errs) > 0 {
-		return provider_intermediate.ProviderIR{}, errs
+		return providerir.ProviderIR{}, errs
 	}
 
 	for _, parseFeatureFunc := range c.featureParsers {

@@ -22,7 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
+	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	apiv1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -42,14 +42,14 @@ func Test_ToIR(t *testing.T) {
 		name           string
 		ingresses      []networkingv1.Ingress
 		servicePorts   map[types.NamespacedName]map[string]int32
-		expectedIR     provider_intermediate.ProviderIR
+		expectedIR     providerir.ProviderIR
 		expectedErrors field.ErrorList
 	}{
 		{
 			name:           "empty",
 			ingresses:      []networkingv1.Ingress{},
 			servicePorts:   map[types.NamespacedName]map[string]int32{},
-			expectedIR:     provider_intermediate.ProviderIR{},
+			expectedIR:     providerir.ProviderIR{},
 			expectedErrors: field.ErrorList{},
 		},
 		{
@@ -80,8 +80,8 @@ func Test_ToIR(t *testing.T) {
 				},
 			}},
 			servicePorts: map[types.NamespacedName]map[string]int32{},
-			expectedIR: provider_intermediate.ProviderIR{
-				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
 					{Namespace: "test", Name: "simple"}: {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{Name: "simple", Namespace: "test"},
@@ -97,7 +97,7 @@ func Test_ToIR(t *testing.T) {
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]provider_intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 					{Namespace: "test", Name: "simple-example-com"}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{Name: "simple-example-com", Namespace: "test"},
@@ -163,8 +163,8 @@ func Test_ToIR(t *testing.T) {
 				},
 			}},
 			servicePorts: map[types.NamespacedName]map[string]int32{},
-			expectedIR: provider_intermediate.ProviderIR{
-				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
 					{Namespace: "test", Name: "with-tls"}: {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{Name: "with-tls", Namespace: "test"},
@@ -190,7 +190,7 @@ func Test_ToIR(t *testing.T) {
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]provider_intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 					{Namespace: "test", Name: "with-tls-example-com"}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{Name: "with-tls-example-com", Namespace: "test"},
@@ -259,8 +259,8 @@ func Test_ToIR(t *testing.T) {
 				},
 			}},
 			servicePorts: map[types.NamespacedName]map[string]int32{},
-			expectedIR: provider_intermediate.ProviderIR{
-				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
 					{Namespace: "different", Name: "example-proxy"}: {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{Name: "example-proxy", Namespace: "different"},
@@ -276,7 +276,7 @@ func Test_ToIR(t *testing.T) {
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]provider_intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 					{Namespace: "different", Name: "net-example-net"}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{Name: "net-example-net", Namespace: "different"},
@@ -364,8 +364,8 @@ func Test_ToIR(t *testing.T) {
 				{Namespace: "test", Name: "example"}:  {"http": 3000},
 				{Namespace: "test", Name: "example2"}: {"http": 8080},
 			},
-			expectedIR: provider_intermediate.ProviderIR{
-				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
 					{Namespace: "test", Name: "named-ports"}: {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{Name: "named-ports", Namespace: "test"},
@@ -381,7 +381,7 @@ func Test_ToIR(t *testing.T) {
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]provider_intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 					{Namespace: "test", Name: "named-ports-example-com"}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{Name: "named-ports-example-com", Namespace: "test"},
@@ -445,9 +445,9 @@ func Test_ToIR(t *testing.T) {
 			servicePorts: map[types.NamespacedName]map[string]int32{
 				{Namespace: "test", Name: "example2"}: {"http": 8080},
 			},
-			expectedIR: provider_intermediate.ProviderIR{
-				Gateways:   map[types.NamespacedName]provider_intermediate.GatewayContext{},
-				HTTPRoutes: map[types.NamespacedName]provider_intermediate.HTTPRouteContext{},
+			expectedIR: providerir.ProviderIR{
+				Gateways:   map[types.NamespacedName]providerir.GatewayContext{},
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{},
 			},
 			expectedErrors: field.ErrorList{field.Invalid(field.NewPath(""), "", "")},
 		},

@@ -26,7 +26,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
+	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	apiv1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -73,14 +73,14 @@ func Test_convertToIR(t *testing.T) {
 		name string
 
 		modify         func(storage *storage)
-		expectedIR     provider_intermediate.ProviderIR
+		expectedIR     providerir.ProviderIR
 		expectedErrors field.ErrorList
 	}{
 		{
 			name:   "gce ingress class",
 			modify: func(_ *storage) {},
-			expectedIR: provider_intermediate.ProviderIR{
-				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
 					{Namespace: testNamespace, Name: gceIngressClass}: {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
@@ -95,7 +95,7 @@ func Test_convertToIR(t *testing.T) {
 							}},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]provider_intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName)}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName), Namespace: testNamespace},
@@ -143,8 +143,8 @@ func Test_convertToIR(t *testing.T) {
 				testIngress.Annotations = map[string]string{networkingv1beta1.AnnotationIngressClass: gceL7ILBIngressClass}
 				storage.Ingresses[types.NamespacedName{Namespace: testNamespace, Name: testIngressName}] = testIngress
 			},
-			expectedIR: provider_intermediate.ProviderIR{
-				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
 					{Namespace: testNamespace, Name: gceL7ILBIngressClass}: {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{Name: gceL7ILBIngressClass, Namespace: testNamespace},
@@ -159,7 +159,7 @@ func Test_convertToIR(t *testing.T) {
 							}},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]provider_intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName)}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName), Namespace: testNamespace},
@@ -207,8 +207,8 @@ func Test_convertToIR(t *testing.T) {
 				testIngress.Annotations = map[string]string{}
 				storage.Ingresses[types.NamespacedName{Namespace: testNamespace, Name: testIngressName}] = testIngress
 			},
-			expectedIR: provider_intermediate.ProviderIR{
-				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
 					{Namespace: testNamespace, Name: gceIngressClass}: {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
@@ -224,7 +224,7 @@ func Test_convertToIR(t *testing.T) {
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]provider_intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName)}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName), Namespace: testNamespace},
@@ -273,8 +273,8 @@ func Test_convertToIR(t *testing.T) {
 				pathToModify.PathType = common.PtrTo(implSpecificPathType)
 				storage.Ingresses[types.NamespacedName{Namespace: testNamespace, Name: testIngressName}] = testIngress
 			},
-			expectedIR: provider_intermediate.ProviderIR{
-				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
 					{Namespace: testNamespace, Name: gceIngressClass}: {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
@@ -290,7 +290,7 @@ func Test_convertToIR(t *testing.T) {
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]provider_intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName)}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName), Namespace: testNamespace},
@@ -339,8 +339,8 @@ func Test_convertToIR(t *testing.T) {
 				pathToModify.PathType = common.PtrTo(implSpecificPathType)
 				storage.Ingresses[types.NamespacedName{Namespace: testNamespace, Name: testIngressName}] = testIngress
 			},
-			expectedIR: provider_intermediate.ProviderIR{
-				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
 					{Namespace: testNamespace, Name: gceIngressClass}: {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
@@ -356,7 +356,7 @@ func Test_convertToIR(t *testing.T) {
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]provider_intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName)}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName), Namespace: testNamespace},
@@ -405,8 +405,8 @@ func Test_convertToIR(t *testing.T) {
 				pathToModify.PathType = common.PtrTo(implSpecificPathType)
 				storage.Ingresses[types.NamespacedName{Namespace: testNamespace, Name: testIngressName}] = testIngress
 			},
-			expectedIR: provider_intermediate.ProviderIR{
-				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
 					{Namespace: testNamespace, Name: gceIngressClass}: {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
@@ -422,7 +422,7 @@ func Test_convertToIR(t *testing.T) {
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]provider_intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName)}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName), Namespace: testNamespace},
@@ -480,8 +480,8 @@ func Test_convertToIR(t *testing.T) {
 					{Namespace: testNamespace, Name: testBackendConfigName}: getTestBackendConfig(beConfigSpec),
 				}
 			},
-			expectedIR: provider_intermediate.ProviderIR{
-				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
 					{Namespace: testNamespace, Name: gceIngressClass}: {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
@@ -497,7 +497,7 @@ func Test_convertToIR(t *testing.T) {
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]provider_intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName)}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName), Namespace: testNamespace},
@@ -534,9 +534,9 @@ func Test_convertToIR(t *testing.T) {
 						},
 					},
 				},
-				Services: map[types.NamespacedName]provider_intermediate.ProviderSpecificServiceIR{
+				Services: map[types.NamespacedName]providerir.ProviderSpecificServiceIR{
 					{Namespace: testNamespace, Name: testServiceName}: {
-						Gce: &gce.GceServiceIR{
+						Gce: &gce.ServiceIR{
 							SessionAffinity: &gce.SessionAffinityConfig{
 								AffinityType: saTypeClientIP,
 							},
@@ -565,8 +565,8 @@ func Test_convertToIR(t *testing.T) {
 					{Namespace: testNamespace, Name: testBackendConfigName}: getTestBackendConfig(beConfigSpec),
 				}
 			},
-			expectedIR: provider_intermediate.ProviderIR{
-				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
 					{Namespace: testNamespace, Name: gceIngressClass}: {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
@@ -582,7 +582,7 @@ func Test_convertToIR(t *testing.T) {
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]provider_intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName)}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName), Namespace: testNamespace},
@@ -619,9 +619,9 @@ func Test_convertToIR(t *testing.T) {
 						},
 					},
 				},
-				Services: map[types.NamespacedName]provider_intermediate.ProviderSpecificServiceIR{
+				Services: map[types.NamespacedName]providerir.ProviderSpecificServiceIR{
 					{Namespace: testNamespace, Name: testServiceName}: {
-						Gce: &gce.GceServiceIR{
+						Gce: &gce.ServiceIR{
 							SessionAffinity: &gce.SessionAffinityConfig{
 								AffinityType: saTypeCookie,
 								CookieTTLSec: common.PtrTo(testCookieTTLSec),
@@ -650,8 +650,8 @@ func Test_convertToIR(t *testing.T) {
 					{Namespace: testNamespace, Name: testBackendConfigName}: getTestBackendConfig(beConfigSpec),
 				}
 			},
-			expectedIR: provider_intermediate.ProviderIR{
-				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
 					{Namespace: testNamespace, Name: gceIngressClass}: {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
@@ -667,7 +667,7 @@ func Test_convertToIR(t *testing.T) {
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]provider_intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName)}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName), Namespace: testNamespace},
@@ -704,9 +704,9 @@ func Test_convertToIR(t *testing.T) {
 						},
 					},
 				},
-				Services: map[types.NamespacedName]provider_intermediate.ProviderSpecificServiceIR{
+				Services: map[types.NamespacedName]providerir.ProviderSpecificServiceIR{
 					{Namespace: testNamespace, Name: testServiceName}: {
-						Gce: &gce.GceServiceIR{
+						Gce: &gce.ServiceIR{
 							SecurityPolicy: &gce.SecurityPolicyConfig{
 								Name: testSecurityPolicy,
 							},
@@ -740,8 +740,8 @@ func Test_convertToIR(t *testing.T) {
 					{Namespace: testNamespace, Name: testBackendConfigName}: getTestBackendConfig(beConfigSpec),
 				}
 			},
-			expectedIR: provider_intermediate.ProviderIR{
-				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
 					{Namespace: testNamespace, Name: gceIngressClass}: {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
@@ -757,7 +757,7 @@ func Test_convertToIR(t *testing.T) {
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]provider_intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName)}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName), Namespace: testNamespace},
@@ -794,9 +794,9 @@ func Test_convertToIR(t *testing.T) {
 						},
 					},
 				},
-				Services: map[types.NamespacedName]provider_intermediate.ProviderSpecificServiceIR{
+				Services: map[types.NamespacedName]providerir.ProviderSpecificServiceIR{
 					{Namespace: testNamespace, Name: testServiceName}: {
-						Gce: &gce.GceServiceIR{
+						Gce: &gce.ServiceIR{
 							HealthCheck: &gce.HealthCheckConfig{
 								CheckIntervalSec:   common.PtrTo(testCheckIntervalSec),
 								TimeoutSec:         common.PtrTo(testTimeoutSec),
@@ -829,8 +829,8 @@ func Test_convertToIR(t *testing.T) {
 					{Namespace: testNamespace, Name: testFrontendConfigName}: getTestFrontendConfig(testNamespace, testFrontendConfigName, feConfigSpec),
 				}
 			},
-			expectedIR: provider_intermediate.ProviderIR{
-				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
 					{Namespace: testNamespace, Name: gceIngressClass}: {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
@@ -844,14 +844,14 @@ func Test_convertToIR(t *testing.T) {
 								}},
 							},
 						},
-						ProviderSpecificIR: provider_intermediate.ProviderSpecificGatewayIR{
-							Gce: &gce.GceGatewayIR{
+						ProviderSpecificIR: providerir.ProviderSpecificGatewayIR{
+							Gce: &gce.GatewayIR{
 								SslPolicy: &gce.SslPolicyConfig{Name: testSslPolicy},
 							},
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]provider_intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName)}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName), Namespace: testNamespace},

@@ -20,14 +20,13 @@ import (
 	"context"
 	"sync"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
+	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-
 )
 
 // ProviderConstructorByName is a map of ProviderConstructor functions by a
@@ -73,7 +72,7 @@ type CustomResourceReader interface {
 // and extensions into IR.
 type ResourcesToIRConverter interface {
 	// ToIR converts stored API entities associated with the Provider into IR.
-	ToIR() (emitter_intermediate.EmitterIR, field.ErrorList)
+	ToIR() (emitterir.EmitterIR, field.ErrorList)
 }
 
 // ImplementationSpecificHTTPPathTypeMatchConverter is an option to customize the ingress implementationSpecific
@@ -88,11 +87,11 @@ type ProviderImplementationSpecificOptions struct {
 }
 
 // FeatureParser is a function that reads the Ingresses, and applies
-// the appropriate modifications to the provider_intermediate.ProviderIR.
+// the appropriate modifications to the providerir.ProviderIR.
 //
 // Different FeatureParsers will run in undetermined order. The function must
 // modify / create only the required fields of the IR and nothing else.
-type FeatureParser func([]networkingv1.Ingress, map[types.NamespacedName]map[string]int32, *provider_intermediate.ProviderIR) field.ErrorList
+type FeatureParser func([]networkingv1.Ingress, map[types.NamespacedName]map[string]int32, *providerir.ProviderIR) field.ErrorList
 
 var providerSpecificFlagDefinitions = providerSpecificFlags{
 	flags: make(map[ProviderName]map[string]ProviderSpecificFlag),

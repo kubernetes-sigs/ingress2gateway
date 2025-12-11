@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
+	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -312,8 +312,8 @@ func Test_forceHTTPSFeature(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ingresses := []networkingv1.Ingress{tc.ingress}
-			ir := &provider_intermediate.ProviderIR{
-				HTTPRoutes: map[types.NamespacedName]provider_intermediate.HTTPRouteContext{
+			ir := &providerir.ProviderIR{
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 					{Name: tc.expectedHTTPRoute.Name, Namespace: tc.expectedHTTPRoute.Namespace}: {
 						HTTPRoute: *tc.initialHTTPRoute,
 					},

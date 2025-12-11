@@ -24,13 +24,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
 // SSLServicesFeature processes nginx.org/ssl-services annotation
-func SSLServicesFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *provider_intermediate.ProviderIR) field.ErrorList {
+func SSLServicesFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 
 	for _, ingress := range ingresses {
@@ -45,7 +45,7 @@ func SSLServicesFeature(ingresses []networkingv1.Ingress, _ map[types.Namespaced
 // processSSLServicesAnnotation configures HTTPS backend protocol using BackendTLSPolicy
 //
 //nolint:unparam // ErrorList return type maintained for consistency
-func processSSLServicesAnnotation(ingress networkingv1.Ingress, sslServices string, ir *provider_intermediate.ProviderIR) field.ErrorList {
+func processSSLServicesAnnotation(ingress networkingv1.Ingress, sslServices string, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList //nolint:unparam // ErrorList return type maintained for consistency
 
 	services := splitAndTrimCommaList(sslServices)

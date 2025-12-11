@@ -19,14 +19,13 @@ package annotations
 import (
 	"testing"
 
+	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/stretchr/testify/require"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 )
 
 func TestSSLServicesAnnotation(t *testing.T) {
@@ -103,7 +102,7 @@ func TestSSLServicesAnnotation(t *testing.T) {
 				},
 			}
 
-			ir := provider_intermediate.ProviderIR{
+			ir := providerir.ProviderIR{
 				BackendTLSPolicies: make(map[types.NamespacedName]gatewayv1.BackendTLSPolicy),
 			}
 
@@ -192,7 +191,7 @@ func TestSSLServicesFeature(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ir := provider_intermediate.ProviderIR{
+			ir := providerir.ProviderIR{
 				BackendTLSPolicies: make(map[types.NamespacedName]gatewayv1.BackendTLSPolicy),
 			}
 

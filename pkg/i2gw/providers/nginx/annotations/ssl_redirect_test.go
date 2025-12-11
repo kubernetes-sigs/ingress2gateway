@@ -25,7 +25,7 @@ import (
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
+	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
@@ -94,8 +94,8 @@ func TestSSLRedirectFeature(t *testing.T) {
 			routeKey := types.NamespacedName{Namespace: ingress.Namespace, Name: routeName}
 			gatewayKey := types.NamespacedName{Namespace: ingress.Namespace, Name: "nginx"}
 
-			ir := provider_intermediate.ProviderIR{
-				Gateways: map[types.NamespacedName]provider_intermediate.GatewayContext{
+			ir := providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
 					gatewayKey: {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{
@@ -115,7 +115,7 @@ func TestSSLRedirectFeature(t *testing.T) {
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]provider_intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 					routeKey: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{

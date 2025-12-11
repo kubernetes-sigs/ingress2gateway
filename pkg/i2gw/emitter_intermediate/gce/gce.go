@@ -16,15 +16,15 @@ limitations under the License.
 
 package gce
 
-type GceGatewayIR struct {
+type GatewayIR struct {
 	EnableHTTPSRedirect bool
 	SslPolicy           *SslPolicyConfig
 }
 type SslPolicyConfig struct {
 	Name string
 }
-type GceHTTPRouteIR struct{}
-type GceServiceIR struct {
+type HTTPRouteIR struct{}
+type ServiceIR struct {
 	SessionAffinity *SessionAffinityConfig
 	SecurityPolicy  *SecurityPolicyConfig
 	HealthCheck     *HealthCheckConfig

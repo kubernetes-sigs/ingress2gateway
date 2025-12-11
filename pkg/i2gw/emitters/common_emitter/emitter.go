@@ -14,10 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package common_emitter
+package commonemitter
 
 import (
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -28,6 +28,6 @@ func NewEmitter() *Emitter {
 }
 
 // Emit processes the IR to apply common logic (like deduplication) and returns the modified IR.
-func (e *Emitter) Emit(ir emitter_intermediate.EmitterIR) (emitter_intermediate.EmitterIR, field.ErrorList) {
+func (e *Emitter) Emit(ir emitterir.EmitterIR) (emitterir.EmitterIR, field.ErrorList) {
 	return ir, nil
 }

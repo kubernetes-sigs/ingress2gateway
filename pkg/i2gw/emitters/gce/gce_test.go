@@ -23,7 +23,7 @@ import (
 	gkegatewayv1 "github.com/GoogleCloudPlatform/gke-gateway-api/apis/networking/v1"
 	"github.com/google/go-cmp/cmp"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -222,24 +222,24 @@ func Test_irToGateway(t *testing.T) {
 
 	testCases := []struct {
 		name                     string
-		ir                       emitter_intermediate.EmitterIR
+		ir                       emitterir.EmitterIR
 		expectedGatewayResources i2gw.GatewayResources
 		expectedErrors           field.ErrorList
 	}{
 		{
 			name: "ingress with a Backend Config specifying CLIENT_IP type session affinity config",
-			ir: emitter_intermediate.EmitterIR{
-				Gateways: map[types.NamespacedName]emitter_intermediate.GatewayContext{
+			ir: emitterir.EmitterIR{
+				Gateways: map[types.NamespacedName]emitterir.GatewayContext{
 					{Namespace: testNamespace, Name: testGatewayName}: {
 						Gateway: testGateway,
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]emitter_intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{
 					{Namespace: testNamespace, Name: testHTTPRouteName}: {
 						HTTPRoute: testHTTPRoute,
 					},
 				},
-				GceServices: map[types.NamespacedName]gce.GceServiceIR{
+				GceServices: map[types.NamespacedName]gce.ServiceIR{
 					{Namespace: testNamespace, Name: testServiceName}: {
 						SessionAffinity: &gce.SessionAffinityConfig{
 							AffinityType: saTypeClientIP,
@@ -262,18 +262,18 @@ func Test_irToGateway(t *testing.T) {
 		},
 		{
 			name: "ingress with a Backend Config specifying GENERATED_COOKIE type session affinity config",
-			ir: emitter_intermediate.EmitterIR{
-				Gateways: map[types.NamespacedName]emitter_intermediate.GatewayContext{
+			ir: emitterir.EmitterIR{
+				Gateways: map[types.NamespacedName]emitterir.GatewayContext{
 					{Namespace: testNamespace, Name: testGatewayName}: {
 						Gateway: testGateway,
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]emitter_intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{
 					{Namespace: testNamespace, Name: testHTTPRouteName}: {
 						HTTPRoute: testHTTPRoute,
 					},
 				},
-				GceServices: map[types.NamespacedName]gce.GceServiceIR{
+				GceServices: map[types.NamespacedName]gce.ServiceIR{
 					{Namespace: testNamespace, Name: testServiceName}: {
 						SessionAffinity: &gce.SessionAffinityConfig{
 							AffinityType: saTypeCookie,
@@ -297,18 +297,18 @@ func Test_irToGateway(t *testing.T) {
 		},
 		{
 			name: "ingress with a Backend Config specifying Security Policy",
-			ir: emitter_intermediate.EmitterIR{
-				Gateways: map[types.NamespacedName]emitter_intermediate.GatewayContext{
+			ir: emitterir.EmitterIR{
+				Gateways: map[types.NamespacedName]emitterir.GatewayContext{
 					{Namespace: testNamespace, Name: testGatewayName}: {
 						Gateway: testGateway,
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]emitter_intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{
 					{Namespace: testNamespace, Name: testHTTPRouteName}: {
 						HTTPRoute: testHTTPRoute,
 					},
 				},
-				GceServices: map[types.NamespacedName]gce.GceServiceIR{
+				GceServices: map[types.NamespacedName]gce.ServiceIR{
 					{Namespace: testNamespace, Name: testServiceName}: {
 						SecurityPolicy: &gce.SecurityPolicyConfig{
 							Name: testSecurityPolicy,
@@ -331,16 +331,16 @@ func Test_irToGateway(t *testing.T) {
 		},
 		{
 			name: "ingress with a Frontend Config specifying Ssl Policy",
-			ir: emitter_intermediate.EmitterIR{
-				Gateways: map[types.NamespacedName]emitter_intermediate.GatewayContext{
+			ir: emitterir.EmitterIR{
+				Gateways: map[types.NamespacedName]emitterir.GatewayContext{
 					{Namespace: testNamespace, Name: testGatewayName}: {
 						Gateway: testGateway,
-						Gce: &gce.GceGatewayIR{
+						Gce: &gce.GatewayIR{
 							SslPolicy: &gce.SslPolicyConfig{Name: testSslPolicy},
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]emitter_intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{
 					{Namespace: testNamespace, Name: testHTTPRouteName}: {
 						HTTPRoute: testHTTPRoute,
 					},
@@ -361,18 +361,18 @@ func Test_irToGateway(t *testing.T) {
 		},
 		{
 			name: "ingress with a Backend Config specifying custom HTTP health check",
-			ir: emitter_intermediate.EmitterIR{
-				Gateways: map[types.NamespacedName]emitter_intermediate.GatewayContext{
+			ir: emitterir.EmitterIR{
+				Gateways: map[types.NamespacedName]emitterir.GatewayContext{
 					{Namespace: testNamespace, Name: testGatewayName}: {
 						Gateway: testGateway,
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]emitter_intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{
 					{Namespace: testNamespace, Name: testHTTPRouteName}: {
 						HTTPRoute: testHTTPRoute,
 					},
 				},
-				GceServices: map[types.NamespacedName]gce.GceServiceIR{
+				GceServices: map[types.NamespacedName]gce.ServiceIR{
 					{Namespace: testNamespace, Name: testServiceName}: {
 						HealthCheck: &gce.HealthCheckConfig{
 							CheckIntervalSec:   common.PtrTo(testCheckIntervalSec),
@@ -401,18 +401,18 @@ func Test_irToGateway(t *testing.T) {
 		},
 		{
 			name: "ingress with a Backend Config specifying custom HTTPS health check",
-			ir: emitter_intermediate.EmitterIR{
-				Gateways: map[types.NamespacedName]emitter_intermediate.GatewayContext{
+			ir: emitterir.EmitterIR{
+				Gateways: map[types.NamespacedName]emitterir.GatewayContext{
 					{Namespace: testNamespace, Name: testGatewayName}: {
 						Gateway: testGateway,
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]emitter_intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{
 					{Namespace: testNamespace, Name: testHTTPRouteName}: {
 						HTTPRoute: testHTTPRoute,
 					},
 				},
-				GceServices: map[types.NamespacedName]gce.GceServiceIR{
+				GceServices: map[types.NamespacedName]gce.ServiceIR{
 					{Namespace: testNamespace, Name: testServiceName}: {
 						HealthCheck: &gce.HealthCheckConfig{
 							CheckIntervalSec:   common.PtrTo(testCheckIntervalSec),
@@ -441,18 +441,18 @@ func Test_irToGateway(t *testing.T) {
 		},
 		{
 			name: "ingress with a Backend Config specifying custom HTTP2 health check",
-			ir: emitter_intermediate.EmitterIR{
-				Gateways: map[types.NamespacedName]emitter_intermediate.GatewayContext{
+			ir: emitterir.EmitterIR{
+				Gateways: map[types.NamespacedName]emitterir.GatewayContext{
 					{Namespace: testNamespace, Name: testGatewayName}: {
 						Gateway: testGateway,
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]emitter_intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{
 					{Namespace: testNamespace, Name: testHTTPRouteName}: {
 						HTTPRoute: testHTTPRoute,
 					},
 				},
-				GceServices: map[types.NamespacedName]gce.GceServiceIR{
+				GceServices: map[types.NamespacedName]gce.ServiceIR{
 					{Namespace: testNamespace, Name: testServiceName}: {
 						HealthCheck: &gce.HealthCheckConfig{
 							CheckIntervalSec:   common.PtrTo(testCheckIntervalSec),

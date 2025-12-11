@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package emitter_intermediate
+package emitterir
 
 import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
@@ -41,14 +41,14 @@ type EmitterIR struct {
 	BackendTLSPolicies map[types.NamespacedName]BackendTLSPolicyContext
 	ReferenceGrants    map[types.NamespacedName]ReferenceGrantContext
 
-	GceServices map[types.NamespacedName]gce.GceServiceIR
+	GceServices map[types.NamespacedName]gce.ServiceIR
 }
 
 type GatewayContext struct {
 	gatewayv1.Gateway
 	// Emitter IR should be provider/emitter neutral,
 	// But we have GCE for backcompatibility.
-	Gce *gce.GceGatewayIR
+	Gce *gce.GatewayIR
 }
 
 type HTTPRouteContext struct {

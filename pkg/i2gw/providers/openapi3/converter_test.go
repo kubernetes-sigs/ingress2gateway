@@ -36,7 +36,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
@@ -151,7 +151,7 @@ func TestFileConvertion(t *testing.T) {
 	})
 }
 
-func readGatewayResourcesFromFile(t *testing.T, filename string) (*emitter_intermediate.EmitterIR, error) {
+func readGatewayResourcesFromFile(t *testing.T, filename string) (*emitterir.EmitterIR, error) {
 	t.Helper()
 
 	stream, err := os.ReadFile(filename)
@@ -164,12 +164,12 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*emitter_inter
 		return nil, fmt.Errorf("failed to extract objects: %w", err)
 	}
 
-	res := emitter_intermediate.EmitterIR{
-		Gateways:        make(map[types.NamespacedName]emitter_intermediate.GatewayContext),
-		HTTPRoutes:      make(map[types.NamespacedName]emitter_intermediate.HTTPRouteContext),
-		TLSRoutes:       make(map[types.NamespacedName]emitter_intermediate.TLSRouteContext),
-		TCPRoutes:       make(map[types.NamespacedName]emitter_intermediate.TCPRouteContext),
-		ReferenceGrants: make(map[types.NamespacedName]emitter_intermediate.ReferenceGrantContext),
+	res := emitterir.EmitterIR{
+		Gateways:        make(map[types.NamespacedName]emitterir.GatewayContext),
+		HTTPRoutes:      make(map[types.NamespacedName]emitterir.HTTPRouteContext),
+		TLSRoutes:       make(map[types.NamespacedName]emitterir.TLSRouteContext),
+		TCPRoutes:       make(map[types.NamespacedName]emitterir.TCPRouteContext),
+		ReferenceGrants: make(map[types.NamespacedName]emitterir.ReferenceGrantContext),
 	}
 
 	for _, obj := range unstructuredObjects {
@@ -182,7 +182,7 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*emitter_inter
 			res.Gateways[types.NamespacedName{
 				Namespace: gw.Namespace,
 				Name:      gw.Name,
-			}] = emitter_intermediate.GatewayContext{Gateway: gw}
+			}] = emitterir.GatewayContext{Gateway: gw}
 		case "HTTPRoute":
 			var httpRoute gatewayv1.HTTPRoute
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), &httpRoute); err != nil {
@@ -192,7 +192,7 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*emitter_inter
 			res.HTTPRoutes[types.NamespacedName{
 				Namespace: httpRoute.Namespace,
 				Name:      httpRoute.Name,
-			}] = emitter_intermediate.HTTPRouteContext{HTTPRoute: httpRoute}
+			}] = emitterir.HTTPRouteContext{HTTPRoute: httpRoute}
 		case "TLSRoute":
 			var tlsRoute gatewayv1alpha2.TLSRoute
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), &tlsRoute); err != nil {
@@ -202,7 +202,7 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*emitter_inter
 			res.TLSRoutes[types.NamespacedName{
 				Namespace: tlsRoute.Namespace,
 				Name:      tlsRoute.Name,
-			}] = emitter_intermediate.TLSRouteContext{TLSRoute: tlsRoute}
+			}] = emitterir.TLSRouteContext{TLSRoute: tlsRoute}
 		case "TCPRoute":
 			var tcpRoute gatewayv1alpha2.TCPRoute
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), &tcpRoute); err != nil {
@@ -212,7 +212,7 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*emitter_inter
 			res.TCPRoutes[types.NamespacedName{
 				Namespace: tcpRoute.Namespace,
 				Name:      tcpRoute.Name,
-			}] = emitter_intermediate.TCPRouteContext{TCPRoute: tcpRoute}
+			}] = emitterir.TCPRouteContext{TCPRoute: tcpRoute}
 		case "ReferenceGrant":
 			var referenceGrant gatewayv1beta1.ReferenceGrant
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), &referenceGrant); err != nil {
@@ -222,7 +222,7 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*emitter_inter
 			res.ReferenceGrants[types.NamespacedName{
 				Namespace: referenceGrant.Namespace,
 				Name:      referenceGrant.Name,
-			}] = emitter_intermediate.ReferenceGrantContext{ReferenceGrant: referenceGrant}
+			}] = emitterir.ReferenceGrantContext{ReferenceGrant: referenceGrant}
 		default:
 			return nil, fmt.Errorf("unknown object kind: %v", objKind)
 		}

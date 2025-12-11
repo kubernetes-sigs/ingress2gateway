@@ -18,11 +18,11 @@ package gce
 
 import (
 	gkegatewayv1 "github.com/GoogleCloudPlatform/gke-gateway-api/apis/networking/v1"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
 )
 
-func BuildGCPBackendPolicySessionAffinityConfig(serviceIR gce.GceServiceIR) *gkegatewayv1.SessionAffinityConfig {
+func BuildGCPBackendPolicySessionAffinityConfig(serviceIR gce.ServiceIR) *gkegatewayv1.SessionAffinityConfig {
 	affinityType := serviceIR.SessionAffinity.AffinityType
 	saConfig := gkegatewayv1.SessionAffinityConfig{
 		Type: &affinityType,
@@ -33,16 +33,16 @@ func BuildGCPBackendPolicySessionAffinityConfig(serviceIR gce.GceServiceIR) *gke
 	return &saConfig
 }
 
-func BuildGCPBackendPolicySecurityPolicyConfig(serviceIR gce.GceServiceIR) *string {
+func BuildGCPBackendPolicySecurityPolicyConfig(serviceIR gce.ServiceIR) *string {
 	securityPolicy := serviceIR.SecurityPolicy.Name
 	return &securityPolicy
 }
 
-func BuildGCPGatewayPolicySecurityPolicyConfig(gatewayIR *emitter_intermediate.GatewayContext) string {
+func BuildGCPGatewayPolicySecurityPolicyConfig(gatewayIR *emitterir.GatewayContext) string {
 	return gatewayIR.Gce.SslPolicy.Name
 }
 
-func BuildHealthCheckPolicyConfig(serviceIR *gce.GceServiceIR) *gkegatewayv1.HealthCheckPolicyConfig {
+func BuildHealthCheckPolicyConfig(serviceIR *gce.ServiceIR) *gkegatewayv1.HealthCheckPolicyConfig {
 	hcConfig := gkegatewayv1.HealthCheckPolicyConfig{
 		CheckIntervalSec:   serviceIR.HealthCheck.CheckIntervalSec,
 		TimeoutSec:         serviceIR.HealthCheck.TimeoutSec,

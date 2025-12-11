@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -37,7 +37,7 @@ import (
 // konghq.com/methods: "GET,POST"
 //
 // All the values defined and separated by comma, MUST be ORed.
-func methodMatchingFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *provider_intermediate.ProviderIR) field.ErrorList {
+func methodMatchingFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	ruleGroups := common.GetRuleGroups(ingresses)
 	for _, rg := range ruleGroups {
 		for _, rule := range rg.Rules {

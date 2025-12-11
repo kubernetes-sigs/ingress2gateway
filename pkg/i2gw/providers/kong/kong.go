@@ -22,8 +22,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
+	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 )
 
 // The Name of the provider.
@@ -49,11 +49,11 @@ func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 	}
 }
 
-// ToIR converts stored Kong API entities to emitter_intermediate.IR
+// ToIR converts stored Kong API entities to emitterir.IR
 // including the kong specific features.
-func (p *Provider) ToIR() (emitter_intermediate.EmitterIR, field.ErrorList) {
+func (p *Provider) ToIR() (emitterir.EmitterIR, field.ErrorList) {
 	ir, errs := p.resourcesToIRConverter.convert(p.storage)
-	return provider_intermediate.ToEmitterIR(ir), errs
+	return providerir.ToEmitterIR(ir), errs
 }
 
 func (p *Provider) ReadResourcesFromCluster(ctx context.Context) error {
