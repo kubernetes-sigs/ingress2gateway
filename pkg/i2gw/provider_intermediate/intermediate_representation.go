@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package intermediate
+package provider_intermediate
 
 import (
 	networkingv1 "k8s.io/api/networking/v1"
@@ -24,11 +24,11 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
-// IR holds specifications of Gateway Objects for supporting Ingress extensions,
+// ProviderIR holds specifications of Gateway Objects for supporting Ingress extensions,
 // annotations, and proprietary API features not supported as Gateway core
-// features. An IR field can be mapped to core Gateway-API fields,
+// features. An ProviderIR field can be mapped to core Gateway-API fields,
 // or provider-specific Gateway extensions.
-type IR struct {
+type ProviderIR struct {
 	Gateways   map[types.NamespacedName]GatewayContext
 	HTTPRoutes map[types.NamespacedName]HTTPRouteContext
 	Services   map[types.NamespacedName]ProviderSpecificServiceIR
@@ -54,13 +54,7 @@ type GatewayContext struct {
 }
 
 type ProviderSpecificGatewayIR struct {
-	Apisix       *ApisixGatewayIR
-	Cilium       *CiliumGatewayIR
 	Gce          *GceGatewayIR
-	IngressNginx *IngressNginxGatewayIR
-	Istio        *IstioGatewayIR
-	Kong         *KongGatewayIR
-	Openapi3     *Openapi3GatewayIR
 }
 
 // HTTPRouteContext contains the Gateway-API HTTPRoute object and HTTPRouteIR,
@@ -77,26 +71,13 @@ type HTTPRouteContext struct {
 }
 
 type ProviderSpecificHTTPRouteIR struct {
-	Apisix       *ApisixHTTPRouteIR
-	Cilium       *CiliumHTTPRouteIR
 	Gce          *GceHTTPRouteIR
-	IngressNginx *IngressNginxHTTPRouteIR
-	Istio        *IstioHTTPRouteIR
-	Kong         *KongHTTPRouteIR
-	Openapi3     *Openapi3HTTPRouteIR
 }
 
 // ServiceIR contains a dedicated field for each provider to specify their
 // extension features on Service.
 type ProviderSpecificServiceIR struct {
-	Apisix       *ApisixServiceIR
-	Cilium       *CiliumServiceIR
 	Gce          *GceServiceIR
-	IngressNginx *IngressNginxServiceIR
-	Istio        *IstioServiceIR
-	Kong         *KongServiceIR
-	Openapi3     *Openapi3ServiceIR
-	Nginx        *NginxServiceIR
 }
 
 // BackendSource tracks the source Ingress resource that contributed
