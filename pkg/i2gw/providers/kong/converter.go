@@ -55,9 +55,6 @@ func (c *resourcesToIRConverter) convert(storage *storage) (intermediate.IR, fie
 	// Convert plain ingress resources to gateway resources, ignoring all
 	// provider-specific features.
 	ir, errorList := common.ToIR(ingressList, storage.ServicePorts, c.implementationSpecificOptions)
-	if len(errorList) > 0 {
-		return intermediate.IR{}, errorList
-	}
 
 	tcpGatewayIR, notificationsAggregator, errs := crds.TCPIngressToGatewayIR(storage.TCPIngresses)
 	if len(errs) > 0 {
@@ -66,15 +63,10 @@ func (c *resourcesToIRConverter) convert(storage *storage) (intermediate.IR, fie
 
 	dispatchNotification(notificationsAggregator)
 
-	if len(errorList) > 0 {
-		return intermediate.IR{}, errorList
-	}
-
-	ir, errs = intermediate.MergeIRs(ir, tcpGatewayIR)
-
-	if len(errs) > 0 {
-		return intermediate.IR{}, errs
-	}
+	// Merge IRs and accumulate errors, continuing best-effort conversion
+	var mergeErrs field.ErrorList
+	ir, mergeErrs = intermediate.MergeIRs(ir, tcpGatewayIR)
+	errorList = append(errorList, mergeErrs...)
 
 	for _, parseFeatureFunc := range c.featureParsers {
 		// Apply the feature parsing function to the gateway resources, one by one.
