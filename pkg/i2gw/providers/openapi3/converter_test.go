@@ -36,7 +36,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
@@ -151,7 +151,7 @@ func TestFileConvertion(t *testing.T) {
 	})
 }
 
-func readGatewayResourcesFromFile(t *testing.T, filename string) (*intermediate.IR, error) {
+func readGatewayResourcesFromFile(t *testing.T, filename string) (*emitterir.EmitterIR, error) {
 	t.Helper()
 
 	stream, err := os.ReadFile(filename)
@@ -164,12 +164,12 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*intermediate.
 		return nil, fmt.Errorf("failed to extract objects: %w", err)
 	}
 
-	res := intermediate.IR{
-		Gateways:        make(map[types.NamespacedName]intermediate.GatewayContext),
-		HTTPRoutes:      make(map[types.NamespacedName]intermediate.HTTPRouteContext),
-		TLSRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
-		TCPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
-		ReferenceGrants: make(map[types.NamespacedName]gatewayv1beta1.ReferenceGrant),
+	res := emitterir.EmitterIR{
+		Gateways:        make(map[types.NamespacedName]emitterir.GatewayContext),
+		HTTPRoutes:      make(map[types.NamespacedName]emitterir.HTTPRouteContext),
+		TLSRoutes:       make(map[types.NamespacedName]emitterir.TLSRouteContext),
+		TCPRoutes:       make(map[types.NamespacedName]emitterir.TCPRouteContext),
+		ReferenceGrants: make(map[types.NamespacedName]emitterir.ReferenceGrantContext),
 	}
 
 	for _, obj := range unstructuredObjects {
@@ -182,7 +182,7 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*intermediate.
 			res.Gateways[types.NamespacedName{
 				Namespace: gw.Namespace,
 				Name:      gw.Name,
-			}] = intermediate.GatewayContext{Gateway: gw}
+			}] = emitterir.GatewayContext{Gateway: gw}
 		case "HTTPRoute":
 			var httpRoute gatewayv1.HTTPRoute
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), &httpRoute); err != nil {
@@ -192,7 +192,7 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*intermediate.
 			res.HTTPRoutes[types.NamespacedName{
 				Namespace: httpRoute.Namespace,
 				Name:      httpRoute.Name,
-			}] = intermediate.HTTPRouteContext{HTTPRoute: httpRoute}
+			}] = emitterir.HTTPRouteContext{HTTPRoute: httpRoute}
 		case "TLSRoute":
 			var tlsRoute gatewayv1alpha2.TLSRoute
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), &tlsRoute); err != nil {
@@ -202,7 +202,7 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*intermediate.
 			res.TLSRoutes[types.NamespacedName{
 				Namespace: tlsRoute.Namespace,
 				Name:      tlsRoute.Name,
-			}] = tlsRoute
+			}] = emitterir.TLSRouteContext{TLSRoute: tlsRoute}
 		case "TCPRoute":
 			var tcpRoute gatewayv1alpha2.TCPRoute
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), &tcpRoute); err != nil {
@@ -212,7 +212,7 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*intermediate.
 			res.TCPRoutes[types.NamespacedName{
 				Namespace: tcpRoute.Namespace,
 				Name:      tcpRoute.Name,
-			}] = tcpRoute
+			}] = emitterir.TCPRouteContext{TCPRoute: tcpRoute}
 		case "ReferenceGrant":
 			var referenceGrant gatewayv1beta1.ReferenceGrant
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), &referenceGrant); err != nil {
@@ -222,7 +222,7 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*intermediate.
 			res.ReferenceGrants[types.NamespacedName{
 				Namespace: referenceGrant.Namespace,
 				Name:      referenceGrant.Name,
-			}] = referenceGrant
+			}] = emitterir.ReferenceGrantContext{ReferenceGrant: referenceGrant}
 		default:
 			return nil, fmt.Errorf("unknown object kind: %v", objKind)
 		}

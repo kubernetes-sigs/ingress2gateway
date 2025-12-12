@@ -23,13 +23,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
 // GRPCServicesFeature processes nginx.org/grpc-services annotation
-func GRPCServicesFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *intermediate.IR) field.ErrorList {
+func GRPCServicesFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 
 	ruleGroups := common.GetRuleGroups(ingresses)
@@ -47,7 +47,7 @@ func GRPCServicesFeature(ingresses []networkingv1.Ingress, _ map[types.Namespace
 // processGRPCServicesAnnotation handles gRPC backend services
 //
 //nolint:unparam // ErrorList return type maintained for consistency
-func processGRPCServicesAnnotation(ingress networkingv1.Ingress, grpcServices string, ir *intermediate.IR) field.ErrorList {
+func processGRPCServicesAnnotation(ingress networkingv1.Ingress, grpcServices string, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList //nolint:unparam // ErrorList return type maintained for consistency
 
 	// Parse comma-separated service names that should use gRPC
@@ -64,7 +64,7 @@ func processGRPCServicesAnnotation(ingress networkingv1.Ingress, grpcServices st
 
 	// Mark services as gRPC in provider-specific IR
 	if ir.Services == nil {
-		ir.Services = make(map[types.NamespacedName]intermediate.ProviderSpecificServiceIR)
+		ir.Services = make(map[types.NamespacedName]providerir.ProviderSpecificServiceIR)
 	}
 
 	// Process each ingress rule that uses gRPC services

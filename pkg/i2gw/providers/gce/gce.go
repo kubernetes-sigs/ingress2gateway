@@ -21,8 +21,9 @@ import (
 	"fmt"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
 	frontendconfigv1beta1 "k8s.io/ingress-gce/pkg/apis/frontendconfig/v1beta1"
@@ -36,10 +37,9 @@ func init() {
 
 // Provider implements the i2gw.Provider interface.
 type Provider struct {
-	storage          *storage
-	reader           reader
-	irConverter      resourcesToIRConverter
-	gatewayConverter irToGatewayResourcesConverter
+	storage     *storage
+	reader      reader
+	irConverter resourcesToIRConverter
 }
 
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
@@ -54,10 +54,9 @@ func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 		}
 	}
 	return &Provider{
-		storage:          newResourcesStorage(),
-		reader:           newResourceReader(conf),
-		irConverter:      newResourcesToIRConverter(conf),
-		gatewayConverter: newIRToGatewayResourcesConverter(),
+		storage:     newResourcesStorage(),
+		reader:      newResourceReader(conf),
+		irConverter: newResourcesToIRConverter(conf),
 	}
 }
 
@@ -80,12 +79,9 @@ func (p *Provider) ReadResourcesFromFile(_ context.Context, filename string) err
 	return nil
 }
 
-// ToIR converts stored Ingress GCE API entities to intermediate.IR including the
+// ToIR converts stored Ingress GCE API entities to providerir.IR including the
 // ingress-gce specific features.
-func (p *Provider) ToIR() (intermediate.IR, field.ErrorList) {
-	return p.irConverter.convertToIR(p.storage)
-}
-
-func (p *Provider) ToGatewayResources(ir intermediate.IR) (i2gw.GatewayResources, field.ErrorList) {
-	return p.gatewayConverter.irToGateway(ir)
+func (p *Provider) ToIR() (emitterir.EmitterIR, field.ErrorList) {
+	ir, errs := p.irConverter.convertToIR(p.storage)
+	return providerir.ToEmitterIR(ir), errs
 }

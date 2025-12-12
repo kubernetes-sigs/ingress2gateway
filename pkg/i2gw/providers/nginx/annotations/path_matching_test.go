@@ -25,7 +25,7 @@ import (
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
@@ -132,8 +132,8 @@ func TestPathRegex(t *testing.T) {
 				},
 			}
 
-			ir := intermediate.IR{
-				HTTPRoutes: make(map[types.NamespacedName]intermediate.HTTPRouteContext),
+			ir := providerir.ProviderIR{
+				HTTPRoutes: make(map[types.NamespacedName]providerir.HTTPRouteContext),
 			}
 
 			routeName := common.RouteName(ingress.Name, ingress.Spec.Rules[0].Host)
@@ -172,7 +172,7 @@ func TestPathRegex(t *testing.T) {
 				},
 			}
 
-			ir.HTTPRoutes[routeKey] = intermediate.HTTPRouteContext{
+			ir.HTTPRoutes[routeKey] = providerir.HTTPRouteContext{
 				HTTPRoute: httpRoute,
 			}
 
@@ -247,8 +247,8 @@ func TestPathRegexMultipleMatches(t *testing.T) {
 		},
 	}
 
-	ir := intermediate.IR{
-		HTTPRoutes: make(map[types.NamespacedName]intermediate.HTTPRouteContext),
+	ir := providerir.ProviderIR{
+		HTTPRoutes: make(map[types.NamespacedName]providerir.HTTPRouteContext),
 	}
 
 	routeName := common.RouteName(ingress.Name, ingress.Spec.Rules[0].Host)
@@ -281,7 +281,7 @@ func TestPathRegexMultipleMatches(t *testing.T) {
 		},
 	}
 
-	ir.HTTPRoutes[routeKey] = intermediate.HTTPRouteContext{
+	ir.HTTPRoutes[routeKey] = providerir.HTTPRouteContext{
 		HTTPRoute: httpRoute,
 	}
 
@@ -343,8 +343,8 @@ func TestPathRegexCaseInsensitiveNotification(t *testing.T) {
 		},
 	}
 
-	ir := intermediate.IR{
-		HTTPRoutes: make(map[types.NamespacedName]intermediate.HTTPRouteContext),
+	ir := providerir.ProviderIR{
+		HTTPRoutes: make(map[types.NamespacedName]providerir.HTTPRouteContext),
 	}
 
 	routeName := common.RouteName(ingress.Name, ingress.Spec.Rules[0].Host)
@@ -371,7 +371,7 @@ func TestPathRegexCaseInsensitiveNotification(t *testing.T) {
 		},
 	}
 
-	ir.HTTPRoutes[routeKey] = intermediate.HTTPRouteContext{
+	ir.HTTPRoutes[routeKey] = providerir.HTTPRouteContext{
 		HTTPRoute: httpRoute,
 	}
 
@@ -434,8 +434,8 @@ func TestPathRegexCaseInsensitiveFlagInjection(t *testing.T) {
 	routeKey := types.NamespacedName{Namespace: ingress.Namespace, Name: routeName}
 
 	originalPath := "/api/v[0-9]+"
-	ir := intermediate.IR{
-		HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+	ir := providerir.ProviderIR{
+		HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 			routeKey: {
 				HTTPRoute: gatewayv1.HTTPRoute{
 					ObjectMeta: metav1.ObjectMeta{
@@ -543,8 +543,8 @@ func TestPathRegexCaseInsensitiveFlagNotDuplicated(t *testing.T) {
 	routeKey := types.NamespacedName{Namespace: ingress.Namespace, Name: routeName}
 
 	originalPath := "(?i)/api/v[0-9]+"
-	ir := intermediate.IR{
-		HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+	ir := providerir.ProviderIR{
+		HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 			routeKey: {
 				HTTPRoute: gatewayv1.HTTPRoute{
 					ObjectMeta: metav1.ObjectMeta{
