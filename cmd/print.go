@@ -44,8 +44,8 @@ import (
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 
 	// Call init for emitters
-	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/default"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/gce"
+	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/standard"
 )
 
 type PrintRunner struct {
@@ -78,7 +78,7 @@ type PrintRunner struct {
 	providerSpecificFlags map[string]*string
 
 	// emitter indicates which emitter is used to generate the Gateway API resources.
-	// Defaults to "default".
+	// Defaults to "standard".
 	emitter string
 }
 

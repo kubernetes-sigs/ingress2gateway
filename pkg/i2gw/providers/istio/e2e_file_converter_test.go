@@ -27,7 +27,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	standardemitter "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/default"
+	standardemitter "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/standard"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/runtime"
