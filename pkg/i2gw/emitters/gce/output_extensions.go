@@ -22,19 +22,19 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
 )
 
-func BuildGCPBackendPolicySessionAffinityConfig(serviceIR gce.ServiceIR) *gkegatewayv1.SessionAffinityConfig {
-	affinityType := serviceIR.SessionAffinity.AffinityType
+func BuildGCPBackendPolicySessionAffinityConfig(gceServiceIR gce.ServiceIR) *gkegatewayv1.SessionAffinityConfig {
+	affinityType := gceServiceIR.SessionAffinity.AffinityType
 	saConfig := gkegatewayv1.SessionAffinityConfig{
 		Type: &affinityType,
 	}
 	if affinityType == "GENERATED_COOKIE" {
-		saConfig.CookieTTLSec = serviceIR.SessionAffinity.CookieTTLSec
+		saConfig.CookieTTLSec = gceServiceIR.SessionAffinity.CookieTTLSec
 	}
 	return &saConfig
 }
 
-func BuildGCPBackendPolicySecurityPolicyConfig(serviceIR gce.ServiceIR) *string {
-	securityPolicy := serviceIR.SecurityPolicy.Name
+func BuildGCPBackendPolicySecurityPolicyConfig(gceServiceIR gce.ServiceIR) *string {
+	securityPolicy := gceServiceIR.SecurityPolicy.Name
 	return &securityPolicy
 }
 
@@ -42,21 +42,21 @@ func BuildGCPGatewayPolicySecurityPolicyConfig(gatewayIR *emitterir.GatewayConte
 	return gatewayIR.Gce.SslPolicy.Name
 }
 
-func BuildHealthCheckPolicyConfig(serviceIR *gce.ServiceIR) *gkegatewayv1.HealthCheckPolicyConfig {
+func BuildHealthCheckPolicyConfig(gceServiceIR *gce.ServiceIR) *gkegatewayv1.HealthCheckPolicyConfig {
 	hcConfig := gkegatewayv1.HealthCheckPolicyConfig{
-		CheckIntervalSec:   serviceIR.HealthCheck.CheckIntervalSec,
-		TimeoutSec:         serviceIR.HealthCheck.TimeoutSec,
-		HealthyThreshold:   serviceIR.HealthCheck.HealthyThreshold,
-		UnhealthyThreshold: serviceIR.HealthCheck.UnhealthyThreshold,
+		CheckIntervalSec:   gceServiceIR.HealthCheck.CheckIntervalSec,
+		TimeoutSec:         gceServiceIR.HealthCheck.TimeoutSec,
+		HealthyThreshold:   gceServiceIR.HealthCheck.HealthyThreshold,
+		UnhealthyThreshold: gceServiceIR.HealthCheck.UnhealthyThreshold,
 	}
 	commonHc := gkegatewayv1.CommonHealthCheck{
-		Port: serviceIR.HealthCheck.Port,
+		Port: gceServiceIR.HealthCheck.Port,
 	}
 	commonHTTPHc := gkegatewayv1.CommonHTTPHealthCheck{
-		RequestPath: serviceIR.HealthCheck.RequestPath,
+		RequestPath: gceServiceIR.HealthCheck.RequestPath,
 	}
 
-	switch *serviceIR.HealthCheck.Type {
+	switch *gceServiceIR.HealthCheck.Type {
 	case "HTTP":
 		hcConfig.Config = &gkegatewayv1.HealthCheck{
 			Type: gkegatewayv1.HTTP,
