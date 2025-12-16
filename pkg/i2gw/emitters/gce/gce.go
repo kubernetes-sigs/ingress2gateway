@@ -21,7 +21,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/common"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/utils"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -62,7 +62,7 @@ func NewEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
 }
 
 func (c *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.ErrorList) {
-	gatewayResources, errs := common.ToGatewayResources(ir)
+	gatewayResources, errs := utils.ToGatewayResources(ir)
 	if len(errs) != 0 {
 		return i2gw.GatewayResources{}, errs
 	}
