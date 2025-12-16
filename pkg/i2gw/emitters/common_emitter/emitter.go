@@ -28,6 +28,8 @@ func NewEmitter() *Emitter {
 }
 
 // Emit processes the IR to apply common logic (like deduplication) and returns the modified IR.
+// This ALWAYS runs after providers and before provider-specific emitters.
+// TODO: Implement common logic such as filtering by maturity status and/or individual features.
 func (e *Emitter) Emit(ir emitterir.EmitterIR) (emitterir.EmitterIR, field.ErrorList) {
 	return ir, nil
 }
