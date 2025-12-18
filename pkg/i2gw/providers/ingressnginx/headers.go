@@ -27,11 +27,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-const (
-	xForwardedPrefixAnnotation      = "nginx.ingress.kubernetes.io/x-forwarded-prefix"
-	upstreamVhostAnnotation         = "nginx.ingress.kubernetes.io/upstream-vhost"
-	connectionProxyHeaderAnnotation = "nginx.ingress.kubernetes.io/connection-proxy-header"
-)
+
 
 func headerModifierFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *intermediate.IR) field.ErrorList {
 	for _, httpRouteContext := range ir.HTTPRoutes {
@@ -40,49 +36,47 @@ func headerModifierFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]
 				continue
 			}
 			sources := httpRouteContext.RuleBackendSources[i]
-			if len(sources) == 0 {
-				continue
-			}
-
-			// Check the first source for the annotation
-			ingress := sources[0].Ingress
+			
+			ingress := getNonCanaryIngress(sources)
 			if ingress == nil {
-				continue
+				panic("No non-canary ingress found")
 			}
 
 			headersToSet := make(map[string]string)
 
+			_, hasRewriteTarget := ingress.Annotations[RewriteTargetAnnotation]
+
 			// 1. x-forwarded-prefix
-			if val, ok := ingress.Annotations[xForwardedPrefixAnnotation]; ok && val != "" {
+			// This annotation only works if rewrite-target is also present.
+			if val, ok := ingress.Annotations[XForwardedPrefixAnnotation]; ok && val != "" && hasRewriteTarget {
 				headersToSet["X-Forwarded-Prefix"] = val
 			}
 
 			// 2. upstream-vhost -> Host header
-			if val, ok := ingress.Annotations[upstreamVhostAnnotation]; ok && val != "" {
+			if val, ok := ingress.Annotations[UpstreamVhostAnnotation]; ok && val != "" {
 				headersToSet["Host"] = val
 			}
 
 			// 3. connection-proxy-header -> Connection header
-			if val, ok := ingress.Annotations[connectionProxyHeaderAnnotation]; ok && val != "" {
+			if val, ok := ingress.Annotations[ConnectionProxyHeaderAnnotation]; ok && val != "" {
 				headersToSet["Connection"] = val
 			}
 
 			// 4. custom-headers -> Warn unsupported
-			if _, ok := ingress.Annotations["nginx.ingress.kubernetes.io/custom-headers"]; ok {
+			if _, ok := ingress.Annotations[CustomHeadersAnnotation]; ok {
 				notify(notifications.WarningNotification, fmt.Sprintf("Ingress %s/%s uses 'nginx.ingress.kubernetes.io/custom-headers' which is not supported as it requires cluster access to read ConfigMaps.", ingress.Namespace, ingress.Name), &httpRouteContext.HTTPRoute)
 			}
 
 			if len(headersToSet) > 0 {
-				// Create or append to RequestHeaderModifier filter
-				applyHeaderModifiers(ingress, &httpRouteContext.HTTPRoute, i, headersToSet)
+				applyHeaderModifiers(&httpRouteContext.HTTPRoute, i, headersToSet)
 			}
 		}
 	}
 	return nil
 }
 
-func applyHeaderModifiers(ingress *networkingv1.Ingress, httpRoute *gatewayv1.HTTPRoute, ruleIndex int, headersToSet map[string]string) {
-	// Check if a RequestHeaderModifier filter already exists
+func applyHeaderModifiers(httpRoute *gatewayv1.HTTPRoute, ruleIndex int, headersToSet map[string]string) {
+	// Find existing RequestHeaderModifier filter or create new one
 	var filter *gatewayv1.HTTPRouteFilter
 	for j, f := range httpRoute.Spec.Rules[ruleIndex].Filters {
 		if f.Type == gatewayv1.HTTPRouteFilterRequestHeaderModifier && f.RequestHeaderModifier != nil {
@@ -99,26 +93,15 @@ func applyHeaderModifiers(ingress *networkingv1.Ingress, httpRoute *gatewayv1.HT
 			},
 		}
 		httpRoute.Spec.Rules[ruleIndex].Filters = append(httpRoute.Spec.Rules[ruleIndex].Filters, f)
-		// Get pointer to the newly added filter
 		filter = &httpRoute.Spec.Rules[ruleIndex].Filters[len(httpRoute.Spec.Rules[ruleIndex].Filters)-1]
 	}
 
 	for name, value := range headersToSet {
-		// Check if header is already being set to avoid duplicates?
-		// Simply append for now, or check existence.
-		exists := false
-		for _, h := range filter.RequestHeaderModifier.Set {
-			if string(h.Name) == name {
-				exists = true
-				break
-			}
-		}
-		if !exists {
-			filter.RequestHeaderModifier.Set = append(filter.RequestHeaderModifier.Set, gatewayv1.HTTPHeader{
-				Name:  gatewayv1.HTTPHeaderName(name),
-				Value: value,
-			})
-			notify(notifications.InfoNotification, fmt.Sprintf("Applied header modifier %s: %s to rule %d of route %s/%s", name, value, ruleIndex, httpRoute.Namespace, httpRoute.Name), httpRoute)
-		}
+		// Used standard append as suggested in PR review
+		filter.RequestHeaderModifier.Set = append(filter.RequestHeaderModifier.Set, gatewayv1.HTTPHeader{
+			Name:  gatewayv1.HTTPHeaderName(name),
+			Value: value,
+		})
+		notify(notifications.InfoNotification, fmt.Sprintf("Applied header modifier %s: %s to rule %d of route %s/%s", name, value, ruleIndex, httpRoute.Namespace, httpRoute.Name), httpRoute)
 	}
 }
