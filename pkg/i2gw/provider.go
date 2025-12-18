@@ -91,7 +91,7 @@ type ProviderImplementationSpecificOptions struct {
 //
 // Different FeatureParsers will run in undetermined order. The function must
 // modify / create only the required fields of the IR and nothing else.
-type FeatureParser func([]networkingv1.Ingress, map[types.NamespacedName]map[string]int32, *providerir.ProviderIR) field.ErrorList
+type FeatureParser func([]networkingv1.Ingress, map[types.NamespacedName]map[string]int32, *providerir.ProviderIR, *emitterir.EmitterIR) field.ErrorList
 
 var providerSpecificFlagDefinitions = providerSpecificFlags{
 	flags: make(map[ProviderName]map[string]ProviderSpecificFlag),

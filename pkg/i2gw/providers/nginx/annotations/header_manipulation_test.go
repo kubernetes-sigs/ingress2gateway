@@ -498,7 +498,7 @@ func TestHeaderManipulationFeature(t *testing.T) {
 				},
 			}
 
-			errs := HeaderManipulationFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+			errs := HeaderManipulationFeature([]networkingv1.Ingress{ingress}, nil, &ir, nil)
 			if len(errs) > 0 {
 				t.Fatalf("Unexpected errors: %v", errs)
 			}
@@ -814,7 +814,7 @@ func TestHeaderManipulationWithSourceIngressMapping(t *testing.T) {
 	ir.HTTPRoutes[routeKey] = providerir.HTTPRouteContext{HTTPRoute: httpRoute}
 
 	// Apply header manipulation
-	errs := HeaderManipulationFeature([]networkingv1.Ingress{ingress1, ingress2}, nil, &ir)
+	errs := HeaderManipulationFeature([]networkingv1.Ingress{ingress1, ingress2}, nil, &ir, nil)
 	if len(errs) > 0 {
 		t.Fatalf("HeaderManipulationFeature returned errors: %v", errs)
 	}

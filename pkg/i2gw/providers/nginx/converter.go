@@ -62,7 +62,7 @@ func (c *resourcesToIRConverter) convert(storage *storage) (providerir.ProviderI
 	}
 
 	for _, parseFeatureFunc := range c.featureParsers {
-		errs := parseFeatureFunc(ingressList, storage.ServicePorts, &ir)
+		errs := parseFeatureFunc(ingressList, storage.ServicePorts, &ir, nil)
 		errorList = append(errorList, errs...)
 	}
 

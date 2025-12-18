@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
+	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
@@ -32,7 +33,7 @@ import (
 
 // HSTSFeature converts HSTS annotations to HTTPRoute ResponseHeaderModifier filters.
 // Supports nginx.org/hsts, nginx.org/hsts-max-age, and nginx.org/hsts-include-subdomains annotations.
-func HSTSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func HSTSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR, _ *emitterir.EmitterIR) field.ErrorList {
 	var errs field.ErrorList
 
 	ruleGroups := common.GetRuleGroups(ingresses)

@@ -320,7 +320,7 @@ func Test_forceHTTPSFeature(t *testing.T) {
 				},
 			}
 
-			errs := forceHTTPSFeature(ingresses, map[types.NamespacedName]map[string]int32{}, ir)
+			errs := forceHTTPSFeature(ingresses, map[types.NamespacedName]map[string]int32{}, ir, nil)
 
 			if len(errs) != len(tc.expectedError) {
 				t.Errorf("expected %d errors, got %d", len(tc.expectedError), len(errs))

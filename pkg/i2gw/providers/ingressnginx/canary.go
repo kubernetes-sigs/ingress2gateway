@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strconv"
 
+	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
@@ -77,21 +78,28 @@ func parseCanaryConfig(ingress *networkingv1.Ingress) (canaryConfig, error) {
 	return config, nil
 }
 
-func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, pir *providerir.ProviderIR, eir *emitterir.EmitterIR) field.ErrorList {
 	ruleGroups := common.GetRuleGroups(ingresses)
 	var errList field.ErrorList
 
 	for _, rg := range ruleGroups {
 		key := types.NamespacedName{Namespace: rg.Namespace, Name: common.RouteName(rg.Name, rg.Host)}
-		httpRouteContext, ok := ir.HTTPRoutes[key]
+
+		// Get RuleBackendSources from Provider IR
+		providerHTTPRouteContext, ok := pir.HTTPRoutes[key]
 		if !ok {
 			continue
 		}
 
-		for ruleIdx, backendSources := range httpRouteContext.RuleBackendSources {
-			if ruleIdx >= len(httpRouteContext.HTTPRoute.Spec.Rules) {
+		emitterHTTPRouteContext, ok := eir.HTTPRoutes[key]
+		if !ok {
+			continue
+		}
+
+		for ruleIdx, backendSources := range providerHTTPRouteContext.RuleBackendSources {
+			if ruleIdx >= len(emitterHTTPRouteContext.HTTPRoute.Spec.Rules) {
 				errList = append(errList, field.InternalError(
-					field.NewPath("httproute", httpRouteContext.HTTPRoute.Name, "spec", "rules").Index(ruleIdx),
+					field.NewPath("httproute", emitterHTTPRouteContext.HTTPRoute.Name, "spec", "rules").Index(ruleIdx),
 					fmt.Errorf("rule index %d exceeds available rules", ruleIdx),
 				))
 				continue
@@ -110,12 +118,12 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 					continue
 				}
 
-				backendRef := &httpRouteContext.HTTPRoute.Spec.Rules[ruleIdx].BackendRefs[backendIdx]
+				backendRef := &emitterHTTPRouteContext.HTTPRoute.Spec.Rules[ruleIdx].BackendRefs[backendIdx]
 
 				if source.Ingress.Annotations[canaryAnnotation] == "true" {
 					if canaryBackend != nil {
 						errList = append(errList, field.Invalid(
-							field.NewPath("httproute", httpRouteContext.HTTPRoute.Name, "spec", "rules").Index(ruleIdx).Child("backendRefs"),
+							field.NewPath("httproute", emitterHTTPRouteContext.HTTPRoute.Name, "spec", "rules").Index(ruleIdx).Child("backendRefs"),
 							fmt.Sprintf("ingresses %s/%s and %s/%s", canarySourceIngress.Namespace, canarySourceIngress.Name, source.Ingress.Namespace, source.Ingress.Name),
 							"at most one canary backend is allowed per rule",
 						))
@@ -138,7 +146,7 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 				} else {
 					if nonCanaryBackend != nil {
 						errList = append(errList, field.Invalid(
-							field.NewPath("httproute", httpRouteContext.HTTPRoute.Name, "spec", "rules").Index(ruleIdx).Child("backendRefs"),
+							field.NewPath("httproute", emitterHTTPRouteContext.HTTPRoute.Name, "spec", "rules").Index(ruleIdx).Child("backendRefs"),
 							"multiple non-canary backends",
 							"at most one non-canary backend is allowed per rule when using canary",
 						))
@@ -148,11 +156,11 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 				}
 			}
 
-			// If there is a canary backend, validate and set weights
+			// If there is a canary backend, validate and set weights in Emitter IR
 			if canaryBackend != nil {
 				if nonCanaryBackend == nil {
 					errList = append(errList, field.Invalid(
-						field.NewPath("httproute", httpRouteContext.HTTPRoute.Name, "spec", "rules").Index(ruleIdx).Child("backendRefs"),
+						field.NewPath("httproute", emitterHTTPRouteContext.HTTPRoute.Name, "spec", "rules").Index(ruleIdx).Child("backendRefs"),
 						"canary backend without non-canary backend",
 						"a non-canary backend is required when using canary",
 					))
@@ -166,9 +174,10 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 				nonCanaryBackend.Weight = &nonCanaryWeight
 
 				notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set weights (canary: %d, non-canary: %d, total: %d)",
-					canarySourceIngress.Namespace, canarySourceIngress.Name, canaryWeight, nonCanaryWeight, canaryConfig.weightTotal), &httpRouteContext.HTTPRoute)
+					canarySourceIngress.Namespace, canarySourceIngress.Name, canaryWeight, nonCanaryWeight, canaryConfig.weightTotal), &emitterHTTPRouteContext.HTTPRoute)
 			}
 		}
+		eir.HTTPRoutes[key] = emitterHTTPRouteContext
 	}
 
 	if len(errList) > 0 {

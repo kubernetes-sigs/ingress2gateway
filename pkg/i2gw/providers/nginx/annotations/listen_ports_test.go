@@ -268,7 +268,7 @@ func TestListenPortsFeature(t *testing.T) {
 				HTTPRoutes: make(map[types.NamespacedName]providerir.HTTPRouteContext),
 			}
 
-			errs := ListenPortsFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+			errs := ListenPortsFeature([]networkingv1.Ingress{ingress}, nil, &ir, nil)
 			if len(errs) > 0 {
 				t.Fatalf("Unexpected errors: %v", errs)
 			}
@@ -416,7 +416,7 @@ func TestListenPortsReplacesDefaultListeners(t *testing.T) {
 	}
 
 	// Apply listen-ports feature
-	errs := ListenPortsFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+	errs := ListenPortsFeature([]networkingv1.Ingress{ingress}, nil, &ir, nil)
 	if len(errs) > 0 {
 		t.Fatalf("Unexpected errors: %v", errs)
 	}
@@ -494,7 +494,7 @@ func TestListenPortsConflictResolution(t *testing.T) {
 		HTTPRoutes: make(map[types.NamespacedName]providerir.HTTPRouteContext),
 	}
 
-	errs := ListenPortsFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+	errs := ListenPortsFeature([]networkingv1.Ingress{ingress}, nil, &ir, nil)
 	if len(errs) > 0 {
 		t.Fatalf("Unexpected errors: %v", errs)
 	}

@@ -250,7 +250,7 @@ func TestHeaderMatchingFeature(t *testing.T) {
 				t.Errorf("Expected no errors, got %d: %+v", len(errs), errs)
 			}
 
-			errs = headerMatchingFeature(tc.ingresses, map[types.NamespacedName]map[string]int32{}, &gatewayResources)
+			errs = headerMatchingFeature(tc.ingresses, map[types.NamespacedName]map[string]int32{}, &gatewayResources, nil)
 			if len(errs) != len(tc.expectedErrors) {
 				t.Errorf("Expected %d errors, got %d: %+v", len(tc.expectedErrors), len(errs), errs)
 			} else {

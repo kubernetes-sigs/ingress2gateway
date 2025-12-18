@@ -175,7 +175,7 @@ func TestHSTSFeature(t *testing.T) {
 			}
 
 			// Execute
-			errs := HSTSFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+			errs := HSTSFeature([]networkingv1.Ingress{ingress}, nil, &ir, nil)
 			if len(errs) > 0 {
 				t.Fatalf("Unexpected errors: %v", errs)
 			}

@@ -89,7 +89,7 @@ func TestGRPCServicesRemoveHTTPRoute(t *testing.T) {
 	}
 
 	// Execute
-	errs := GRPCServicesFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+	errs := GRPCServicesFeature([]networkingv1.Ingress{ingress}, nil, &ir, nil)
 	if len(errs) > 0 {
 		t.Errorf("Unexpected errors: %v", errs)
 		return
@@ -273,7 +273,7 @@ func TestGRPCServicesWithMixedServices(t *testing.T) {
 	}
 
 	// Execute
-	errs := GRPCServicesFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+	errs := GRPCServicesFeature([]networkingv1.Ingress{ingress}, nil, &ir, nil)
 	if len(errs) > 0 {
 		t.Errorf("Unexpected errors: %v", errs)
 		return

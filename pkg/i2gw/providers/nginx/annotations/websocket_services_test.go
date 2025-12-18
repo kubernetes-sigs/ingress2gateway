@@ -37,7 +37,7 @@ func TestWebSocketServicesFeature(t *testing.T) {
 		}
 
 		ir := providerir.ProviderIR{}
-		errs := WebSocketServicesFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+		errs := WebSocketServicesFeature([]networkingv1.Ingress{ingress}, nil, &ir, nil)
 		if len(errs) > 0 {
 			t.Errorf("Unexpected errors: %v", errs)
 		}
@@ -52,7 +52,7 @@ func TestWebSocketServicesFeature(t *testing.T) {
 		}
 
 		ir := providerir.ProviderIR{}
-		errs := WebSocketServicesFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+		errs := WebSocketServicesFeature([]networkingv1.Ingress{ingress}, nil, &ir, nil)
 		if len(errs) > 0 {
 			t.Errorf("Unexpected errors: %v", errs)
 		}

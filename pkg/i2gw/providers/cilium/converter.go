@@ -56,7 +56,7 @@ func (c *resourcesToIRConverter) convertToIR(storage *storage) (providerir.Provi
 
 	for _, parseFeatureFunc := range c.featureParsers {
 		// Apply the feature parsing function to the gateway resources, one by one.
-		parseErrs := parseFeatureFunc(ingressList, storage.ServicePorts, &ir)
+		parseErrs := parseFeatureFunc(ingressList, storage.ServicePorts, &ir, nil)
 		// Append the parsing errors to the error list.
 		errs = append(errs, parseErrs...)
 	}

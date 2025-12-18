@@ -176,7 +176,7 @@ func TestPathRegex(t *testing.T) {
 				HTTPRoute: httpRoute,
 			}
 
-			errs := PathRegexFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+			errs := PathRegexFeature([]networkingv1.Ingress{ingress}, nil, &ir, nil)
 			if len(errs) > 0 {
 				t.Fatalf("Unexpected errors: %v", errs)
 			}
@@ -285,7 +285,7 @@ func TestPathRegexMultipleMatches(t *testing.T) {
 		HTTPRoute: httpRoute,
 	}
 
-	errs := PathRegexFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+	errs := PathRegexFeature([]networkingv1.Ingress{ingress}, nil, &ir, nil)
 	if len(errs) > 0 {
 		t.Fatalf("Unexpected errors: %v", errs)
 	}
@@ -375,7 +375,7 @@ func TestPathRegexCaseInsensitiveNotification(t *testing.T) {
 		HTTPRoute: httpRoute,
 	}
 
-	errs := PathRegexFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+	errs := PathRegexFeature([]networkingv1.Ingress{ingress}, nil, &ir, nil)
 
 	// Should have no errors since we're using notifications now
 	if len(errs) != 0 {
@@ -462,7 +462,7 @@ func TestPathRegexCaseInsensitiveFlagInjection(t *testing.T) {
 	}
 
 	// Apply path regex feature
-	errs := PathRegexFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+	errs := PathRegexFeature([]networkingv1.Ingress{ingress}, nil, &ir, nil)
 	if len(errs) > 0 {
 		t.Fatalf("Unexpected errors: %v", errs)
 	}
@@ -571,7 +571,7 @@ func TestPathRegexCaseInsensitiveFlagNotDuplicated(t *testing.T) {
 	}
 
 	// Apply path regex feature
-	errs := PathRegexFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+	errs := PathRegexFeature([]networkingv1.Ingress{ingress}, nil, &ir, nil)
 	if len(errs) > 0 {
 		t.Fatalf("Unexpected errors: %v", errs)
 	}

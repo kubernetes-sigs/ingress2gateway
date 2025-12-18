@@ -157,7 +157,7 @@ func TestRewriteTarget(t *testing.T) {
 				HTTPRoute: httpRoute,
 			}
 
-			errs := RewriteTargetFeature([]networkingv1.Ingress{tt.ingress}, nil, &ir)
+			errs := RewriteTargetFeature([]networkingv1.Ingress{tt.ingress}, nil, &ir, nil)
 			if len(errs) > 0 {
 				t.Errorf("Unexpected errors: %v", errs)
 				return
