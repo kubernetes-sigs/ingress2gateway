@@ -245,7 +245,7 @@ func TestHeaderModifierFeature(t *testing.T) {
 			ir := intermediate.IR{
 				HTTPRoutes: make(map[types.NamespacedName]intermediate.HTTPRouteContext),
 			}
-			
+
 			// Replicate IR setup
 			key := types.NamespacedName{Namespace: tc.ingress.Namespace, Name: common.RouteName(tc.ingress.Name, "example.com")}
 			route := gatewayv1.HTTPRoute{
@@ -290,7 +290,7 @@ func TestHeaderModifierFeature(t *testing.T) {
 
 			foundHeaderFilter := false
 			var headerFilter *gatewayv1.HTTPHeaderFilter
-			
+
 			for _, f := range rules[0].Filters {
 				if f.Type == gatewayv1.HTTPRouteFilterRequestHeaderModifier {
 					foundHeaderFilter = true
