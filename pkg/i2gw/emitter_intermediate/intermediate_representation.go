@@ -24,6 +24,10 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
+const (
+	RouteAllRulesKey = -1
+)
+
 // EmitterIR holds specifications of Gateway Objects for supporting Ingress extensions,
 // annotations, and proprietary API features not supported as Gateway core
 // features. An EmitterIR field can be mapped to core Gateway-API fields,
@@ -53,6 +57,11 @@ type GatewayContext struct {
 
 type HTTPRouteContext struct {
 	gatewayv1.HTTPRoute
+
+	// ExtAuth stores external auth config per rule.
+	// Key: rule index (0-based), or RouteAllRulesKey for all rules.
+	// If a specific rule has config, it takes precedence over RouteAllRulesKey (all rules).
+	ExtAuth map[int]*ExternalAuthConfig
 }
 
 type GatewayClassContext struct {
@@ -81,4 +90,11 @@ type BackendTLSPolicyContext struct {
 
 type ReferenceGrantContext struct {
 	gatewayv1beta1.ReferenceGrant
+}
+
+type ExternalAuthConfig struct {
+	gatewayv1.BackendObjectReference
+	Protocol               gatewayv1.HTTPRouteExternalAuthProtocol
+	Path                   string
+	AllowedResponseHeaders []string
 }
