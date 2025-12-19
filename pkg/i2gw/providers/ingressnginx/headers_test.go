@@ -200,9 +200,9 @@ func TestHeaderModifierFeature(t *testing.T) {
 					Name:      "test-multiple",
 					Namespace: "default",
 					Annotations: map[string]string{
-						"nginx.ingress.kubernetes.io/x-forwarded-prefix": "/prefix",
-						"nginx.ingress.kubernetes.io/rewrite-target":     "/foo",
-						"nginx.ingress.kubernetes.io/upstream-vhost":     "backend.local",
+						"nginx.ingress.kubernetes.io/x-forwarded-prefix":      "/prefix",
+						"nginx.ingress.kubernetes.io/rewrite-target":          "/foo",
+						"nginx.ingress.kubernetes.io/upstream-vhost":          "backend.local",
 						"nginx.ingress.kubernetes.io/connection-proxy-header": "keep-alive",
 					},
 				},
