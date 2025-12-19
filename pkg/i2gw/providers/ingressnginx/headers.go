@@ -34,7 +34,7 @@ func headerModifierFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]
 				continue
 			}
 			sources := httpRouteContext.RuleBackendSources[i]
-			
+
 			ingress := getNonCanaryIngress(sources)
 			if ingress == nil {
 				panic("No non-canary ingress found")
