@@ -17,10 +17,14 @@ limitations under the License.
 package utils
 
 import (
+	"reflect"
+	"sort"
+
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
@@ -123,4 +127,79 @@ func ToGatewayResources(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.Er
 		gatewayResources.ReferenceGrants[key] = val.ReferenceGrant
 	}
 	return gatewayResources, nil
+}
+
+// MergeExternalAuth merges per-rule external auth configs into a single
+// RouteAllRulesKey entry if all rules have the same configuration.
+func MergeExternalAuth(ctx *emitterir.HTTPRouteContext) {
+	if len(ctx.ExtAuth) <= 1 {
+		return
+	}
+	if len(ctx.Spec.Rules) != len(ctx.ExtAuth) {
+		return
+	}
+
+	// Check if all configs are equal
+	var firstConfig *emitterir.ExternalAuthConfig
+	for _, config := range ctx.ExtAuth {
+		if firstConfig == nil {
+			firstConfig = config
+			continue
+		}
+		if !externalAuthConfigsEqual(firstConfig, config) {
+			return // Configs are not equal, no merge
+		}
+	}
+
+	// All configs are equal, merge into RouteAllRulesKey
+	if firstConfig != nil {
+		ctx.ExtAuth = map[int]*emitterir.ExternalAuthConfig{
+			emitterir.RouteAllRulesKey: firstConfig,
+		}
+	}
+}
+
+// externalAuthConfigsEqual checks if two ExternalAuthConfig are equal
+func externalAuthConfigsEqual(a, b *emitterir.ExternalAuthConfig) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+
+	// Compare BackendObjectReference fields
+	if !backendObjectReferencesEqual(a.BackendObjectReference, b.BackendObjectReference) {
+		return false
+	}
+	if a.Protocol != b.Protocol {
+		return false
+	}
+	if a.Path != b.Path {
+		return false
+	}
+
+	sort.Strings(a.AllowedResponseHeaders)
+	sort.Strings(b.AllowedResponseHeaders)
+	return reflect.DeepEqual(a.AllowedResponseHeaders, b.AllowedResponseHeaders)
+}
+
+// backendObjectReferencesEqual checks if two BackendObjectReference are equal
+func backendObjectReferencesEqual(a, b gatewayv1.BackendObjectReference) bool {
+	if ptr.Deref(a.Group, gatewayv1.Group("")) != ptr.Deref(b.Group, gatewayv1.Group("")) {
+		return false
+	}
+	if ptr.Deref(a.Kind, gatewayv1.Kind("Service")) != ptr.Deref(b.Kind, gatewayv1.Kind("Service")) {
+		return false
+	}
+	if a.Name != b.Name {
+		return false
+	}
+	if ptr.Deref(a.Namespace, gatewayv1.Namespace("default")) != ptr.Deref(b.Namespace, gatewayv1.Namespace("default")) {
+		return false
+	}
+	if ptr.Deref(a.Port, gatewayv1.PortNumber(80)) != ptr.Deref(b.Port, gatewayv1.PortNumber(80)) {
+		return false
+	}
+	return true
 }
