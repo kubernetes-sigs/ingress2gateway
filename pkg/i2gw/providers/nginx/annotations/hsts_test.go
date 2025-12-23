@@ -25,7 +25,7 @@ import (
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
@@ -138,8 +138,8 @@ func TestHSTSFeature(t *testing.T) {
 			routeName := common.RouteName(ingress.Name, ingress.Spec.Rules[0].Host)
 			routeKey := types.NamespacedName{Namespace: ingress.Namespace, Name: routeName}
 
-			ir := intermediate.IR{
-				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+			ir := providerir.ProviderIR{
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 					routeKey: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{

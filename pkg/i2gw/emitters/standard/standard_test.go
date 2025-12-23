@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package common
+package standard_emitter
 
 import (
 	"errors"
@@ -22,33 +22,52 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
+
+var (
+	GatewayGVK = schema.GroupVersionKind{
+		Group:   "gateway.networking.k8s.io",
+		Version: "v1",
+		Kind:    "Gateway",
+	}
+
+	HTTPRouteGVK = schema.GroupVersionKind{
+		Group:   "gateway.networking.k8s.io",
+		Version: "v1",
+		Kind:    "HTTPRoute",
+	}
+)
+
+func PtrTo[T any](a T) *T {
+	return &a
+}
 
 func Test_ToGatewayResources(t *testing.T) {
 	gPathPrefix := gatewayv1.PathMatchPathPrefix
 
 	testCases := []struct {
 		desc                     string
-		ir                       intermediate.IR
+		ir                       emitterir.EmitterIR
 		expectedGatewayResources i2gw.GatewayResources
 		expectedErrors           field.ErrorList
 	}{
 		{
 			desc:                     "empty",
-			ir:                       intermediate.IR{},
+			ir:                       emitterir.EmitterIR{},
 			expectedGatewayResources: i2gw.GatewayResources{},
 			expectedErrors:           field.ErrorList{},
 		},
 		{
 			desc: "no additional extensions",
-			ir: intermediate.IR{
-				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+			ir: emitterir.EmitterIR{
+				Gateways: map[types.NamespacedName]emitterir.GatewayContext{
 					{Namespace: "test", Name: "simple"}: {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{Name: "simple", Namespace: "test"},
@@ -64,7 +83,7 @@ func Test_ToGatewayResources(t *testing.T) {
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{
 					{Namespace: "test", Name: "simple-example-com"}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{Name: "simple-example-com", Namespace: "test"},
@@ -144,8 +163,8 @@ func Test_ToGatewayResources(t *testing.T) {
 		},
 		{
 			desc: "duplicated backends",
-			ir: intermediate.IR{
-				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+			ir: emitterir.EmitterIR{
+				Gateways: map[types.NamespacedName]emitterir.GatewayContext{
 					{Namespace: "test", Name: "example-proxy"}: {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{Name: "example-proxy", Namespace: "test"},
@@ -161,7 +180,7 @@ func Test_ToGatewayResources(t *testing.T) {
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{
 					{Namespace: "test", Name: "duplicate-example-com"}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{Name: "duplicate-example-com", Namespace: "test"},
@@ -269,7 +288,8 @@ func Test_ToGatewayResources(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			gatewayResouces, errs := ToGatewayResources(tc.ir)
+			emitter := Emitter{}
+			gatewayResouces, errs := emitter.Emit(tc.ir)
 
 			if len(errs) != len(tc.expectedErrors) {
 				t.Errorf("Expected %d errors, got %d: %+v", len(tc.expectedErrors), len(errs), errs)

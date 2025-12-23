@@ -190,56 +190,6 @@ func PtrTo[T any](a T) *T {
 	return &a
 }
 
-type uniqueBackendRefsKey struct {
-	Name      gatewayv1.ObjectName
-	Namespace gatewayv1.Namespace
-	Port      gatewayv1.PortNumber
-	Group     gatewayv1.Group
-	Kind      gatewayv1.Kind
-}
-
-// removeBackendRefsDuplicates removes duplicate backendRefs from a list of backendRefs.
-func removeBackendRefsDuplicates(backendRefs []gatewayv1.HTTPBackendRef) []gatewayv1.HTTPBackendRef {
-
-	uniqueBackendRefs := map[uniqueBackendRefsKey]*gatewayv1.HTTPBackendRef{}
-
-	for _, backendRef := range backendRefs {
-		var k uniqueBackendRefsKey
-
-		group := gatewayv1.Group("")
-		kind := gatewayv1.Kind("Service")
-
-		if backendRef.Group != nil && *backendRef.Group != "core" {
-			group = *backendRef.Group
-		}
-
-		if backendRef.Kind != nil {
-			kind = *backendRef.Kind
-		}
-
-		k.Name = backendRef.Name
-		k.Group = group
-		k.Kind = kind
-
-		if backendRef.Port != nil {
-			k.Port = *backendRef.Port
-		}
-
-		if oldRef, exists := uniqueBackendRefs[k]; exists {
-			if oldRef.Weight != nil && backendRef.Weight != nil {
-				*oldRef.Weight += *backendRef.Weight
-			}
-		} else {
-			uniqueBackendRefs[k] = backendRef.DeepCopy()
-		}
-	}
-	result := make([]gatewayv1.HTTPBackendRef, 0, len(uniqueBackendRefs))
-	for _, backendRef := range uniqueBackendRefs {
-		result = append(result, *backendRef)
-	}
-	return result
-}
-
 // ParseGRPCServiceMethod parses gRPC service and method from HTTP path
 func ParseGRPCServiceMethod(path string) (service, method string) {
 	path = strings.TrimPrefix(path, "/")

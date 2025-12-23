@@ -19,7 +19,7 @@ package extensions
 import (
 	"fmt"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
 	"k8s.io/apimachinery/pkg/util/sets"
 	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
 	frontendconfigv1beta1 "k8s.io/ingress-gce/pkg/apis/frontendconfig/v1beta1"
@@ -60,27 +60,27 @@ func validateHealthCheck(beConfig *backendconfigv1.BackendConfig) error {
 	return nil
 }
 
-func BuildIRSessionAffinityConfig(beConfig *backendconfigv1.BackendConfig) *intermediate.SessionAffinityConfig {
-	return &intermediate.SessionAffinityConfig{
+func BuildIRSessionAffinityConfig(beConfig *backendconfigv1.BackendConfig) *gce.SessionAffinityConfig {
+	return &gce.SessionAffinityConfig{
 		AffinityType: beConfig.Spec.SessionAffinity.AffinityType,
 		CookieTTLSec: beConfig.Spec.SessionAffinity.AffinityCookieTtlSec,
 	}
 }
 
-func BuildIRSecurityPolicyConfig(beConfig *backendconfigv1.BackendConfig) *intermediate.SecurityPolicyConfig {
-	return &intermediate.SecurityPolicyConfig{
+func BuildIRSecurityPolicyConfig(beConfig *backendconfigv1.BackendConfig) *gce.SecurityPolicyConfig {
+	return &gce.SecurityPolicyConfig{
 		Name: beConfig.Spec.SecurityPolicy.Name,
 	}
 }
 
-func BuildIRSslPolicyConfig(feConfig *frontendconfigv1beta1.FrontendConfig) *intermediate.SslPolicyConfig {
-	return &intermediate.SslPolicyConfig{
+func BuildIRSslPolicyConfig(feConfig *frontendconfigv1beta1.FrontendConfig) *gce.SslPolicyConfig {
+	return &gce.SslPolicyConfig{
 		Name: *feConfig.Spec.SslPolicy,
 	}
 }
 
-func BuildIRHealthCheckConfig(beConfig *backendconfigv1.BackendConfig) *intermediate.HealthCheckConfig {
-	return &intermediate.HealthCheckConfig{
+func BuildIRHealthCheckConfig(beConfig *backendconfigv1.BackendConfig) *gce.HealthCheckConfig {
+	return &gce.HealthCheckConfig{
 		CheckIntervalSec:   beConfig.Spec.HealthCheck.CheckIntervalSec,
 		TimeoutSec:         beConfig.Spec.HealthCheck.TimeoutSec,
 		HealthyThreshold:   beConfig.Spec.HealthCheck.HealthyThreshold,
