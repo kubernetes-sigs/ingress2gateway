@@ -62,7 +62,7 @@ func Test_constructProviders(t *testing.T) {
 					t.Errorf("Expected no error but got %v", err)
 				}
 				if len(tc.expectedProviders) != len(providerByName) {
-					t.Errorf("Expected contructed providers num is %d but got %d", len(tc.providers), len(providerByName))
+					t.Errorf("Expected constructed providers num is %d but got %d", len(tc.providers), len(providerByName))
 				}
 				for _, provider := range tc.expectedProviders {
 					if _, ok := providerByName[ProviderName(provider)]; !ok {
@@ -82,7 +82,7 @@ func Test_GetSupportedProviders(t *testing.T) {
 	t.Run("Test GetSupportedProviders", func(t *testing.T) {
 		allProviders := GetSupportedProviders()
 		if len(allProviders) != len(ProviderConstructorByName) {
-			t.Errorf("The acutal number of the providers we supported is %d but we got the number is: %d",
+			t.Errorf("The actual number of the providers we supported is %d but we got the number is: %d",
 				len(ProviderConstructorByName), len(allProviders))
 		}
 		for _, provider := range allProviders {

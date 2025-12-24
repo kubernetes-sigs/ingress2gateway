@@ -32,7 +32,7 @@ import (
 //   - GatewayClasses, Routes, and ReferenceGrants are grouped into the same maps
 //   - Gateways may have the same NamespaceName even if they come from different
 //     ingresses, as they have a their GatewayClass' name as name. For this reason,
-//     if there are mutiple gateways named the same, their listeners are merged into
+//     if there are multiple gateways named the same, their listeners are merged into
 //     a unique Gateway.
 //
 // This behavior is likely to change after https://github.com/kubernetes-sigs/gateway-api/pull/1863 takes place.
