@@ -19,10 +19,9 @@ package annotations
 import (
 	"testing"
 
+	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 )
 
 func TestWebSocketServicesFeature(t *testing.T) {
@@ -37,7 +36,7 @@ func TestWebSocketServicesFeature(t *testing.T) {
 			},
 		}
 
-		ir := intermediate.IR{}
+		ir := providerir.ProviderIR{}
 		errs := WebSocketServicesFeature([]networkingv1.Ingress{ingress}, nil, &ir)
 		if len(errs) > 0 {
 			t.Errorf("Unexpected errors: %v", errs)
@@ -52,7 +51,7 @@ func TestWebSocketServicesFeature(t *testing.T) {
 			},
 		}
 
-		ir := intermediate.IR{}
+		ir := providerir.ProviderIR{}
 		errs := WebSocketServicesFeature([]networkingv1.Ingress{ingress}, nil, &ir)
 		if len(errs) > 0 {
 			t.Errorf("Unexpected errors: %v", errs)

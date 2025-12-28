@@ -14,48 +14,49 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package extensions
+package gce_emitter
 
 import (
 	gkegatewayv1 "github.com/GoogleCloudPlatform/gke-gateway-api/apis/networking/v1"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
 )
 
-func BuildGCPBackendPolicySessionAffinityConfig(serviceIR intermediate.ProviderSpecificServiceIR) *gkegatewayv1.SessionAffinityConfig {
-	affinityType := serviceIR.Gce.SessionAffinity.AffinityType
+func BuildGCPBackendPolicySessionAffinityConfig(gceServiceIR gce.ServiceIR) *gkegatewayv1.SessionAffinityConfig {
+	affinityType := gceServiceIR.SessionAffinity.AffinityType
 	saConfig := gkegatewayv1.SessionAffinityConfig{
 		Type: &affinityType,
 	}
 	if affinityType == "GENERATED_COOKIE" {
-		saConfig.CookieTTLSec = serviceIR.Gce.SessionAffinity.CookieTTLSec
+		saConfig.CookieTTLSec = gceServiceIR.SessionAffinity.CookieTTLSec
 	}
 	return &saConfig
 }
 
-func BuildGCPBackendPolicySecurityPolicyConfig(serviceIR intermediate.ProviderSpecificServiceIR) *string {
-	securityPolicy := serviceIR.Gce.SecurityPolicy.Name
+func BuildGCPBackendPolicySecurityPolicyConfig(gceServiceIR gce.ServiceIR) *string {
+	securityPolicy := gceServiceIR.SecurityPolicy.Name
 	return &securityPolicy
 }
 
-func BuildGCPGatewayPolicySecurityPolicyConfig(gatewayIR intermediate.ProviderSpecificGatewayIR) string {
+func BuildGCPGatewayPolicySecurityPolicyConfig(gatewayIR *emitterir.GatewayContext) string {
 	return gatewayIR.Gce.SslPolicy.Name
 }
 
-func BuildHealthCheckPolicyConfig(serviceIR intermediate.ProviderSpecificServiceIR) *gkegatewayv1.HealthCheckPolicyConfig {
+func BuildHealthCheckPolicyConfig(gceServiceIR *gce.ServiceIR) *gkegatewayv1.HealthCheckPolicyConfig {
 	hcConfig := gkegatewayv1.HealthCheckPolicyConfig{
-		CheckIntervalSec:   serviceIR.Gce.HealthCheck.CheckIntervalSec,
-		TimeoutSec:         serviceIR.Gce.HealthCheck.TimeoutSec,
-		HealthyThreshold:   serviceIR.Gce.HealthCheck.HealthyThreshold,
-		UnhealthyThreshold: serviceIR.Gce.HealthCheck.UnhealthyThreshold,
+		CheckIntervalSec:   gceServiceIR.HealthCheck.CheckIntervalSec,
+		TimeoutSec:         gceServiceIR.HealthCheck.TimeoutSec,
+		HealthyThreshold:   gceServiceIR.HealthCheck.HealthyThreshold,
+		UnhealthyThreshold: gceServiceIR.HealthCheck.UnhealthyThreshold,
 	}
 	commonHc := gkegatewayv1.CommonHealthCheck{
-		Port: serviceIR.Gce.HealthCheck.Port,
+		Port: gceServiceIR.HealthCheck.Port,
 	}
 	commonHTTPHc := gkegatewayv1.CommonHTTPHealthCheck{
-		RequestPath: serviceIR.Gce.HealthCheck.RequestPath,
+		RequestPath: gceServiceIR.HealthCheck.RequestPath,
 	}
 
-	switch *serviceIR.Gce.HealthCheck.Type {
+	switch *gceServiceIR.HealthCheck.Type {
 	case "HTTP":
 		hcConfig.Config = &gkegatewayv1.HealthCheck{
 			Type: gkegatewayv1.HTTP,

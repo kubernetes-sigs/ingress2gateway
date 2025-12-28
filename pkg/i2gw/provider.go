@@ -20,15 +20,13 @@ import (
 	"context"
 	"sync"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 // ProviderConstructorByName is a map of ProviderConstructor functions by a
@@ -57,7 +55,6 @@ type ProviderConf struct {
 type Provider interface {
 	CustomResourceReader
 	ResourcesToIRConverter
-	IRToGatewayAPIConverter
 }
 
 type CustomResourceReader interface {
@@ -75,15 +72,7 @@ type CustomResourceReader interface {
 // and extensions into IR.
 type ResourcesToIRConverter interface {
 	// ToIR converts stored API entities associated with the Provider into IR.
-	ToIR() (intermediate.IR, field.ErrorList)
-}
-
-// The IRToGatewayAPIConverter interface specifies conversion functions from IR
-// into Gateway and Gateway extensions.
-type IRToGatewayAPIConverter interface {
-	// ToGatewayResources converts stored IR with the Provider into
-	// Gateway API resources and extensions
-	ToGatewayResources(intermediate.IR) (GatewayResources, field.ErrorList)
+	ToIR() (emitterir.EmitterIR, field.ErrorList)
 }
 
 // ImplementationSpecificHTTPPathTypeMatchConverter is an option to customize the ingress implementationSpecific
@@ -97,30 +86,12 @@ type ProviderImplementationSpecificOptions struct {
 	ToImplementationSpecificHTTPPathTypeMatch ImplementationSpecificHTTPPathTypeMatchConverter
 }
 
-// GatewayResources contains all Gateway-API objects and provider Gateway
-// extensions.
-type GatewayResources struct {
-	Gateways       map[types.NamespacedName]gatewayv1.Gateway
-	GatewayClasses map[types.NamespacedName]gatewayv1.GatewayClass
-
-	HTTPRoutes map[types.NamespacedName]gatewayv1.HTTPRoute
-	GRPCRoutes map[types.NamespacedName]gatewayv1.GRPCRoute
-	TLSRoutes  map[types.NamespacedName]gatewayv1alpha2.TLSRoute
-	TCPRoutes  map[types.NamespacedName]gatewayv1alpha2.TCPRoute
-	UDPRoutes  map[types.NamespacedName]gatewayv1alpha2.UDPRoute
-
-	BackendTLSPolicies map[types.NamespacedName]gatewayv1.BackendTLSPolicy
-	ReferenceGrants    map[types.NamespacedName]gatewayv1beta1.ReferenceGrant
-
-	GatewayExtensions []unstructured.Unstructured
-}
-
 // FeatureParser is a function that reads the Ingresses, and applies
-// the appropriate modifications to the GatewayResources.
+// the appropriate modifications to the providerir.ProviderIR.
 //
 // Different FeatureParsers will run in undetermined order. The function must
-// modify / create only the required fields of the gateway resources and nothing else.
-type FeatureParser func([]networkingv1.Ingress, map[types.NamespacedName]map[string]int32, *intermediate.IR) field.ErrorList
+// modify / create only the required fields of the IR and nothing else.
+type FeatureParser func([]networkingv1.Ingress, map[types.NamespacedName]map[string]int32, *providerir.ProviderIR) field.ErrorList
 
 var providerSpecificFlagDefinitions = providerSpecificFlags{
 	flags: make(map[ProviderName]map[string]ProviderSpecificFlag),
