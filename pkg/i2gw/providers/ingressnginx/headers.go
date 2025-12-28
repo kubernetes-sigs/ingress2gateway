@@ -46,6 +46,8 @@ func headerModifierFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]
 
 			// 1. x-forwarded-prefix
 			// This annotation only works if rewrite-target is also present.
+			// TODO: X-Forwarded-Prefix is complex because it depends on rewrite-target.
+			// Deferring this to a future PR.
 			if val, ok := ingress.Annotations[XForwardedPrefixAnnotation]; ok && val != "" && hasRewriteTarget {
 				headersToSet["X-Forwarded-Prefix"] = val
 			}
@@ -61,6 +63,7 @@ func headerModifierFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]
 			}
 
 			// 4. custom-headers -> Warn unsupported
+			// TODO: implement custom-headers annotation.
 			if _, ok := ingress.Annotations[CustomHeadersAnnotation]; ok {
 				notify(notifications.WarningNotification, fmt.Sprintf("Ingress %s/%s uses 'nginx.ingress.kubernetes.io/custom-headers' which is not supported as it requires cluster access to read ConfigMaps.", ingress.Namespace, ingress.Name), &httpRouteContext.HTTPRoute)
 			}
