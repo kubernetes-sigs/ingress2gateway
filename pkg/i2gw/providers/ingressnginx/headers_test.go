@@ -19,7 +19,7 @@ package ingressnginx
 import (
 	"testing"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -242,8 +242,8 @@ func TestHeaderModifierFeature(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ir := intermediate.IR{
-				HTTPRoutes: make(map[types.NamespacedName]intermediate.HTTPRouteContext),
+			ir := providerir.ProviderIR{
+				HTTPRoutes: make(map[types.NamespacedName]providerir.HTTPRouteContext),
 			}
 
 			// Replicate IR setup
@@ -268,9 +268,9 @@ func TestHeaderModifierFeature(t *testing.T) {
 					},
 				},
 			}
-			ir.HTTPRoutes[key] = intermediate.HTTPRouteContext{
+			ir.HTTPRoutes[key] = providerir.HTTPRouteContext{
 				HTTPRoute: route,
-				RuleBackendSources: [][]intermediate.BackendSource{
+				RuleBackendSources: [][]providerir.BackendSource{
 					{
 						{Ingress: &tc.ingress},
 					},

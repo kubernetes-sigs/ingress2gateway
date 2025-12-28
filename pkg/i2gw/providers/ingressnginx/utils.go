@@ -15,16 +15,14 @@ limitations under the License.
 */
 
 package ingressnginx
-
-import (
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+import	(
+	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
 )
-
 // getNonCanaryIngress returns the first Ingress source that does not have the canary annotation.
 // If all sources are canaries, or no sources exist, it returns the first available source (or nil).
 // This is used to prioritize the "main" Ingress for reading common annotations.
-func getNonCanaryIngress(sources []intermediate.BackendSource) *networkingv1.Ingress {
+func getNonCanaryIngress(sources []providerir.BackendSource) *networkingv1.Ingress {
 	for _, source := range sources {
 		if _, ok := source.Ingress.Annotations[CanaryAnnotation]; !ok {
 			return source.Ingress
