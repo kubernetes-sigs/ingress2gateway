@@ -65,7 +65,7 @@ func headerModifierFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]
 			// 4. custom-headers -> Warn unsupported
 			// TODO: implement custom-headers annotation.
 			if _, ok := ingress.Annotations[CustomHeadersAnnotation]; ok {
-				notify(notifications.WarningNotification, fmt.Sprintf("Ingress %s/%s uses 'nginx.ingress.kubernetes.io/custom-headers' which is not supported as it requires cluster access to read ConfigMaps.", ingress.Namespace, ingress.Name), &httpRouteContext.HTTPRoute)
+				notify(notifications.WarningNotification, fmt.Sprintf("Ingress %s/%s uses '%s' which is not supported.", ingress.Namespace, ingress.Name, CustomHeadersAnnotation), &httpRouteContext.HTTPRoute)
 			}
 
 			if len(headersToSet) > 0 {
