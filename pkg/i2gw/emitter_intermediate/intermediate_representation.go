@@ -65,6 +65,7 @@ type PathRewrite struct {
 	ReplaceFullPath string
 	// Headers to add on path rewrite.
 	Headers map[string]string
+	Regex   bool
 }
 
 type GatewayClassContext struct {

@@ -30,4 +30,7 @@ const (
 	UpstreamVhostAnnotation         = "nginx.ingress.kubernetes.io/upstream-vhost"
 	ConnectionProxyHeaderAnnotation = "nginx.ingress.kubernetes.io/connection-proxy-header"
 	CustomHeadersAnnotation         = "nginx.ingress.kubernetes.io/custom-headers"
+
+	// R2gex
+	UseRegexAnnotation = "nginx.ingress.kubernetes.io/use-regex"
 )
