@@ -58,6 +58,11 @@ func applyRewriteTargetToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.Emi
 			if val, ok := ing.Annotations[XForwardedPrefixAnnotation]; ok && val != "" {
 				pathRewriteIR.Headers["X-Forwarded-Prefix"] = val
 			}
+
+			if val, ok := ing.Annotations[UseRegexAnnotation]; ok && val == "true" {
+				pathRewriteIR.Regex = true
+			}
+
 			eRouteCtx.PathRewriteByRuleIdx[ruleIdx] = &pathRewriteIR
 		}
 
