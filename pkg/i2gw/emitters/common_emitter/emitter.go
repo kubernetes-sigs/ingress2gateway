@@ -31,7 +31,7 @@ func NewEmitter() *Emitter {
 func applyPathRewrites(ir *emitterir.EmitterIR) {
 	for key, routeCtx := range ir.HTTPRoutes {
 		for ruleIdx, rewrite := range routeCtx.PathRewriteByRuleIdx {
-			if rewrite == nil {
+			if rewrite == nil || rewrite.Regex {
 				continue
 			}
 			fullPath := rewrite.ReplaceFullPath
