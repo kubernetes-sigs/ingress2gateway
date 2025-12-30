@@ -37,7 +37,8 @@ func headerModifierFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]
 
 			ingress := getNonCanaryIngress(sources)
 			if ingress == nil {
-				panic("No non-canary ingress found")
+				notify(notifications.InfoNotification, "Found canary ingress rule without non-canary ingress rule", &httpRouteContext.HTTPRoute)
+				continue
 			}
 
 			headersToSet := make(map[string]string)
