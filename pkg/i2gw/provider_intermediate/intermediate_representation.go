@@ -38,7 +38,7 @@ type ProviderIR struct {
 	TLSRoutes      map[types.NamespacedName]gatewayv1alpha2.TLSRoute
 	TCPRoutes      map[types.NamespacedName]gatewayv1alpha2.TCPRoute
 	UDPRoutes      map[types.NamespacedName]gatewayv1alpha2.UDPRoute
-	GRPCRoutes     map[types.NamespacedName]gatewayv1.GRPCRoute
+	GRPCRoutes     map[types.NamespacedName]GRPCRouteContext
 
 	BackendTLSPolicies map[types.NamespacedName]gatewayv1.BackendTLSPolicy
 	ReferenceGrants    map[types.NamespacedName]gatewayv1beta1.ReferenceGrant
@@ -73,6 +73,23 @@ type HTTPRouteContext struct {
 
 type ProviderSpecificHTTPRouteIR struct {
 	Gce *gce.HTTPRouteIR
+}
+
+type ProviderSpecificGRPCRouteIR struct {
+	Gce *gce.GRPCRouteIR
+}
+
+// GRPCRouteContext contains the Gateway-API GRPCRoute object and GRPCRouteIR,
+// which has a dedicated field for each provider to specify their extension
+// features on GRPCRoutes.
+// The IR will contain necessary information to construct the GRPCRoute
+// extensions, but not the extensions themselves.
+type GRPCRouteContext struct {
+	gatewayv1.GRPCRoute
+	ProviderSpecificIR ProviderSpecificGRPCRouteIR
+
+	// RuleBackendSources[i][j] is the source of the jth backend in the ith element of GRPCRoute.Spec.Rules.
+	RuleBackendSources [][]BackendSource
 }
 
 // ServiceIR contains a dedicated field for each provider to specify their
