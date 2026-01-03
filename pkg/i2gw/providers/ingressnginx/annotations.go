@@ -24,6 +24,7 @@ const (
 
 	// Rewrite annotations
 	RewriteTargetAnnotation = "nginx.ingress.kubernetes.io/rewrite-target"
+	AppRootAnnotation       = "nginx.ingress.kubernetes.io/app-root"
 
 	// Header annotations
 	XForwardedPrefixAnnotation      = "nginx.ingress.kubernetes.io/x-forwarded-prefix"
