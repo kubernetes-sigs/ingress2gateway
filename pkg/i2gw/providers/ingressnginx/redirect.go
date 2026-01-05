@@ -33,7 +33,7 @@ import (
 // "nginx.ingress.kubernetes.io/ssl-redirect" annotation set to "false", then we
 // enable SSL redirect for that host.
 func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR) field.ErrorList {
-	for _, httpRouteContext := range pir.HTTPRoutes {
+	for key, httpRouteContext := range pir.HTTPRoutes {
 		hasSecrets := false
 		enableRedirect := true
 
@@ -94,10 +94,11 @@ func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR)
 			HTTPRoute: redirectRoute,
 		}
 		// bind this to port 443
-		for i := range httpRouteContext.Spec.ParentRefs {
-			httpRouteContext.HTTPRoute.Spec.ParentRefs[i].Port = ptr.To[int32](443)
+		eHttpRouteContext := eir.HTTPRoutes[key]
+		for i := range eHttpRouteContext.Spec.ParentRefs {
+			eHttpRouteContext.Spec.ParentRefs[i].Port = ptr.To[int32](443)
 		}
-
+		eir.HTTPRoutes[key] = eHttpRouteContext
 	}
 
 	return nil

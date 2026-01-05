@@ -22,7 +22,7 @@ func TestEmitter_Emit_appliesPathRewriteReplaceFullPath(t *testing.T) {
 					},
 				},
 				PathRewriteByRuleIdx: map[int]*emitterir.PathRewrite{
-					0: {ReplaceFullPath: "/foo"},
+					0: &emitterir.PathRewrite{ReplaceFullPath: "/foo"},
 				},
 			},
 		},
