@@ -53,7 +53,7 @@ func applyRewriteTargetToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.Emi
 				eRouteCtx.PathRewriteByRuleIdx = make(map[int]*emitterir.PathRewrite)
 			}
 
-			pathRewriteIR := emitterir.PathRewrite{ReplaceFullPath: rewriteTarget}
+			pathRewriteIR := emitterir.PathRewrite{ReplaceFullPath: rewriteTarget, Headers: make(map[string]string)}
 
 			if val, ok := ing.Annotations[XForwardedPrefixAnnotation]; ok && val != "" {
 				pathRewriteIR.Headers["X-Forwarded-Prefix"] = val
