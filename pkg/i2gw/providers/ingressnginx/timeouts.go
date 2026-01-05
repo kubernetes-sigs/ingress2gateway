@@ -93,7 +93,11 @@ func timeoutFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[str
 
 			notify(notifications.InfoNotification, fmt.Sprintf("parsed ingress-nginx proxy timeouts (x%d) from %s/%s for HTTPRoute %s/%s rule %d (timeouts.request): %s",
 				timeoutMultiplier, ingress.Namespace, ingress.Name, key.Namespace, key.Name, ruleIdx, gwDur), &httpRouteContext.HTTPRoute)
-			// FIXME, add more docs.
+			notify(
+				notifications.WarningNotification,
+				"ingress-nginx only supports TCP-level timeouts; i2gw has made a best-effort translation to Gateway API timeouts.request." +
+				" Please verify that this meets your needs. See documentation: https://gateway-api.sigs.k8s.io/guides/http-timeouts/",
+			)
 		}
 
 		eIR.HTTPRoutes[key] = eHTTPContext
