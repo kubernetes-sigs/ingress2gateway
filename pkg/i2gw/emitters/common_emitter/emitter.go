@@ -35,22 +35,7 @@ func (e *Emitter) Emit(ir emitterir.EmitterIR) (emitterir.EmitterIR, field.Error
 	var errs field.ErrorList
 
 	for key, httpRouteContext := range ir.HTTPRoutes {
-		if httpRouteContext.RequestTimeouts == nil {
-			continue
-		}
-
-		for ruleIdx, d := range httpRouteContext.RequestTimeouts {
-			if d == nil {
-				continue
-			}
-
-			rule := &httpRouteContext.Spec.Rules[ruleIdx]
-			if rule.Timeouts == nil {
-				rule.Timeouts = &gatewayv1.HTTPRouteTimeouts{}
-			}
-			rule.Timeouts.Request = d
-		}
-
+		errs = append(errs, applyHTTPRouteRequestTimeouts(&httpRouteContext)...)
 		ir.HTTPRoutes[key] = httpRouteContext
 	}
 
@@ -58,4 +43,34 @@ func (e *Emitter) Emit(ir emitterir.EmitterIR) (emitterir.EmitterIR, field.Error
 		return ir, errs
 	}
 	return ir, nil
+}
+
+func applyHTTPRouteRequestTimeouts(httpRouteContext *emitterir.HTTPRouteContext) field.ErrorList {
+	if httpRouteContext.RequestTimeouts == nil {
+		return nil
+	}
+
+	var errs field.ErrorList
+	for ruleIdx, d := range httpRouteContext.RequestTimeouts {
+		if d == nil {
+			continue
+		}
+		if ruleIdx < 0 || ruleIdx >= len(httpRouteContext.Spec.Rules) {
+			errs = append(errs, field.Invalid(
+				field.NewPath("httpRoute", "spec", "rules").Index(ruleIdx),
+				ruleIdx,
+				"rule index out of range",
+			))
+			continue
+		}
+
+		rule := &httpRouteContext.Spec.Rules[ruleIdx]
+		if rule.Timeouts == nil {
+			rule.Timeouts = &gatewayv1.HTTPRouteTimeouts{}
+		}
+		rule.Timeouts.Request = d
+	}
+
+	httpRouteContext.RequestTimeouts = nil
+	return errs
 }

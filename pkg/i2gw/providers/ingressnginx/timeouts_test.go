@@ -101,7 +101,9 @@ func TestTimeoutFeature(t *testing.T) {
 				}},
 			}
 
-			errs := timeoutFeature([]networkingv1.Ingress{ing}, nil, &ir)
+			eir := providerir.ToEmitterIR(ir)
+
+			errs := timeoutFeature([]networkingv1.Ingress{ing}, nil, &ir, &eir)
 			if tc.wantErr {
 				if len(errs) == 0 {
 					t.Fatalf("expected error")
@@ -117,8 +119,7 @@ func TestTimeoutFeature(t *testing.T) {
 				t.Fatalf("expected no direct HTTPRoute mutation, got timeouts %v", got)
 			}
 
-			// Convert ProviderIR -> EmitterIR and apply common emitter.
-			eir := providerir.ToEmitterIR(ir)
+			// Apply common emitter (maps EmitterIR fields onto core Gateway API).
 			commonEmitter := common_emitter.NewEmitter()
 			eir, errs = commonEmitter.Emit(eir)
 			if len(errs) > 0 {

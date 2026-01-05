@@ -96,6 +96,7 @@ func timeoutFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[str
 			// FIXME, add more docs.
 		}
 
+		eIR.HTTPRoutes[key] = eHTTPContext
 		pIR.HTTPRoutes[key] = httpRouteContext
 	}
 
