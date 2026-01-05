@@ -75,9 +75,6 @@ type ProviderSpecificHTTPRouteIR struct {
 	Gce *gce.HTTPRouteIR
 }
 
-type ProviderSpecificGRPCRouteIR struct {
-}
-
 // GRPCRouteContext contains the Gateway-API GRPCRoute object and GRPCRouteIR,
 // which has a dedicated field for each provider to specify their extension
 // features on GRPCRoutes.
@@ -85,8 +82,6 @@ type ProviderSpecificGRPCRouteIR struct {
 // extensions, but not the extensions themselves.
 type GRPCRouteContext struct {
 	gatewayv1.GRPCRoute
-	ProviderSpecificIR ProviderSpecificGRPCRouteIR
-
 	// RuleBackendSources[i][j] is the source of the jth backend in the ith element of GRPCRoute.Spec.Rules.
 	RuleBackendSources [][]BackendSource
 }
