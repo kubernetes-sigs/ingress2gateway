@@ -143,7 +143,6 @@ type ruleGroupKey string
 
 type ingressAggregator struct {
 	ruleGroups      map[ruleGroupKey]*ingressRuleGroup
-	listeners       map[string][]listenerWithProtocol
 	defaultBackends []ingressDefaultBackend
 	servicePorts    map[types.NamespacedName]map[string]int32
 }

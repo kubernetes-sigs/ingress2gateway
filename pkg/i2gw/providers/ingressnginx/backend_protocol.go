@@ -76,6 +76,11 @@ func createBackendTLSPolicies(ingresses []networkingv1.Ingress, servicePorts map
 						ir.BackendTLSPolicies[policyKey] = policy
 						notify(notifications.InfoNotification, fmt.Sprintf("Created BackendTLSPolicy %s/%s for service %s due to backend-protocol %q",
 							policy.Namespace, policy.Name, serviceName, protocolType), &policy)
+					} else {
+						// Policy already exists, this means another Ingress or rule group already requested it.
+						// We should notify that this host is also requesting it.
+						notify(notifications.InfoNotification, fmt.Sprintf("Service %s already has BackendTLSPolicy %s/%s (requested by host %q with protocol %q)",
+							serviceName, rg.Namespace, policyName, rg.Host, protocolType), nil)
 					}
 				}
 			}
