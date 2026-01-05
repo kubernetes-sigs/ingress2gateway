@@ -30,4 +30,9 @@ const (
 	UpstreamVhostAnnotation         = "nginx.ingress.kubernetes.io/upstream-vhost"
 	ConnectionProxyHeaderAnnotation = "nginx.ingress.kubernetes.io/connection-proxy-header"
 	CustomHeadersAnnotation         = "nginx.ingress.kubernetes.io/custom-headers"
+
+	// Timeout annotations
+	ProxyConnectTimeoutAnnotation = "nginx.ingress.kubernetes.io/proxy-connect-timeout"
+	ProxySendTimeoutAnnotation    = "nginx.ingress.kubernetes.io/proxy-send-timeout"
+	ProxyReadTimeoutAnnotation    = "nginx.ingress.kubernetes.io/proxy-read-timeout"
 )
