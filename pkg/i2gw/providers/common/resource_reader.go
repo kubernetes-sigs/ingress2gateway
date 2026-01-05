@@ -97,6 +97,22 @@ func ReadServicesFromCluster(ctx context.Context, client client.Client) (map[typ
 	return services, nil
 }
 
+func ReadConfigMapsFromCluster(ctx context.Context, client client.Client) (map[types.NamespacedName]*apiv1.ConfigMap, error) {
+	var configMapList apiv1.ConfigMapList
+	err := client.List(ctx, &configMapList)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get configmaps from the cluster: %w", err)
+	}
+
+	configMaps := map[types.NamespacedName]*apiv1.ConfigMap{}
+	for i, configMap := range configMapList.Items {
+		configMaps[types.NamespacedName{Namespace: configMap.Namespace, Name: configMap.Name}] = &configMapList.Items[i]
+	}
+
+	return configMaps, nil
+}
+
+
 func ReadServicesFromFile(filename, namespace string) (map[types.NamespacedName]*apiv1.Service, error) {
 	stream, err := os.ReadFile(filename)
 	if err != nil {
@@ -122,6 +138,33 @@ func ReadServicesFromFile(filename, namespace string) (map[types.NamespacedName]
 
 	}
 	return services, nil
+}
+
+func ReadConfigMapsFromFile(filename, namespace string) (map[types.NamespacedName]*apiv1.ConfigMap, error) {
+	stream, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file %v: %w", filename, err)
+	}
+
+	unstructuredObjects, err := ExtractObjectsFromReader(bytes.NewReader(stream), namespace)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract objects: %w", err)
+	}
+
+	configMaps := map[types.NamespacedName]*apiv1.ConfigMap{}
+	for _, f := range unstructuredObjects {
+		if !f.GroupVersionKind().Empty() && f.GroupVersionKind().Kind == "ConfigMap" {
+			var configMap apiv1.ConfigMap
+			err = runtime.DefaultUnstructuredConverter.
+				FromUnstructured(f.UnstructuredContent(), &configMap)
+			if err != nil {
+				return nil, err
+			}
+			configMaps[types.NamespacedName{Namespace: configMap.Namespace, Name: configMap.Name}] = &configMap
+		}
+
+	}
+	return configMaps, nil
 }
 
 // ExtractObjectsFromReader extracts all objects from a reader,

@@ -30,6 +30,7 @@ type OrderedIngressMap struct {
 type storage struct {
 	Ingresses    OrderedIngressMap
 	ServicePorts map[types.NamespacedName]map[string]int32
+	ConfigMaps  map[types.NamespacedName]map[string]string
 }
 
 func newResourcesStorage() *storage {
@@ -39,6 +40,7 @@ func newResourcesStorage() *storage {
 			ingressObjects: map[types.NamespacedName]*networkingv1.Ingress{},
 		},
 		ServicePorts: map[types.NamespacedName]map[string]int32{},
+		ConfigMaps:  map[types.NamespacedName]map[string]string{},
 	}
 }
 

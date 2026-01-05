@@ -33,7 +33,6 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 	return &resourcesToIRConverter{
 		featureParsers: []i2gw.FeatureParser{
 			canaryFeature,
-			headerModifierFeature,
 		},
 	}
 }
@@ -56,6 +55,9 @@ func (c *resourcesToIRConverter) convert(storage *storage) (providerir.ProviderI
 		// Append the parsing errors to the error list.
 		errs = append(errs, parseErrs...)
 	}
+
+	headerErrs := headerModifierFeature(ingressList, storage.ServicePorts, &ir, storage.ConfigMaps)
+	errs = append(errs, headerErrs...)
 
 	return ir, errs
 }

@@ -58,7 +58,17 @@ func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage
 		return nil, err
 	}
 	storage.ServicePorts = common.GroupServicePortsByPortName(services)
+
+	configMaps, err := common.ReadConfigMapsFromCluster(ctx, r.conf.Client)
+	if err != nil {
+		return nil, err
+	}
+	for cmName, cm := range configMaps {
+		storage.ConfigMaps[cmName] = cm.Data
+	}
+
 	return storage, nil
+
 }
 
 func (r *resourceReader) readResourcesFromFile(filename string) (*storage, error) {
@@ -75,5 +85,13 @@ func (r *resourceReader) readResourcesFromFile(filename string) (*storage, error
 		return nil, err
 	}
 	storage.ServicePorts = common.GroupServicePortsByPortName(services)
+
+	configMaps, err := common.ReadConfigMapsFromFile(filename, r.conf.Namespace)
+	if err != nil {
+		return nil, err
+	}
+	for cmName, cm := range configMaps {
+		storage.ConfigMaps[cmName] = cm.Data
+	}
 	return storage, nil
 }

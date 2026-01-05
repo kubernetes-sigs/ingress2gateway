@@ -18,6 +18,7 @@ package ingressnginx
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
@@ -27,7 +28,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-func headerModifierFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func headerModifierFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR, cms map[types.NamespacedName]map[string]string) field.ErrorList {
 	for _, httpRouteContext := range ir.HTTPRoutes {
 		for i := range httpRouteContext.HTTPRoute.Spec.Rules {
 			if i >= len(httpRouteContext.RuleBackendSources) {
@@ -54,8 +55,19 @@ func headerModifierFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]
 
 			// 3. custom-headers -> Warn unsupported
 			// TODO: implement custom-headers annotation.
-			if _, ok := ingress.Annotations[CustomHeadersAnnotation]; ok {
-				notify(notifications.WarningNotification, fmt.Sprintf("Ingress %s/%s uses '%s' which is not supported.", ingress.Namespace, ingress.Name, CustomHeadersAnnotation), &httpRouteContext.HTTPRoute)
+			if val, ok := ingress.Annotations[CustomHeadersAnnotation]; ok {
+				parts := strings.SplitN(val, "/", 2)
+				cmNamespace := parts[0]
+				cmName := parts[1]
+				cmKey := types.NamespacedName{Namespace: cmNamespace, Name: cmName}
+				customHeaders, exists := cms[cmKey]
+				if !exists {
+					notify(notifications.WarningNotification, fmt.Sprintf("Ingress %s/%s references ConfigMap %s/%s for custom headers which does not exist.", ingress.Namespace, ingress.Name, cmNamespace, cmName), &httpRouteContext.HTTPRoute)
+				} else {
+					for headerName, headerValue := range customHeaders {
+						headersToSet[headerName] = headerValue
+					}
+				}
 			}
 
 			if len(headersToSet) > 0 {
