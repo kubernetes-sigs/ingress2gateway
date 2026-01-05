@@ -21,7 +21,7 @@ func TestEmitter_Emit_appliesPathRewriteReplaceFullPath(t *testing.T) {
 						Rules: []gatewayv1.HTTPRouteRule{{}},
 					},
 				},
-				PathRewriteByRuleIdx: map[int]emitterir.PathRewrite{
+				PathRewriteByRuleIdx: map[int]*emitterir.PathRewrite{
 					0: {ReplaceFullPath: "/foo"},
 				},
 			},
