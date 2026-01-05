@@ -44,6 +44,16 @@ func applyPathRewrites(ir *emitterir.EmitterIR) {
 					},
 				},
 			})
+			if len(rewrite.Headers) > 0 {
+				headerModifier := &gatewayv1.HTTPHeaderFilter{}
+				for headerName, headerValue := range rewrite.Headers {
+					headerModifier.Set = append(headerModifier.Set, gatewayv1.HTTPHeader{Name: gatewayv1.HTTPHeaderName(headerName), Value: headerValue})
+				}
+				routeCtx.Spec.Rules[ruleIdx].Filters = append(routeCtx.Spec.Rules[ruleIdx].Filters, gatewayv1.HTTPRouteFilter{
+					Type:                  gatewayv1.HTTPRouteFilterRequestHeaderModifier,
+					RequestHeaderModifier: headerModifier,
+				})
+			}
 			routeCtx.PathRewriteByRuleIdx[ruleIdx] = nil
 		}
 
