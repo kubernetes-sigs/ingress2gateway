@@ -353,7 +353,12 @@ func Test_ToIR(t *testing.T) {
 				ingressNames: []types.NamespacedName{{Namespace: "default", Name: "example-ingress"}},
 				ingressObjects: map[types.NamespacedName]*networkingv1.Ingress{
 					{Namespace: "default", Name: "example-ingress"}: {
-						ObjectMeta: metav1.ObjectMeta{Name: "example-ingress", Namespace: "default"},
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "example-ingress", Namespace: "default",
+							Annotations: map[string]string{
+								"nginx.ingress.kubernetes.io/ssl-redirect": "false",
+							},
+						},
 						Spec: networkingv1.IngressSpec{
 							IngressClassName: ptrTo("nginx"),
 							TLS: []networkingv1.IngressTLS{{
