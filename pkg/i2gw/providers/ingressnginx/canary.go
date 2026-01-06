@@ -206,6 +206,8 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 					header = canaryConfig.headerValue
 				}
 				canaryBackendCopy := *canaryBackend
+				// Remove weight from the header-matched backend
+				canaryBackendCopy.Weight = nil
 				newRule := gatewayv1.HTTPRouteRule{
 					Matches: []gatewayv1.HTTPRouteMatch{
 						{
