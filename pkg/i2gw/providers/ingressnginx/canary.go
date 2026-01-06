@@ -33,6 +33,8 @@ const (
 	canaryAnnotation            = "nginx.ingress.kubernetes.io/canary"
 	canaryByHeader              = "nginx.ingress.kubernetes.io/canary-by-header"
 	canaryByHeaderValue         = "nginx.ingress.kubernetes.io/canary-by-header-value"
+	canaryByHeaderPattern       = "nginx.ingress.kubernetes.io/canary-by-header-pattern"
+	canaryByCookie              = "nginx.ingress.kubernetes.io/canary-by-cookie"
 	canaryWeightAnnotation      = "nginx.ingress.kubernetes.io/canary-weight"
 	canaryWeightTotalAnnotation = "nginx.ingress.kubernetes.io/canary-weight-total"
 )
@@ -52,6 +54,16 @@ func parseCanaryConfig(ingress *networkingv1.Ingress) (canaryConfig, error) {
 	config := canaryConfig{
 		weight:      0,
 		weightTotal: 100, // default
+	}
+
+	if ingress.Annotations[canaryByHeaderPattern] != "" {
+		notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported annotation %s",
+			ingress.Namespace, ingress.Name, canaryByHeaderPattern), ingress)
+	}
+
+	if ingress.Annotations[canaryByCookie] != "" {
+		notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported annotation %s",
+			ingress.Namespace, ingress.Name, canaryByCookie), ingress)
 	}
 
 	if ingress.Annotations[canaryByHeader] != "" {
