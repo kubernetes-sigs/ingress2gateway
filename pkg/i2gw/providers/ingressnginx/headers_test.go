@@ -152,8 +152,8 @@ func TestHeaderModifierFeature(t *testing.T) {
 				},
 			},
 			expectedHeaders: map[string]string{
-				"Host":               "backend.local",
-				"Connection":         "keep-alive",
+				"Host":       "backend.local",
+				"Connection": "keep-alive",
 			},
 		},
 	}
