@@ -200,7 +200,7 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 			}
 
 			if canaryConfig.isHeader {
-				var header string = "always"
+				var header = "always"
 				if canaryConfig.headerValue != "" {
 					header = canaryConfig.headerValue
 				}
