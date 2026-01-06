@@ -148,7 +148,7 @@ func Test_parseCanaryConfig(t *testing.T) {
 				isHeader:    false,
 				header:      "",
 				headerValue: "",
-				isWeight:    true,
+				isWeight:    false,
 				weight:      0,
 				weightTotal: 100,
 			},
