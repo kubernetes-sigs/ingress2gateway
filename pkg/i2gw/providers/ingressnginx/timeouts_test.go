@@ -81,7 +81,7 @@ func TestTimeoutFeature(t *testing.T) {
 							HTTP: &networkingv1.HTTPIngressRuleValue{Paths: []networkingv1.HTTPIngressPath{{
 								Path:     "/",
 								PathType: ptr.To(networkingv1.PathTypePrefix),
-								Backend: networkingv1.IngressBackend{Service: &networkingv1.IngressServiceBackend{Name: "svc", Port: networkingv1.ServiceBackendPort{Number: 80}}},
+								Backend:  networkingv1.IngressBackend{Service: &networkingv1.IngressServiceBackend{Name: "svc", Port: networkingv1.ServiceBackendPort{Number: 80}}},
 							}}},
 						},
 					}},
@@ -92,7 +92,7 @@ func TestTimeoutFeature(t *testing.T) {
 			key := types.NamespacedName{Namespace: ing.Namespace, Name: common.RouteName(ing.Name, "example.com")}
 			route := gatewayv1.HTTPRoute{
 				ObjectMeta: metav1.ObjectMeta{Namespace: ing.Namespace, Name: key.Name},
-				Spec: gatewayv1.HTTPRouteSpec{Rules: []gatewayv1.HTTPRouteRule{{}}},
+				Spec:       gatewayv1.HTTPRouteSpec{Rules: []gatewayv1.HTTPRouteRule{{}}},
 			}
 			ir.HTTPRoutes[key] = providerir.HTTPRouteContext{
 				HTTPRoute: route,

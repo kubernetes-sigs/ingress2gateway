@@ -64,7 +64,7 @@ func timeoutFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[str
 			}
 
 			var maxTimeout time.Duration
-			var any bool
+			var anyTimeout bool
 			for _, ann := range []string{ProxyConnectTimeoutAnnotation, ProxySendTimeoutAnnotation, ProxyReadTimeoutAnnotation} {
 				if val, ok := ingress.Annotations[ann]; ok && val != "" {
 					d, err := parseIngressNginxTimeout(val)
@@ -76,14 +76,14 @@ func timeoutFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[str
 						))
 						continue
 					}
-					any = true
+					anyTimeout = true
 					if d > maxTimeout {
 						maxTimeout = d
 					}
 				}
 			}
 
-			if !any {
+			if !anyTimeout {
 				continue
 			}
 
@@ -95,8 +95,8 @@ func timeoutFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[str
 				timeoutMultiplier, ingress.Namespace, ingress.Name, key.Namespace, key.Name, ruleIdx, gwDur), &httpRouteContext.HTTPRoute)
 			notify(
 				notifications.WarningNotification,
-				"ingress-nginx only supports TCP-level timeouts; i2gw has made a best-effort translation to Gateway API timeouts.request." +
-				" Please verify that this meets your needs. See documentation: https://gateway-api.sigs.k8s.io/guides/http-timeouts/",
+				"ingress-nginx only supports TCP-level timeouts; i2gw has made a best-effort translation to Gateway API timeouts.request."+
+					" Please verify that this meets your needs. See documentation: https://gateway-api.sigs.k8s.io/guides/http-timeouts/",
 			)
 		}
 

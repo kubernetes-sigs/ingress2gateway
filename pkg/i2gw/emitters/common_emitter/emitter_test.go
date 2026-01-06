@@ -35,7 +35,7 @@ func TestApplyHTTPRouteRequestTimeouts(t *testing.T) {
 		{
 			name: "sets request timeout",
 			ctx: emitterir.HTTPRouteContext{
-				HTTPRoute: gatewayv1.HTTPRoute{Spec: gatewayv1.HTTPRouteSpec{Rules: []gatewayv1.HTTPRouteRule{{}}}},
+				HTTPRoute:       gatewayv1.HTTPRoute{Spec: gatewayv1.HTTPRouteSpec{Rules: []gatewayv1.HTTPRouteRule{{}}}},
 				RequestTimeouts: map[int]*gatewayv1.Duration{0: &d},
 			},
 			wantSet: true,
@@ -43,7 +43,7 @@ func TestApplyHTTPRouteRequestTimeouts(t *testing.T) {
 		{
 			name: "nil duration ignored",
 			ctx: emitterir.HTTPRouteContext{
-				HTTPRoute:        gatewayv1.HTTPRoute{Spec: gatewayv1.HTTPRouteSpec{Rules: []gatewayv1.HTTPRouteRule{{}}}},
+				HTTPRoute:       gatewayv1.HTTPRoute{Spec: gatewayv1.HTTPRouteSpec{Rules: []gatewayv1.HTTPRouteRule{{}}}},
 				RequestTimeouts: map[int]*gatewayv1.Duration{0: nil},
 			},
 			wantSet: false,
@@ -51,7 +51,7 @@ func TestApplyHTTPRouteRequestTimeouts(t *testing.T) {
 		{
 			name: "out of range rule index",
 			ctx: emitterir.HTTPRouteContext{
-				HTTPRoute:        gatewayv1.HTTPRoute{Spec: gatewayv1.HTTPRouteSpec{Rules: []gatewayv1.HTTPRouteRule{{}}}},
+				HTTPRoute:       gatewayv1.HTTPRoute{Spec: gatewayv1.HTTPRouteSpec{Rules: []gatewayv1.HTTPRouteRule{{}}}},
 				RequestTimeouts: map[int]*gatewayv1.Duration{1: &d},
 			},
 			wantErr: true,
@@ -91,4 +91,3 @@ func TestApplyHTTPRouteRequestTimeouts(t *testing.T) {
 		})
 	}
 }
-
