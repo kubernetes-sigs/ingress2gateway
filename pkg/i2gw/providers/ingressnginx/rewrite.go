@@ -19,7 +19,6 @@ package ingressnginx
 import (
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
-	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 // applyRewriteTargetToEmitterIR is a temporary bridge until we decide how rewrite
@@ -28,7 +27,7 @@ import (
 // It reads ingress-nginx rewrite annotations from ProviderIR sources and stores
 // provider-neutral rewrite intent into EmitterIR, which will later be converted
 // to Gateway API URLRewrite filters by the common emitter.
-func applyRewriteTargetToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) field.ErrorList {
+func applyRewriteTargetToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) {
 	for key, pRouteCtx := range pIR.HTTPRoutes {
 		eRouteCtx, ok := eIR.HTTPRoutes[key]
 		if !ok {
@@ -68,6 +67,4 @@ func applyRewriteTargetToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.Emi
 
 		eIR.HTTPRoutes[key] = eRouteCtx
 	}
-
-	return nil
 }

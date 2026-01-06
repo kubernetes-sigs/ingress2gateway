@@ -61,8 +61,8 @@ func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 func (p *Provider) ToIR() (emitterir.EmitterIR, field.ErrorList) {
 	pIR, errs := p.resourcesToIRConverter.convert(p.storage)
 	eIR := providerir.ToEmitterIR(pIR)
-	errs = append(errs, applyRewriteTargetToEmitterIR(pIR, &eIR)...)
-	errs = append(errs, addDefaultSSLRedirect(&pIR, &eIR)...)
+	applyRewriteTargetToEmitterIR(pIR, &eIR)
+	addDefaultSSLRedirect(&pIR, &eIR)
 	return eIR, errs
 }
 

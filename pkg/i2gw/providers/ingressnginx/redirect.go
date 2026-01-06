@@ -23,7 +23,6 @@ import (
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -32,7 +31,7 @@ import (
 // The formula we follow is that if an ingress with secrets, and it does not have the
 // "nginx.ingress.kubernetes.io/ssl-redirect" annotation set to "false", then we
 // enable SSL redirect for that host.
-func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR) field.ErrorList {
+func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR) {
 	for key, httpRouteContext := range pir.HTTPRoutes {
 		hasSecrets := false
 		enableRedirect := true
@@ -94,12 +93,10 @@ func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR)
 			HTTPRoute: redirectRoute,
 		}
 		// bind this to port 443
-		eHttpRouteContext := eir.HTTPRoutes[key]
-		for i := range eHttpRouteContext.Spec.ParentRefs {
-			eHttpRouteContext.Spec.ParentRefs[i].Port = ptr.To[int32](443)
+		eHTTPRouteContext := eir.HTTPRoutes[key]
+		for i := range eHTTPRouteContext.Spec.ParentRefs {
+			eHTTPRouteContext.Spec.ParentRefs[i].Port = ptr.To[int32](443)
 		}
-		eir.HTTPRoutes[key] = eHttpRouteContext
+		eir.HTTPRoutes[key] = eHTTPRouteContext
 	}
-
-	return nil
 }
