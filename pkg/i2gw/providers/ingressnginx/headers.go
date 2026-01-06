@@ -24,11 +24,10 @@ import (
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-func headerModifierFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR, cms map[types.NamespacedName]map[string]string) field.ErrorList {
+func headerModifierFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR, cms map[types.NamespacedName]map[string]string) {
 	for _, httpRouteContext := range ir.HTTPRoutes {
 		for i := range httpRouteContext.HTTPRoute.Spec.Rules {
 			if i >= len(httpRouteContext.RuleBackendSources) {
@@ -75,7 +74,6 @@ func headerModifierFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]
 			}
 		}
 	}
-	return nil
 }
 
 func applyHeaderModifiers(httpRoute *gatewayv1.HTTPRoute, ruleIndex int, headersToSet map[string]string) {

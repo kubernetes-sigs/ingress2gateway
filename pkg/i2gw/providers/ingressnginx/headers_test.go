@@ -195,10 +195,7 @@ func TestHeaderModifierFeature(t *testing.T) {
 				},
 			}
 
-			errs := headerModifierFeature([]networkingv1.Ingress{tc.ingress}, nil, &ir)
-			if len(errs) > 0 {
-				t.Fatalf("Expected no errors, got %v", errs)
-			}
+			headerModifierFeature([]networkingv1.Ingress{tc.ingress}, nil, &ir, nil)
 
 			result := ir.HTTPRoutes[key]
 			rules := result.HTTPRoute.Spec.Rules

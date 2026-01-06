@@ -112,7 +112,6 @@ func ReadConfigMapsFromCluster(ctx context.Context, client client.Client) (map[t
 	return configMaps, nil
 }
 
-
 func ReadServicesFromFile(filename, namespace string) (map[types.NamespacedName]*apiv1.Service, error) {
 	stream, err := os.ReadFile(filename)
 	if err != nil {
