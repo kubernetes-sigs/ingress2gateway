@@ -188,7 +188,8 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 				continue
 			}
 
-			if canaryConfig.isWeight {
+			// Set weights if isWeight is true or both header and weight are not set (all traffic should go to non-canary)
+			if canaryConfig.isWeight || !canaryConfig.isHeader {
 				canaryWeight := canaryConfig.weight
 
 				canaryBackend.Weight = &canaryWeight
