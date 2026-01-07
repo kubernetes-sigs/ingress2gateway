@@ -36,4 +36,15 @@ const (
 
 	// SSL Redirect annotation
 	SSLRedirectAnnotation = "nginx.ingress.kubernetes.io/ssl-redirect"
+
+	// Timeout annotations
+	ProxyConnectTimeoutAnnotation      = "nginx.ingress.kubernetes.io/proxy-connect-timeout"
+	ProxySendTimeoutAnnotation         = "nginx.ingress.kubernetes.io/proxy-send-timeout"
+	ProxyReadTimeoutAnnotation         = "nginx.ingress.kubernetes.io/proxy-read-timeout"
+	ProxyNextUpstreamAnnotation        = "nginx.ingress.kubernetes.io/proxy-next-upstream"
+	ProxyNextUpstreamTimeoutAnnotation = "nginx.ingress.kubernetes.io/proxy-next-upstream-timeout"
+	ProxyNextUpstreamTriesAnnotation   = "nginx.ingress.kubernetes.io/proxy-next-upstream-tries"
+
+	// Proxy body size annotation (not a timeout, but related to proxy configuration)
+	ProxyBodySizeAnnotation = "nginx.ingress.kubernetes.io/proxy-body-size"
 )
