@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -81,7 +80,6 @@ func (p *Provider) ReadResourcesFromFile(_ context.Context, filename string) err
 
 // ToIR converts stored Ingress GCE API entities to providerir.IR including the
 // ingress-gce specific features.
-func (p *Provider) ToIR() (emitterir.EmitterIR, field.ErrorList) {
-	ir, errs := p.irConverter.convertToIR(p.storage)
-	return providerir.ToEmitterIR(ir), errs
+func (p *Provider) ToIR() (providerir.ProviderIR, field.ErrorList) {
+	return p.irConverter.convertToIR(p.storage)
 }
