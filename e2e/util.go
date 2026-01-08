@@ -17,8 +17,25 @@ limitations under the License.
 package e2e
 
 import (
+	"crypto/rand"
+
 	"sigs.k8s.io/yaml"
 )
+
+// Generates a cryptographically random alphanumeric string of length n. Uses crypto/rand to ensure
+// uniqueness even when called from parallel tests.
+func randString(n int) (string, error) {
+	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	for i := range b {
+		b[i] = letters[b[i]%byte(len(letters))]
+	}
+
+	return string(b), nil
+}
 
 // Converts a k8s object to a YAML string.
 func toYAML(obj interface{}) (string, error) {
