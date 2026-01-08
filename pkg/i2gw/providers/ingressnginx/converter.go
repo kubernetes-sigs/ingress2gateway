@@ -56,5 +56,7 @@ func (c *resourcesToIRConverter) convert(storage *storage) (providerir.ProviderI
 		errs = append(errs, parseErrs...)
 	}
 
+	headerModifierFeature(ingressList, storage.ServicePorts, &ir, storage.ConfigMaps)
+
 	return ir, errs
 }
