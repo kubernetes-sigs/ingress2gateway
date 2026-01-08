@@ -33,7 +33,7 @@ func setGCEGatewayClasses(ingresses []networkingv1.Ingress, gatewayContexts map[
 
 	// Since we already validated ingress resources when reading, there are
 	// only two cases here:
-	//   1. `kubernetes.io/ingress.class` exists in ingress anntation. In this
+	//   1. `kubernetes.io/ingress.class` exists in ingress annotation. In this
 	//      case, we use it to map to the corresponding gateway class.
 	//   2. Annotation does not exist. In this case, the ingress is defaulted
 	//      to use the GCE external ingress implementation, and should be
