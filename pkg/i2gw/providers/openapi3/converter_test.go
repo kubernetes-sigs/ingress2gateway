@@ -36,7 +36,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
@@ -151,7 +151,7 @@ func TestFileConvertion(t *testing.T) {
 	})
 }
 
-func readGatewayResourcesFromFile(t *testing.T, filename string) (*emitterir.EmitterIR, error) {
+func readGatewayResourcesFromFile(t *testing.T, filename string) (*providerir.ProviderIR, error) {
 	t.Helper()
 
 	stream, err := os.ReadFile(filename)
@@ -164,12 +164,12 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*emitterir.Emi
 		return nil, fmt.Errorf("failed to extract objects: %w", err)
 	}
 
-	res := emitterir.EmitterIR{
-		Gateways:        make(map[types.NamespacedName]emitterir.GatewayContext),
-		HTTPRoutes:      make(map[types.NamespacedName]emitterir.HTTPRouteContext),
-		TLSRoutes:       make(map[types.NamespacedName]emitterir.TLSRouteContext),
-		TCPRoutes:       make(map[types.NamespacedName]emitterir.TCPRouteContext),
-		ReferenceGrants: make(map[types.NamespacedName]emitterir.ReferenceGrantContext),
+	res := providerir.ProviderIR{
+		Gateways:        make(map[types.NamespacedName]providerir.GatewayContext),
+		HTTPRoutes:      make(map[types.NamespacedName]providerir.HTTPRouteContext),
+		TLSRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
+		TCPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
+		ReferenceGrants: make(map[types.NamespacedName]gatewayv1beta1.ReferenceGrant),
 	}
 
 	for _, obj := range unstructuredObjects {
@@ -182,7 +182,7 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*emitterir.Emi
 			res.Gateways[types.NamespacedName{
 				Namespace: gw.Namespace,
 				Name:      gw.Name,
-			}] = emitterir.GatewayContext{Gateway: gw}
+			}] = providerir.GatewayContext{Gateway: gw}
 		case "HTTPRoute":
 			var httpRoute gatewayv1.HTTPRoute
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), &httpRoute); err != nil {
@@ -192,7 +192,7 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*emitterir.Emi
 			res.HTTPRoutes[types.NamespacedName{
 				Namespace: httpRoute.Namespace,
 				Name:      httpRoute.Name,
-			}] = emitterir.HTTPRouteContext{HTTPRoute: httpRoute}
+			}] = providerir.HTTPRouteContext{HTTPRoute: httpRoute}
 		case "TLSRoute":
 			var tlsRoute gatewayv1alpha2.TLSRoute
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), &tlsRoute); err != nil {
@@ -202,7 +202,7 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*emitterir.Emi
 			res.TLSRoutes[types.NamespacedName{
 				Namespace: tlsRoute.Namespace,
 				Name:      tlsRoute.Name,
-			}] = emitterir.TLSRouteContext{TLSRoute: tlsRoute}
+			}] = tlsRoute
 		case "TCPRoute":
 			var tcpRoute gatewayv1alpha2.TCPRoute
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), &tcpRoute); err != nil {
@@ -212,7 +212,7 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*emitterir.Emi
 			res.TCPRoutes[types.NamespacedName{
 				Namespace: tcpRoute.Namespace,
 				Name:      tcpRoute.Name,
-			}] = emitterir.TCPRouteContext{TCPRoute: tcpRoute}
+			}] = tcpRoute
 		case "ReferenceGrant":
 			var referenceGrant gatewayv1beta1.ReferenceGrant
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), &referenceGrant); err != nil {
@@ -222,7 +222,7 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*emitterir.Emi
 			res.ReferenceGrants[types.NamespacedName{
 				Namespace: referenceGrant.Namespace,
 				Name:      referenceGrant.Name,
-			}] = emitterir.ReferenceGrantContext{ReferenceGrant: referenceGrant}
+			}] = referenceGrant
 		default:
 			return nil, fmt.Errorf("unknown object kind: %v", objKind)
 		}

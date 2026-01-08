@@ -24,7 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 )
 
 const (
@@ -91,8 +91,8 @@ func (p *Provider) ReadResourcesFromFile(ctx context.Context, filename string) e
 }
 
 // ToIR converts stored OpenAPI specs to IR.
-func (p *Provider) ToIR() (emitterir.EmitterIR, field.ErrorList) {
-	return p.resourcesToIRConverter.Convert(p.storage)
+func (p *Provider) ToIR() (providerir.ProviderIR, field.ErrorList) {
+	return p.resourcesToIRConverter.convert(p.storage)
 }
 
 func readSpecFromFile(ctx context.Context, filename string) (*openapi3.T, error) {

@@ -27,6 +27,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	standard_emitter "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/standard"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -57,12 +58,13 @@ func TestFileConversion(t *testing.T) {
 			t.Fatalf("Failed to read input from file %v: %v", d.Name(), err.Error())
 		}
 
-		ir, errList := istioProvider.ToIR()
+		pIR, errList := istioProvider.ToIR()
 		if len(errList) > 0 {
 			t.Fatalf("unexpected errors during input conversion to ir for file %v: %v", d.Name(), errList.ToAggregate().Error())
 		}
+		eIR := emitterir.ToEmitterIR(pIR)
 		emitter := standard_emitter.NewEmitter(nil)
-		gotGatewayResources, errList := emitter.Emit(ir)
+		gotGatewayResources, errList := emitter.Emit(eIR)
 		if len(errList) > 0 {
 			t.Fatalf("unexpected errors during ir conversion to Gateway for file %v: %v", d.Name(), errList.ToAggregate().Error())
 		}

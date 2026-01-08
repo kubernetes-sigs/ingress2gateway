@@ -21,8 +21,10 @@ import (
 	"fmt"
 	"sort"
 
+	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	common_emitter "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/common_emitter"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -85,13 +87,14 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 		errs             field.ErrorList
 	)
 	for _, provider := range providerByName {
-		ir, conversionErrs := provider.ToIR()
+		pIR, conversionErrs := provider.ToIR()
 		errs = append(errs, conversionErrs...)
 
-		ir, conversionErrs = commonEmitter.Emit(ir)
+		eIR := emitterir.ToEmitterIR(pIR)
+		eIR, conversionErrs = commonEmitter.Emit(eIR)
 		errs = append(errs, conversionErrs...)
 
-		providerGatewayResources, conversionErrs := emitter.Emit(ir)
+		providerGatewayResources, conversionErrs := emitter.Emit(eIR)
 		errs = append(errs, conversionErrs...)
 		gatewayResources = append(gatewayResources, providerGatewayResources)
 	}

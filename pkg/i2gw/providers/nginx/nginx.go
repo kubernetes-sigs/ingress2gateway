@@ -22,7 +22,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 )
 
@@ -67,7 +66,6 @@ func (p *Provider) ReadResourcesFromFile(_ context.Context, filename string) err
 }
 
 // ToIR converts the provider resources to intermediate representation
-func (p *Provider) ToIR() (emitterir.EmitterIR, field.ErrorList) {
-	ir, errs := p.resourcesToIRConverter.convert(p.storage)
-	return providerir.ToEmitterIR(ir), errs
+func (p *Provider) ToIR() (providerir.ProviderIR, field.ErrorList) {
+	return p.resourcesToIRConverter.convert(p.storage)
 }
