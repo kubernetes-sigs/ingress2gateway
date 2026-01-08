@@ -49,7 +49,7 @@ func (c *resourcesToIRConverter) convertToIR(storage *storage) (providerir.Provi
 	}
 	// Convert plain ingress resources to gateway resources, ignoring all
 	// provider-specific features.
-	ir, errs := common.ToIR(ingressList, storage.ServicePorts, c.implementationSpecificOptions)
+	ir, errs := common.ToIR(ingressList, []networkingv1.Ingress{}, storage.ServicePorts, c.implementationSpecificOptions)
 	if len(errs) > 0 {
 		return providerir.ProviderIR{}, errs
 	}
