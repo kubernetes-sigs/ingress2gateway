@@ -19,6 +19,7 @@ package common_emitter
 import (
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 type Emitter struct{}
@@ -31,5 +32,45 @@ func NewEmitter() *Emitter {
 // This ALWAYS runs after providers and before provider-specific emitters.
 // TODO: Implement common logic such as filtering by maturity status and/or individual features.
 func (e *Emitter) Emit(ir emitterir.EmitterIR) (emitterir.EmitterIR, field.ErrorList) {
+	var errs field.ErrorList
+
+	for key, httpRouteContext := range ir.HTTPRoutes {
+		errs = append(errs, applyHTTPRouteRequestTimeouts(&httpRouteContext)...)
+		ir.HTTPRoutes[key] = httpRouteContext
+	}
+
+	if len(errs) > 0 {
+		return ir, errs
+	}
 	return ir, nil
+}
+
+func applyHTTPRouteRequestTimeouts(httpRouteContext *emitterir.HTTPRouteContext) field.ErrorList {
+	if httpRouteContext.RequestTimeouts == nil {
+		return nil
+	}
+
+	var errs field.ErrorList
+	for ruleIdx, d := range httpRouteContext.RequestTimeouts {
+		if d == nil {
+			continue
+		}
+		if ruleIdx < 0 || ruleIdx >= len(httpRouteContext.Spec.Rules) {
+			errs = append(errs, field.Invalid(
+				field.NewPath("httpRoute", "spec", "rules").Index(ruleIdx),
+				ruleIdx,
+				"rule index out of range",
+			))
+			continue
+		}
+
+		rule := &httpRouteContext.Spec.Rules[ruleIdx]
+		if rule.Timeouts == nil {
+			rule.Timeouts = &gatewayv1.HTTPRouteTimeouts{}
+		}
+		rule.Timeouts.Request = d
+	}
+
+	httpRouteContext.RequestTimeouts = nil
+	return errs
 }
