@@ -344,37 +344,3 @@ func findIngressControllerService(
 
 	return nil, fmt.Errorf("could not find service for ingress controller %s: %w", controllerName, lastErr)
 }
-
-// WaitForServiceReady waits until at least one of the pods backing the service is ready.
-func WaitForServiceReady(
-	ctx context.Context,
-	client *kubernetes.Clientset,
-	namespace string,
-	serviceName string,
-) error {
-	return wait.PollUntilContextTimeout(ctx, 2*time.Second, 5*time.Minute, true, func(ctx context.Context) (bool, error) {
-		svc, err := client.CoreV1().Services(namespace).Get(ctx, serviceName, metav1.GetOptions{})
-		if err != nil {
-			// Service doesn't exist yet. Keep waiting.
-			//nolint:nilerr // Wait function - we deliberately return a nil error here
-			return false, nil
-		}
-
-		if len(svc.Spec.Selector) == 0 {
-			return false, fmt.Errorf("service %s/%s has no selector", namespace, serviceName)
-		}
-
-		selector := metav1.FormatLabelSelector(&metav1.LabelSelector{MatchLabels: svc.Spec.Selector})
-		pods, err := client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
-			LabelSelector: selector,
-		})
-		if err != nil {
-			//nolint:nilerr // Wait function - we deliberately return a nil error here
-			return false, nil
-		}
-
-		// Check if at least one pod is ready.
-		readyPod := findReadyPod(&pods.Items)
-		return readyPod != nil, nil
-	})
-}
