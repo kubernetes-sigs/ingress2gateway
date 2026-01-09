@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
@@ -378,6 +379,10 @@ func (rg *ingressRuleGroup) toHTTPRoute(servicePorts map[types.NamespacedName]ma
 
 		httpRoute.Spec.Rules = append(httpRoute.Spec.Rules, hrRule)
 		allRuleBackendSources = append(allRuleBackendSources, sources)
+	}
+
+	for idx := range httpRoute.Spec.Rules {
+		httpRoute.Spec.Rules[idx].Name = ptr.To(gatewayv1.SectionName(fmt.Sprintf("rule-%d", idx)))
 	}
 
 	return httpRoute, allRuleBackendSources, errors
