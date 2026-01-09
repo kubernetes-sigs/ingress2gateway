@@ -29,11 +29,6 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-const (
-	permanentRedirectAnnotation = "nginx.ingress.kubernetes.io/permanent-redirect"
-	temporalRedirectAnnotation  = "nginx.ingress.kubernetes.io/temporal-redirect"
-)
-
 // redirectFeature converts permanent and temporal redirect annotations to Gateway API RequestRedirect filters.
 // - permanent-redirect uses a 301 status code
 // - temporal-redirect uses a 302 status code
@@ -43,8 +38,8 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 	ruleGroups := common.GetRuleGroups(ingresses)
 	for _, rg := range ruleGroups {
 		for _, rule := range rg.Rules {
-			permanentRedirectURL, hasPermanent := rule.Ingress.Annotations[permanentRedirectAnnotation]
-			temporalRedirectURL, hasTemporal := rule.Ingress.Annotations[temporalRedirectAnnotation]
+			permanentRedirectURL, hasPermanent := rule.Ingress.Annotations[PermanentRedirectAnnotation]
+			temporalRedirectURL, hasTemporal := rule.Ingress.Annotations[TemporalRedirectAnnotation]
 
 			// Skip if neither annotation is present
 			if !hasPermanent && !hasTemporal {
@@ -56,7 +51,7 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 				errs = append(errs, field.Invalid(
 					field.NewPath("ingress", rule.Ingress.Namespace, rule.Ingress.Name, "metadata", "annotations"),
 					rule.Ingress.Annotations,
-					fmt.Sprintf("cannot use both %s and %s annotations simultaneously", permanentRedirectAnnotation, temporalRedirectAnnotation),
+					fmt.Sprintf("cannot use both %s and %s annotations simultaneously", PermanentRedirectAnnotation, TemporalRedirectAnnotation),
 				))
 				continue
 			}
@@ -69,11 +64,11 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 			if hasPermanent {
 				redirectURL = permanentRedirectURL
 				statusCode = 301
-				annotationUsed = permanentRedirectAnnotation
+				annotationUsed = PermanentRedirectAnnotation
 			} else {
 				redirectURL = temporalRedirectURL
 				statusCode = 302
-				annotationUsed = temporalRedirectAnnotation
+				annotationUsed = TemporalRedirectAnnotation
 			}
 
 			// Validate redirect URL is not empty

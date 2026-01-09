@@ -43,7 +43,7 @@ func Test_redirectFeature(t *testing.T) {
 					Name:      "test-ingress",
 					Namespace: "default",
 					Annotations: map[string]string{
-						permanentRedirectAnnotation: "https://example.com/new-path",
+						PermanentRedirectAnnotation: "https://example.com/new-path",
 					},
 				},
 				Spec: networkingv1.IngressSpec{
@@ -122,7 +122,7 @@ func Test_redirectFeature(t *testing.T) {
 					Name:      "test-ingress",
 					Namespace: "default",
 					Annotations: map[string]string{
-						temporalRedirectAnnotation: "https://example.com/temporary",
+						TemporalRedirectAnnotation: "https://example.com/temporary",
 					},
 				},
 				Spec: networkingv1.IngressSpec{
@@ -201,8 +201,8 @@ func Test_redirectFeature(t *testing.T) {
 					Name:      "test-ingress",
 					Namespace: "default",
 					Annotations: map[string]string{
-						permanentRedirectAnnotation: "https://example.com/permanent",
-						temporalRedirectAnnotation:  "https://example.com/temporal",
+						PermanentRedirectAnnotation: "https://example.com/permanent",
+						TemporalRedirectAnnotation:  "https://example.com/temporal",
 					},
 				},
 				Spec: networkingv1.IngressSpec{
@@ -374,7 +374,7 @@ func Test_redirectFeature_emptyURL(t *testing.T) {
 			Name:      "test-ingress",
 			Namespace: "default",
 			Annotations: map[string]string{
-				permanentRedirectAnnotation: "",
+				PermanentRedirectAnnotation: "",
 			},
 		},
 		Spec: networkingv1.IngressSpec{
