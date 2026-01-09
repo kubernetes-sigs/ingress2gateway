@@ -29,16 +29,6 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-const (
-	canaryAnnotation            = "nginx.ingress.kubernetes.io/canary"
-	canaryByHeader              = "nginx.ingress.kubernetes.io/canary-by-header"
-	canaryByHeaderValue         = "nginx.ingress.kubernetes.io/canary-by-header-value"
-	canaryByHeaderPattern       = "nginx.ingress.kubernetes.io/canary-by-header-pattern"
-	canaryByCookie              = "nginx.ingress.kubernetes.io/canary-by-cookie"
-	canaryWeightAnnotation      = "nginx.ingress.kubernetes.io/canary-weight"
-	canaryWeightTotalAnnotation = "nginx.ingress.kubernetes.io/canary-weight-total"
-)
-
 // canaryConfig holds the parsed canary configuration from a single Ingress
 type canaryConfig struct {
 	isHeader    bool
@@ -56,23 +46,22 @@ func parseCanaryConfig(ingress *networkingv1.Ingress) (canaryConfig, error) {
 		weightTotal: 100, // default
 	}
 
-	if ingress.Annotations[canaryByHeaderPattern] != "" {
+	if ingress.Annotations[CanaryByHeaderPattern] != "" {
 		notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported annotation %s",
-			ingress.Namespace, ingress.Name, canaryByHeaderPattern), ingress)
+			ingress.Namespace, ingress.Name, CanaryByHeaderPattern), ingress)
 	}
 
-	if ingress.Annotations[canaryByCookie] != "" {
+	if ingress.Annotations[CanaryByCookie] != "" {
 		notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported annotation %s",
-			ingress.Namespace, ingress.Name, canaryByCookie), ingress)
+			ingress.Namespace, ingress.Name, CanaryByCookie), ingress)
 	}
 
-	if ingress.Annotations[canaryByHeader] != "" {
+	if ingress.Annotations[CanaryByHeader] != "" {
 		config.isHeader = true
 	}
-	config.header = ingress.Annotations[canaryByHeader]
-	config.headerValue = ingress.Annotations[canaryByHeaderValue]
-
-	if weight := ingress.Annotations[canaryWeightAnnotation]; weight != "" {
+	config.header = ingress.Annotations[CanaryByHeader]
+	config.headerValue = ingress.Annotations[CanaryByHeaderValue]
+	if weight := ingress.Annotations[CanaryWeightAnnotation]; weight != "" {
 		config.isWeight = true
 		w, err := strconv.ParseInt(weight, 10, 32)
 		if err != nil {
@@ -84,7 +73,7 @@ func parseCanaryConfig(ingress *networkingv1.Ingress) (canaryConfig, error) {
 		config.weight = int32(w)
 	}
 
-	if total := ingress.Annotations[canaryWeightTotalAnnotation]; total != "" {
+	if total := ingress.Annotations[CanaryWeightTotalAnnotation]; total != "" {
 		wt, err := strconv.ParseInt(total, 10, 32)
 		if err != nil {
 			return config, fmt.Errorf("invalid canary-weight-total annotation %q: %w", total, err)
@@ -137,7 +126,7 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 
 				backendRef := &httpRouteContext.HTTPRoute.Spec.Rules[ruleIdx].BackendRefs[backendIdx]
 
-				if source.Ingress.Annotations[canaryAnnotation] == "true" {
+				if source.Ingress.Annotations[CanaryAnnotation] == "true" {
 					if canaryBackend != nil {
 						errList = append(errList, field.Invalid(
 							field.NewPath("httproute", httpRouteContext.HTTPRoute.Name, "spec", "rules").Index(ruleIdx).Child("backendRefs"),
