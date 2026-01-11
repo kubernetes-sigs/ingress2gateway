@@ -488,7 +488,7 @@ func Test_ToIR(t *testing.T) {
 							Spec: gatewayv1.GatewaySpec{
 								GatewayClassName: "grpc-class",
 								Listeners: []gatewayv1.Listener{{
-									Name:     "grpc-example-com-grpc",
+									Name:     "grpc-example-com-http",
 									Port:     80,
 									Protocol: gatewayv1.HTTPProtocolType,
 									Hostname: PtrTo(gatewayv1.Hostname("grpc.example.com")),

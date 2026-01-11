@@ -147,11 +147,6 @@ type ingressAggregator struct {
 	servicePorts    map[types.NamespacedName]map[string]int32
 }
 
-type listenerWithProtocol struct {
-	listener gatewayv1.Listener
-	protocol string
-}
-
 type pathMatchKey string
 
 type ingressRuleGroup struct {
@@ -240,7 +235,7 @@ func (a *ingressAggregator) toRoutesAndGateways(options i2gw.ProviderImplementat
 	var httpRoutes []httpRouteWithSources
 	var grpcRoutes []grpcRouteWithSources
 	var errors field.ErrorList
-	listenersByNamespacedGateway := map[string][]listenerWithProtocol{}
+	listenersByNamespacedGateway := map[string][]gatewayv1.Listener{}
 
 	// Sort the rulegroups to iterate the map in a sorted order.
 	ruleGroupsKeys := make([]ruleGroupKey, 0, len(a.ruleGroups))
@@ -268,7 +263,7 @@ func (a *ingressAggregator) toRoutesAndGateways(options i2gw.ProviderImplementat
 				gatewayv1.SecretObjectReference{Name: gatewayv1.ObjectName(tls.SecretName)})
 		}
 		gwKey := fmt.Sprintf("%s/%s", rg.namespace, rg.ingressClass)
-		listenersByNamespacedGateway[gwKey] = append(listenersByNamespacedGateway[gwKey], listenerWithProtocol{listener: listener, protocol: rg.protocol})
+		listenersByNamespacedGateway[gwKey] = append(listenersByNamespacedGateway[gwKey], listener)
 		if rg.protocol == string(HTTP) {
 			httpRoute, sources, errs := rg.toHTTPRoute(a.servicePorts, options)
 			httpRoutes = append(httpRoutes, httpRouteWithSources{route: httpRoute, sources: sources})
@@ -343,28 +338,61 @@ func (a *ingressAggregator) toRoutesAndGateways(options i2gw.ProviderImplementat
 			gateway.SetGroupVersionKind(GatewayGVK)
 			gatewaysByKey[gwKey] = gateway
 		}
-		for _, lwp := range listeners {
-			listener := lwp.listener
+		uniqueListeners := make(map[gatewayv1.SectionName]*gatewayv1.Listener)
+		var orderedNames []gatewayv1.SectionName
+
+		for _, l := range listeners {
 			var listenerNamePrefix string
-			if listener.Hostname != nil && *listener.Hostname != "" {
-				listenerNamePrefix = fmt.Sprintf("%s-", NameFromHost(string(*listener.Hostname)))
+			if l.Hostname != nil && *l.Hostname != "" {
+				listenerNamePrefix = fmt.Sprintf("%s-", NameFromHost(string(*l.Hostname)))
 			}
 
-			gateway.Spec.Listeners = append(gateway.Spec.Listeners, gatewayv1.Listener{
-				Name:     gatewayv1.SectionName(fmt.Sprintf("%s%s", listenerNamePrefix, strings.ToLower(lwp.protocol))),
-				Hostname: listener.Hostname,
-				Port:     80,
-				Protocol: gatewayv1.HTTPProtocolType,
-			})
-			if listener.TLS != nil {
-				gateway.Spec.Listeners = append(gateway.Spec.Listeners, gatewayv1.Listener{
-					Name:     gatewayv1.SectionName(fmt.Sprintf("%shttps", listenerNamePrefix)),
-					Hostname: listener.Hostname,
-					Port:     443,
-					Protocol: gatewayv1.HTTPSProtocolType,
-					TLS:      listener.TLS,
-				})
+			// Add/Update HTTP listener
+			httpName := gatewayv1.SectionName(fmt.Sprintf("%shttp", listenerNamePrefix))
+			if _, exists := uniqueListeners[httpName]; !exists {
+				uniqueListeners[httpName] = &gatewayv1.Listener{
+					Name:     httpName,
+					Hostname: l.Hostname,
+					Port:     80,
+					Protocol: gatewayv1.HTTPProtocolType,
+				}
+				orderedNames = append(orderedNames, httpName)
 			}
+
+			// Add/Update HTTPS listener
+			if l.TLS != nil {
+				httpsName := gatewayv1.SectionName(fmt.Sprintf("%shttps", listenerNamePrefix))
+				if _, exists := uniqueListeners[httpsName]; !exists {
+					uniqueListeners[httpsName] = &gatewayv1.Listener{
+						Name:     httpsName,
+						Hostname: l.Hostname,
+						Port:     443,
+						Protocol: gatewayv1.HTTPSProtocolType,
+						TLS:      &gatewayv1.ListenerTLSConfig{},
+					}
+					orderedNames = append(orderedNames, httpsName)
+				}
+				// Merge CertificateRefs
+				uniqueListeners[httpsName].TLS.CertificateRefs = append(uniqueListeners[httpsName].TLS.CertificateRefs, l.TLS.CertificateRefs...)
+			}
+		}
+
+		slices.Sort(orderedNames)
+		for _, name := range orderedNames {
+			l := uniqueListeners[name]
+			// Final deduplication of certificates for this listener
+			if l.TLS != nil && len(l.TLS.CertificateRefs) > 0 {
+				uniqueRefs := make(map[gatewayv1.ObjectName]bool)
+				var certificates []gatewayv1.SecretObjectReference
+				for _, ref := range l.TLS.CertificateRefs {
+					if !uniqueRefs[ref.Name] {
+						certificates = append(certificates, ref)
+						uniqueRefs[ref.Name] = true
+					}
+				}
+				l.TLS.CertificateRefs = certificates
+			}
+			gateway.Spec.Listeners = append(gateway.Spec.Listeners, *l)
 		}
 	}
 
