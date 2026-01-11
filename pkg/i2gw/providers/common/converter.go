@@ -520,7 +520,7 @@ func toHTTPRouteMatch(routePath networkingv1.HTTPIngressPath, path *field.Path, 
 	return match, nil
 }
 
-func (rg *ingressRuleGroup) toGRPCRoute(servicePorts map[types.NamespacedName]map[string]int32, options i2gw.ProviderImplementationSpecificOptions) (gatewayv1.GRPCRoute, [][]providerir.BackendSource, field.ErrorList) {
+func (rg *ingressRuleGroup) toGRPCRoute(servicePorts map[types.NamespacedName]map[string]int32, _ i2gw.ProviderImplementationSpecificOptions) (gatewayv1.GRPCRoute, [][]providerir.BackendSource, field.ErrorList) {
 	// GRPCRoutes don't have path matches in the same way Ingress does (Method/Service vs URI Path).
 	// For standard Ingress -> GRPCRoute conversion, we usually Map all backends to a catch-all Rule
 	// or we could try to map paths if they look like gRPC methods, but that's flaky.
