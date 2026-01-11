@@ -115,6 +115,46 @@ func TestHeaderModifierFeature(t *testing.T) {
 			},
 		},
 		{
+			name: "x-forwarded-prefix header",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-x-forwarded-prefix",
+					Namespace: "default",
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/x-forwarded-prefix": "/api/v1",
+					},
+				},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{
+						{
+							Host: "example.com",
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{
+										{
+											Path:     "/",
+											PathType: ptr.To(networkingv1.PathTypePrefix),
+											Backend: networkingv1.IngressBackend{
+												Service: &networkingv1.IngressServiceBackend{
+													Name: "test-service",
+													Port: networkingv1.ServiceBackendPort{
+														Number: 80,
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedHeaders: map[string]string{
+				"X-Forwarded-Prefix": "/api/v1",
+			},
+		},
+		{
 			name: "multiple headers",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
@@ -155,6 +195,82 @@ func TestHeaderModifierFeature(t *testing.T) {
 				"Host":       "backend.local",
 				"Connection": "keep-alive",
 			},
+		},
+		{
+			name: "x-forwarded-prefix skipped when rewrite-target present",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-skip-xfp",
+					Namespace: "default",
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/x-forwarded-prefix": "/api/v1",
+						"nginx.ingress.kubernetes.io/rewrite-target":     "/$1",
+					},
+				},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{
+						{
+							Host: "example.com",
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{
+										{
+											Path:     "/",
+											PathType: ptr.To(networkingv1.PathTypePrefix),
+											Backend: networkingv1.IngressBackend{
+												Service: &networkingv1.IngressServiceBackend{
+													Name: "test-service",
+													Port: networkingv1.ServiceBackendPort{
+														Number: 80,
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			// Empty - x-forwarded-prefix should be handled by rewrite.go when rewrite-target is present
+			expectedHeaders: map[string]string{},
+		},
+		{
+			name: "no header annotations",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "test-no-headers",
+					Namespace:   "default",
+					Annotations: map[string]string{},
+				},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{
+						{
+							Host: "example.com",
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{
+										{
+											Path:     "/",
+											PathType: ptr.To(networkingv1.PathTypePrefix),
+											Backend: networkingv1.IngressBackend{
+												Service: &networkingv1.IngressServiceBackend{
+													Name: "test-service",
+													Port: networkingv1.ServiceBackendPort{
+														Number: 80,
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedHeaders: map[string]string{},
 		},
 	}
 

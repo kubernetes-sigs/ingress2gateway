@@ -53,10 +53,20 @@ func headerModifierFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]
 				headersToSet["Connection"] = val
 			}
 
-			// 3. custom-headers -> Warn unsupported
-			// TODO: implement custom-headers annotation.
-			if _, ok := ingress.Annotations[CustomHeadersAnnotation]; ok {
-				notify(notifications.WarningNotification, fmt.Sprintf("Ingress %s/%s uses '%s' which is not supported.", ingress.Namespace, ingress.Name, CustomHeadersAnnotation), &httpRouteContext.HTTPRoute)
+			// 3. x-forwarded-prefix -> X-Forwarded-Prefix header
+			// This annotation adds an X-Forwarded-Prefix header with the value being the path prefix.
+			// Skip if rewrite-target is also present, as rewrite.go handles it in that case.
+			if val, ok := ingress.Annotations[XForwardedPrefixAnnotation]; ok && val != "" {
+				if _, hasRewrite := ingress.Annotations[RewriteTargetAnnotation]; !hasRewrite {
+					headersToSet["X-Forwarded-Prefix"] = val
+				}
+			}
+
+			// 4. custom-headers -> Warn unsupported (requires ConfigMap access)
+			// The custom-headers annotation references a ConfigMap containing headers.
+			// This cannot be converted as ConfigMap reading is not available during conversion.
+			if val, ok := ingress.Annotations[CustomHeadersAnnotation]; ok && val != "" {
+				notify(notifications.WarningNotification, fmt.Sprintf("Ingress %s/%s uses '%s' annotation referencing ConfigMap '%s'. This cannot be automatically converted as ConfigMap reading is not supported during migration. Please manually add the headers from the ConfigMap to your HTTPRoute.", ingress.Namespace, ingress.Name, CustomHeadersAnnotation, val), &httpRouteContext.HTTPRoute)
 			}
 
 			if len(headersToSet) > 0 {

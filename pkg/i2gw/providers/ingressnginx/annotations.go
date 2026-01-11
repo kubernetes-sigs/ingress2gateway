@@ -31,7 +31,7 @@ const (
 	ConnectionProxyHeaderAnnotation = "nginx.ingress.kubernetes.io/connection-proxy-header"
 	CustomHeadersAnnotation         = "nginx.ingress.kubernetes.io/custom-headers"
 
-	// R2gex
+	// Regex
 	UseRegexAnnotation = "nginx.ingress.kubernetes.io/use-regex"
 
 	// SSL Redirect annotation
