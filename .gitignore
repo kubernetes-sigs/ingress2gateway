@@ -31,3 +31,4 @@ go.work
 .vscode/
 
 kind-kubeconfig
+bin
