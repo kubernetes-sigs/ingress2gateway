@@ -20,6 +20,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -27,26 +29,52 @@ func Test_implementationSpecificHTTPPathTypeMatch(t *testing.T) {
 	testCases := []struct {
 		name          string
 		inputPath     string
+		annotations   map[string]string
 		expectedType  gatewayv1.PathMatchType
 		expectedValue string
 	}{
 		{
-			name:          "regex path with wildcard",
-			inputPath:     "/.*/execution/.*",
+			name:      "regex path with use-regex annotation",
+			inputPath: "/.*/execution/.*",
+			annotations: map[string]string{
+				useRegexAnnotation: "true",
+			},
 			expectedType:  gatewayv1.PathMatchRegularExpression,
 			expectedValue: "/.*/execution/.*",
 		},
 		{
-			name:          "regex path with specific pattern",
-			inputPath:     "/api/v3/amp/login.*",
+			name:      "regex path with use-regex annotation set to true",
+			inputPath: "/api/v3/amp/login.*",
+			annotations: map[string]string{
+				useRegexAnnotation: "true",
+			},
 			expectedType:  gatewayv1.PathMatchRegularExpression,
 			expectedValue: "/api/v3/amp/login.*",
 		},
 		{
-			name:          "simple path",
-			inputPath:     "/page/track.*",
-			expectedType:  gatewayv1.PathMatchRegularExpression,
-			expectedValue: "/page/track.*",
+			name:      "path without use-regex annotation defaults to Prefix",
+			inputPath: "/page/track",
+			annotations: map[string]string{
+				// No use-regex annotation
+			},
+			expectedType:  gatewayv1.PathMatchPathPrefix,
+			expectedValue: "/page/track",
+		},
+		{
+			name:      "path with use-regex set to false defaults to Prefix",
+			inputPath: "/api/v1/users",
+			annotations: map[string]string{
+				useRegexAnnotation: "false",
+			},
+			expectedType:  gatewayv1.PathMatchPathPrefix,
+			expectedValue: "/api/v1/users",
+		},
+		{
+			name:          "path with nil annotations defaults to Prefix",
+			inputPath:     "/api/v2/products",
+			annotations:   nil,
+			expectedType:  gatewayv1.PathMatchPathPrefix,
+			expectedValue: "/api/v2/products",
 		},
 	}
 
@@ -56,7 +84,13 @@ func Test_implementationSpecificHTTPPathTypeMatch(t *testing.T) {
 				Value: &tc.inputPath,
 			}
 
-			implementationSpecificHTTPPathTypeMatch(path)
+			ingress := &networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: tc.annotations,
+				},
+			}
+
+			implementationSpecificHTTPPathTypeMatch(path, ingress)
 
 			assert.NotNil(t, path.Type)
 			assert.Equal(t, tc.expectedType, *path.Type)

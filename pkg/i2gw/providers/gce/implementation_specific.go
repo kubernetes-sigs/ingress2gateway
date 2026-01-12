@@ -22,6 +22,7 @@ import (
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/klog/v2"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -39,7 +40,7 @@ import (
 // | /v1                                   | /v1 Exact                              |
 // | /v1/                                  | /v1/ Exact                             |
 // | /v1/*                                 | /v1 Prefix                             |
-func implementationSpecificHTTPPathTypeMatch(path *gatewayv1.HTTPPathMatch) {
+func implementationSpecificHTTPPathTypeMatch(path *gatewayv1.HTTPPathMatch, ingress *networkingv1.Ingress) {
 	pmExact := gatewayv1.PathMatchExact
 	pmPrefix := gatewayv1.PathMatchPathPrefix
 

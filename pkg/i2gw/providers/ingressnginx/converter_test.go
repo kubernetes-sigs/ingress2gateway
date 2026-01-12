@@ -22,7 +22,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	apiv1 "k8s.io/api/core/v1"
@@ -311,6 +310,9 @@ func Test_ToIR(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "implementation-specific-regex",
 							Namespace: "default",
+							Annotations: map[string]string{
+								"nginx.ingress.kubernetes.io/use-regex": "true",
+							},
 						},
 						Spec: networkingv1.IngressSpec{
 							IngressClassName: ptrTo("ingress-nginx"),
@@ -337,8 +339,8 @@ func Test_ToIR(t *testing.T) {
 					},
 				},
 			},
-			expectedIR: intermediate.IR{
-				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
 					{Namespace: "default", Name: "ingress-nginx"}: {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{Name: "ingress-nginx", Namespace: "default"},
@@ -354,7 +356,7 @@ func Test_ToIR(t *testing.T) {
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 					{Namespace: "default", Name: "implementation-specific-regex-test-mydomain-com"}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{Name: "implementation-specific-regex-test-mydomain-com", Namespace: "default"},

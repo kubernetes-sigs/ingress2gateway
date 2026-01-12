@@ -77,7 +77,7 @@ type ResourcesToIRConverter interface {
 
 // ImplementationSpecificHTTPPathTypeMatchConverter is an option to customize the ingress implementationSpecific
 // match type conversion.
-type ImplementationSpecificHTTPPathTypeMatchConverter func(*gatewayv1.HTTPPathMatch)
+type ImplementationSpecificHTTPPathTypeMatchConverter func(*gatewayv1.HTTPPathMatch, *networkingv1.Ingress)
 
 // ProviderImplementationSpecificOptions contains customized implementation-specific fields and functions.
 // These will be used by the common package to customize the provider-specific behavior for all the

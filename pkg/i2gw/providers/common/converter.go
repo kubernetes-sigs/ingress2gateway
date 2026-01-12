@@ -363,7 +363,7 @@ func (rg *ingressRuleGroup) toHTTPRoute(servicePorts map[types.NamespacedName]ma
 		paths := ingressPathsByMatchKey.data[key]
 		path := paths[0]
 		fieldPath := field.NewPath("spec", "rules").Index(path.ruleIdx).Child(path.ruleType).Child("paths").Index(path.pathIdx)
-		match, err := toHTTPRouteMatch(path.path, fieldPath, options.ToImplementationSpecificHTTPPathTypeMatch)
+		match, err := toHTTPRouteMatch(path.path, path.sourceIngress, fieldPath, options.ToImplementationSpecificHTTPPathTypeMatch)
 		if err != nil {
 			errors = append(errors, err)
 			continue
@@ -415,7 +415,7 @@ func getPathMatchKey(ip ingressPath) pathMatchKey {
 	return pathMatchKey(fmt.Sprintf("%s/%s", pathType, ip.path.Path))
 }
 
-func toHTTPRouteMatch(routePath networkingv1.HTTPIngressPath, path *field.Path, toImplementationSpecificPathMatch i2gw.ImplementationSpecificHTTPPathTypeMatchConverter) (*gatewayv1.HTTPRouteMatch, *field.Error) {
+func toHTTPRouteMatch(routePath networkingv1.HTTPIngressPath, ingress *networkingv1.Ingress, path *field.Path, toImplementationSpecificPathMatch i2gw.ImplementationSpecificHTTPPathTypeMatchConverter) (*gatewayv1.HTTPRouteMatch, *field.Error) {
 	pmPrefix := gatewayv1.PathMatchPathPrefix
 	pmExact := gatewayv1.PathMatchExact
 
@@ -435,7 +435,7 @@ func toHTTPRouteMatch(routePath networkingv1.HTTPIngressPath, path *field.Path, 
 	// is not given by the provider, an error is returned.
 	case networkingv1.PathTypeImplementationSpecific:
 		if toImplementationSpecificPathMatch != nil {
-			toImplementationSpecificPathMatch(match.Path)
+			toImplementationSpecificPathMatch(match.Path, ingress)
 		} else {
 			return nil, field.Invalid(path.Child("pathType"), routePath.PathType, "implementationSpecific path type is not supported in generic translation, and your provider does not provide custom support to translate it")
 		}

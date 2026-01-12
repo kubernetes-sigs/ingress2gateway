@@ -17,13 +17,30 @@ limitations under the License.
 package ingressnginx
 
 import (
+	networkingv1 "k8s.io/api/networking/v1"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+)
+
+const (
+	useRegexAnnotation = "nginx.ingress.kubernetes.io/use-regex"
 )
 
 // implementationSpecificHTTPPathTypeMatch handles the ImplementationSpecific path type
 // for ingress-nginx. When ImplementationSpecific is used, ingress-nginx treats paths
-// as regular expressions, so we convert them to PathMatchRegularExpression.
-func implementationSpecificHTTPPathTypeMatch(path *gatewayv1.HTTPPathMatch) {
+// as regular expressions only if the annotation "nginx.ingress.kubernetes.io/use-regex: true"
+// is present. Otherwise, it defaults to Prefix matching.
+func implementationSpecificHTTPPathTypeMatch(path *gatewayv1.HTTPPathMatch, ingress *networkingv1.Ingress) {
+	pmPrefix := gatewayv1.PathMatchPathPrefix
 	pmRegex := gatewayv1.PathMatchRegularExpression
-	path.Type = &pmRegex
+
+	// Check if use-regex annotation is set to "true"
+	if ingress != nil && ingress.Annotations != nil {
+		if useRegex, ok := ingress.Annotations[useRegexAnnotation]; ok && useRegex == "true" {
+			path.Type = &pmRegex
+			return
+		}
+	}
+
+	// Default to Prefix matching if use-regex is not set or not "true"
+	path.Type = &pmPrefix
 }
