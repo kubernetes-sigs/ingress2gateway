@@ -33,6 +33,9 @@ GIT_VERSION_STRING := $(shell git describe --tags --always --dirty 2>/dev/null)
 # Construct the LDFLAGS string to inject the version
 LDFLAGS := -ldflags="-X '$(I2GWPKG).Version=$(GIT_VERSION_STRING)'"
 
+# Directory for local binaries (used in CI where we can't install to /usr/local/bin).
+LOCAL_BIN := $(REPO_ROOT)/bin
+
 KIND_VERSION ?= v0.25.0
 
 # Default arguments for `go test` in e2e tests.
@@ -83,27 +86,29 @@ ifeq ($(ARCH),aarch64)
 endif
 
 KIND_BINARY_URL := https://kind.sigs.k8s.io/dl/$(KIND_VERSION)/kind-$(OS)-$(ARCH)
+KIND := $(shell command -v kind 2>/dev/null || echo "$(LOCAL_BIN)/kind")
 
 .PHONY: ensure-kind
 ensure-kind:
-	@if ! command -v kind >/dev/null 2>&1; then \
-		echo "kind binary not found. Installing kind $(KIND_VERSION) for $(OS)/$(ARCH)..."; \
-		curl -Lo ./kind $(KIND_BINARY_URL); \
-		chmod +x ./kind; \
-		echo "Moving kind to /usr/local/bin (sudo password may be required)..."; \
-		sudo mv ./kind /usr/local/bin/kind; \
-		echo "kind installed successfully."; \
-	else \
+	@if command -v kind >/dev/null 2>&1; then \
 		echo "Found kind binary: $$(kind version)"; \
+	elif [ -x "$(LOCAL_BIN)/kind" ]; then \
+		echo "Found kind binary in $(LOCAL_BIN): $$($(LOCAL_BIN)/kind version)"; \
+	else \
+		echo "kind binary not found. Installing kind $(KIND_VERSION) for $(OS)/$(ARCH)..."; \
+		mkdir -p $(LOCAL_BIN); \
+		curl -Lo $(LOCAL_BIN)/kind $(KIND_BINARY_URL); \
+		chmod +x $(LOCAL_BIN)/kind; \
+		echo "kind installed successfully to $(LOCAL_BIN)/kind"; \
 	fi
 
 .PHONY: kind
 kind: ensure-kind
-	@if ! kind get clusters | grep -q i2gw-e2e; then \
-		kind create cluster -n i2gw-e2e --kubeconfig $(REPO_ROOT)/kind-kubeconfig; \
+	@if ! $(KIND) get clusters | grep -q i2gw-e2e; then \
+		$(KIND) create cluster -n i2gw-e2e --kubeconfig $(REPO_ROOT)/kind-kubeconfig; \
 	else \
 		echo "Cluster i2gw-e2e already exists. Reusing it."; \
-		kind get kubeconfig --name i2gw-e2e > $(REPO_ROOT)/kind-kubeconfig; \
+		$(KIND) get kubeconfig --name i2gw-e2e > $(REPO_ROOT)/kind-kubeconfig; \
 	fi
 
 # Set I2GW_KUBECONFIG to a path to a kubeconfig file to run the tests against an existing cluster.
@@ -138,5 +143,5 @@ e2e: ## Run end-to-end tests.
 
 .PHONY: clean-kind
 clean-kind:
-	kind delete cluster -n i2gw-e2e
+	$(KIND) delete cluster -n i2gw-e2e
 	rm -f $(REPO_ROOT)/kind-kubeconfig
