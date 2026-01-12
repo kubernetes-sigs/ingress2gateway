@@ -18,6 +18,7 @@ package ingressnginx
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
@@ -63,12 +64,38 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 
 			if hasPermanent {
 				redirectURL = permanentRedirectURL
-				statusCode = 301
+				statusCode = 301 // default
 				annotationUsed = PermanentRedirectAnnotation
+
+				// Check for custom status code
+				if customCodeStr, hasCustomCode := rule.Ingress.Annotations[PermanentRedirectCodeAnnotation]; hasCustomCode {
+					if customCode, err := strconv.Atoi(customCodeStr); err == nil && customCode >= 300 && customCode < 400 {
+						statusCode = customCode
+					} else {
+						errs = append(errs, field.Invalid(
+							field.NewPath("ingress", rule.Ingress.Namespace, rule.Ingress.Name, "metadata", "annotations", PermanentRedirectCodeAnnotation),
+							customCodeStr,
+							fmt.Sprintf("invalid redirect status code %q, must be a valid 3xx code (using default 301)", customCodeStr),
+						))
+					}
+				}
 			} else {
 				redirectURL = temporalRedirectURL
-				statusCode = 302
+				statusCode = 302 // default
 				annotationUsed = TemporalRedirectAnnotation
+
+				// Check for custom status code
+				if customCodeStr, hasCustomCode := rule.Ingress.Annotations[TemporalRedirectCodeAnnotation]; hasCustomCode {
+					if customCode, err := strconv.Atoi(customCodeStr); err == nil && customCode >= 300 && customCode < 400 {
+						statusCode = customCode
+					} else {
+						errs = append(errs, field.Invalid(
+							field.NewPath("ingress", rule.Ingress.Namespace, rule.Ingress.Name, "metadata", "annotations", TemporalRedirectCodeAnnotation),
+							customCodeStr,
+							fmt.Sprintf("invalid redirect status code %q, must be a valid 3xx code (using default 302)", customCodeStr),
+						))
+					}
+				}
 			}
 
 			// Validate redirect URL is not empty

@@ -27,8 +27,10 @@ const (
 	RewriteTargetAnnotation = "nginx.ingress.kubernetes.io/rewrite-target"
 
 	// Redirect annotations
-	PermanentRedirectAnnotation = "nginx.ingress.kubernetes.io/permanent-redirect"
-	TemporalRedirectAnnotation  = "nginx.ingress.kubernetes.io/temporal-redirect"
+	PermanentRedirectAnnotation     = "nginx.ingress.kubernetes.io/permanent-redirect"
+	PermanentRedirectCodeAnnotation = "nginx.ingress.kubernetes.io/permanent-redirect-code"
+	TemporalRedirectAnnotation      = "nginx.ingress.kubernetes.io/temporal-redirect"
+	TemporalRedirectCodeAnnotation  = "nginx.ingress.kubernetes.io/temporal-redirect-code"
 
 	// Header annotations
 	XForwardedPrefixAnnotation      = "nginx.ingress.kubernetes.io/x-forwarded-prefix"
