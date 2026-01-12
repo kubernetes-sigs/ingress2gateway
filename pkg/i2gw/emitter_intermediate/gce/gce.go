@@ -14,17 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package intermediate
+package gce
 
-type GceGatewayIR struct {
+type GatewayIR struct {
 	EnableHTTPSRedirect bool
 	SslPolicy           *SslPolicyConfig
 }
 type SslPolicyConfig struct {
 	Name string
 }
-type GceHTTPRouteIR struct{}
-type GceServiceIR struct {
+type HTTPRouteIR struct{}
+type ServiceIR struct {
 	SessionAffinity *SessionAffinityConfig
 	SecurityPolicy  *SecurityPolicyConfig
 	HealthCheck     *HealthCheckConfig
@@ -44,19 +44,4 @@ type HealthCheckConfig struct {
 	Type               *string
 	Port               *int64
 	RequestPath        *string
-}
-
-func mergeGceGatewayIR(current, existing *GceGatewayIR) *GceGatewayIR {
-	// If either GceGatewayIR is nil, return the other one as the merged result.
-	if current == nil {
-		return existing
-	}
-	if existing == nil {
-		return current
-	}
-
-	// If both GceGatewayIRs are not nil, merge their fields.
-	var mergedGatewayIR GceGatewayIR
-	mergedGatewayIR.EnableHTTPSRedirect = current.EnableHTTPSRedirect || existing.EnableHTTPSRedirect
-	return &mergedGatewayIR
 }

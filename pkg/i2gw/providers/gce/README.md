@@ -26,7 +26,7 @@ Note: For Ingress `ImplementationSpecific` path with `/v1/*`, it will map to
 most similar Gateway path `/v1` Prefix, which means while `/v1` path is not
 considered as a matching path for Ingress, it will be a matching path for
 Gateway.
-If you want to avoid such behavior, please consider switching to `Prefix`, 
+If you want to avoid such behavior, please consider switching to `Prefix`,
 `Exact`, or an `ImplementationSpecific` path without `*` before converting
 an Ingress to a Gateway.
 
@@ -36,7 +36,7 @@ Currently supported:
  - [External Ingress](https://cloud.google.com/kubernetes-engine/docs/how-to/load-balance-ingress)
  - [Custom default backend](https://cloud.google.com/kubernetes-engine/docs/concepts/ingress#default_backend)
  - [Google Cloud Armor Ingress security policy](https://cloud.google.com/kubernetes-engine/docs/how-to/ingress-configuration#cloud_armor)
- - [SSL Policy](https://cloud.google.com/kubernetes-engine/docs/how-to/ingress-configuration#ssl) 
+ - [SSL Policy](https://cloud.google.com/kubernetes-engine/docs/how-to/ingress-configuration#ssl)
  - [Custom health check configuration](https://cloud.google.com/kubernetes-engine/docs/how-to/ingress-configuration#direct_health)
 
 To be supported:
@@ -48,7 +48,7 @@ To be supported:
  - [Identity-Aware Proxy](https://cloud.google.com/kubernetes-engine/docs/how-to/ingress-configuration#iap)
  - [Session affinity](https://cloud.google.com/kubernetes-engine/docs/how-to/ingress-configuration#session_affinity)
  - [User-defined request headers](https://cloud.google.com/kubernetes-engine/docs/how-to/ingress-configuration#request_headers)
- - [Custom Response header](https://cloud.google.com/kubernetes-engine/docs/how-to/ingress-configuration#response_headers) 
+ - [Custom Response header](https://cloud.google.com/kubernetes-engine/docs/how-to/ingress-configuration#response_headers)
 
 ## Summary of GKE Ingress annotation
 External Ingress:

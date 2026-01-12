@@ -23,6 +23,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/intermediate"
+	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	apiv1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -35,15 +36,15 @@ import (
 
 func Test_ToIR(t *testing.T) {
 	iPrefix := networkingv1.PathTypePrefix
-	//iExact := networkingv1.PathTypeExact
+	// iExact := networkingv1.PathTypeExact
 	isPathType := networkingv1.PathTypeImplementationSpecific
 	gPathPrefix := gatewayv1.PathMatchPathPrefix
-	//gExact := gatewayv1.PathMatchExact
+	// gExact := gatewayv1.PathMatchExact
 
 	testCases := []struct {
 		name           string
 		ingresses      OrderedIngressMap
-		expectedIR     intermediate.IR
+		expectedIR     providerir.ProviderIR
 		expectedErrors field.ErrorList
 	}{
 		{
@@ -108,8 +109,8 @@ func Test_ToIR(t *testing.T) {
 					},
 				},
 			},
-			expectedIR: intermediate.IR{
-				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
 					{Namespace: "default", Name: "ingress-nginx"}: {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{Name: "ingress-nginx", Namespace: "default"},
@@ -125,7 +126,7 @@ func Test_ToIR(t *testing.T) {
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 					{Namespace: "default", Name: "production-echo-prod-mydomain-com"}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{Name: "production-echo-prod-mydomain-com", Namespace: "default"},
@@ -236,8 +237,8 @@ func Test_ToIR(t *testing.T) {
 					},
 				},
 			},
-			expectedIR: intermediate.IR{
-				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
 					{Namespace: "default", Name: "ingress-nginx"}: {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{Name: "ingress-nginx", Namespace: "default"},
@@ -253,7 +254,7 @@ func Test_ToIR(t *testing.T) {
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 					{Namespace: "default", Name: "production-echo-prod-mydomain-com"}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{Name: "production-echo-prod-mydomain-com", Namespace: "default"},
@@ -457,8 +458,8 @@ func Test_ToIR(t *testing.T) {
 					},
 				},
 			},
-			expectedIR: intermediate.IR{
-				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
 					{Namespace: "default", Name: "nginx"}: {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{Name: "nginx", Namespace: "default"},
@@ -504,7 +505,7 @@ func Test_ToIR(t *testing.T) {
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 					{Namespace: "default", Name: "example-ingress-bar-example-com"}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{Name: "example-ingress-bar-example-com", Namespace: "default"},
@@ -691,8 +692,8 @@ func Test_ToIR(t *testing.T) {
 					},
 				},
 			},
-			expectedIR: intermediate.IR{
-				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
 					{Namespace: "default", Name: "nginx"}: {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{Name: "nginx", Namespace: "default"},
@@ -716,7 +717,7 @@ func Test_ToIR(t *testing.T) {
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 					{Namespace: "default", Name: "example-ingress-bar-example-com"}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{Name: "example-ingress-bar-example-com", Namespace: "default"},
@@ -897,8 +898,8 @@ func Test_ToIR(t *testing.T) {
 					},
 				},
 			},
-			expectedIR: intermediate.IR{
-				Gateways: map[types.NamespacedName]intermediate.GatewayContext{
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
 					{Namespace: "default", Name: "nginx"}: {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{Name: "nginx", Namespace: "default"},
@@ -914,7 +915,7 @@ func Test_ToIR(t *testing.T) {
 						},
 					},
 				},
-				HTTPRoutes: map[types.NamespacedName]intermediate.HTTPRouteContext{
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 					{Namespace: "default", Name: "production-ingress-api-example-com"}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
 							ObjectMeta: metav1.ObjectMeta{Name: "production-ingress-api-example-com", Namespace: "default"},
@@ -997,7 +998,6 @@ func Test_ToIR(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-
 			provider := NewProvider(&i2gw.ProviderConf{})
 
 			nginxProvider := provider.(*Provider)

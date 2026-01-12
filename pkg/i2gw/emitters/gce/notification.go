@@ -14,8 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package intermediate
+package gce_emitter
 
-type KongGatewayIR struct{}
-type KongHTTPRouteIR struct{}
-type KongServiceIR struct{}
+import (
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+const emitterName = "gce"
+
+func notify(mType notifications.MessageType, message string, callingObject ...client.Object) {
+	newNotification := notifications.Notification{Type: mType, Message: message, CallingObjects: callingObject}
+	notifications.NotificationAggr.DispatchNotification(newNotification, emitterName)
+}

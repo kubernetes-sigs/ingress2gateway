@@ -44,5 +44,10 @@ issues:
         - gocyclo
         - errcheck
         - dupl
+    # Allow underscores in emitter package names
+    - path: pkg/i2gw/emitters/
+      linters:
+        - revive
+      text: "var-naming: don't use an underscore in package name"
   exclude:
     - Using the variable on range scope `tc` in function literal

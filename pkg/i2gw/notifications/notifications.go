@@ -63,6 +63,9 @@ func (na *NotificationAggregator) DispatchNotification(notification Notification
 func (na *NotificationAggregator) CreateNotificationTables() map[string]string {
 	notificationTablesMap := make(map[string]string)
 
+	na.mutex.Lock()
+	defer na.mutex.Unlock()
+
 	for provider, msgs := range na.Notifications {
 		providerTable := strings.Builder{}
 
