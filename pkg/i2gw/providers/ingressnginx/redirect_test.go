@@ -199,3 +199,64 @@ func TestAddDefaultSSLRedirect_noTLS(t *testing.T) {
 		t.Fatalf("expected original route parentRef port to remain nil, got %#v", origCtx.Spec.ParentRefs[0].Port)
 	}
 }
+
+func TestAddDefaultSSLRedirect_forceSSLRedirect(t *testing.T) {
+	key := types.NamespacedName{Namespace: "default", Name: "route"}
+	parentRefs := []gatewayv1.ParentReference{{Name: gatewayv1.ObjectName("gw")}}
+
+	// No TLS configured, but force-ssl-redirect is true
+	ing := networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: key.Namespace,
+			Name:      "ing",
+			Annotations: map[string]string{
+				ForceSSLRedirectAnnotation: "true",
+			},
+		},
+		Spec: networkingv1.IngressSpec{
+			// No TLS
+		},
+	}
+
+	route := gatewayv1.HTTPRoute{
+		ObjectMeta: metav1.ObjectMeta{Namespace: key.Namespace, Name: key.Name},
+		Spec: gatewayv1.HTTPRouteSpec{
+			CommonRouteSpec: gatewayv1.CommonRouteSpec{
+				ParentRefs: append([]gatewayv1.ParentReference(nil), parentRefs...),
+			},
+			Hostnames: []gatewayv1.Hostname{"example.com"},
+		},
+	}
+
+	pIR := providerir.ProviderIR{HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{}}
+	pIR.HTTPRoutes[key] = providerir.HTTPRouteContext{
+		HTTPRoute: route,
+		RuleBackendSources: [][]providerir.BackendSource{{
+			{Ingress: &ing},
+		}},
+	}
+
+	eIR := emitterir.EmitterIR{HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{}}
+	eIR.HTTPRoutes[key] = emitterir.HTTPRouteContext{HTTPRoute: route}
+
+	addDefaultSSLRedirect(&pIR, &eIR)
+
+	// Should create redirect route even without TLS because force-ssl-redirect is true
+	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-ssl-redirect"}
+	redirectCtx, ok := eIR.HTTPRoutes[redirectKey]
+	if !ok {
+		t.Fatalf("expected redirect route %v to be added with force-ssl-redirect", redirectKey)
+	}
+
+	if len(redirectCtx.Spec.ParentRefs) != 1 || redirectCtx.Spec.ParentRefs[0].Port == nil || *redirectCtx.Spec.ParentRefs[0].Port != 80 {
+		t.Fatalf("expected redirect route parentRef port 80, got %#v", redirectCtx.Spec.ParentRefs)
+	}
+
+	f := redirectCtx.Spec.Rules[0].Filters[0]
+	if f.Type != gatewayv1.HTTPRouteFilterRequestRedirect || f.RequestRedirect == nil {
+		t.Fatalf("expected RequestRedirect filter, got %#v", f)
+	}
+	if f.RequestRedirect.Scheme == nil || *f.RequestRedirect.Scheme != "https" {
+		t.Fatalf("expected scheme https, got %#v", f.RequestRedirect.Scheme)
+	}
+}

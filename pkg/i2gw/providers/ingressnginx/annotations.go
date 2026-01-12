@@ -36,4 +36,11 @@ const (
 
 	// SSL Redirect annotation
 	SSLRedirectAnnotation = "nginx.ingress.kubernetes.io/ssl-redirect"
+
+	// Additional redirect annotations
+	ForceSSLRedirectAnnotation    = "nginx.ingress.kubernetes.io/force-ssl-redirect"
+	PermanentRedirectAnnotation   = "nginx.ingress.kubernetes.io/permanent-redirect"
+	PermanentRedirectCodeAnnotation = "nginx.ingress.kubernetes.io/permanent-redirect-code"
+	TemporalRedirectAnnotation    = "nginx.ingress.kubernetes.io/temporal-redirect"
+	FromToWWWRedirectAnnotation   = "nginx.ingress.kubernetes.io/from-to-www-redirect"
 )
