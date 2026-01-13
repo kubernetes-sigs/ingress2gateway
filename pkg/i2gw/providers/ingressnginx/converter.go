@@ -34,6 +34,7 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 		featureParsers: []i2gw.FeatureParser{
 			canaryFeature,
 			redirectFeature,
+			headerModifierFeature,
 		},
 	}
 }
