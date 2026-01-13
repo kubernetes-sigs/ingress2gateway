@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
@@ -229,7 +230,11 @@ func (a *ingressAggregator) toHTTPRoutesAndGateways(options i2gw.ProviderImpleme
 		}
 		for _, tls := range rg.tls {
 			listener.TLS.CertificateRefs = append(listener.TLS.CertificateRefs,
-				gatewayv1.SecretObjectReference{Name: gatewayv1.ObjectName(tls.SecretName)})
+				gatewayv1.SecretObjectReference{
+					Group: ptr.To(gatewayv1.Group("")),
+					Kind:  ptr.To(gatewayv1.Kind("Secret")),
+					Name:  gatewayv1.ObjectName(tls.SecretName),
+				})
 		}
 		gwKey := fmt.Sprintf("%s/%s", rg.namespace, rg.ingressClass)
 		listenersByNamespacedGateway[gwKey] = append(listenersByNamespacedGateway[gwKey], listener)

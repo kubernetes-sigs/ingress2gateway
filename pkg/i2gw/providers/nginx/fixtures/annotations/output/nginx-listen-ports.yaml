@@ -15,8 +15,8 @@ spec:
     protocol: HTTPS
     tls:
       certificateRefs:
-      - group: null
-        kind: null
+      - group: ""
+        kind: Secret
         name: custom-ports-tls
         namespace: default
       mode: Terminate

@@ -29,6 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -182,7 +183,9 @@ func Test_ToIR(t *testing.T) {
 									Hostname: PtrTo(gatewayv1.Hostname("example.com")),
 									TLS: &gatewayv1.ListenerTLSConfig{
 										CertificateRefs: []gatewayv1.SecretObjectReference{{
-											Name: "example-cert",
+											Group: ptr.To(gatewayv1.Group("")),
+											Kind:  ptr.To(gatewayv1.Kind("Secret")),
+											Name:  "example-cert",
 										}},
 									},
 								}},
