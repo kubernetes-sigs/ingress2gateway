@@ -1,5 +1,5 @@
 /*
-Copyright 2023 The Kubernetes Authors.
+Copyright 2026 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,20 +18,23 @@ package ingressnginx
 
 import (
 	"fmt"
+	"strconv"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/ptr"
+
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // Ingress NGINX has some quirky behaviors around SSL redirect.
-// The formula we follow is that if an ingress with secrets, and it does not have the
-// "nginx.ingress.kubernetes.io/ssl-redirect" annotation set to "false", then we
+// The formula we follow is that if an ingress has certs configured, and it does not have the
+// "nginx.ingress.kubernetes.io/ssl-redirect" annotation set to "false" (or "0", etc), then we
 // enable SSL redirect for that host.
-func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR) {
+func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR) field.ErrorList {
 	for key, httpRouteContext := range pir.HTTPRoutes {
 		hasSecrets := false
 		enableRedirect := true
@@ -48,8 +51,16 @@ func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR)
 			}
 
 			// Check the ssl-redirect annotation.
-			if val, ok := ingress.Annotations[SSLRedirectAnnotation]; ok && val == "false" {
-				enableRedirect = false
+			if val, ok := ingress.Annotations[SSLRedirectAnnotation]; ok {
+				parsed, err := strconv.ParseBool(val)
+				if err != nil {
+					return field.ErrorList{field.Invalid(
+						field.NewPath("ingress", ingress.Namespace, ingress.Name, "metadata", "annotations"),
+						ingress.Annotations,
+						fmt.Sprintf("failed to parse canary configuration: %v", err),
+					)}
+				}
+				enableRedirect = parsed
 			}
 		}
 
@@ -99,4 +110,5 @@ func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR)
 		}
 		eir.HTTPRoutes[key] = eHTTPRouteContext
 	}
+	return nil
 }
