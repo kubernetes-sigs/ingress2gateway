@@ -18,7 +18,6 @@ package ingressnginx
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
@@ -64,37 +63,23 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 
 			if hasPermanent {
 				redirectURL = permanentRedirectURL
-				statusCode = 301 // default
+				statusCode = 301
 				annotationUsed = PermanentRedirectAnnotation
 
-				// Check for custom status code
-				if customCodeStr, hasCustomCode := rule.Ingress.Annotations[PermanentRedirectCodeAnnotation]; hasCustomCode {
-					if customCode, err := strconv.Atoi(customCodeStr); err == nil && customCode >= 300 && customCode < 400 {
-						statusCode = customCode
-					} else {
-						errs = append(errs, field.Invalid(
-							field.NewPath("ingress", rule.Ingress.Namespace, rule.Ingress.Name, "metadata", "annotations", PermanentRedirectCodeAnnotation),
-							customCodeStr,
-							fmt.Sprintf("invalid redirect status code %q, must be a valid 3xx code (using default 301)", customCodeStr),
-						))
-					}
+				// Warn about unsupported custom status code annotation
+				if rule.Ingress.Annotations[PermanentRedirectCodeAnnotation] != "" {
+					notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported annotation %s",
+						rule.Ingress.Namespace, rule.Ingress.Name, PermanentRedirectCodeAnnotation), &rule.Ingress)
 				}
 			} else {
 				redirectURL = temporalRedirectURL
-				statusCode = 302 // default
+				statusCode = 302
 				annotationUsed = TemporalRedirectAnnotation
 
-				// Check for custom status code
-				if customCodeStr, hasCustomCode := rule.Ingress.Annotations[TemporalRedirectCodeAnnotation]; hasCustomCode {
-					if customCode, err := strconv.Atoi(customCodeStr); err == nil && customCode >= 300 && customCode < 400 {
-						statusCode = customCode
-					} else {
-						errs = append(errs, field.Invalid(
-							field.NewPath("ingress", rule.Ingress.Namespace, rule.Ingress.Name, "metadata", "annotations", TemporalRedirectCodeAnnotation),
-							customCodeStr,
-							fmt.Sprintf("invalid redirect status code %q, must be a valid 3xx code (using default 302)", customCodeStr),
-						))
-					}
+				// Warn about unsupported custom status code annotation
+				if rule.Ingress.Annotations[TemporalRedirectCodeAnnotation] != "" {
+					notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported annotation %s",
+						rule.Ingress.Namespace, rule.Ingress.Name, TemporalRedirectCodeAnnotation), &rule.Ingress)
 				}
 			}
 
@@ -124,13 +109,6 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 						StatusCode: ptr.To(statusCode),
 					},
 				}
-
-				// Parse the redirect URL and set the appropriate fields
-				// For now, we'll use the full URL as the hostname
-				// A more sophisticated implementation would parse the URL into its components
-				// (scheme, hostname, port, path) but this requires URL parsing logic
-				// For simplicity, we'll set the entire URL as a notification
-				// and just clear the backend refs since this is a redirect
 
 				// Add redirect rule at the beginning of all rules
 				redirectRule := gatewayv1.HTTPRouteRule{
