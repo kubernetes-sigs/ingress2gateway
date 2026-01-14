@@ -23,8 +23,6 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
 	networkingv1 "k8s.io/api/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 )
 
 // NOTE: Setting the Host field in ingress rules and in verifiers is optional. When omitted, a
@@ -50,43 +48,13 @@ func TestIngressNginx(t *testing.T) {
 					},
 				},
 				ingresses: []*networkingv1.Ingress{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "foo",
-						},
-						Spec: networkingv1.IngressSpec{
-							IngressClassName: ptr.To(ingressnginx.NginxIngressClass),
-							Rules: []networkingv1.IngressRule{
-								{
-									IngressRuleValue: networkingv1.IngressRuleValue{
-										HTTP: &networkingv1.HTTPIngressRuleValue{
-											Paths: []networkingv1.HTTPIngressPath{
-												{
-													Path:     "/",
-													PathType: ptr.To(networkingv1.PathTypePrefix),
-													Backend: networkingv1.IngressBackend{
-														Service: &networkingv1.IngressServiceBackend{
-															Name: "dummy-app",
-															Port: networkingv1.ServiceBackendPort{
-																Number: 80,
-															},
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
+					basicIngress().
+						withName("foo").
+						withIngressClass(ingressnginx.NginxIngressClass).
+						build(),
 				},
 				verifiers: map[string][]verifier{
-					"foo": {
-						&httpGetVerifier{
-							path: "/",
-						},
-					},
+					"foo": {&httpGetVerifier{path: "/"}},
 				},
 			})
 		})
@@ -100,37 +68,11 @@ func TestIngressNginx(t *testing.T) {
 					},
 				},
 				ingresses: []*networkingv1.Ingress{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "foo",
-						},
-						Spec: networkingv1.IngressSpec{
-							IngressClassName: ptr.To(ingressnginx.NginxIngressClass),
-							Rules: []networkingv1.IngressRule{
-								{
-									Host: "foo.example.com",
-									IngressRuleValue: networkingv1.IngressRuleValue{
-										HTTP: &networkingv1.HTTPIngressRuleValue{
-											Paths: []networkingv1.HTTPIngressPath{
-												{
-													Path:     "/",
-													PathType: ptr.To(networkingv1.PathTypePrefix),
-													Backend: networkingv1.IngressBackend{
-														Service: &networkingv1.IngressServiceBackend{
-															Name: "dummy-app",
-															Port: networkingv1.ServiceBackendPort{
-																Number: 80,
-															},
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
+					basicIngress().
+						withName("foo").
+						withIngressClass(ingressnginx.NginxIngressClass).
+						withHost("foo.example.com").
+						build(),
 				},
 				verifiers: map[string][]verifier{
 					"foo": {
@@ -152,78 +94,18 @@ func TestIngressNginx(t *testing.T) {
 					},
 				},
 				ingresses: []*networkingv1.Ingress{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "foo",
-						},
-						Spec: networkingv1.IngressSpec{
-							IngressClassName: ptr.To(ingressnginx.NginxIngressClass),
-							Rules: []networkingv1.IngressRule{
-								{
-									IngressRuleValue: networkingv1.IngressRuleValue{
-										HTTP: &networkingv1.HTTPIngressRuleValue{
-											Paths: []networkingv1.HTTPIngressPath{
-												{
-													Path:     "/",
-													PathType: ptr.To(networkingv1.PathTypePrefix),
-													Backend: networkingv1.IngressBackend{
-														Service: &networkingv1.IngressServiceBackend{
-															Name: "dummy-app",
-															Port: networkingv1.ServiceBackendPort{
-																Number: 80,
-															},
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "bar",
-						},
-						Spec: networkingv1.IngressSpec{
-							IngressClassName: ptr.To(ingressnginx.NginxIngressClass),
-							Rules: []networkingv1.IngressRule{
-								{
-									IngressRuleValue: networkingv1.IngressRuleValue{
-										HTTP: &networkingv1.HTTPIngressRuleValue{
-											Paths: []networkingv1.HTTPIngressPath{
-												{
-													Path:     "/",
-													PathType: ptr.To(networkingv1.PathTypePrefix),
-													Backend: networkingv1.IngressBackend{
-														Service: &networkingv1.IngressServiceBackend{
-															Name: "dummy-app",
-															Port: networkingv1.ServiceBackendPort{
-																Number: 80,
-															},
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
+					basicIngress().
+						withName("foo").
+						withIngressClass(ingressnginx.NginxIngressClass).
+						build(),
+					basicIngress().
+						withName("bar").
+						withIngressClass(ingressnginx.NginxIngressClass).
+						build(),
 				},
 				verifiers: map[string][]verifier{
-					"foo": {
-						&httpGetVerifier{
-							path: "/",
-						},
-					},
-					"bar": {
-						&httpGetVerifier{
-							path: "/",
-						},
-					},
+					"foo": {&httpGetVerifier{path: "/"}},
+					"bar": {&httpGetVerifier{path: "/"}},
 				},
 			})
 		})
@@ -250,43 +132,13 @@ func TestKongIngress(t *testing.T) {
 				gatewayImplementation: kong.Name,
 				providers:             []string{kong.Name},
 				ingresses: []*networkingv1.Ingress{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "foo",
-						},
-						Spec: networkingv1.IngressSpec{
-							IngressClassName: ptr.To(kong.KongIngressClass),
-							Rules: []networkingv1.IngressRule{
-								{
-									IngressRuleValue: networkingv1.IngressRuleValue{
-										HTTP: &networkingv1.HTTPIngressRuleValue{
-											Paths: []networkingv1.HTTPIngressPath{
-												{
-													Path:     "/",
-													PathType: ptr.To(networkingv1.PathTypePrefix),
-													Backend: networkingv1.IngressBackend{
-														Service: &networkingv1.IngressServiceBackend{
-															Name: "dummy-app",
-															Port: networkingv1.ServiceBackendPort{
-																Number: 80,
-															},
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
+					basicIngress().
+						withName("foo").
+						withIngressClass(kong.KongIngressClass).
+						build(),
 				},
 				verifiers: map[string][]verifier{
-					"foo": {
-						&httpGetVerifier{
-							path: "/",
-						},
-					},
+					"foo": {&httpGetVerifier{path: "/"}},
 				},
 			})
 		})
@@ -295,78 +147,18 @@ func TestKongIngress(t *testing.T) {
 				gatewayImplementation: kong.Name,
 				providers:             []string{kong.Name},
 				ingresses: []*networkingv1.Ingress{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "foo",
-						},
-						Spec: networkingv1.IngressSpec{
-							IngressClassName: ptr.To(kong.KongIngressClass),
-							Rules: []networkingv1.IngressRule{
-								{
-									IngressRuleValue: networkingv1.IngressRuleValue{
-										HTTP: &networkingv1.HTTPIngressRuleValue{
-											Paths: []networkingv1.HTTPIngressPath{
-												{
-													Path:     "/",
-													PathType: ptr.To(networkingv1.PathTypePrefix),
-													Backend: networkingv1.IngressBackend{
-														Service: &networkingv1.IngressServiceBackend{
-															Name: "dummy-app",
-															Port: networkingv1.ServiceBackendPort{
-																Number: 80,
-															},
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "bar",
-						},
-						Spec: networkingv1.IngressSpec{
-							IngressClassName: ptr.To(kong.KongIngressClass),
-							Rules: []networkingv1.IngressRule{
-								{
-									IngressRuleValue: networkingv1.IngressRuleValue{
-										HTTP: &networkingv1.HTTPIngressRuleValue{
-											Paths: []networkingv1.HTTPIngressPath{
-												{
-													Path:     "/",
-													PathType: ptr.To(networkingv1.PathTypePrefix),
-													Backend: networkingv1.IngressBackend{
-														Service: &networkingv1.IngressServiceBackend{
-															Name: "dummy-app",
-															Port: networkingv1.ServiceBackendPort{
-																Number: 80,
-															},
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
+					basicIngress().
+						withName("foo").
+						withIngressClass(kong.KongIngressClass).
+						build(),
+					basicIngress().
+						withName("bar").
+						withIngressClass(kong.KongIngressClass).
+						build(),
 				},
 				verifiers: map[string][]verifier{
-					"foo": {
-						&httpGetVerifier{
-							path: "/",
-						},
-					},
-					"bar": {
-						&httpGetVerifier{
-							path: "/",
-						},
-					},
+					"foo": {&httpGetVerifier{path: "/"}},
+					"bar": {&httpGetVerifier{path: "/"}},
 				},
 			})
 		})
@@ -378,43 +170,13 @@ func TestKongIngress(t *testing.T) {
 				gatewayImplementation: istio.ProviderName,
 				providers:             []string{kong.Name},
 				ingresses: []*networkingv1.Ingress{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "foo",
-						},
-						Spec: networkingv1.IngressSpec{
-							IngressClassName: ptr.To(kong.KongIngressClass),
-							Rules: []networkingv1.IngressRule{
-								{
-									IngressRuleValue: networkingv1.IngressRuleValue{
-										HTTP: &networkingv1.HTTPIngressRuleValue{
-											Paths: []networkingv1.HTTPIngressPath{
-												{
-													Path:     "/",
-													PathType: ptr.To(networkingv1.PathTypePrefix),
-													Backend: networkingv1.IngressBackend{
-														Service: &networkingv1.IngressServiceBackend{
-															Name: "dummy-app",
-															Port: networkingv1.ServiceBackendPort{
-																Number: 80,
-															},
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
+					basicIngress().
+						withName("foo").
+						withIngressClass(kong.KongIngressClass).
+						build(),
 				},
 				verifiers: map[string][]verifier{
-					"foo": {
-						&httpGetVerifier{
-							path: "/",
-						},
-					},
+					"foo": {&httpGetVerifier{path: "/"}},
 				},
 			})
 		})
@@ -423,78 +185,18 @@ func TestKongIngress(t *testing.T) {
 				gatewayImplementation: istio.ProviderName,
 				providers:             []string{kong.Name},
 				ingresses: []*networkingv1.Ingress{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "foo",
-						},
-						Spec: networkingv1.IngressSpec{
-							IngressClassName: ptr.To(kong.KongIngressClass),
-							Rules: []networkingv1.IngressRule{
-								{
-									IngressRuleValue: networkingv1.IngressRuleValue{
-										HTTP: &networkingv1.HTTPIngressRuleValue{
-											Paths: []networkingv1.HTTPIngressPath{
-												{
-													Path:     "/",
-													PathType: ptr.To(networkingv1.PathTypePrefix),
-													Backend: networkingv1.IngressBackend{
-														Service: &networkingv1.IngressServiceBackend{
-															Name: "dummy-app",
-															Port: networkingv1.ServiceBackendPort{
-																Number: 80,
-															},
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "bar",
-						},
-						Spec: networkingv1.IngressSpec{
-							IngressClassName: ptr.To(kong.KongIngressClass),
-							Rules: []networkingv1.IngressRule{
-								{
-									IngressRuleValue: networkingv1.IngressRuleValue{
-										HTTP: &networkingv1.HTTPIngressRuleValue{
-											Paths: []networkingv1.HTTPIngressPath{
-												{
-													Path:     "/",
-													PathType: ptr.To(networkingv1.PathTypePrefix),
-													Backend: networkingv1.IngressBackend{
-														Service: &networkingv1.IngressServiceBackend{
-															Name: "dummy-app",
-															Port: networkingv1.ServiceBackendPort{
-																Number: 80,
-															},
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
+					basicIngress().
+						withName("foo").
+						withIngressClass(kong.KongIngressClass).
+						build(),
+					basicIngress().
+						withName("bar").
+						withIngressClass(kong.KongIngressClass).
+						build(),
 				},
 				verifiers: map[string][]verifier{
-					"foo": {
-						&httpGetVerifier{
-							path: "/",
-						},
-					},
-					"bar": {
-						&httpGetVerifier{
-							path: "/",
-						},
-					},
+					"foo": {&httpGetVerifier{path: "/"}},
+					"bar": {&httpGetVerifier{path: "/"}},
 				},
 			})
 		})
@@ -515,78 +217,18 @@ func TestMultipleProviders(t *testing.T) {
 					},
 				},
 				ingresses: []*networkingv1.Ingress{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "foo",
-						},
-						Spec: networkingv1.IngressSpec{
-							IngressClassName: ptr.To(ingressnginx.NginxIngressClass),
-							Rules: []networkingv1.IngressRule{
-								{
-									IngressRuleValue: networkingv1.IngressRuleValue{
-										HTTP: &networkingv1.HTTPIngressRuleValue{
-											Paths: []networkingv1.HTTPIngressPath{
-												{
-													Path:     "/",
-													PathType: ptr.To(networkingv1.PathTypePrefix),
-													Backend: networkingv1.IngressBackend{
-														Service: &networkingv1.IngressServiceBackend{
-															Name: "dummy-app",
-															Port: networkingv1.ServiceBackendPort{
-																Number: 80,
-															},
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "bar",
-						},
-						Spec: networkingv1.IngressSpec{
-							IngressClassName: ptr.To(kong.KongIngressClass),
-							Rules: []networkingv1.IngressRule{
-								{
-									IngressRuleValue: networkingv1.IngressRuleValue{
-										HTTP: &networkingv1.HTTPIngressRuleValue{
-											Paths: []networkingv1.HTTPIngressPath{
-												{
-													Path:     "/",
-													PathType: ptr.To(networkingv1.PathTypePrefix),
-													Backend: networkingv1.IngressBackend{
-														Service: &networkingv1.IngressServiceBackend{
-															Name: "dummy-app",
-															Port: networkingv1.ServiceBackendPort{
-																Number: 80,
-															},
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
+					basicIngress().
+						withName("foo").
+						withIngressClass(ingressnginx.NginxIngressClass).
+						build(),
+					basicIngress().
+						withName("bar").
+						withIngressClass(kong.KongIngressClass).
+						build(),
 				},
 				verifiers: map[string][]verifier{
-					"foo": {
-						&httpGetVerifier{
-							path: "/",
-						},
-					},
-					"bar": {
-						&httpGetVerifier{
-							path: "/",
-						},
-					},
+					"foo": {&httpGetVerifier{path: "/"}},
+					"bar": {&httpGetVerifier{path: "/"}},
 				},
 			})
 		})

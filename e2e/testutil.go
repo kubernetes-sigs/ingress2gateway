@@ -30,9 +30,11 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/utils/ptr"
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gwclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 
@@ -415,5 +417,67 @@ func verifyGatewayResources(ctx context.Context, t *testing.T, tc *testCase, gwA
 		for _, v := range verifiers {
 			require.NoError(t, v.verify(ctx, t, addr, ingress), "Gateway API verification failed")
 		}
+	}
+}
+
+type ingressBuilder struct {
+	*networkingv1.Ingress
+}
+
+func (b *ingressBuilder) withName(name string) *ingressBuilder {
+	b.ObjectMeta.Name = name
+
+	return b
+}
+
+func (b *ingressBuilder) withIngressClass(className string) *ingressBuilder {
+	b.Spec.IngressClassName = ptr.To(className)
+
+	return b
+}
+
+// Sets the Host field of the first rule in the ingress to the specified string. Does nothing if
+// there are no rules.
+func (b *ingressBuilder) withHost(host string) *ingressBuilder {
+	if len(b.Spec.Rules) > 0 {
+		b.Spec.Rules[0].Host = host
+	}
+
+	return b
+}
+
+func (b *ingressBuilder) build() *networkingv1.Ingress {
+	return b.Ingress
+}
+
+func basicIngress() *ingressBuilder {
+	return &ingressBuilder{
+		Ingress: &networkingv1.Ingress{
+			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			Spec: networkingv1.IngressSpec{
+				Rules: []networkingv1.IngressRule{
+					{
+						IngressRuleValue: networkingv1.IngressRuleValue{
+							HTTP: &networkingv1.HTTPIngressRuleValue{
+								Paths: []networkingv1.HTTPIngressPath{
+									{
+										Path:     "/",
+										PathType: ptr.To(networkingv1.PathTypePrefix),
+										Backend: networkingv1.IngressBackend{
+											Service: &networkingv1.IngressServiceBackend{
+												Name: "dummy-app",
+												Port: networkingv1.ServiceBackendPort{
+													Number: 80,
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 }
