@@ -27,10 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-const (
-	backendProtocolAnnotation = "nginx.ingress.kubernetes.io/backend-protocol"
-)
-
 // createBackendTLSPolicies inspects ingresses for backend-protocol annotations
 // and creates BackendTLSPolicies if HTTPS or GRPCS is specified.
 func createBackendTLSPolicies(ingresses []networkingv1.Ingress, servicePorts map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
@@ -42,7 +38,7 @@ func createBackendTLSPolicies(ingresses []networkingv1.Ingress, servicePorts map
 		var protocolType string
 
 		for _, rule := range rg.Rules {
-			if val, ok := rule.Ingress.Annotations[backendProtocolAnnotation]; ok {
+			if val, ok := rule.Ingress.Annotations[BackendProtocolAnnotation]; ok {
 				if val != "" {
 					protocolType = val
 					break

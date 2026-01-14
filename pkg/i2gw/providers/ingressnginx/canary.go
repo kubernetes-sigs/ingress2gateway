@@ -29,12 +29,6 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-const (
-	canaryAnnotation            = "nginx.ingress.kubernetes.io/canary"
-	canaryWeightAnnotation      = "nginx.ingress.kubernetes.io/canary-weight"
-	canaryWeightTotalAnnotation = "nginx.ingress.kubernetes.io/canary-weight-total"
-)
-
 // canaryConfig holds the parsed canary configuration from a single Ingress
 type canaryConfig struct {
 	weight      int32
@@ -48,7 +42,7 @@ func parseCanaryConfig(ingress *networkingv1.Ingress) (canaryConfig, error) {
 		weightTotal: 100, // default
 	}
 
-	if weight := ingress.Annotations[canaryWeightAnnotation]; weight != "" {
+	if weight := ingress.Annotations[CanaryWeightAnnotation]; weight != "" {
 		w, err := strconv.ParseInt(weight, 10, 32)
 		if err != nil {
 			return config, fmt.Errorf("invalid canary-weight annotation %q: %w", weight, err)
@@ -59,7 +53,7 @@ func parseCanaryConfig(ingress *networkingv1.Ingress) (canaryConfig, error) {
 		config.weight = int32(w)
 	}
 
-	if total := ingress.Annotations[canaryWeightTotalAnnotation]; total != "" {
+	if total := ingress.Annotations[CanaryWeightTotalAnnotation]; total != "" {
 		wt, err := strconv.ParseInt(total, 10, 32)
 		if err != nil {
 			return config, fmt.Errorf("invalid canary-weight-total annotation %q: %w", total, err)
@@ -112,7 +106,7 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 
 				backendRef := &httpRouteContext.HTTPRoute.Spec.Rules[ruleIdx].BackendRefs[backendIdx]
 
-				if source.Ingress.Annotations[canaryAnnotation] == "true" {
+				if source.Ingress.Annotations[CanaryAnnotation] == "true" {
 					if canaryBackend != nil {
 						errList = append(errList, field.Invalid(
 							field.NewPath("httproute", httpRouteContext.HTTPRoute.Name, "spec", "rules").Index(ruleIdx).Child("backendRefs"),

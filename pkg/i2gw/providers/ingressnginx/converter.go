@@ -38,6 +38,7 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 		featureParsers: []i2gw.FeatureParser{
 			canaryFeature,
 			createBackendTLSPolicies,
+			headerModifierFeature,
 		},
 	}
 }
@@ -52,7 +53,7 @@ func (c *resourcesToIRConverter) convert(storage *storage) (providerir.ProviderI
 	var grpcIngresses []networkingv1.Ingress
 
 	for _, ing := range ingressList {
-		if val, ok := ing.Annotations[backendProtocolAnnotation]; ok {
+		if val, ok := ing.Annotations[BackendProtocolAnnotation]; ok {
 			switch val {
 			case "GRPC", "GRPCS":
 				grpcIngresses = append(grpcIngresses, ing)

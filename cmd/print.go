@@ -89,7 +89,7 @@ type PrintRunner struct {
 func (pr *PrintRunner) PrintGatewayAPIObjects(cmd *cobra.Command, _ []string) error {
 	err := pr.initializeResourcePrinter()
 	if err != nil {
-		return fmt.Errorf("failed to initialize resrouce printer: %w", err)
+		return fmt.Errorf("failed to initialize resource printer: %w", err)
 	}
 	err = pr.initializeNamespaceFilter()
 	if err != nil {
