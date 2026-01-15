@@ -43,7 +43,7 @@ const (
 
 func deployCRDs(ctx context.Context, l logger, client *apiextensionsclientset.Clientset, skipCleanup bool) (func(), error) {
 	l.Logf("Fetching manifests from %s", gatewayAPIInstallURL)
-	yamlData, err := fetchManifestsWithRetry(ctx, l)
+	yamlData, err := fetchManifests(ctx, l)
 	if err != nil {
 		return nil, fmt.Errorf("fetching manifests from %s: %w", gatewayAPIInstallURL, err)
 	}
@@ -114,55 +114,35 @@ func decodeCRDs(yamlData []byte) ([]apiextensionsv1.CustomResourceDefinition, er
 	return out, nil
 }
 
-func fetchManifestsWithRetry(ctx context.Context, log logger) ([]byte, error) {
-	var data []byte
-	var err error
-	const maxRetries = 5
+func fetchManifests(ctx context.Context, log logger) ([]byte, error) {
+	return retryWithData(ctx, log, defaultRetryConfig(),
+		func(attempt, maxAttempts int, err error) string {
+			return fmt.Sprintf("Fetching manifests (attempt %d/%d): %v", attempt, maxAttempts, err)
+		},
+		func() ([]byte, error) {
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, gatewayAPIInstallURL, nil)
+			if err != nil {
+				return nil, fmt.Errorf("creating request: %w", err)
+			}
 
-	for i := range maxRetries {
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				return nil, fmt.Errorf("getting manifests: %w", err)
+			}
+			defer resp.Body.Close()
 
-		data, err = fetchManifests(ctx)
-		if err == nil {
+			if resp.StatusCode != http.StatusOK {
+				return nil, fmt.Errorf("unexpected status: %s", resp.Status)
+			}
+
+			data, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return nil, fmt.Errorf("reading response data: %w", err)
+			}
+
 			return data, nil
-		}
-
-		log.Logf("Fetching manifests (attempt %d/%d): %v", i+1, maxRetries, err)
-
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-time.After(2 * time.Second):
-		}
-	}
-
-	return nil, err
-}
-
-func fetchManifests(ctx context.Context) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, gatewayAPIInstallURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("creating request: %w", err)
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("getting manifests: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status: %s", resp.Status)
-	}
-
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("reading response data: %w", err)
-	}
-
-	return data, nil
+		},
+	)
 }
 
 func decodeManifests(data []byte) ([]unstructured.Unstructured, error) {

@@ -55,41 +55,22 @@ func (v *httpGetVerifier) verify(ctx context.Context, log logger, addr string, i
 
 	client := http.Client{Timeout: 5 * time.Second}
 
-	log.Logf("Sending HTTP GET requests to %s", req.URL.String())
+	res, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("doing request: %w", err)
+	}
+	defer res.Body.Close()
 
-	var lastErr error
-	deadline := time.Now().Add(5 * time.Minute)
-	for time.Now().Before(deadline) {
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("context canceled while waiting for healthy response: %w", ctx.Err())
-		default:
-		}
-
-		res, err := client.Do(req)
-		if err != nil {
-			lastErr = fmt.Errorf("sending HTTP GET: %w", err)
-			log.Logf("Sending HTTP GET: %v", err)
-			time.Sleep(1 * time.Second)
-			continue
-		}
-		if res.StatusCode != http.StatusOK {
-			res.Body.Close()
-			lastErr = fmt.Errorf("unexpected HTTP status code: got %d, want %d", res.StatusCode, http.StatusOK)
-			time.Sleep(1 * time.Second)
-			continue
-		}
-
-		// Success - read and log the response body.
-		body, err := io.ReadAll(res.Body)
-		res.Body.Close()
-		if err != nil {
-			return fmt.Errorf("reading HTTP body: %w", err)
-		}
-
-		log.Logf("Got a healthy response: %s", body)
-		return nil
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected HTTP status code: got %d, want %d", res.StatusCode, http.StatusOK)
 	}
 
-	return fmt.Errorf("couldn't get a healthy HTTP response in time: %w", lastErr)
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return fmt.Errorf("reading HTTP body: %w", err)
+	}
+
+	log.Logf("Got a healthy response: %s", body)
+
+	return nil
 }
