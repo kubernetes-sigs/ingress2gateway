@@ -36,4 +36,13 @@ const (
 
 	// SSL Redirect annotation
 	SSLRedirectAnnotation = "nginx.ingress.kubernetes.io/ssl-redirect"
+
+	// Backend TLS annotations (proxy-ssl-*)
+	ProxySSLSecretAnnotation      = "nginx.ingress.kubernetes.io/proxy-ssl-secret"
+	ProxySSLCiphersAnnotation     = "nginx.ingress.kubernetes.io/proxy-ssl-ciphers"
+	ProxySSLNameAnnotation        = "nginx.ingress.kubernetes.io/proxy-ssl-name"
+	ProxySSLProtocolsAnnotation   = "nginx.ingress.kubernetes.io/proxy-ssl-protocols"
+	ProxySSLVerifyAnnotation      = "nginx.ingress.kubernetes.io/proxy-ssl-verify"
+	ProxySSLVerifyDepthAnnotation = "nginx.ingress.kubernetes.io/proxy-ssl-verify-depth"
+	ProxySSLServerNameAnnotation  = "nginx.ingress.kubernetes.io/proxy-ssl-server-name"
 )
