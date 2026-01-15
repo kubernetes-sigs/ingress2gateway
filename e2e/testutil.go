@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
@@ -386,7 +387,15 @@ func verifyIngresses(ctx context.Context, t *testing.T, tc *testCase, ingressAdd
 		require.True(t, ok, "no address found for ingress class %s", ingressClass)
 
 		for _, v := range verifiers {
-			require.NoError(t, v.verify(ctx, t, addr, ingress), "ingress verification failed")
+			err := retry(ctx, t, retryConfig{maxAttempts: 60, delay: 1 * time.Second},
+				func(attempt int, maxAttempts int, err error) string {
+					return fmt.Sprintf("Verifying ingress %s (attempt %d/%d): %v", ingressName, attempt, maxAttempts, err)
+				},
+				func() error {
+					return v.verify(ctx, t, addr, ingress)
+				},
+			)
+			require.NoError(t, err, "ingress verification failed")
 		}
 	}
 }
@@ -415,7 +424,15 @@ func verifyGatewayResources(ctx context.Context, t *testing.T, tc *testCase, gwA
 		require.True(t, ok, "gateway %s not found in addresses", gwName)
 
 		for _, v := range verifiers {
-			require.NoError(t, v.verify(ctx, t, addr, ingress), "Gateway API verification failed")
+			err := retry(ctx, t, retryConfig{maxAttempts: 60, delay: 1 * time.Second},
+				func(attempt int, maxAttempts int, err error) string {
+					return fmt.Sprintf("Verifying gateway %s (attempt %d/%d): %v", gwName, attempt, maxAttempts, err)
+				},
+				func() error {
+					return v.verify(ctx, t, addr, ingress)
+				},
+			)
+			require.NoError(t, err, "gateway verification failed")
 		}
 	}
 }

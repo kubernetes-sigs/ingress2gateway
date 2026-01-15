@@ -115,33 +115,16 @@ func locateChart(
 	chartName string,
 	settings *cli.EnvSettings,
 ) (string, error) {
-	var cp string
-	var err error
-	const maxRetries = 5
-
-	for i := range maxRetries {
-		if err := ctx.Err(); err != nil {
-			return "", err
-		}
-
-		cp, err = install.ChartPathOptions.LocateChart(chartName, settings)
-		if err == nil {
-			return cp, nil
-		}
-
-		// Helm masks the underlying HTTP errors and status codes so we can't easily distinguish
-		// transient errors (e.g. 503) from permanent errors (e.g. 404). Rather than relying on
-		// fragile string parsing, we treat all errors as transient failures. This isn't a big
-		// problem since the whole retry process is fairly short.
-
-		log.Logf("Locating chart (attempt %d/%d): %v", i+1, maxRetries, err)
-
-		select {
-		case <-ctx.Done():
-			return "", ctx.Err()
-		case <-time.After(2 * time.Second):
-		}
-	}
-
-	return "", err
+	// Helm masks the underlying HTTP errors and status codes so we can't easily distinguish
+	// transient errors (e.g. 503) from permanent errors (e.g. 404). Rather than relying on
+	// fragile string parsing, we treat all errors as transient failures. This isn't a big
+	// problem since the whole retry process is fairly short.
+	return retryWithData(ctx, log, defaultRetryConfig(),
+		func(attempt, maxAttempts int, err error) string {
+			return fmt.Sprintf("Locating chart (attempt %d/%d): %v", attempt, maxAttempts, err)
+		},
+		func() (string, error) {
+			return install.ChartPathOptions.LocateChart(chartName, settings)
+		},
+	)
 }
