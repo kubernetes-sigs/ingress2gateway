@@ -362,8 +362,9 @@ func (rg *ingressRuleGroup) toHTTPRoute(servicePorts map[types.NamespacedName]ma
 	for _, key := range ingressPathsByMatchKey.keys {
 		paths := ingressPathsByMatchKey.data[key]
 		path := paths[0]
+		representativeIngress := selectRepresentativeIngress(paths, options)
 		fieldPath := field.NewPath("spec", "rules").Index(path.ruleIdx).Child(path.ruleType).Child("paths").Index(path.pathIdx)
-		match, err := toHTTPRouteMatch(path.path, path.sourceIngress, fieldPath, options.ToImplementationSpecificHTTPPathTypeMatch)
+		match, err := toHTTPRouteMatch(path.path, representativeIngress, fieldPath, options.ToImplementationSpecificHTTPPathTypeMatch)
 		if err != nil {
 			errors = append(errors, err)
 			continue
@@ -381,6 +382,27 @@ func (rg *ingressRuleGroup) toHTTPRoute(servicePorts map[types.NamespacedName]ma
 	}
 
 	return httpRoute, allRuleBackendSources, errors
+}
+
+// selectRepresentativeIngress selects the most appropriate ingress from a list of paths
+// that share the same path match key. This is important when multiple ingresses define
+// the same path (e.g., a main ingress and a canary ingress).
+//
+// If a SelectRepresentativeIngress function is provided in options, it will be used.
+// Otherwise, the first ingress is returned.
+func selectRepresentativeIngress(paths []ingressPath, options i2gw.ProviderImplementationSpecificOptions) *networkingv1.Ingress {
+	if len(paths) == 0 {
+		return nil
+	}
+
+	if options.SelectRepresentativeIngress != nil {
+		ingresses := make([]*networkingv1.Ingress, len(paths))
+		for i, p := range paths {
+			ingresses[i] = p.sourceIngress
+		}
+		return options.SelectRepresentativeIngress(ingresses)
+	}
+	return paths[0].sourceIngress
 }
 
 func (rg *ingressRuleGroup) configureBackendRef(servicePorts map[types.NamespacedName]map[string]int32, paths []ingressPath) ([]gatewayv1.HTTPBackendRef, []providerir.BackendSource, field.ErrorList) {
