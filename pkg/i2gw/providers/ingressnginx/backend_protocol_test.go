@@ -401,7 +401,7 @@ func TestBackendProtocolFeature(t *testing.T) {
 									HTTP: &networkingv1.HTTPIngressRuleValue{
 										Paths: []networkingv1.HTTPIngressPath{
 											{
-												Path:     "/grpc",
+												Path:     "/",
 												PathType: ptrTo(networkingv1.PathTypePrefix),
 												Backend: networkingv1.IngressBackend{
 													Service: &networkingv1.IngressServiceBackend{
