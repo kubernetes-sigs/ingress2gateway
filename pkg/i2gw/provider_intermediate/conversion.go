@@ -35,10 +35,18 @@ func ToEmitterIR(pIR ProviderIR) emitterir.EmitterIR {
 	}
 
 	for k, v := range pIR.Gateways {
-		eIR.Gateways[k] = emitterir.GatewayContext{Gateway: v.Gateway}
+		ctx := emitterir.GatewayContext{Gateway: v.Gateway}
+		if v.ProviderSpecificIR.Gce != nil {
+			ctx.Gce = v.ProviderSpecificIR.Gce
+		}
+		eIR.Gateways[k] = ctx
 	}
 	for k, v := range pIR.HTTPRoutes {
-		eIR.HTTPRoutes[k] = emitterir.HTTPRouteContext{HTTPRoute: v.HTTPRoute}
+		ctx := emitterir.HTTPRouteContext{HTTPRoute: v.HTTPRoute}
+		if v.ProviderSpecificIR.Gce != nil {
+			ctx.Gce = v.ProviderSpecificIR.Gce
+		}
+		eIR.HTTPRoutes[k] = ctx
 	}
 	for k, v := range pIR.GatewayClasses {
 		eIR.GatewayClasses[k] = emitterir.GatewayClassContext{GatewayClass: v}
@@ -60,6 +68,11 @@ func ToEmitterIR(pIR ProviderIR) emitterir.EmitterIR {
 	}
 	for k, v := range pIR.ReferenceGrants {
 		eIR.ReferenceGrants[k] = emitterir.ReferenceGrantContext{ReferenceGrant: v}
+	}
+	for k, v := range pIR.Services {
+		if v.Gce != nil {
+			eIR.GceServices[k] = *v.Gce
+		}
 	}
 
 	return eIR

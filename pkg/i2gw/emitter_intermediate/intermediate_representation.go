@@ -54,6 +54,7 @@ type GatewayContext struct {
 
 type HTTPRouteContext struct {
 	gatewayv1.HTTPRoute
+<<<<<<< HEAD
 	// TCPTimeoutsByRuleIdx holds provider TCP-level timeouts by HTTPRoute rule index.
 	TCPTimeoutsByRuleIdx map[int]*TCPTimeouts
 
@@ -74,6 +75,8 @@ type HTTPRouteContext struct {
 	// IPRangeControlByRuleIdx maps HTTPRoute rule indices to IP range control intent.
 	// This is provider-neutral and applied by each custom emitter.
 	IPRangeControlByRuleIdx map[int]*IPRangeControl
+
+	Gce *gce.HTTPRouteIR
 }
 
 // TCPTimeouts holds TCP-level timeout configuration for a single HTTPRoute rule.
