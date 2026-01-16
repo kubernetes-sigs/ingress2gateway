@@ -18,6 +18,8 @@ package ingressnginx
 
 import (
 	"fmt"
+	"net/url"
+	"strconv"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
@@ -93,6 +95,17 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 				continue
 			}
 
+			// Parse the redirect URL
+			parsedURL, err := url.Parse(redirectURL)
+			if err != nil {
+				errs = append(errs, field.Invalid(
+					field.NewPath("ingress", rule.Ingress.Namespace, rule.Ingress.Name, "metadata", "annotations", annotationUsed),
+					redirectURL,
+					fmt.Sprintf("invalid redirect URL: %v", err),
+				))
+				continue
+			}
+
 			// Apply redirect to all rules in the ingress
 			for _, ingressRule := range rule.Ingress.Spec.Rules {
 				routeName := common.RouteName(rule.Ingress.Name, ingressRule.Host)
@@ -103,11 +116,42 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 				}
 
 				// Create the redirect filter
+				redirectFilterConfig := &gatewayv1.HTTPRequestRedirectFilter{
+					StatusCode: ptr.To(statusCode),
+				}
+
+				// Set scheme if present
+				if parsedURL.Scheme != "" {
+					redirectFilterConfig.Scheme = ptr.To(parsedURL.Scheme)
+				}
+
+				// Set hostname if present
+				if parsedURL.Hostname() != "" {
+					hostname := gatewayv1.PreciseHostname(parsedURL.Hostname())
+					redirectFilterConfig.Hostname = &hostname
+				}
+
+				// Set port if present
+				if parsedURL.Port() != "" {
+					port, err := strconv.Atoi(parsedURL.Port())
+					if err == nil {
+						portNumber := gatewayv1.PortNumber(port)
+						redirectFilterConfig.Port = &portNumber
+					}
+				}
+
+				// Set path if present
+				if parsedURL.Path != "" {
+					pathType := gatewayv1.FullPathHTTPPathModifier
+					redirectFilterConfig.Path = &gatewayv1.HTTPPathModifier{
+						Type:            pathType,
+						ReplaceFullPath: ptr.To(parsedURL.Path),
+					}
+				}
+
 				redirectFilter := gatewayv1.HTTPRouteFilter{
-					Type: gatewayv1.HTTPRouteFilterRequestRedirect,
-					RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
-						StatusCode: ptr.To(statusCode),
-					},
+					Type:            gatewayv1.HTTPRouteFilterRequestRedirect,
+					RequestRedirect: redirectFilterConfig,
 				}
 
 				// Add redirect rule at the beginning of all rules
@@ -126,7 +170,7 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 				ir.HTTPRoutes[routeKey] = httpRouteContext
 
 				notify(notifications.InfoNotification,
-					fmt.Sprintf("parsed %q annotation of ingress %s/%s with redirect to %q (status code: %d). Note: Gateway API HTTPRequestRedirectFilter has limited URL redirect support - you may need to manually configure the redirect target using scheme, hostname, port, and path fields",
+					fmt.Sprintf("parsed %q annotation of ingress %s/%s with redirect to %q (status code: %d). ",
 						annotationUsed, rule.Ingress.Namespace, rule.Ingress.Name, redirectURL, statusCode),
 					&httpRouteContext.HTTPRoute)
 			}
