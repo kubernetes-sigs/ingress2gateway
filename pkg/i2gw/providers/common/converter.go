@@ -51,11 +51,10 @@ func ToIR(httpIngresses []networkingv1.Ingress, grpcIngresses []networkingv1.Ing
 
 	var errs field.ErrorList
 	for _, ingress := range httpIngresses {
-		aggregator.addIngress(ingress, string(HTTP))
+		aggregator.addIngress(ingress, HTTP)
 	}
-
 	for _, ingress := range grpcIngresses {
-		aggregator.addIngress(ingress, string(GRPC))
+		aggregator.addIngress(ingress, GRPC)
 	}
 
 	httproutes, grpcroutes, gateways, errs := aggregator.toRoutesAndGateways(options)
@@ -156,7 +155,7 @@ type ingressRuleGroup struct {
 	host         string
 	tls          []networkingv1.IngressTLS
 	rules        []ingressRule
-	protocol     string
+	protocol     Protocol
 }
 
 type ingressRule struct {
@@ -183,7 +182,7 @@ type ingressPath struct {
 	sourceIngress *networkingv1.Ingress
 }
 
-func (a *ingressAggregator) addIngress(ingress networkingv1.Ingress, protocol string) {
+func (a *ingressAggregator) addIngress(ingress networkingv1.Ingress, protocol Protocol) {
 	ingressClass := GetIngressClass(ingress)
 	for _, rule := range ingress.Spec.Rules {
 		a.addIngressRule(ingress, ingressClass, rule, protocol)
@@ -199,7 +198,7 @@ func (a *ingressAggregator) addIngress(ingress networkingv1.Ingress, protocol st
 	}
 }
 
-func (a *ingressAggregator) addIngressRule(ingress networkingv1.Ingress, ingressClass string, rule networkingv1.IngressRule, protocol string) {
+func (a *ingressAggregator) addIngressRule(ingress networkingv1.Ingress, ingressClass string, rule networkingv1.IngressRule, protocol Protocol) {
 	rgKey := ruleGroupKey(fmt.Sprintf("%s/%s/%s/%s", ingress.Namespace, ingressClass, rule.Host, protocol))
 	rg, ok := a.ruleGroups[rgKey]
 	if !ok {
@@ -264,7 +263,7 @@ func (a *ingressAggregator) toRoutesAndGateways(options i2gw.ProviderImplementat
 		}
 		gwKey := fmt.Sprintf("%s/%s", rg.namespace, rg.ingressClass)
 		listenersByNamespacedGateway[gwKey] = append(listenersByNamespacedGateway[gwKey], listener)
-		if rg.protocol == string(HTTP) {
+		if rg.protocol == HTTP {
 			httpRoute, sources, errs := rg.toHTTPRoute(a.servicePorts, options)
 			httpRoutes = append(httpRoutes, httpRouteWithSources{route: httpRoute, sources: sources})
 			errors = append(errors, errs...)
@@ -377,7 +376,6 @@ func (a *ingressAggregator) toRoutesAndGateways(options i2gw.ProviderImplementat
 			}
 		}
 
-		slices.Sort(orderedNames)
 		for _, name := range orderedNames {
 			l := uniqueListeners[name]
 			// Final deduplication of certificates for this listener
@@ -521,10 +519,8 @@ func toHTTPRouteMatch(routePath networkingv1.HTTPIngressPath, path *field.Path, 
 }
 
 func (rg *ingressRuleGroup) toGRPCRoute(servicePorts map[types.NamespacedName]map[string]int32, _ i2gw.ProviderImplementationSpecificOptions) (gatewayv1.GRPCRoute, [][]providerir.BackendSource, field.ErrorList) {
-	// GRPCRoutes don't have path matches in the same way Ingress does (Method/Service vs URI Path).
-	// For standard Ingress -> GRPCRoute conversion, we usually Map all backends to a catch-all Rule
-	// or we could try to map paths if they look like gRPC methods, but that's flaky.
-	// We will follow the logic of "Host -> GRPCRoute with BackendRefs from all paths".
+	// Parse paths to create proper GRPCRouteMatches
+	ingressPathsByMatchKey := groupIngressPathsByMatchKey(rg.rules)
 
 	grpcRoute := gatewayv1.GRPCRoute{
 		ObjectMeta: metav1.ObjectMeta{
@@ -543,53 +539,70 @@ func (rg *ingressRuleGroup) toGRPCRoute(servicePorts map[types.NamespacedName]ma
 	}
 
 	var errors field.ErrorList
-
-	// Collect all backendRefs from all rules/paths in this group
-	var allBackendRefs []gatewayv1.GRPCBackendRef
-	var allSources []providerir.BackendSource
-
-	for _, rule := range rg.rules {
-		for i, path := range rule.rule.HTTP.Paths {
-			// Convert to BackendRef
-			backendRef, err := ToBackendRef(rg.namespace, path.Backend, servicePorts, field.NewPath("spec", "rules", "http", "paths").Index(i))
-			if err != nil {
-				errors = append(errors, err)
-				continue
-			}
-
-			grpcBackendRef := gatewayv1.GRPCBackendRef{
-				BackendRef: gatewayv1.BackendRef{
-					BackendObjectReference: gatewayv1.BackendObjectReference{
-						Group:     backendRef.Group,
-						Kind:      backendRef.Kind,
-						Name:      backendRef.Name,
-						Port:      backendRef.Port,
-						Namespace: backendRef.Namespace,
-					},
-					Weight: backendRef.Weight,
-				},
-			}
-			allBackendRefs = append(allBackendRefs, grpcBackendRef)
-
-			// Track source for this backend
-			allSources = append(allSources, providerir.BackendSource{
-				Ingress: rule.ingress,
-				Path:    &path,
-			})
-		}
-	}
-
 	var allRuleBackendSources [][]providerir.BackendSource
-	if len(allBackendRefs) > 0 {
-		grpcRoute.Spec.Rules = []gatewayv1.GRPCRouteRule{
-			{
-				BackendRefs: allBackendRefs,
-				// No matches -> Catch-all for this host
-			},
+
+	for _, key := range ingressPathsByMatchKey.keys {
+		paths := ingressPathsByMatchKey.data[key]
+		path := paths[0]
+		fieldPath := field.NewPath("spec", "rules").Index(path.ruleIdx).Child(path.ruleType).Child("paths").Index(path.pathIdx)
+
+		// Parse the path to create a GRPCRouteMatch
+		match := toGRPCRouteMatch(path.path, fieldPath)
+
+		grpcRule := gatewayv1.GRPCRouteRule{}
+		// Only add matches if there's actually something to match (service or method)
+		if match.Method != nil {
+			grpcRule.Matches = []gatewayv1.GRPCRouteMatch{*match}
 		}
-		// All backends go into a single rule, so wrap all sources in one slice
-		allRuleBackendSources = [][]providerir.BackendSource{allSources}
+
+		backendRefs, sources, errs := rg.configureGRPCBackendRef(servicePorts, paths)
+		errors = append(errors, errs...)
+		grpcRule.BackendRefs = backendRefs
+
+		grpcRoute.Spec.Rules = append(grpcRoute.Spec.Rules, grpcRule)
+		allRuleBackendSources = append(allRuleBackendSources, sources)
 	}
 
 	return grpcRoute, allRuleBackendSources, errors
+}
+
+func (rg *ingressRuleGroup) configureGRPCBackendRef(servicePorts map[types.NamespacedName]map[string]int32, paths []ingressPath) ([]gatewayv1.GRPCBackendRef, []providerir.BackendSource, field.ErrorList) {
+	var errors field.ErrorList
+	var backendRefs []gatewayv1.GRPCBackendRef
+	var sources []providerir.BackendSource
+
+	for i, path := range paths {
+		backendRef, err := ToBackendRef(rg.namespace, path.path.Backend, servicePorts, field.NewPath("paths", "backends").Index(i))
+		if err != nil {
+			errors = append(errors, err)
+			continue
+		}
+		backendRefs = append(backendRefs, gatewayv1.GRPCBackendRef{BackendRef: *backendRef})
+
+		// Track source for this backend
+		sources = append(sources, providerir.BackendSource{
+			Ingress: path.sourceIngress,
+			Path:    &path.path,
+		})
+	}
+
+	// keep duplicates as they might have different sources.
+	return backendRefs, sources, errors
+}
+
+func toGRPCRouteMatch(routePath networkingv1.HTTPIngressPath, _ *field.Path) *gatewayv1.GRPCRouteMatch {
+	// Parse the path to extract service and method
+	// Example: /hello.HelloService/SayHello -> service="hello.HelloService", method="SayHello"
+	service, method := ParseGRPCServiceMethod(routePath.Path)
+	match := &gatewayv1.GRPCRouteMatch{}
+	if service != "" || method != "" {
+		match.Method = &gatewayv1.GRPCMethodMatch{}
+		if service != "" {
+			match.Method.Service = &service
+		}
+		if method != "" {
+			match.Method.Method = &method
+		}
+	}
+	return match
 }

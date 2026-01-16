@@ -24,7 +24,6 @@ type SslPolicyConfig struct {
 	Name string
 }
 type HTTPRouteIR struct{}
-type GRPCRouteIR struct{}
 type ServiceIR struct {
 	SessionAffinity *SessionAffinityConfig
 	SecurityPolicy  *SecurityPolicyConfig
