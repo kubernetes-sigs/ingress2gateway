@@ -30,16 +30,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 func Test_ToIR(t *testing.T) {
 	iPrefix := networkingv1.PathTypePrefix
-	//iExact := networkingv1.PathTypeExact
+	// iExact := networkingv1.PathTypeExact
 	isPathType := networkingv1.PathTypeImplementationSpecific
 	gPathPrefix := gatewayv1.PathMatchPathPrefix
-	//gExact := gatewayv1.PathMatchExact
+	// gExact := gatewayv1.PathMatchExact
 
 	testCases := []struct {
 		name           string
@@ -311,6 +310,9 @@ func Test_ToIR(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "implementation-specific-regex",
 							Namespace: "default",
+							Annotations: map[string]string{
+								"nginx.ingress.kubernetes.io/use-regex": "true",
+							},
 						},
 						Spec: networkingv1.IngressSpec{
 							IngressClassName: ptrTo("ingress-nginx"),
@@ -337,15 +339,56 @@ func Test_ToIR(t *testing.T) {
 					},
 				},
 			},
-			expectedIR: providerir.ProviderIR{},
-			expectedErrors: field.ErrorList{
-				{
-					Type:     field.ErrorTypeInvalid,
-					Field:    "spec.rules[0].http.paths[0].pathType",
-					BadValue: ptr.To("ImplementationSpecific"),
-					Detail:   "implementationSpecific path type is not supported in generic translation, and your provider does not provide custom support to translate it",
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
+					{Namespace: "default", Name: "ingress-nginx"}: {
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: "ingress-nginx", Namespace: "default"},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: "ingress-nginx",
+								Listeners: []gatewayv1.Listener{{
+									Name:     "test-mydomain-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: ptrTo(gatewayv1.Hostname("test.mydomain.com")),
+								}},
+							},
+						},
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
+					{Namespace: "default", Name: "implementation-specific-regex-test-mydomain-com"}: {
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: "implementation-specific-regex-test-mydomain-com", Namespace: "default"},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: "ingress-nginx",
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{"test.mydomain.com"},
+								Rules: []gatewayv1.HTTPRouteRule{{
+									Matches: []gatewayv1.HTTPRouteMatch{{
+										Path: &gatewayv1.HTTPPathMatch{
+											Type:  ptrTo(gatewayv1.PathMatchRegularExpression),
+											Value: ptrTo("/~/echo/**/test"),
+										},
+									}},
+									BackendRefs: []gatewayv1.HTTPBackendRef{{
+										BackendRef: gatewayv1.BackendRef{
+											BackendObjectReference: gatewayv1.BackendObjectReference{
+												Name: "test",
+												Port: ptrTo(gatewayv1.PortNumber(80)),
+											},
+										},
+									}},
+								}},
+							},
+						},
+					},
 				},
 			},
+			expectedErrors: field.ErrorList{},
 		},
 		{
 			name: "multiple rules with TLS",
@@ -957,7 +1000,6 @@ func Test_ToIR(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-
 			provider := NewProvider(&i2gw.ProviderConf{})
 
 			nginxProvider := provider.(*Provider)
