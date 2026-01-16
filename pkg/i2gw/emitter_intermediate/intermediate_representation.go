@@ -53,6 +53,7 @@ type GatewayContext struct {
 
 type HTTPRouteContext struct {
 	gatewayv1.HTTPRoute
+	Gce *gce.HTTPRouteIR
 }
 
 type GatewayClassContext struct {
