@@ -54,7 +54,6 @@ type GatewayContext struct {
 
 type HTTPRouteContext struct {
 	gatewayv1.HTTPRoute
-
 	// PathRewriteByRuleIdx maps HTTPRoute rule indices to path rewrite intent.
 	// This is provider-neutral and applied by the common emitter.
 	PathRewriteByRuleIdx map[int]*PathRewrite
@@ -62,6 +61,8 @@ type HTTPRouteContext struct {
 	// BodySizeByRuleIdx maps HTTPRoute rule indices to body size intent.
 	// This is provider-neutral and applied by each custom emitter.
 	BodySizeByRuleIdx map[int]*BodySize
+
+	Gce *gce.HTTPRouteIR
 }
 
 // PathRewrite represents provider-neutral path rewrite intent.
