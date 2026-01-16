@@ -40,6 +40,17 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 	ruleGroups := common.GetRuleGroups(ingresses)
 	for _, rg := range ruleGroups {
 		for _, rule := range rg.Rules {
+
+			// Warn about unsupported proxy-redirect annotations
+			if rule.Ingress.Annotations[ProxyRedirectFromAnnotation] != "" {
+				notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported annotation %s",
+					rule.Ingress.Namespace, rule.Ingress.Name, ProxyRedirectFromAnnotation), &rule.Ingress)
+			}
+			if rule.Ingress.Annotations[ProxyRedirectToAnnotation] != "" {
+				notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported annotation %s",
+					rule.Ingress.Namespace, rule.Ingress.Name, ProxyRedirectToAnnotation), &rule.Ingress)
+			}
+
 			permanentRedirectURL, hasPermanent := rule.Ingress.Annotations[PermanentRedirectAnnotation]
 			temporalRedirectURL, hasTemporal := rule.Ingress.Annotations[TemporalRedirectAnnotation]
 
