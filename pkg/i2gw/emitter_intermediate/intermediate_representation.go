@@ -18,6 +18,7 @@ package emitterir
 
 import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
@@ -53,6 +54,16 @@ type GatewayContext struct {
 
 type HTTPRouteContext struct {
 	gatewayv1.HTTPRoute
+
+	// BodySizeByRuleIdx maps HTTPRoute rule indices to body size intent.
+	// This is provider-neutral and applied by each custom emitter.
+	BodySizeByRuleIdx map[int]*BodySize
+}
+
+// BodySize represents provider-neutral body size intent.
+type BodySize struct {
+	BufferSize *resource.Quantity
+	MaxSize    *resource.Quantity
 }
 
 type GatewayClassContext struct {
