@@ -17,11 +17,15 @@ limitations under the License.
 package envoygateway_emitter
 
 import (
+	"fmt"
+
 	egapiv1a1 "github.com/envoyproxy/gateway/api/v1alpha1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 )
 
 func (e *Emitter) EmitBuffer(ir emitterir.EmitterIR, gwResources *i2gw.GatewayResources) {
@@ -37,16 +41,29 @@ func (e *Emitter) EmitBuffer(ir emitterir.EmitterIR, gwResources *i2gw.GatewayRe
 			backendTrafficPolicy := e.getOrBuildBackendTrafficPolicy(ctx, sectionName, idx)
 
 			// Prefer body max size if present, otherwise fall back to body buffer size.
-			// TODO: add notification for which value from annotation is used.
-			bufferVal := bs.MaxSize
-			if bs.BufferSize != nil {
+			var bufferVal *resource.Quantity
+
+			if bs.MaxSize != nil {
+				bufferVal = bs.MaxSize
+				if bs.BufferSize != nil {
+					notify(
+						notifications.WarningNotification,
+						fmt.Sprintf("Body max size (%s) takes precedence; buffer size (%s) will be ignored", bs.MaxSize.String(), bs.BufferSize.String()),
+						&ctx.HTTPRoute,
+					)
+				}
+			} else if bs.BufferSize != nil {
 				bufferVal = bs.BufferSize
 			}
 			backendTrafficPolicy.Spec.RequestBuffer = &egapiv1a1.RequestBuffer{
 				Limit: *bufferVal,
 			}
 
-			// TODO: add notification for successful buffer emission.
+			ruleInfo := ""
+			if sectionName != nil {
+				ruleInfo = fmt.Sprintf(" rule %s", *sectionName)
+			}
+			notify(notifications.InfoNotification, fmt.Sprintf("applied Buffer feature for HTTPRoute%s", ruleInfo), &ctx.HTTPRoute)
 		}
 	}
 }
