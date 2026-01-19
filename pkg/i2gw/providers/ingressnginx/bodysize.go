@@ -26,29 +26,26 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-var nginxSizeRegex = regexp.MustCompile(`^(\d+)([bkmg])?$`)
+// Ref: https://github.com/kubernetes/ingress-nginx/blob/main/internal/ingress/controller/template/template.go#L1001
+var nginxSizeRegex = regexp.MustCompile(`^(\d+)([kKmM])?$`)
 
 // convertNginxSizeToK8sQuantity converts nginx size format to Kubernetes resource.Quantity format.
 //
 // nginx uses lowercase suffixes for byte sizes:
 //   - k = kilobytes (10^3)
 //   - m = megabytes (10^6)
-//   - g = gigabytes (10^9)
 //
 // Kubernetes resource.Quantity uses different suffixes:
 //   - m = milli (10^-3)
 //   - k = kilo (10^3)
 //   - M = mega (10^6)
-//   - G = giga (10^9)
 //
 // This function converts nginx format to K8s format:
 //   - "10m" -> "10M" (10 megabytes)
 //   - "10k" -> "10k" (10 kilobytes, same)
-//   - "10g" -> "10G" (10 gigabytes)
 //   - "100" -> "100" (no unit, same)
 func convertNginxSizeToK8sQuantity(nginxSize string) (string, error) {
 	nginxSize = strings.TrimSpace(nginxSize)
-	nginxSize = strings.ToLower(nginxSize)
 
 	matches := nginxSizeRegex.FindStringSubmatch(nginxSize)
 	if matches == nil {
@@ -60,12 +57,12 @@ func convertNginxSizeToK8sQuantity(nginxSize string) (string, error) {
 
 	// Convert nginx unit to K8s Quantity unit
 	switch unit {
-	case "m":
-		return number + "M", nil // megabytes -> Mega
-	case "g":
-		return number + "G", nil // gigabytes -> Giga
-	case "k", "b", "":
-		return number + unit, nil // kilobytes, bytes, or no unit stay the same
+	case "m", "M":
+		return number + "M", nil
+	case "k", "K":
+		return number + "k", nil
+	case "":
+		return number, nil
 	default:
 		return "", fmt.Errorf("unsupported nginx size unit: %q", unit)
 	}

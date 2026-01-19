@@ -32,45 +32,33 @@ func TestConvertNginxSizeToK8sQuantity(t *testing.T) {
 		wantErr   bool
 	}{
 		{
-			name:      "nginx megabytes to K8s Mega",
+			name:      "lowercase m to K8s Mega",
 			nginxSize: "10m",
 			want:      "10M",
 			wantErr:   false,
 		},
 		{
-			name:      "nginx gigabytes to K8s Giga",
-			nginxSize: "5g",
-			want:      "5G",
-			wantErr:   false,
-		},
-		{
-			name:      "nginx kilobytes stays the same",
-			nginxSize: "100k",
-			want:      "100k",
-			wantErr:   false,
-		},
-		{
-			name:      "nginx bytes stays the same",
-			nginxSize: "1024b",
-			want:      "1024b",
-			wantErr:   false,
-		},
-		{
-			name:      "no unit stays the same",
-			nginxSize: "512",
-			want:      "512",
-			wantErr:   false,
-		},
-		{
-			name:      "uppercase M converted",
+			name:      "uppercase M to K8s Mega",
 			nginxSize: "10M",
 			want:      "10M",
 			wantErr:   false,
 		},
 		{
-			name:      "uppercase G converted",
-			nginxSize: "5G",
-			want:      "5G",
+			name:      "lowercase k stays as k",
+			nginxSize: "100k",
+			want:      "100k",
+			wantErr:   false,
+		},
+		{
+			name:      "uppercase K stays as k",
+			nginxSize: "100K",
+			want:      "100k",
+			wantErr:   false,
+		},
+		{
+			name:      "no unit (bytes)",
+			nginxSize: "512",
+			want:      "512",
 			wantErr:   false,
 		},
 		{
@@ -80,14 +68,26 @@ func TestConvertNginxSizeToK8sQuantity(t *testing.T) {
 			wantErr:   false,
 		},
 		{
-			name:      "invalid format",
+			name:      "invalid format - letters only",
 			nginxSize: "abc",
 			want:      "",
 			wantErr:   true,
 		},
 		{
-			name:      "invalid unit",
+			name:      "invalid unit - x",
 			nginxSize: "10x",
+			want:      "",
+			wantErr:   true,
+		},
+		{
+			name:      "invalid unit - g (gigabytes not supported for size directives)",
+			nginxSize: "5g",
+			want:      "",
+			wantErr:   true,
+		},
+		{
+			name:      "invalid unit - b (bytes suffix not valid in nginx)",
+			nginxSize: "1024b",
 			want:      "",
 			wantErr:   true,
 		},
