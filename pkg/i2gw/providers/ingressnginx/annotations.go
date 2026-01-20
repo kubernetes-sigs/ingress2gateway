@@ -59,4 +59,10 @@ const (
 	CorsAllowCredentialsAnnotation = "nginx.ingress.kubernetes.io/cors-allow-credentials"
 	CorsExposeHeadersAnnotation    = "nginx.ingress.kubernetes.io/cors-expose-headers"
 	CorsMaxAgeAnnotation           = "nginx.ingress.kubernetes.io/cors-max-age"
+
+	// Backend TLS annotations
+	BackendProtocolAnnotation = "nginx.ingress.kubernetes.io/backend-protocol"
+	ProxySSLVerifyAnnotation  = "nginx.ingress.kubernetes.io/proxy-ssl-verify"
+	ProxySSLSecretAnnotation  = "nginx.ingress.kubernetes.io/proxy-ssl-secret"
+	ProxySSLNameAnnotation    = "nginx.ingress.kubernetes.io/proxy-ssl-name"
 )
