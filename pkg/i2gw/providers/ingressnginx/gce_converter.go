@@ -17,6 +17,9 @@ limitations under the License.
 package ingressnginx
 
 import (
+	"strconv"
+
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -24,8 +27,94 @@ import (
 )
 
 func gceFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
-	// gceFeature is a hook for GCE-specific logic.
-	// Currently used as an integration point for future GCE capabilities.
+	// Iterate over all HTTPRoutes to find backend services and apply GCE specific policies
+	for _, httpRouteCtx := range ir.HTTPRoutes {
+		for ruleIdx, _ := range httpRouteCtx.Spec.Rules {
+			if ruleIdx >= len(httpRouteCtx.RuleBackendSources) {
+				continue
+			}
+			sources := httpRouteCtx.RuleBackendSources[ruleIdx]
+			if len(sources) == 0 {
+				continue
+			}
+
+			// We need to find the backend service for this rule to attach the policy.
+			// Currently, we just look at the BackendRefs.
+			// Note: This logic assumes we can map back to the service.
+			// Ingress-Nginx usually maps path -> backend service.
+			// We check the Ingress sources for the annotation.
+			
+			var affinityType string
+			var cookieTTL *int64
+			
+			for _, source := range sources {
+				if val, ok := source.Ingress.Annotations[AffinityAnnotation]; ok && val == "cookie" {
+					affinityType = "GENERATED_COOKIE"
+					
+					// Check for Max Age
+					if ttlVal, ok := source.Ingress.Annotations[SessionCookieMaxAgeAnnotation]; ok {
+						if ttl, err := strconv.ParseInt(ttlVal, 10, 64); err == nil {
+							cookieTTL = &ttl
+						}
+					}
+					// Only use the first finding or merge? Nginx usually takes first match or last applied.
+					// We'll break on first valid "cookie" affinity found.
+					break
+				}
+			}
+
+			if affinityType == "" {
+				continue
+			}
+
+			// Apply to all backend refs in this rule?
+			// Session Affinity in GCE is per Backend Service.
+			// We need to update the GceServiceIR for the referenced services.
+
+			for _, backendRef := range httpRouteCtx.Spec.Rules[ruleIdx].BackendRefs {
+				refName := string(backendRef.Name)
+				// refGroup := backendRef.Group // usually nil or core
+				// refKind := backendRef.Kind // usually Service
+
+				// We need to find the ServiceIR for this backend.
+				// In ProviderIR, Services map key is NamespacedName.
+				// We assume BackendRef name is the service name in the same namespace (usually).
+				
+				// Wait, HTTPRouteCtx doesn't easily give us the namespace of the service if it's cross-namespace?
+				// But we can check ir.Services.
+				
+				svcKey := types.NamespacedName{
+					Namespace: httpRouteCtx.HTTPRoute.Namespace, // assumption: same namespace
+					Name:      refName,
+				}
+				
+				if svc, ok := ir.Services[svcKey]; ok {
+					if svc.Gce == nil {
+						svc.Gce = &gce.ServiceIR{}
+					}
+					if svc.Gce.SessionAffinity == nil {
+						svc.Gce.SessionAffinity = &gce.SessionAffinityConfig{}
+					}
+					
+					svc.Gce.SessionAffinity.AffinityType = affinityType
+					svc.Gce.SessionAffinity.CookieTTLSec = cookieTTL
+					
+					// Update the map
+					ir.Services[svcKey] = svc
+				} else {
+					// Service doesn't exist yet, create it
+					svc = providerir.ProviderSpecificServiceIR{
+						Gce: &gce.ServiceIR{
+							SessionAffinity: &gce.SessionAffinityConfig{
+								AffinityType: affinityType,
+								CookieTTLSec: cookieTTL,
+							},
+						},
+					}
+					ir.Services[svcKey] = svc
+				}
+			}
+		}
+	}
 	return nil
 }
-
