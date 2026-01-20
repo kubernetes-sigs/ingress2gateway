@@ -39,4 +39,9 @@ const (
 	CorsAllowCredentialsAnnotation = "nginx.ingress.kubernetes.io/cors-allow-credentials"
 	CorsExposeHeadersAnnotation    = "nginx.ingress.kubernetes.io/cors-expose-headers"
 	CorsMaxAgeAnnotation           = "nginx.ingress.kubernetes.io/cors-max-age"
+
+	// Session Affinity annotations
+	SessionAffinityAnnotation      = "nginx.ingress.kubernetes.io/affinity"
+	SessionCookieNameAnnotation    = "nginx.ingress.kubernetes.io/session-cookie-name"
+	SessionCookieExpiresAnnotation = "nginx.ingress.kubernetes.io/session-cookie-expires"
 )

@@ -18,6 +18,7 @@ package providerir
 
 import (
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -32,6 +33,7 @@ func ToEmitterIR(pIR ProviderIR) emitterir.EmitterIR {
 		GRPCRoutes:         make(map[types.NamespacedName]emitterir.GRPCRouteContext),
 		BackendTLSPolicies: make(map[types.NamespacedName]emitterir.BackendTLSPolicyContext),
 		ReferenceGrants:    make(map[types.NamespacedName]emitterir.ReferenceGrantContext),
+		GceServices:        make(map[types.NamespacedName]gce.ServiceIR),
 	}
 
 	for k, v := range pIR.Gateways {

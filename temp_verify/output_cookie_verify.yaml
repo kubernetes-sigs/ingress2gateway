@@ -1,0 +1,48 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: nginx
+spec:
+  gatewayClassName: gke-l7-global-external-managed
+  listeners:
+  - name: http
+    port: 80
+    protocol: HTTP
+status: {}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: test-ingress-cookie-all-hosts
+spec:
+  parentRefs:
+  - name: nginx
+  rules:
+  - backendRefs:
+    - name: cookie-service
+      port: 80
+    matches:
+    - path:
+        type: PathPrefix
+        value: /
+status:
+  parents: []
+---
+apiVersion: networking.gke.io/v1
+kind: GCPBackendPolicy
+metadata:
+  name: cookie-service
+spec:
+  default:
+    sessionAffinity:
+      cookieTtlSec: 3600
+      type: GENERATED_COOKIE
+  targetRef:
+    group: ""
+    kind: Service
+    name: cookie-service
+status: {}
