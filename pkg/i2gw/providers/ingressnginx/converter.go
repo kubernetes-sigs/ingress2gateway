@@ -21,6 +21,7 @@ import (
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // resourcesToIRConverter implements the ToIR function of i2gw.ResourcesToIRConverter interface.
@@ -34,6 +35,7 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 		featureParsers: []i2gw.FeatureParser{
 			canaryFeature,
 			headerModifierFeature,
+			regexFeature,
 		},
 	}
 }
@@ -45,7 +47,9 @@ func (c *resourcesToIRConverter) convert(storage *storage) (providerir.ProviderI
 
 	// Convert plain ingress resources to gateway resources, ignoring all
 	// provider-specific features.
-	ir, errs := common.ToIR(ingressList, storage.ServicePorts, i2gw.ProviderImplementationSpecificOptions{})
+	ir, errs := common.ToIR(ingressList, storage.ServicePorts, i2gw.ProviderImplementationSpecificOptions{
+		ToImplementationSpecificHTTPPathTypeMatch: implementationSpecificPathMatch,
+	})
 	if len(errs) > 0 {
 		return providerir.ProviderIR{}, errs
 	}
@@ -58,4 +62,12 @@ func (c *resourcesToIRConverter) convert(storage *storage) (providerir.ProviderI
 	}
 
 	return ir, errs
+}
+
+func implementationSpecificPathMatch(path *gatewayv1.HTTPPathMatch) {
+	// Nginx Ingress Controller treats ImplementationSpecific as Prefix by default,
+	// unless regex characters are present (handled by regexFeature).
+	// We safely default to Prefix here to pass the common.ToIR check.
+	t := gatewayv1.PathMatchPathPrefix
+	path.Type = &t
 }
