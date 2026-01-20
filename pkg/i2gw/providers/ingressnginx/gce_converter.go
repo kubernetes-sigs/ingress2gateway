@@ -17,6 +17,8 @@ limitations under the License.
 package ingressnginx
 
 import (
+	"fmt"
+	"os"
 	"strconv"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
@@ -46,8 +48,10 @@ func gceFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]
 			
 			var affinityType string
 			var cookieTTL *int64
+			var securityPolicyName string
 			
 			for _, source := range sources {
+				// Check for Session Affinity
 				if val, ok := source.Ingress.Annotations[AffinityAnnotation]; ok && val == "cookie" {
 					affinityType = "GENERATED_COOKIE"
 					
@@ -57,13 +61,24 @@ func gceFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]
 							cookieTTL = &ttl
 						}
 					}
-					// Only use the first finding or merge? Nginx usually takes first match or last applied.
-					// We'll break on first valid "cookie" affinity found.
-					break
+				}
+
+				// Check for Whitelist Source Range
+				if val, ok := source.Ingress.Annotations[WhitelistSourceRangeAnnotation]; ok {
+					// We cannot create the Cloud Armor Policy automatically via Gateway API output (it requires a separate resource).
+					// We generate a deterministic name and warn the user.
+					// Naming convention: generated-whitelist-<service-name>
+					// Note: We need the service name. We'll derive it from the BackendRef name later in the loop.
+					// But we are in the sources loop. We can hold the value and apply it later.
+					
+					// Temporarily store the raw value or just a flag. The logic needs to be applied per service.
+					// Since we can have multiple sources, we take the last valid one (or first).
+					// Let's use the provided value from the annotation.
+					securityPolicyName = val
 				}
 			}
 
-			if affinityType == "" {
+			if affinityType == "" && securityPolicyName == "" {
 				continue
 			}
 
@@ -87,30 +102,60 @@ func gceFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]
 					Namespace: httpRouteCtx.HTTPRoute.Namespace, // assumption: same namespace
 					Name:      refName,
 				}
+
+				generatedPolicyName := ""
+				if securityPolicyName != "" {
+					generatedPolicyName = fmt.Sprintf("generated-whitelist-%s", refName)
+					// Verify if we already warned for this service/policy to avoid spam?
+					// Simple implementation: just log.
+					// Use os.Stderr to ensure it's seen.
+					fmt.Fprintf(os.Stderr, "[WARN] Detected whitelist-source-range for service '%s' with values '%s'.\n"+
+						"       GKE Gateway requires a pre-existing Cloud Armor Policy.\n"+
+						"       Action Required: Create a Cloud Armor Policy named '%s' with these rules.\n",
+						refName, securityPolicyName, generatedPolicyName)
+				}
 				
 				if svc, ok := ir.Services[svcKey]; ok {
 					if svc.Gce == nil {
 						svc.Gce = &gce.ServiceIR{}
 					}
-					if svc.Gce.SessionAffinity == nil {
-						svc.Gce.SessionAffinity = &gce.SessionAffinityConfig{}
+					// Session Affinity Update
+					if affinityType != "" {
+						if svc.Gce.SessionAffinity == nil {
+							svc.Gce.SessionAffinity = &gce.SessionAffinityConfig{}
+						}
+						svc.Gce.SessionAffinity.AffinityType = affinityType
+						svc.Gce.SessionAffinity.CookieTTLSec = cookieTTL
 					}
-					
-					svc.Gce.SessionAffinity.AffinityType = affinityType
-					svc.Gce.SessionAffinity.CookieTTLSec = cookieTTL
+					// Security Policy Update
+					if generatedPolicyName != "" {
+						if svc.Gce.SecurityPolicy == nil {
+							svc.Gce.SecurityPolicy = &gce.SecurityPolicyConfig{}
+						}
+						svc.Gce.SecurityPolicy.Name = generatedPolicyName
+					}
 					
 					// Update the map
 					ir.Services[svcKey] = svc
 				} else {
 					// Service doesn't exist yet, create it
 					svc = providerir.ProviderSpecificServiceIR{
-						Gce: &gce.ServiceIR{
-							SessionAffinity: &gce.SessionAffinityConfig{
-								AffinityType: affinityType,
-								CookieTTLSec: cookieTTL,
-							},
-						},
+						Gce: &gce.ServiceIR{},
 					}
+					
+					if affinityType != "" {
+						svc.Gce.SessionAffinity = &gce.SessionAffinityConfig{
+							AffinityType: affinityType,
+							CookieTTLSec: cookieTTL,
+						}
+					}
+					
+					if generatedPolicyName != "" {
+						svc.Gce.SecurityPolicy = &gce.SecurityPolicyConfig{
+							Name: generatedPolicyName,
+						}
+					}
+					
 					ir.Services[svcKey] = svc
 				}
 			}

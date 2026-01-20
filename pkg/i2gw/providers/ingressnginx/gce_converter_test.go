@@ -78,6 +78,42 @@ func TestGCEFeature(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Whitelist Source Range",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "whitelist",
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/whitelist-source-range": "10.0.0.0/8",
+					},
+				},
+			},
+			expectedGCE: &gce.ServiceIR{
+				SecurityPolicy: &gce.SecurityPolicyConfig{
+					Name: "generated-whitelist-my-service",
+				},
+			},
+		},
+		{
+			name: "Whitelist and Affinity Mixed",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "whitelist-affinity",
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/affinity":               "cookie",
+						"nginx.ingress.kubernetes.io/whitelist-source-range": "1.2.3.4/32",
+					},
+				},
+			},
+			expectedGCE: &gce.ServiceIR{
+				SessionAffinity: &gce.SessionAffinityConfig{
+					AffinityType: "GENERATED_COOKIE",
+				},
+				SecurityPolicy: &gce.SecurityPolicyConfig{
+					Name: "generated-whitelist-my-service",
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {

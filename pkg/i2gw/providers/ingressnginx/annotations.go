@@ -44,4 +44,7 @@ const (
 	AffinityAnnotation            = "nginx.ingress.kubernetes.io/affinity"
 	AffinityModeAnnotation        = "nginx.ingress.kubernetes.io/affinity-mode"
 	SessionCookieMaxAgeAnnotation = "nginx.ingress.kubernetes.io/session-cookie-max-age"
+
+	// Whitelist annotations
+	WhitelistSourceRangeAnnotation = "nginx.ingress.kubernetes.io/whitelist-source-range"
 )
