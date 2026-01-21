@@ -67,13 +67,12 @@ func (c *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.Err
 		return i2gw.GatewayResources{}, errs
 	}
 	buildGceGatewayExtensions(ir, &gatewayResources)
-	buildGceGatewayExtensions(ir, &gatewayResources)
 	buildGceServiceExtensions(ir, &gatewayResources)
-	upsellGatewayClass(&gatewayResources)
+	updateGatewayClass(&gatewayResources)
 	return gatewayResources, nil
 }
 
-func upsellGatewayClass(gatewayResources *i2gw.GatewayResources) {
+func updateGatewayClass(gatewayResources *i2gw.GatewayResources) {
 	for i, gw := range gatewayResources.Gateways {
 		if gw.Spec.GatewayClassName == "nginx" {
 			gw.Spec.GatewayClassName = "gke-l7-global-external-managed"
