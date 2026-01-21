@@ -29,6 +29,11 @@ func BuildGCPBackendPolicySessionAffinityConfig(gceServiceIR gce.ServiceIR) *gke
 	}
 	if affinityType == "GENERATED_COOKIE" {
 		saConfig.CookieTTLSec = gceServiceIR.SessionAffinity.CookieTTLSec
+
+		// Note: The GKE Gateway API v1.3.0 does not yet support custom cookie names for GENERATED_COOKIE.
+		// We have parsed the `nginx.ingress.kubernetes.io/session-cookie-name` annotation into
+		// gceServiceIR.SessionAffinity.CookieName, but we cannot emit it to the GCPBackendPolicy yet.
+		// Once the API supports it, we can uncomment assignment here.
 	}
 	return &saConfig
 }

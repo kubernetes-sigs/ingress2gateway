@@ -46,16 +46,21 @@ func gceFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]
 			
 			var affinityType string
 			var cookieTTL *int64
+			var cookieName string
 			
 			for _, source := range sources {
 				if val, ok := source.Ingress.Annotations[AffinityAnnotation]; ok && val == "cookie" {
 					affinityType = "GENERATED_COOKIE"
 					
-					// Check for Max Age
-					if ttlVal, ok := source.Ingress.Annotations[SessionCookieMaxAgeAnnotation]; ok {
+					// Check for Max Age (Expires)
+					if ttlVal, ok := source.Ingress.Annotations[SessionCookieExpiresAnnotation]; ok {
 						if ttl, err := strconv.ParseInt(ttlVal, 10, 64); err == nil {
 							cookieTTL = &ttl
 						}
+					}
+					// Check for Cookie Name
+					if nameVal, ok := source.Ingress.Annotations[SessionCookieNameAnnotation]; ok {
+						cookieName = nameVal
 					}
 					// Only use the first finding or merge? Nginx usually takes first match or last applied.
 					// We'll break on first valid "cookie" affinity found.
@@ -98,6 +103,7 @@ func gceFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]
 					
 					svc.Gce.SessionAffinity.AffinityType = affinityType
 					svc.Gce.SessionAffinity.CookieTTLSec = cookieTTL
+					svc.Gce.SessionAffinity.CookieName = cookieName
 					
 					// Update the map
 					ir.Services[svcKey] = svc
@@ -108,6 +114,7 @@ func gceFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]
 							SessionAffinity: &gce.SessionAffinityConfig{
 								AffinityType: affinityType,
 								CookieTTLSec: cookieTTL,
+								CookieName:   cookieName,
 							},
 						},
 					}

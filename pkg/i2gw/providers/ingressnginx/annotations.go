@@ -64,7 +64,8 @@ const (
 	DenyListSourceRangeAnnotation  = "nginx.ingress.kubernetes.io/denylist-source-range"
 
 	// Affinity annotations
-	AffinityAnnotation            = "nginx.ingress.kubernetes.io/affinity"
-	AffinityModeAnnotation        = "nginx.ingress.kubernetes.io/affinity-mode"
-	SessionCookieMaxAgeAnnotation = "nginx.ingress.kubernetes.io/session-cookie-max-age"
+	AffinityAnnotation             = "nginx.ingress.kubernetes.io/affinity"
+	AffinityModeAnnotation         = "nginx.ingress.kubernetes.io/affinity-mode"
+	SessionCookieExpiresAnnotation = "nginx.ingress.kubernetes.io/session-cookie-expires"
+	SessionCookieNameAnnotation    = "nginx.ingress.kubernetes.io/session-cookie-name"
 )
