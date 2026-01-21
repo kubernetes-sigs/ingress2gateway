@@ -61,13 +61,13 @@ func TestGCEFeature(t *testing.T) {
 			},
 		},
 		{
-			name: "Cookie Affinity with Max Age",
+			name: "Cookie Affinity with Expires",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "cookie-affinity-maxlen",
+					Name: "cookie-affinity-expires",
 					Annotations: map[string]string{
 						"nginx.ingress.kubernetes.io/affinity":               "cookie",
-						"nginx.ingress.kubernetes.io/session-cookie-max-age": "3600",
+						"nginx.ingress.kubernetes.io/session-cookie-expires": "3600",
 					},
 				},
 			},
@@ -75,6 +75,24 @@ func TestGCEFeature(t *testing.T) {
 				SessionAffinity: &gce.SessionAffinityConfig{
 					AffinityType: "GENERATED_COOKIE",
 					CookieTTLSec: ptr.To(int64(3600)),
+				},
+			},
+		},
+		{
+			name: "Cookie Affinity with Name",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "cookie-affinity-name",
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/affinity":            "cookie",
+						"nginx.ingress.kubernetes.io/session-cookie-name": "MY_COOKIE",
+					},
+				},
+			},
+			expectedGCE: &gce.ServiceIR{
+				SessionAffinity: &gce.SessionAffinityConfig{
+					AffinityType: "GENERATED_COOKIE",
+					CookieName:   "MY_COOKIE",
 				},
 			},
 		},
