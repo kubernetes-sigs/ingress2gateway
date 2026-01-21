@@ -17,9 +17,6 @@ limitations under the License.
 package ingressnginx
 
 import (
-	"fmt"
-
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -64,20 +61,22 @@ func createBackendTLSPolicies(ingresses []networkingv1.Ingress, servicePorts map
 					if serviceName == "" {
 						continue
 					}
-					policyName := fmt.Sprintf("%s-tls-policy", serviceName)
-					policyKey := types.NamespacedName{Namespace: rg.Namespace, Name: policyName}
 
-					if _, exists := ir.BackendTLSPolicies[policyKey]; !exists {
-						policy := common.CreateBackendTLSPolicy(rg.Namespace, policyName, serviceName)
-						ir.BackendTLSPolicies[policyKey] = policy
-						notify(notifications.InfoNotification, fmt.Sprintf("Created BackendTLSPolicy %s/%s for service %s due to backend-protocol %q",
-							policy.Namespace, policy.Name, serviceName, protocolType), &policy)
-					} else {
-						// Policy already exists, this means another Ingress or rule group already requested it.
-						// We should notify that this host is also requesting it.
-						notify(notifications.InfoNotification, fmt.Sprintf("Service %s already has BackendTLSPolicy %s/%s (requested by host %q with protocol %q)",
-							serviceName, rg.Namespace, policyName, rg.Host, protocolType), nil)
-					}
+					// TODO: implement proxy-ssl annotations
+					// policyName := fmt.Sprintf("%s-tls-policy", serviceName)
+					// policyKey := types.NamespacedName{Namespace: rg.Namespace, Name: policyName}
+
+					// if _, exists := ir.BackendTLSPolicies[policyKey]; !exists {
+					// 	policy := common.CreateBackendTLSPolicy(rg.Namespace, policyName, serviceName)
+					// 	ir.BackendTLSPolicies[policyKey] = policy
+					// 	notify(notifications.InfoNotification, fmt.Sprintf("Created BackendTLSPolicy %s/%s for service %s due to backend-protocol %q",
+					// 		policy.Namespace, policy.Name, serviceName, protocolType), &policy)
+					// } else {
+					// 	// Policy already exists, this means another Ingress or rule group already requested it.
+					// 	// We should notify that this host is also requesting it.
+					// 	notify(notifications.InfoNotification, fmt.Sprintf("Service %s already has BackendTLSPolicy %s/%s (requested by host %q with protocol %q)",
+					// 		serviceName, rg.Namespace, policyName, rg.Host, protocolType), nil)
+					// }
 				}
 			}
 		}
