@@ -116,7 +116,7 @@ kind: ensure-kind
 # tests.
 # See README.md for more info.
 .PHONY: e2e
-e2e: ## Run end-to-end tests.
+e2e: build ## Run end-to-end tests.
 	@if [ ! -z "$${KUBECONFIG}" ]; then \
 		echo "ERROR: KUBECONFIG is set in current shell. Refusing to run to avoid touching an"; \
 		echo "unrelated cluster."; \
@@ -133,7 +133,8 @@ e2e: ## Run end-to-end tests.
 		cleanup_kind=true; \
 	fi; \
 	set -x; \
-	KUBECONFIG=$${kubeconfig} go test $(I2GW_GO_TEST_ARGS) $(REPO_ROOT)/e2e; \
+	I2GW_BINARY_PATH=$(REPO_ROOT)/ingress2gateway KUBECONFIG=$${kubeconfig} \
+		go test $(I2GW_GO_TEST_ARGS) $(REPO_ROOT)/e2e; \
 	test_exit_code=$$?; \
 	set +x; \
 	if [ "$${cleanup_kind}" = "true" ] && [ "$${SKIP_CLEANUP}" != "1" ]; then \
