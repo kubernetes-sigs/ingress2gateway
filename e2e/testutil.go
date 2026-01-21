@@ -17,9 +17,16 @@ limitations under the License.
 package e2e
 
 import (
+	"bufio"
+	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"os"
+	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
@@ -33,24 +40,14 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/utils/ptr"
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
+	"sigs.k8s.io/gateway-api/apis/v1alpha2"
+	"sigs.k8s.io/gateway-api/apis/v1beta1"
 	gwclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
-
-	// Import providers to register them.
-	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/apisix"
-	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/cilium"
-	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/gce"
-	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
-	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
-	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
-	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/nginx"
-	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/openapi3"
-
-	// Import emitters to register them.
-	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/standard"
 )
 
 // A prefix for all namespaces used in the e2e tests.
@@ -169,16 +166,8 @@ func runTestCase(t *testing.T, tc *testCase) {
 
 	verifyIngresses(ctx, t, tc, ingressAddresses)
 
-	// We pass an empty input file to make i2gw read ingresses from the cluster.
-	res, notif, err := i2gw.ToGatewayAPIResources(ctx, appNS, "", tc.providers, "standard", tc.providerFlags)
-	require.NoError(t, err)
-
-	if len(notif) > 0 {
-		t.Log("Received notifications during conversion:")
-		for _, table := range notif {
-			t.Log(table)
-		}
-	}
+	// Run the ingress2gateway binary to convert ingresses to Gateway API resources.
+	res := runI2GW(t, kubeconfig, appNS, tc.providers, tc.providerFlags)
 
 	// TODO: Hack! Force correct gateway class since i2gw doesn't seem to infer that from the
 	// ingress at the moment.
@@ -435,6 +424,150 @@ func verifyGatewayResources(ctx context.Context, t *testing.T, tc *testCase, gwA
 			require.NoError(t, err, "gateway verification failed")
 		}
 	}
+}
+
+// Executes the ingress2gateway binary and returns the parsed Gateway API resources.
+func runI2GW(
+	t *testing.T,
+	kubeconfig string,
+	namespace string,
+	providers []string,
+	providerFlags map[string]map[string]string,
+) []i2gw.GatewayResources {
+	binaryPath := os.Getenv("I2GW_BINARY_PATH")
+	require.NotEmpty(t, binaryPath, "environment variable I2GW_BINARY_PATH not set")
+
+	args := []string{
+		"print",
+		"--kubeconfig", kubeconfig,
+		"--namespace", namespace,
+		"--providers", strings.Join(providers, ","),
+	}
+
+	// Add provider-specific flags.
+	for provider, flags := range providerFlags {
+		for flagName, flagValue := range flags {
+			args = append(args, fmt.Sprintf("--%s-%s", provider, flagName), flagValue)
+		}
+	}
+
+	t.Logf("Running ingress2gateway: %s %v", binaryPath, args)
+
+	cmd := exec.Command(binaryPath, args...)
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	require.NoError(t, err, "ingress2gateway run failed\nstdout: %s\nstderr: %s", stdout.String(), stderr.String())
+
+	// Log any notifications from stderr.
+	if stderr.Len() > 0 {
+		t.Log("Got stderr from ingress2gateway:\n", stderr.String())
+	}
+
+	return parseYAMLOutput(t, stdout.Bytes())
+}
+
+// Parses the YAML output from the ingress2gateway binary into Gateway API resources.
+func parseYAMLOutput(t *testing.T, data []byte) []i2gw.GatewayResources {
+	res := i2gw.GatewayResources{
+		Gateways:           make(map[types.NamespacedName]gwapiv1.Gateway),
+		GatewayClasses:     make(map[types.NamespacedName]gwapiv1.GatewayClass),
+		HTTPRoutes:         make(map[types.NamespacedName]gwapiv1.HTTPRoute),
+		GRPCRoutes:         make(map[types.NamespacedName]gwapiv1.GRPCRoute),
+		TLSRoutes:          make(map[types.NamespacedName]v1alpha2.TLSRoute),
+		TCPRoutes:          make(map[types.NamespacedName]v1alpha2.TCPRoute),
+		UDPRoutes:          make(map[types.NamespacedName]v1alpha2.UDPRoute),
+		BackendTLSPolicies: make(map[types.NamespacedName]gwapiv1.BackendTLSPolicy),
+		ReferenceGrants:    make(map[types.NamespacedName]v1beta1.ReferenceGrant),
+	}
+
+	decoder := yaml.NewYAMLOrJSONDecoder(bufio.NewReader(bytes.NewReader(data)), 4096)
+
+	for {
+		var rawObj map[string]interface{}
+		if err := decoder.Decode(&rawObj); err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			t.Fatalf("Failed to decode YAML: %v", err)
+		}
+
+		if rawObj == nil {
+			continue
+		}
+
+		apiVersion, _ := rawObj["apiVersion"].(string)
+		kind, _ := rawObj["kind"].(string)
+		metadata, _ := rawObj["metadata"].(map[string]interface{})
+		name, _ := metadata["name"].(string)
+		namespace, _ := metadata["namespace"].(string)
+
+		nn := types.NamespacedName{Namespace: namespace, Name: name}
+
+		// Re-encode the object to JSON bytes for proper unmarshaling.
+		objBytes, err := json.Marshal(rawObj)
+		require.NoError(t, err, "failed to marshal object")
+
+		switch {
+		case apiVersion == "gateway.networking.k8s.io/v1" && kind == "Gateway":
+			var gw gwapiv1.Gateway
+			err := json.Unmarshal(objBytes, &gw)
+			require.NoError(t, err, "failed to unmarshal Gateway")
+			res.Gateways[nn] = gw
+		case apiVersion == "gateway.networking.k8s.io/v1" && kind == "GatewayClass":
+			var gc gwapiv1.GatewayClass
+			err := json.Unmarshal(objBytes, &gc)
+			require.NoError(t, err, "failed to unmarshal GatewayClass")
+			res.GatewayClasses[nn] = gc
+
+		case apiVersion == "gateway.networking.k8s.io/v1" && kind == "HTTPRoute":
+			var hr gwapiv1.HTTPRoute
+			err := json.Unmarshal(objBytes, &hr)
+			require.NoError(t, err, "failed to unmarshal HTTPRoute")
+			res.HTTPRoutes[nn] = hr
+
+		case apiVersion == "gateway.networking.k8s.io/v1" && kind == "GRPCRoute":
+			var gr gwapiv1.GRPCRoute
+			err := json.Unmarshal(objBytes, &gr)
+			require.NoError(t, err, "failed to unmarshal GRPCRoute")
+			res.GRPCRoutes[nn] = gr
+
+		case apiVersion == "gateway.networking.k8s.io/v1alpha2" && kind == "TLSRoute":
+			var tr v1alpha2.TLSRoute
+			err := json.Unmarshal(objBytes, &tr)
+			require.NoError(t, err, "failed to unmarshal TLSRoute")
+			res.TLSRoutes[nn] = tr
+
+		case apiVersion == "gateway.networking.k8s.io/v1alpha2" && kind == "TCPRoute":
+			var tcpr v1alpha2.TCPRoute
+			err := json.Unmarshal(objBytes, &tcpr)
+			require.NoError(t, err, "failed to unmarshal TCPRoute")
+			res.TCPRoutes[nn] = tcpr
+
+		case apiVersion == "gateway.networking.k8s.io/v1alpha2" && kind == "UDPRoute":
+			var udpr v1alpha2.UDPRoute
+			err := json.Unmarshal(objBytes, &udpr)
+			require.NoError(t, err, "failed to unmarshal UDPRoute")
+			res.UDPRoutes[nn] = udpr
+
+		case apiVersion == "gateway.networking.k8s.io/v1" && kind == "BackendTLSPolicy":
+			var btls gwapiv1.BackendTLSPolicy
+			err := json.Unmarshal(objBytes, &btls)
+			require.NoError(t, err, "failed to unmarshal BackendTLSPolicy")
+			res.BackendTLSPolicies[nn] = btls
+
+		case apiVersion == "gateway.networking.k8s.io/v1beta1" && kind == "ReferenceGrant":
+			var rg v1beta1.ReferenceGrant
+			err := json.Unmarshal(objBytes, &rg)
+			require.NoError(t, err, "failed to unmarshal ReferenceGrant")
+			res.ReferenceGrants[nn] = rg
+		}
+	}
+
+	return []i2gw.GatewayResources{res}
 }
 
 type ingressBuilder struct {
