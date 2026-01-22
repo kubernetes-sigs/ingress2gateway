@@ -65,8 +65,10 @@ const (
 	DenyListSourceRangeAnnotation  = "nginx.ingress.kubernetes.io/denylist-source-range"
 
 	// Backend TLS annotations
-	BackendProtocolAnnotation = "nginx.ingress.kubernetes.io/backend-protocol"
-	ProxySSLVerifyAnnotation  = "nginx.ingress.kubernetes.io/proxy-ssl-verify"
-	ProxySSLSecretAnnotation  = "nginx.ingress.kubernetes.io/proxy-ssl-secret"
-	ProxySSLNameAnnotation    = "nginx.ingress.kubernetes.io/proxy-ssl-name"
+	// Backend TLS annotations
+	BackendProtocolAnnotation    = "nginx.ingress.kubernetes.io/backend-protocol"
+	ProxySSLVerifyAnnotation     = "nginx.ingress.kubernetes.io/proxy-ssl-verify"
+	ProxySSLSecretAnnotation     = "nginx.ingress.kubernetes.io/proxy-ssl-secret"
+	ProxySSLNameAnnotation       = "nginx.ingress.kubernetes.io/proxy-ssl-name"
+	ProxySSLServerNameAnnotation = "nginx.ingress.kubernetes.io/proxy-ssl-server-name"
 )
