@@ -26,7 +26,7 @@ import (
 
 // createBackendTLSPolicies inspects ingresses for backend-protocol annotations
 // and creates BackendTLSPolicies if HTTPS or GRPCS is specified.
-func createBackendTLSPolicies(ingresses []networkingv1.Ingress, servicePorts map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func createBackendTLSPolicies(ingresses []networkingv1.Ingress, servicePorts map[types.NamespacedName]map[string]int32, _ *providerir.ProviderIR) field.ErrorList {
 	ruleGroups := common.GetRuleGroups(ingresses)
 	var errList field.ErrorList
 
