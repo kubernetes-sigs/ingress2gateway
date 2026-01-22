@@ -44,6 +44,7 @@ func TestBackendTLSFeature(t *testing.T) {
 					Name:      "ssl-verify",
 					Namespace: "default",
 					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
 						"nginx.ingress.kubernetes.io/proxy-ssl-verify": "on",
 					},
 				},
@@ -82,7 +83,7 @@ func TestBackendTLSFeature(t *testing.T) {
 							},
 						}},
 						Validation: gatewayv1.BackendTLSPolicyValidation{
-							CACertificateRefs: nil,
+							CACertificateRefs: []gatewayv1.LocalObjectReference{},
 						},
 					},
 				},
@@ -96,6 +97,7 @@ func TestBackendTLSFeature(t *testing.T) {
 					Name:      "ssl-secret",
 					Namespace: "default",
 					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
 						"nginx.ingress.kubernetes.io/proxy-ssl-secret": "default/secret-valid",
 					},
 				},
@@ -136,7 +138,6 @@ func TestBackendTLSFeature(t *testing.T) {
 						Validation: gatewayv1.BackendTLSPolicyValidation{
 							CACertificateRefs: nil,
 						},
-						// ClientCertificateRef omitted via implementation update
 					},
 				},
 			},
@@ -149,6 +150,7 @@ func TestBackendTLSFeature(t *testing.T) {
 					Name:      "ssl-secret-verify",
 					Namespace: "default",
 					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
 						"nginx.ingress.kubernetes.io/proxy-ssl-secret": "secret-valid",
 						"nginx.ingress.kubernetes.io/proxy-ssl-verify": "on",
 					},
@@ -198,6 +200,146 @@ func TestBackendTLSFeature(t *testing.T) {
 				},
 			},
 			expectedPolicyTargeted: true,
+		},
+		{
+			name: "backend-protocol HTTPS only",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "https-protocol",
+					Namespace: "default",
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
+					},
+				},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{{
+						Host: "example.com",
+						IngressRuleValue: networkingv1.IngressRuleValue{
+							HTTP: &networkingv1.HTTPIngressRuleValue{
+								Paths: []networkingv1.HTTPIngressPath{{
+									Path:     "/",
+									PathType: ptr.To(networkingv1.PathTypePrefix),
+									Backend: networkingv1.IngressBackend{
+										Service: &networkingv1.IngressServiceBackend{
+											Name: "test-service",
+											Port: networkingv1.ServiceBackendPort{Number: 80},
+										},
+									},
+								}},
+							},
+						},
+					}},
+				},
+			},
+			expectedPolicies: map[types.NamespacedName]gatewayv1.BackendTLSPolicy{
+				{Namespace: "default", Name: "test-service-backend-tls"}: {
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-service-backend-tls",
+						Namespace: "default",
+					},
+					Spec: gatewayv1.BackendTLSPolicySpec{
+						TargetRefs: []gatewayv1.LocalPolicyTargetReferenceWithSectionName{{
+							LocalPolicyTargetReference: gatewayv1.LocalPolicyTargetReference{
+								Group: "",
+								Kind:  "Service",
+								Name:  "test-service",
+							},
+						}},
+						Validation: gatewayv1.BackendTLSPolicyValidation{
+							CACertificateRefs: nil,
+						},
+					},
+				},
+			},
+			expectedPolicyTargeted: true,
+		},
+		{
+			name: "backend-protocol HTTPS and proxy-ssl-name",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "https-protocol-ssl-name",
+					Namespace: "default",
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
+						"nginx.ingress.kubernetes.io/proxy-ssl-name":   "custom.internal.com",
+					},
+				},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{{
+						Host: "example.com",
+						IngressRuleValue: networkingv1.IngressRuleValue{
+							HTTP: &networkingv1.HTTPIngressRuleValue{
+								Paths: []networkingv1.HTTPIngressPath{{
+									Path:     "/",
+									PathType: ptr.To(networkingv1.PathTypePrefix),
+									Backend: networkingv1.IngressBackend{
+										Service: &networkingv1.IngressServiceBackend{
+											Name: "test-service",
+											Port: networkingv1.ServiceBackendPort{Number: 80},
+										},
+									},
+								}},
+							},
+						},
+					}},
+				},
+			},
+			expectedPolicies: map[types.NamespacedName]gatewayv1.BackendTLSPolicy{
+				{Namespace: "default", Name: "test-service-backend-tls"}: {
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-service-backend-tls",
+						Namespace: "default",
+					},
+					Spec: gatewayv1.BackendTLSPolicySpec{
+						TargetRefs: []gatewayv1.LocalPolicyTargetReferenceWithSectionName{{
+							LocalPolicyTargetReference: gatewayv1.LocalPolicyTargetReference{
+								Group: "",
+								Kind:  "Service",
+								Name:  "test-service",
+							},
+						}},
+						Validation: gatewayv1.BackendTLSPolicyValidation{
+							CACertificateRefs: nil,
+							Hostname:          gatewayv1.PreciseHostname("custom.internal.com"),
+						},
+					},
+				},
+			},
+			expectedPolicyTargeted: true,
+		},
+		{
+			name: "backend-protocol HTTP",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "http-protocol",
+					Namespace: "default",
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/backend-protocol": "HTTP",
+						"nginx.ingress.kubernetes.io/proxy-ssl-verify": "on", // Should be ignored if not HTTPS/GRPCS
+					},
+				},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{{
+						Host: "example.com",
+						IngressRuleValue: networkingv1.IngressRuleValue{
+							HTTP: &networkingv1.HTTPIngressRuleValue{
+								Paths: []networkingv1.HTTPIngressPath{{
+									Path:     "/",
+									PathType: ptr.To(networkingv1.PathTypePrefix),
+									Backend: networkingv1.IngressBackend{
+										Service: &networkingv1.IngressServiceBackend{
+											Name: "test-service",
+											Port: networkingv1.ServiceBackendPort{Number: 80},
+										},
+									},
+								}},
+							},
+						},
+					}},
+				},
+			},
+			expectedPolicies:       nil,
+			expectedPolicyTargeted: false,
 		},
 		{
 			name: "no relevant annotations",
