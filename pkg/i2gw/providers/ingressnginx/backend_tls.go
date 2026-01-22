@@ -48,10 +48,18 @@ func backendTLSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedN
 				}
 
 				// Check for backend TLS annotations
+				// "nginx.ingress.kubernetes.io/backend-protocol" is the primary trigger for enabling TLS
+				// Values: uppercase "HTTPS" or "GRPCS".
+				backendProtocol := source.Ingress.Annotations[BackendProtocolAnnotation]
 				proxySSLVerify := source.Ingress.Annotations[ProxySSLVerifyAnnotation]
 				proxySSLSecret := source.Ingress.Annotations[ProxySSLSecretAnnotation]
+				proxySSLName := source.Ingress.Annotations[ProxySSLNameAnnotation]
 
-				if proxySSLVerify != "on" && proxySSLSecret == "" {
+				isHTTPS := backendProtocol == "HTTPS" || backendProtocol == "GRPCS"
+
+				// If not HTTPS/GRPCS, skip.
+				// Nginx only speaks TLS to backend if backend-protocol is set to HTTPS/GRPCS.
+				if !isHTTPS {
 					continue
 				}
 
@@ -83,47 +91,20 @@ func backendTLSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedN
 					policy = common.CreateBackendTLSPolicy(namespace, policyName, serviceName)
 				}
 
+				// Map proxy-ssl-name to Hostname
+				if proxySSLName != "" {
+					policy.Spec.Validation.Hostname = gatewayv1.PreciseHostname(proxySSLName)
+				}
+
+				// Handle CA Certificates
 				secretName := proxySSLSecret
 				if strings.Contains(secretName, "/") {
 					parts := strings.SplitN(secretName, "/", 2)
 					if len(parts) == 2 {
-						// Logic: if namespace matches, use name. If not, we can't fully support it (LocalObjectReference).
-						// For now we just take the name part and assume the user ensures it exists in the implementation namespace
-						// or we might warn.
 						secretName = parts[1]
 					}
 				}
 
-
-				// If proxySSLVerify is specifically on, we must ensure validation struct exists (it does from CreateBackendTLSPolicy)
-				// If proxySSLVerify is OFF, but secret is provided, Nginx might use client cert but skip verification of server?
-				// Gateway API: Validation fields imply verification.
-				// If Verify is strictly "off" in Nginx, but secret provided:
-				// Nginx default verify is off.
-				// If annotation "proxy-ssl-verify" is not "on", maybe we shouldn't populate CACertificateRefs?
-				// But we did above if secret is present.
-				// Let's refine:
-				// Nginx: proxy_ssl_trusted_certificate <file> (from secret)
-				//        proxy_ssl_verify on/off (default off)
-				// If verify off, trusted_certificate might be ignored for verification but maybe used if client cert also there?
-				// actually proxy_ssl_certificate (client cert) is separate from proxy_ssl_trusted_certificate (CA).
-				// proxy-ssl-secret populates BOTH.
-				
-				if proxySSLVerify != "on" {
-					// If verify is NOT on, we probably shouldn't set CACertificateRefs because that enforces verification in Gateway API?
-					// Or maybe we set it but Gateway impl decides?
-					// Gateway API spec: "If Validation is not specified, the backend's certificate will not be verified."
-					// So if verify is off, we should possibly NOT set CACertificateRefs?
-					// BUT if the user supplied a secret (which has CA), maybe they intend to verify?
-					// Use strict interpretation of "verify on".
-					
-					// If verify is off, let's clear CA refs to be sure?
-					// But if I already set it above...
-					// Let's rewrite the block above.
-				}
-				
-				// Re-logic:
-				
 				if proxySSLVerify == "on" {
 					if proxySSLSecret != "" {
 						policy.Spec.Validation.CACertificateRefs = []gatewayv1.LocalObjectReference{{
@@ -132,20 +113,15 @@ func backendTLSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedN
 							Name:  gatewayv1.ObjectName(secretName),
 						}}
 					} else {
-						// Verify on, no secret.
-						// Leave CACertificateRefs empty (implied system roots).
-						// But ensure Validation struct is there (it is).
+						// Verify on, no secret provided -> Implies system trust.
+						// Gateway API: "If the list is empty, the backend's certificate will be verified against the system trust store."
+						policy.Spec.Validation.CACertificateRefs = []gatewayv1.LocalObjectReference{}
 					}
 				} else {
 					// Verify off.
-					// Ensure CACertificateRefs is empty.
+					// We treat this as "System Trust" or "No explicit CA".
+					// Note: Gateway API v1 doesn't support "InsecureSkipVerify" in standard fields.
 					policy.Spec.Validation.CACertificateRefs = nil
-					
-					// Note: Since we can't map ClientCertificateRef, proxy-ssl-secret effectively does nothing if verify is off.
-					// We should potentially warn?
-					if proxySSLSecret != "" {
-						// log warning?
-					}
 				}
 
 				ir.BackendTLSPolicies[policyKey] = policy
