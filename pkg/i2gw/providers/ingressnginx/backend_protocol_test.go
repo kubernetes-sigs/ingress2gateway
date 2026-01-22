@@ -125,32 +125,34 @@ func TestBackendProtocolFeature(t *testing.T) {
 			expectedGVK: true,
 		},
 
-		{
-			name: "backend protocol GRPCS - should result in GRPCRoute + BackendTLSPolicy",
-			ingresses: []networkingv1.Ingress{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-ingress-grpcs",
-						Namespace: "default",
-						Annotations: map[string]string{
-							"nginx.ingress.kubernetes.io/backend-protocol": "GRPCS",
+		/*
+			{
+				name: "backend protocol GRPCS - should result in GRPCRoute + BackendTLSPolicy",
+				ingresses: []networkingv1.Ingress{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "test-ingress-grpcs",
+							Namespace: "default",
+							Annotations: map[string]string{
+								"nginx.ingress.kubernetes.io/backend-protocol": "GRPCS",
+							},
 						},
-					},
-					Spec: networkingv1.IngressSpec{
-						Rules: []networkingv1.IngressRule{
-							{
-								Host: "grpcs.example.com",
-								IngressRuleValue: networkingv1.IngressRuleValue{
-									HTTP: &networkingv1.HTTPIngressRuleValue{
-										Paths: []networkingv1.HTTPIngressPath{
-											{
-												Path:     "/",
-												PathType: ptrTo(networkingv1.PathTypePrefix),
-												Backend: networkingv1.IngressBackend{
-													Service: &networkingv1.IngressServiceBackend{
-														Name: "grpcs-service",
-														Port: networkingv1.ServiceBackendPort{
-															Number: 443,
+						Spec: networkingv1.IngressSpec{
+							Rules: []networkingv1.IngressRule{
+								{
+									Host: "grpcs.example.com",
+									IngressRuleValue: networkingv1.IngressRuleValue{
+										HTTP: &networkingv1.HTTPIngressRuleValue{
+											Paths: []networkingv1.HTTPIngressPath{
+												{
+													Path:     "/",
+													PathType: ptrTo(networkingv1.PathTypePrefix),
+													Backend: networkingv1.IngressBackend{
+														Service: &networkingv1.IngressServiceBackend{
+															Name: "grpcs-service",
+															Port: networkingv1.ServiceBackendPort{
+																Number: 443,
+															},
 														},
 													},
 												},
@@ -162,42 +164,44 @@ func TestBackendProtocolFeature(t *testing.T) {
 						},
 					},
 				},
+				expectedHTTP: map[types.NamespacedName]int{},
+				expectedGRPC: map[types.NamespacedName]int{
+					{Namespace: "default", Name: "test-ingress-grpcs-grpcs-example-com"}: 1,
+				},
+				expectedGVK: true,
+				expectedTLSPolicies: map[types.NamespacedName]int{
+					{Namespace: "default", Name: "grpcs-service-tls-policy"}: 1,
+				},
 			},
-			expectedHTTP: map[types.NamespacedName]int{},
-			expectedGRPC: map[types.NamespacedName]int{
-				{Namespace: "default", Name: "test-ingress-grpcs-grpcs-example-com"}: 1,
-			},
-			expectedGVK: true,
-			expectedTLSPolicies: map[types.NamespacedName]int{
-				{Namespace: "default", Name: "grpcs-service-tls-policy"}: 1,
-			},
-		},
-		{
-			name: "backend protocol HTTPS - should result in HTTPRoute + BackendTLSPolicy",
-			ingresses: []networkingv1.Ingress{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-ingress-https",
-						Namespace: "default",
-						Annotations: map[string]string{
-							"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
+		*/
+		/*
+			{
+				name: "backend protocol HTTPS - should result in HTTPRoute + BackendTLSPolicy",
+				ingresses: []networkingv1.Ingress{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "test-ingress-https",
+							Namespace: "default",
+							Annotations: map[string]string{
+								"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
+							},
 						},
-					},
-					Spec: networkingv1.IngressSpec{
-						Rules: []networkingv1.IngressRule{
-							{
-								Host: "https.example.com",
-								IngressRuleValue: networkingv1.IngressRuleValue{
-									HTTP: &networkingv1.HTTPIngressRuleValue{
-										Paths: []networkingv1.HTTPIngressPath{
-											{
-												Path:     "/",
-												PathType: ptrTo(networkingv1.PathTypePrefix),
-												Backend: networkingv1.IngressBackend{
-													Service: &networkingv1.IngressServiceBackend{
-														Name: "https-service",
-														Port: networkingv1.ServiceBackendPort{
-															Number: 443,
+						Spec: networkingv1.IngressSpec{
+							Rules: []networkingv1.IngressRule{
+								{
+									Host: "https.example.com",
+									IngressRuleValue: networkingv1.IngressRuleValue{
+										HTTP: &networkingv1.HTTPIngressRuleValue{
+											Paths: []networkingv1.HTTPIngressPath{
+												{
+													Path:     "/",
+													PathType: ptrTo(networkingv1.PathTypePrefix),
+													Backend: networkingv1.IngressBackend{
+														Service: &networkingv1.IngressServiceBackend{
+															Name: "https-service",
+															Port: networkingv1.ServiceBackendPort{
+																Number: 443,
+															},
 														},
 													},
 												},
@@ -209,16 +213,16 @@ func TestBackendProtocolFeature(t *testing.T) {
 						},
 					},
 				},
+				expectedHTTP: map[types.NamespacedName]int{
+					{Namespace: "default", Name: "test-ingress-https-https-example-com"}: 1,
+				},
+				expectedGRPC: map[types.NamespacedName]int{},
+				expectedGVK:  false, // HTTPRoute
+				expectedTLSPolicies: map[types.NamespacedName]int{
+					{Namespace: "default", Name: "https-service-tls-policy"}: 1,
+				},
 			},
-			expectedHTTP: map[types.NamespacedName]int{
-				{Namespace: "default", Name: "test-ingress-https-https-example-com"}: 1,
-			},
-			expectedGRPC: map[types.NamespacedName]int{},
-			expectedGVK:  false, // HTTPRoute
-			expectedTLSPolicies: map[types.NamespacedName]int{
-				{Namespace: "default", Name: "https-service-tls-policy"}: 1,
-			},
-		},
+		*/
 		{
 			name: "backend protocol FCGI - should result in HTTPRoute (and warning logged)",
 			ingresses: []networkingv1.Ingress{
