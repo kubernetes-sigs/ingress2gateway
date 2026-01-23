@@ -21,28 +21,32 @@ import (
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
-	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-// Ref: https://github.com/kubernetes/ingress-nginx/blob/main/internal/ingress/controller/template/template.go#L1001
-var nginxSizeRegex = regexp.MustCompile(`^(\d+)([kKmM])?$`)
+// Ref: https://github.com/kubernetes/ingress-nginx/blob/main/internal/ingress/annotations/parser/validators.go#L57
+var nginxSizeRegex = regexp.MustCompile(`^(?i)(\d+)([bkmg]?)$`)
 
 // convertNginxSizeToK8sQuantity converts nginx size format to Kubernetes resource.Quantity format.
 //
 // nginx uses lowercase suffixes for byte sizes:
+//   - b = bytes
 //   - k = kilobytes (10^3)
 //   - m = megabytes (10^6)
+//   - g = gigabytes (10^9)
 //
 // Kubernetes resource.Quantity uses different suffixes:
 //   - m = milli (10^-3)
 //   - k = kilo (10^3)
 //   - M = mega (10^6)
+//   - G = giga (10^9)
 //
 // This function converts nginx format to K8s format:
-//   - "10m" -> "10M" (10 megabytes)
+//   - "10b" -> "10" (10 bytes)
 //   - "10k" -> "10k" (10 kilobytes, same)
+//   - "10m" -> "10M" (10 megabytes)
+//   - "10g" -> "10G" (10 gigabytes)
 //   - "100" -> "100" (no unit, same)
 func convertNginxSizeToK8sQuantity(nginxSize string) (string, error) {
 	nginxSize = strings.TrimSpace(nginxSize)
@@ -57,12 +61,14 @@ func convertNginxSizeToK8sQuantity(nginxSize string) (string, error) {
 
 	// Convert nginx unit to K8s Quantity unit
 	switch unit {
-	case "m", "M":
-		return number + "M", nil
-	case "k", "K":
-		return number + "k", nil
-	case "":
+	case "b", "":
 		return number, nil
+	case "k":
+		return number + "k", nil
+	case "m":
+		return number + "M", nil
+	case "g":
+		return number + "G", nil
 	default:
 		return "", fmt.Errorf("unsupported nginx size unit: %q", unit)
 	}
@@ -87,84 +93,62 @@ func applyBodySizeToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterI
 			if ruleIdx >= len(pRouteCtx.RuleBackendSources) {
 				continue
 			}
+			ing := getNonCanaryIngress(pRouteCtx.RuleBackendSources[ruleIdx])
+			if ing == nil {
+				continue
+			}
 
 			var (
-				maxSize          *resource.Quantity
-				bufferSize       *resource.Quantity
-				maxSizeSource    *networkingv1.Ingress
-				bufferSizeSource *networkingv1.Ingress
+				maxSize    *resource.Quantity
+				bufferSize *resource.Quantity
 			)
 
-			for _, source := range pRouteCtx.RuleBackendSources[ruleIdx] {
-				if source.Ingress.Annotations != nil {
-					// handle proxy-body-size
-					if val, ok := source.Ingress.Annotations[ProxyBodySizeAnnotation]; ok && val != "" {
-						k8sSize, err := convertNginxSizeToK8sQuantity(val)
-						if err != nil {
-							errs = append(errs, field.Invalid(
-								field.NewPath("ingress", source.Ingress.Namespace, source.Ingress.Name, "metadata", "annotations"),
-								source.Ingress.Annotations,
-								fmt.Sprintf("failed to parse proxy-body-size configuration: %v", err),
-							))
-							continue
-						}
-
-						quantity, err := resource.ParseQuantity(k8sSize)
-						if err != nil {
-							errs = append(errs, field.Invalid(
-								field.NewPath("ingress", source.Ingress.Namespace, source.Ingress.Name, "metadata", "annotations"),
-								source.Ingress.Annotations,
-								fmt.Sprintf("failed to parse proxy-body-size configuration: %v", err),
-							))
-							continue
-						}
-
-						if maxSize != nil {
-							errs = append(errs, field.Invalid(
-								field.NewPath("httproute", eRouteCtx.HTTPRoute.Name, "spec", "rules").Index(ruleIdx),
-								fmt.Sprintf("ingress %s/%s %s", source.Ingress.Namespace, source.Ingress.Name, ProxyBodySizeAnnotation),
-								"at most one proxy-body-size is allowed per rule, this ingress's value is ignored",
-							))
-							continue
-						}
-						maxSize = &quantity
-						maxSizeSource = source.Ingress
-					}
-
-					// handle client-body-buffer-size
-					if val, ok := source.Ingress.Annotations[ClientBodyBufferSizeAnnotation]; ok && val != "" {
-						k8sSize, err := convertNginxSizeToK8sQuantity(val)
-						if err != nil {
-							errs = append(errs, field.Invalid(
-								field.NewPath("ingress", source.Ingress.Namespace, source.Ingress.Name, "metadata", "annotations"),
-								source.Ingress.Annotations,
-								fmt.Sprintf("failed to parse client-body-buffer-size configuration: %v", err),
-							))
-							continue
-						}
-
-						quantity, err := resource.ParseQuantity(k8sSize)
-						if err != nil {
-							errs = append(errs, field.Invalid(
-								field.NewPath("ingress", source.Ingress.Namespace, source.Ingress.Name, "metadata", "annotations"),
-								source.Ingress.Annotations,
-								fmt.Sprintf("failed to parse client-body-buffer-size configuration: %v", err),
-							))
-							continue
-						}
-
-						if bufferSize != nil {
-							errs = append(errs, field.Invalid(
-								field.NewPath("httproute", eRouteCtx.HTTPRoute.Name, "spec", "rules").Index(ruleIdx),
-								fmt.Sprintf("ingress %s/%s %s", source.Ingress.Namespace, source.Ingress.Name, ClientBodyBufferSizeAnnotation),
-								"at most one client-body-buffer-size is allowed per rule, this ingress's value is ignored",
-							))
-							continue
-						}
-						bufferSize = &quantity
-						bufferSizeSource = source.Ingress
-					}
+			// handle proxy-body-size
+			if val, ok := ing.Annotations[ProxyBodySizeAnnotation]; ok && val != "" {
+				k8sSize, err := convertNginxSizeToK8sQuantity(val)
+				if err != nil {
+					errs = append(errs, field.Invalid(
+						field.NewPath("ingress", ing.Namespace, ing.Name, "metadata", "annotations"),
+						ing.Annotations,
+						fmt.Sprintf("failed to parse proxy-body-size configuration: %v", err),
+					))
+					continue
 				}
+
+				quantity, err := resource.ParseQuantity(k8sSize)
+				if err != nil {
+					errs = append(errs, field.Invalid(
+						field.NewPath("ingress", ing.Namespace, ing.Name, "metadata", "annotations"),
+						ing.Annotations,
+						fmt.Sprintf("failed to parse proxy-body-size configuration: %v", err),
+					))
+					continue
+				}
+				maxSize = &quantity
+			}
+
+			// handle client-body-buffer-size
+			if val, ok := ing.Annotations[ClientBodyBufferSizeAnnotation]; ok && val != "" {
+				k8sSize, err := convertNginxSizeToK8sQuantity(val)
+				if err != nil {
+					errs = append(errs, field.Invalid(
+						field.NewPath("ingress", ing.Namespace, ing.Name, "metadata", "annotations"),
+						ing.Annotations,
+						fmt.Sprintf("failed to parse client-body-buffer-size configuration: %v", err),
+					))
+					continue
+				}
+
+				quantity, err := resource.ParseQuantity(k8sSize)
+				if err != nil {
+					errs = append(errs, field.Invalid(
+						field.NewPath("ingress", ing.Namespace, ing.Name, "metadata", "annotations"),
+						ing.Annotations,
+						fmt.Sprintf("failed to parse client-body-buffer-size configuration: %v", err),
+					))
+					continue
+				}
+				bufferSize = &quantity
 			}
 
 			if maxSize == nil && bufferSize == nil {
@@ -179,12 +163,12 @@ func applyBodySizeToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterI
 			if maxSize != nil {
 				bodySizeIR.MaxSize = maxSize
 				notify(notifications.InfoNotification, fmt.Sprintf("parsed proxy-body-size annotation of ingress %s/%s and set %s to HTTPRoute rule index %d",
-					maxSizeSource.Namespace, maxSizeSource.Name, maxSize.String(), ruleIdx), &eRouteCtx.HTTPRoute)
+					ing.Namespace, ing.Name, maxSize.String(), ruleIdx), &eRouteCtx.HTTPRoute)
 			}
 			if bufferSize != nil {
 				bodySizeIR.BufferSize = bufferSize
 				notify(notifications.InfoNotification, fmt.Sprintf("parsed client-body-buffer-size annotation of ingress %s/%s and set %s to HTTPRoute rule index %d",
-					bufferSizeSource.Namespace, bufferSizeSource.Name, bufferSize.String(), ruleIdx), &eRouteCtx.HTTPRoute)
+					ing.Namespace, ing.Name, bufferSize.String(), ruleIdx), &eRouteCtx.HTTPRoute)
 			}
 
 			eRouteCtx.BodySizeByRuleIdx[ruleIdx] = &bodySizeIR

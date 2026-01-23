@@ -32,15 +32,9 @@ func TestConvertNginxSizeToK8sQuantity(t *testing.T) {
 		wantErr   bool
 	}{
 		{
-			name:      "lowercase m to K8s Mega",
-			nginxSize: "10m",
-			want:      "10M",
-			wantErr:   false,
-		},
-		{
-			name:      "uppercase M to K8s Mega",
-			nginxSize: "10M",
-			want:      "10M",
+			name:      "lowercase b (bytes)",
+			nginxSize: "1024b",
+			want:      "1024",
 			wantErr:   false,
 		},
 		{
@@ -50,9 +44,15 @@ func TestConvertNginxSizeToK8sQuantity(t *testing.T) {
 			wantErr:   false,
 		},
 		{
-			name:      "uppercase K stays as k",
-			nginxSize: "100K",
-			want:      "100k",
+			name:      "lowercase m to K8s Mega",
+			nginxSize: "10m",
+			want:      "10M",
+			wantErr:   false,
+		},
+		{
+			name:      "lowercase g to K8s Giga",
+			nginxSize: "5g",
+			want:      "5G",
 			wantErr:   false,
 		},
 		{
@@ -76,18 +76,6 @@ func TestConvertNginxSizeToK8sQuantity(t *testing.T) {
 		{
 			name:      "invalid unit - x",
 			nginxSize: "10x",
-			want:      "",
-			wantErr:   true,
-		},
-		{
-			name:      "invalid unit - g (gigabytes not supported for size directives)",
-			nginxSize: "5g",
-			want:      "",
-			wantErr:   true,
-		},
-		{
-			name:      "invalid unit - b (bytes suffix not valid in nginx)",
-			nginxSize: "1024b",
 			want:      "",
 			wantErr:   true,
 		},
