@@ -64,6 +64,9 @@ func (e *Emitter) EmitBuffer(ir emitterir.EmitterIR, gwResources *i2gw.GatewayRe
 				ruleInfo = fmt.Sprintf(" rule %s", *sectionName)
 			}
 			notify(notifications.InfoNotification, fmt.Sprintf("applied Buffer feature for HTTPRoute%s", ruleInfo), &ctx.HTTPRoute)
+
+			// mark Buffer IR as processed
+			ctx.BodySizeByRuleIdx[idx] = nil
 		}
 	}
 }
