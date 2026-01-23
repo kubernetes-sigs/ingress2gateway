@@ -217,8 +217,8 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 				// Add the new rule to HTTPRoute
 				httpRouteContext.HTTPRoute.Spec.Rules = append(httpRouteContext.HTTPRoute.Spec.Rules, newRule)
 
-				// Add the canary backend source to RuleBackendSources for the new rule
-				newRuleBackendSources := []providerir.BackendSource{canaryBackendSource}
+				// Add the canary and non-canary backend sources to RuleBackendSources for the new rule
+				newRuleBackendSources := []providerir.BackendSource{canaryBackendSource, nonCanaryBackendSource}
 				httpRouteContext.RuleBackendSources = append(httpRouteContext.RuleBackendSources, newRuleBackendSources)
 
 				// When canary-by-header-value is not specified, we need to add a rule for "never"
