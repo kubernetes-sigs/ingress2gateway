@@ -34,4 +34,10 @@ const (
 	// Body Size annotations
 	ProxyBodySizeAnnotation        = "nginx.ingress.kubernetes.io/proxy-body-size"
 	ClientBodyBufferSizeAnnotation = "nginx.ingress.kubernetes.io/client-body-buffer-size"
+
+	// R2gex
+	UseRegexAnnotation = "nginx.ingress.kubernetes.io/use-regex"
+
+	// SSL Redirect annotation
+	SSLRedirectAnnotation = "nginx.ingress.kubernetes.io/ssl-redirect"
 )

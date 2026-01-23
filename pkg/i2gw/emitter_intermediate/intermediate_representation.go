@@ -55,9 +55,22 @@ type GatewayContext struct {
 type HTTPRouteContext struct {
 	gatewayv1.HTTPRoute
 
+	// PathRewriteByRuleIdx maps HTTPRoute rule indices to path rewrite intent.
+	// This is provider-neutral and applied by the common emitter.
+	PathRewriteByRuleIdx map[int]*PathRewrite
+
 	// BodySizeByRuleIdx maps HTTPRoute rule indices to body size intent.
 	// This is provider-neutral and applied by each custom emitter.
 	BodySizeByRuleIdx map[int]*BodySize
+}
+
+// PathRewrite represents provider-neutral path rewrite intent.
+// For now it only supports full-path replacement; more fields may be added later.
+type PathRewrite struct {
+	ReplaceFullPath string
+	// Headers to add on path rewrite.
+	Headers map[string]string
+	Regex   bool
 }
 
 // BodySize represents provider-neutral body size intent.

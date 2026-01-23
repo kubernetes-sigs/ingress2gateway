@@ -184,7 +184,9 @@ func Test_ToIR(t *testing.T) {
 									Hostname: PtrTo(gatewayv1.Hostname("example.com")),
 									TLS: &gatewayv1.ListenerTLSConfig{
 										CertificateRefs: []gatewayv1.SecretObjectReference{{
-											Name: "example-cert",
+											Group: ptr.To(gatewayv1.Group("")),
+											Kind:  ptr.To(gatewayv1.Kind("Secret")),
+											Name:  "example-cert",
 										}},
 									},
 								}},
