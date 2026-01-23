@@ -19,8 +19,8 @@ spec:
     protocol: HTTPS
     tls:
       certificateRefs:
-      - group: null
-        kind: null
+      - group: ""
+        kind: Secret
         name: hsts-tls
 status: {}
 ---
