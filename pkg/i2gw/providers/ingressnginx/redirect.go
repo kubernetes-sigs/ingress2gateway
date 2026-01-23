@@ -187,6 +187,89 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 			}
 		}
 	}
-
+  
 	return errs
+}
+
+// Ingress NGINX has some quirky behaviors around SSL redirect.
+// The formula we follow is that if an ingress has certs configured, and it does not have the
+// "nginx.ingress.kubernetes.io/ssl-redirect" annotation set to "false" (or "0", etc), then we
+// enable SSL redirect for that host.
+func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR) field.ErrorList {
+	for key, httpRouteContext := range pir.HTTPRoutes {
+		hasSecrets := false
+		enableRedirect := true
+
+		for _, sources := range httpRouteContext.RuleBackendSources {
+			ingress := getNonCanaryIngress(sources)
+			if ingress == nil {
+				continue
+			}
+
+			// Check if the ingress has TLS secrets.
+			if len(ingress.Spec.TLS) > 0 {
+				hasSecrets = true
+			}
+
+			// Check the ssl-redirect annotation.
+			if val, ok := ingress.Annotations[SSLRedirectAnnotation]; ok {
+				parsed, err := strconv.ParseBool(val)
+				if err != nil {
+					return field.ErrorList{field.Invalid(
+						field.NewPath("ingress", ingress.Namespace, ingress.Name, "metadata", "annotations"),
+						ingress.Annotations,
+						fmt.Sprintf("failed to parse canary configuration: %v", err),
+					)}
+				}
+				enableRedirect = parsed
+			}
+		}
+
+		if !(hasSecrets && enableRedirect) {
+			continue
+		}
+
+		redirectRoute := gatewayv1.HTTPRoute{
+			TypeMeta: httpRouteContext.HTTPRoute.TypeMeta,
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("%s-ssl-redirect", httpRouteContext.HTTPRoute.Name),
+				Namespace: httpRouteContext.HTTPRoute.Namespace,
+			},
+			Spec: gatewayv1.HTTPRouteSpec{
+				Hostnames: httpRouteContext.HTTPRoute.Spec.DeepCopy().Hostnames,
+				Rules: []gatewayv1.HTTPRouteRule{
+					{
+						Filters: []gatewayv1.HTTPRouteFilter{
+							{
+								Type: gatewayv1.HTTPRouteFilterRequestRedirect,
+								RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
+									Scheme:     ptr.To("https"),
+									StatusCode: ptr.To(308),
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		// add parentrefs
+		redirectRoute.Spec.ParentRefs = httpRouteContext.HTTPRoute.Spec.DeepCopy().ParentRefs
+		// bind to port 80
+		for i := range redirectRoute.Spec.ParentRefs {
+			redirectRoute.Spec.ParentRefs[i].Port = ptr.To[int32](80)
+		}
+		eir.HTTPRoutes[types.NamespacedName{
+			Namespace: redirectRoute.Namespace,
+			Name:      redirectRoute.Name,
+		}] = emitterir.HTTPRouteContext{
+			HTTPRoute: redirectRoute,
+		}
+		// bind this to port 443
+		eHTTPRouteContext := eir.HTTPRoutes[key]
+		for i := range eHTTPRouteContext.Spec.ParentRefs {
+			eHTTPRouteContext.Spec.ParentRefs[i].Port = ptr.To[int32](443)
+		}
+		eir.HTTPRoutes[key] = eHTTPRouteContext
+	}
+	return nil
 }
