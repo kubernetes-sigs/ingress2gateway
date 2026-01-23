@@ -213,7 +213,7 @@ func (c *resourcesToIRConverter) toHTTPRoutesAndGateways(spec *openapi3.T, resou
 
 	// build the unique backend reference to be used in all route rules
 	backendRefs := []gatewayv1.HTTPBackendRef{
-		gatewayv1.HTTPBackendRef{ //nolint:gofmt
+		{
 			BackendRef: gatewayv1.BackendRef{
 				BackendObjectReference: gatewayv1.BackendObjectReference{
 					Name: gatewayv1.ObjectName(c.backendRef.Name),

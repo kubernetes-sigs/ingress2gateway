@@ -150,6 +150,8 @@ func replaceGatewayPortsWithCustom(ingress networkingv1.Ingress, portConfigurati
 					Mode: common.PtrTo(gatewayv1.TLSModeTerminate),
 					CertificateRefs: []gatewayv1.SecretObjectReference{
 						{
+							Group:     common.PtrTo(gatewayv1.Group("")),
+							Kind:      common.PtrTo(gatewayv1.Kind("Secret")),
 							Name:      gatewayv1.ObjectName(ingress.Spec.TLS[0].SecretName),
 							Namespace: (*gatewayv1.Namespace)(&ingress.Namespace),
 						},
