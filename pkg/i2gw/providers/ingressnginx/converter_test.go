@@ -138,6 +138,7 @@ func Test_ToIR(t *testing.T) {
 								},
 								Hostnames: []gatewayv1.Hostname{"echo.prod.mydomain.com"},
 								Rules: []gatewayv1.HTTPRouteRule{{
+									Name: ptrTo(gatewayv1.SectionName("rule-0")),
 									Matches: []gatewayv1.HTTPRouteMatch{{
 										Path: &gatewayv1.HTTPPathMatch{
 											Type:  &gPathPrefix,
@@ -266,6 +267,7 @@ func Test_ToIR(t *testing.T) {
 								},
 								Hostnames: []gatewayv1.Hostname{"echo.prod.mydomain.com"},
 								Rules: []gatewayv1.HTTPRouteRule{{
+									Name: ptrTo(gatewayv1.SectionName("rule-0")),
 									Matches: []gatewayv1.HTTPRouteMatch{{
 										Path: &gatewayv1.HTTPPathMatch{
 											Type:  &gPathPrefix,
@@ -353,7 +355,12 @@ func Test_ToIR(t *testing.T) {
 				ingressNames: []types.NamespacedName{{Namespace: "default", Name: "example-ingress"}},
 				ingressObjects: map[types.NamespacedName]*networkingv1.Ingress{
 					{Namespace: "default", Name: "example-ingress"}: {
-						ObjectMeta: metav1.ObjectMeta{Name: "example-ingress", Namespace: "default"},
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "example-ingress", Namespace: "default",
+							Annotations: map[string]string{
+								"nginx.ingress.kubernetes.io/ssl-redirect": "false",
+							},
+						},
 						Spec: networkingv1.IngressSpec{
 							IngressClassName: ptrTo("nginx"),
 							TLS: []networkingv1.IngressTLS{{
@@ -438,7 +445,11 @@ func Test_ToIR(t *testing.T) {
 										Hostname: ptrTo(gatewayv1.Hostname("bar.example.com")),
 										TLS: &gatewayv1.ListenerTLSConfig{
 											CertificateRefs: []gatewayv1.SecretObjectReference{
-												{Name: "example-com"},
+												{
+													Group: ptrTo(gatewayv1.Group("")),
+													Kind:  ptrTo(gatewayv1.Kind("Secret")),
+													Name:  "example-com",
+												},
 											},
 										},
 									},
@@ -455,7 +466,11 @@ func Test_ToIR(t *testing.T) {
 										Hostname: ptrTo(gatewayv1.Hostname("foo.example.com")),
 										TLS: &gatewayv1.ListenerTLSConfig{
 											CertificateRefs: []gatewayv1.SecretObjectReference{
-												{Name: "example-com"},
+												{
+													Group: ptrTo(gatewayv1.Group("")),
+													Kind:  ptrTo(gatewayv1.Kind("Secret")),
+													Name:  "example-com",
+												},
 											},
 										},
 									},
@@ -476,6 +491,7 @@ func Test_ToIR(t *testing.T) {
 								},
 								Hostnames: []gatewayv1.Hostname{"bar.example.com"},
 								Rules: []gatewayv1.HTTPRouteRule{{
+									Name: ptrTo(gatewayv1.SectionName("rule-0")),
 									Matches: []gatewayv1.HTTPRouteMatch{{
 										Path: &gatewayv1.HTTPPathMatch{
 											Type:  &gPathPrefix,
@@ -508,6 +524,7 @@ func Test_ToIR(t *testing.T) {
 								Hostnames: []gatewayv1.Hostname{"foo.example.com"},
 								Rules: []gatewayv1.HTTPRouteRule{
 									{
+										Name: ptrTo(gatewayv1.SectionName("rule-0")),
 										Matches: []gatewayv1.HTTPRouteMatch{{
 											Path: &gatewayv1.HTTPPathMatch{
 												Type:  &gPathPrefix,
@@ -526,6 +543,7 @@ func Test_ToIR(t *testing.T) {
 										},
 									},
 									{
+										Name: ptrTo(gatewayv1.SectionName("rule-1")),
 										Matches: []gatewayv1.HTTPRouteMatch{{
 											Path: &gatewayv1.HTTPPathMatch{
 												Type:  &gPathPrefix,
@@ -688,6 +706,7 @@ func Test_ToIR(t *testing.T) {
 								},
 								Hostnames: []gatewayv1.Hostname{"bar.example.com"},
 								Rules: []gatewayv1.HTTPRouteRule{{
+									Name: ptrTo(gatewayv1.SectionName("rule-0")),
 									Matches: []gatewayv1.HTTPRouteMatch{{
 										Path: &gatewayv1.HTTPPathMatch{
 											Type:  &gPathPrefix,
@@ -730,6 +749,7 @@ func Test_ToIR(t *testing.T) {
 								Hostnames: []gatewayv1.Hostname{"foo.example.com"},
 								Rules: []gatewayv1.HTTPRouteRule{
 									{
+										Name: ptrTo(gatewayv1.SectionName("rule-0")),
 										Matches: []gatewayv1.HTTPRouteMatch{{
 											Path: &gatewayv1.HTTPPathMatch{
 												Type:  &gPathPrefix,
@@ -748,6 +768,7 @@ func Test_ToIR(t *testing.T) {
 										},
 									},
 									{
+										Name: ptrTo(gatewayv1.SectionName("rule-1")),
 										Matches: []gatewayv1.HTTPRouteMatch{{
 											Path: &gatewayv1.HTTPPathMatch{
 												Type:  &gPathPrefix,
@@ -887,6 +908,7 @@ func Test_ToIR(t *testing.T) {
 								Hostnames: []gatewayv1.Hostname{"api.example.com"},
 								Rules: []gatewayv1.HTTPRouteRule{
 									{
+										Name: ptrTo(gatewayv1.SectionName("rule-0")),
 										Matches: []gatewayv1.HTTPRouteMatch{{
 											Path: &gatewayv1.HTTPPathMatch{
 												Type:  &gPathPrefix,
@@ -916,6 +938,7 @@ func Test_ToIR(t *testing.T) {
 										},
 									},
 									{
+										Name: ptrTo(gatewayv1.SectionName("rule-1")),
 										Matches: []gatewayv1.HTTPRouteMatch{{
 											Path: &gatewayv1.HTTPPathMatch{
 												Type:  &gPathPrefix,

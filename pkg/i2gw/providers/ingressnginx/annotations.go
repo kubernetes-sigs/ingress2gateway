@@ -34,4 +34,9 @@ const (
 
 	// Backend protocol annotation
 	BackendProtocolAnnotation = "nginx.ingress.kubernetes.io/backend-protocol"
+	// R2gex
+	UseRegexAnnotation = "nginx.ingress.kubernetes.io/use-regex"
+
+	// SSL Redirect annotation
+	SSLRedirectAnnotation = "nginx.ingress.kubernetes.io/ssl-redirect"
 )
