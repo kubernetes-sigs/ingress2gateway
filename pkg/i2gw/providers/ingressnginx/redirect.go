@@ -21,13 +21,16 @@ import (
 	"net/url"
 	"strconv"
 
+	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/ptr"
+
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -187,7 +190,7 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 			}
 		}
 	}
-  
+
 	return errs
 }
 
