@@ -29,8 +29,8 @@ import (
 )
 
 func (e *Emitter) EmitBuffer(ir emitterir.EmitterIR, gwResources *i2gw.GatewayResources) {
-	for _, ctx := range ir.HTTPRoutes {
-		MergeBodySizeIR(&ctx, ctx.BodySizeByRuleIdx)
+	for nn, ctx := range ir.HTTPRoutes {
+		MergeBodySizeIR(&ctx)
 
 		for idx, bs := range ctx.BodySizeByRuleIdx {
 			var sectionName *gwapiv1.SectionName
@@ -68,5 +68,7 @@ func (e *Emitter) EmitBuffer(ir emitterir.EmitterIR, gwResources *i2gw.GatewayRe
 			// mark Buffer IR as processed
 			ctx.BodySizeByRuleIdx[idx] = nil
 		}
+
+		ir.HTTPRoutes[nn] = ctx
 	}
 }

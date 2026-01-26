@@ -20,13 +20,13 @@ import (
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 )
 
-func MergeBodySizeIR(ctx *emitterir.HTTPRouteContext, bodySizeMap map[int]*emitterir.BodySize) {
-	if len(bodySizeMap) != len(ctx.Spec.Rules) {
+func MergeBodySizeIR(ctx *emitterir.HTTPRouteContext) {
+	if len(ctx.BodySizeByRuleIdx) != len(ctx.Spec.Rules) {
 		return
 	}
 
 	var first *emitterir.BodySize
-	for _, bs := range bodySizeMap {
+	for _, bs := range ctx.BodySizeByRuleIdx {
 		if first == nil {
 			first = bs
 			continue

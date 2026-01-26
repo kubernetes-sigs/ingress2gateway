@@ -139,7 +139,7 @@ func TestMergeBodySizeIR(t *testing.T) {
 			}
 
 			// Call MergeBodySizeIR
-			MergeBodySizeIR(ctx, tt.bodySizeMap)
+			MergeBodySizeIR(ctx)
 
 			if tt.wantMerged {
 				// Should have merged to RouteRuleAllIndex
