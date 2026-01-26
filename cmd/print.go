@@ -46,6 +46,7 @@ import (
 	// Call init for emitters
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/envoygateway"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/gce"
+	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/kgateway"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/standard"
 )
 
