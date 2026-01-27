@@ -44,7 +44,8 @@ func TestEmitter_Emit_appliesPathRewriteReplaceFullPath(t *testing.T) {
 		},
 	}
 
-	e := NewEmitter()
+	// Use allowAlpha=false as default, serves same purpose here
+	e := NewEmitter(false)
 	gotIR, errs := e.Emit(ir)
 	if len(errs) != 0 {
 		t.Fatalf("expected no errors, got: %v", errs)
@@ -67,5 +68,66 @@ func TestEmitter_Emit_appliesPathRewriteReplaceFullPath(t *testing.T) {
 	}
 	if f.URLRewrite.Path.ReplaceFullPath == nil || *f.URLRewrite.Path.ReplaceFullPath != "/foo" {
 		t.Fatalf("expected ReplaceFullPath /foo, got: %#v", f.URLRewrite.Path.ReplaceFullPath)
+	}
+}
+
+func TestEmitCORSFiltering(t *testing.T) {
+	testCases := []struct {
+		name                 string
+		allowAlpha           bool
+		initialFilters       []gatewayv1.HTTPRouteFilter
+		expectedFiltersCount int
+	}{
+		{
+			name:       "allow alpha - cors preserved",
+			allowAlpha: true,
+			initialFilters: []gatewayv1.HTTPRouteFilter{
+				{Type: gatewayv1.HTTPRouteFilterCORS, CORS: &gatewayv1.HTTPCORSFilter{}},
+			},
+			expectedFiltersCount: 1,
+		},
+		{
+			name:       "disallow alpha - cors removed",
+			allowAlpha: false,
+			initialFilters: []gatewayv1.HTTPRouteFilter{
+				{Type: gatewayv1.HTTPRouteFilterCORS, CORS: &gatewayv1.HTTPCORSFilter{}},
+			},
+			expectedFiltersCount: 0,
+		},
+		{
+			name:       "disallow alpha - other filters preserved",
+			allowAlpha: false,
+			initialFilters: []gatewayv1.HTTPRouteFilter{
+				{Type: gatewayv1.HTTPRouteFilterRequestHeaderModifier},
+				{Type: gatewayv1.HTTPRouteFilterCORS, CORS: &gatewayv1.HTTPCORSFilter{}},
+			},
+			expectedFiltersCount: 1,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := NewEmitter(tc.allowAlpha)
+
+			ir := emitterir.EmitterIR{
+				HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{
+					{Name: "test"}: {
+						HTTPRoute: gatewayv1.HTTPRoute{
+							Spec: gatewayv1.HTTPRouteSpec{
+								Rules: []gatewayv1.HTTPRouteRule{
+									{Filters: tc.initialFilters},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			result, _ := e.Emit(ir)
+			filters := result.HTTPRoutes[types.NamespacedName{Name: "test"}].HTTPRoute.Spec.Rules[0].Filters
+			if len(filters) != tc.expectedFiltersCount {
+				t.Errorf("Expected %d filters, got %d", tc.expectedFiltersCount, len(filters))
+			}
+		})
 	}
 }
