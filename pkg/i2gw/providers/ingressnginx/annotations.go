@@ -61,7 +61,6 @@ const (
 	CorsMaxAgeAnnotation           = "nginx.ingress.kubernetes.io/cors-max-age"
 
 	// Backend TLS annotations
-	// Backend TLS annotations
 	BackendProtocolAnnotation    = "nginx.ingress.kubernetes.io/backend-protocol"
 	ProxySSLVerifyAnnotation     = "nginx.ingress.kubernetes.io/proxy-ssl-verify"
 	ProxySSLSecretAnnotation     = "nginx.ingress.kubernetes.io/proxy-ssl-secret"

@@ -83,7 +83,8 @@ func TestBackendTLSFeature(t *testing.T) {
 							},
 						}},
 						Validation: gatewayv1.BackendTLSPolicyValidation{
-							CACertificateRefs: []gatewayv1.LocalObjectReference{},
+							Hostname:                gatewayv1.PreciseHostname("test-service.default.svc.cluster.local"),
+							WellKnownCACertificates: ptr.To(gatewayv1.WellKnownCACertificatesSystem),
 						},
 					},
 				},
@@ -136,7 +137,8 @@ func TestBackendTLSFeature(t *testing.T) {
 							},
 						}},
 						Validation: gatewayv1.BackendTLSPolicyValidation{
-							CACertificateRefs: nil,
+							Hostname:                gatewayv1.PreciseHostname("test-service.default.svc.cluster.local"),
+							WellKnownCACertificates: ptr.To(gatewayv1.WellKnownCACertificatesSystem),
 						},
 					},
 				},
@@ -195,6 +197,7 @@ func TestBackendTLSFeature(t *testing.T) {
 								Kind:  "Secret",
 								Name:  "secret-valid",
 							}},
+							Hostname: gatewayv1.PreciseHostname("test-service.default.svc.cluster.local"),
 						},
 					},
 				},
@@ -246,7 +249,8 @@ func TestBackendTLSFeature(t *testing.T) {
 							},
 						}},
 						Validation: gatewayv1.BackendTLSPolicyValidation{
-							CACertificateRefs: nil,
+							Hostname:                gatewayv1.PreciseHostname("test-service.default.svc.cluster.local"),
+							WellKnownCACertificates: ptr.To(gatewayv1.WellKnownCACertificatesSystem),
 						},
 					},
 				},
@@ -301,6 +305,7 @@ func TestBackendTLSFeature(t *testing.T) {
 						Validation: gatewayv1.BackendTLSPolicyValidation{
 							CACertificateRefs: nil,
 							Hostname:          gatewayv1.PreciseHostname("custom.internal.com"),
+							WellKnownCACertificates: ptr.To(gatewayv1.WellKnownCACertificatesSystem),
 						},
 					},
 				},
@@ -446,6 +451,241 @@ func TestBackendTLSFeature(t *testing.T) {
 				
 				// Manually set GVK for comparison if needed, or rely on deep equal of fields
 				// common.CreateBackendTLSPolicy sets GVK roughly, but let's check deep equal of Spec
+				if !apiequality.Semantic.DeepEqual(gotPolicy.Spec, wantPolicy.Spec) {
+					t.Errorf("BackendTLSPolicy Spec mismatch (-want +got):\n%s", cmp.Diff(wantPolicy.Spec, gotPolicy.Spec))
+				}
+			}
+		})
+	}
+}
+
+func TestBackendTLSFeatureExtended(t *testing.T) {
+	testCases := []struct {
+		name                   string
+		ingresses              []networkingv1.Ingress
+		expectedPolicies       map[types.NamespacedName]gatewayv1.BackendTLSPolicy
+		expectedPolicyTargeted bool
+	}{
+		{
+			name: "canary ingress skipped",
+			ingresses: []networkingv1.Ingress{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "canary-ingress",
+						Namespace: "default",
+						Annotations: map[string]string{
+							"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
+							"nginx.ingress.kubernetes.io/canary":           "true",
+						},
+					},
+					Spec: networkingv1.IngressSpec{
+						Rules: []networkingv1.IngressRule{{
+							Host: "example.com",
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{{
+										Path:     "/",
+										PathType: ptr.To(networkingv1.PathTypePrefix),
+										Backend: networkingv1.IngressBackend{
+											Service: &networkingv1.IngressServiceBackend{
+												Name: "test-service",
+												Port: networkingv1.ServiceBackendPort{Number: 80},
+											},
+										},
+									}},
+								},
+							},
+						}},
+					},
+				},
+			},
+			expectedPolicies:       nil,
+			expectedPolicyTargeted: false,
+		},
+		{
+			name: "cross-namespace secret skipped",
+			ingresses: []networkingv1.Ingress{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "cross-ns-secret",
+						Namespace: "default",
+						Annotations: map[string]string{
+							"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
+							"nginx.ingress.kubernetes.io/proxy-ssl-secret": "other-ns/secret",
+						},
+					},
+					Spec: networkingv1.IngressSpec{
+						Rules: []networkingv1.IngressRule{{
+							Host: "example.com",
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{{
+										Path:     "/",
+										PathType: ptr.To(networkingv1.PathTypePrefix),
+										Backend: networkingv1.IngressBackend{
+											Service: &networkingv1.IngressServiceBackend{
+												Name: "test-service",
+												Port: networkingv1.ServiceBackendPort{Number: 80},
+											},
+										},
+									}},
+								},
+							},
+						}},
+					},
+				},
+			},
+			expectedPolicies:       nil,
+			expectedPolicyTargeted: false,
+		},
+		{
+			name: "conflict - first wins",
+			ingresses: []networkingv1.Ingress{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "ingress-1",
+						Namespace: "default",
+						Annotations: map[string]string{
+							"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
+							"nginx.ingress.kubernetes.io/proxy-ssl-name":   "first.com",
+						},
+					},
+					Spec: networkingv1.IngressSpec{
+						Rules: []networkingv1.IngressRule{{
+							Host: "example.com",
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{{
+										Path:     "/",
+										PathType: ptr.To(networkingv1.PathTypePrefix),
+										Backend: networkingv1.IngressBackend{
+											Service: &networkingv1.IngressServiceBackend{
+												Name: "test-service",
+												Port: networkingv1.ServiceBackendPort{Number: 80},
+											},
+										},
+									}},
+								},
+							},
+						}},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "ingress-2",
+						Namespace: "default",
+						Annotations: map[string]string{
+							"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
+							"nginx.ingress.kubernetes.io/proxy-ssl-name":   "second.com", // Conflict
+						},
+					},
+					Spec: networkingv1.IngressSpec{
+						Rules: []networkingv1.IngressRule{{
+							Host: "example.com",
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{{
+										Path:     "/bar",
+										PathType: ptr.To(networkingv1.PathTypePrefix),
+										Backend: networkingv1.IngressBackend{
+											Service: &networkingv1.IngressServiceBackend{
+												Name: "test-service", // Same service
+												Port: networkingv1.ServiceBackendPort{Number: 80},
+											},
+										},
+									}},
+								},
+							},
+						}},
+					},
+				},
+			},
+			expectedPolicies: map[types.NamespacedName]gatewayv1.BackendTLSPolicy{
+				{Namespace: "default", Name: "test-service-backend-tls"}: {
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-service-backend-tls",
+						Namespace: "default",
+					},
+					Spec: gatewayv1.BackendTLSPolicySpec{
+						TargetRefs: []gatewayv1.LocalPolicyTargetReferenceWithSectionName{{
+							LocalPolicyTargetReference: gatewayv1.LocalPolicyTargetReference{
+								Group: "",
+								Kind:  "Service",
+								Name:  "test-service",
+							},
+						}},
+						Validation: gatewayv1.BackendTLSPolicyValidation{
+							Hostname:          gatewayv1.PreciseHostname("first.com"), // Expect first one
+							CACertificateRefs: nil,
+							WellKnownCACertificates: ptr.To(gatewayv1.WellKnownCACertificatesSystem),
+						},
+					},
+				},
+			},
+			expectedPolicyTargeted: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ir := providerir.ProviderIR{
+				HTTPRoutes:         make(map[types.NamespacedName]providerir.HTTPRouteContext),
+				BackendTLSPolicies: make(map[types.NamespacedName]gatewayv1.BackendTLSPolicy),
+			}
+
+			// Replicate IR setup for multiple ingresses
+			for i := range tc.ingresses {
+				ing := tc.ingresses[i]
+				key := types.NamespacedName{Namespace: ing.Namespace, Name: common.RouteName(ing.Name, "example.com")}
+				
+				// Simplified route setup
+				route := gatewayv1.HTTPRoute{
+					ObjectMeta: metav1.ObjectMeta{Namespace: ing.Namespace, Name: key.Name},
+					Spec: gatewayv1.HTTPRouteSpec{
+						Rules: []gatewayv1.HTTPRouteRule{{
+							BackendRefs: []gatewayv1.HTTPBackendRef{{
+								BackendRef: gatewayv1.BackendRef{
+									BackendObjectReference: gatewayv1.BackendObjectReference{
+										Name: "test-service",
+										Kind: ptr.To(gatewayv1.Kind("Service")),
+									},
+								},
+							}},
+						}},
+					},
+				}
+
+				ir.HTTPRoutes[key] = providerir.HTTPRouteContext{
+					HTTPRoute: route,
+					RuleBackendSources: [][]providerir.BackendSource{
+						{{Ingress: &tc.ingresses[i]}},
+					},
+				}
+			}
+
+			errs := backendTLSFeature(tc.ingresses, nil, &ir)
+			if len(errs) > 0 {
+				t.Fatalf("Expected no errors, got %v", errs)
+			}
+
+			if !tc.expectedPolicyTargeted {
+				if len(ir.BackendTLSPolicies) > 0 {
+					t.Errorf("Expected no BackendTLSPolicies, got %d", len(ir.BackendTLSPolicies))
+				}
+				return
+			}
+
+			if len(ir.BackendTLSPolicies) != len(tc.expectedPolicies) {
+				t.Errorf("Expected %d BackendTLSPolicies, got %d", len(tc.expectedPolicies), len(ir.BackendTLSPolicies))
+			}
+
+			for key, wantPolicy := range tc.expectedPolicies {
+				gotPolicy, ok := ir.BackendTLSPolicies[key]
+				if !ok {
+					t.Errorf("Expected BackendTLSPolicy %s not found", key)
+					continue
+				}
+				
 				if !apiequality.Semantic.DeepEqual(gotPolicy.Spec, wantPolicy.Spec) {
 					t.Errorf("BackendTLSPolicy Spec mismatch (-want +got):\n%s", cmp.Diff(wantPolicy.Spec, gotPolicy.Spec))
 				}
