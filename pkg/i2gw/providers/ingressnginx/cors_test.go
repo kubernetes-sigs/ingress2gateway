@@ -230,3 +230,91 @@ func TestCorsFeature(t *testing.T) {
 		})
 	}
 }
+
+func TestCorsMaxAgeParsing(t *testing.T) {
+	testCases := []struct {
+		name          string
+		annotationVal string
+		expectedValid bool
+		expectedVal   int32
+	}{
+		{
+			name:          "valid integer",
+			annotationVal: "100",
+			expectedValid: true,
+			expectedVal:   100,
+		},
+		{
+			name:          "valid duration string",
+			annotationVal: "10s",
+			expectedValid: true,
+			expectedVal:   10,
+		},
+		{
+			name:          "valid duration minutes",
+			annotationVal: "1m",
+			expectedValid: true,
+			expectedVal:   60,
+		},
+		{
+			name:          "invalid value",
+			annotationVal: "invalid",
+			expectedValid: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ir := providerir.ProviderIR{
+				HTTPRoutes: make(map[types.NamespacedName]providerir.HTTPRouteContext),
+			}
+			ingress := networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cors-test",
+					Namespace: "default",
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/enable-cors":  "true",
+						"nginx.ingress.kubernetes.io/cors-max-age": tc.annotationVal,
+					},
+				},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{{Host: "example.com"}},
+				},
+			}
+			
+			key := types.NamespacedName{Namespace: ingress.Namespace, Name: common.RouteName(ingress.Name, "example.com")}
+			route := gatewayv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{Namespace: ingress.Namespace, Name: key.Name},
+				Spec: gatewayv1.HTTPRouteSpec{
+					Rules: []gatewayv1.HTTPRouteRule{
+						{
+							Matches: []gatewayv1.HTTPRouteMatch{{Path: &gatewayv1.HTTPPathMatch{Type: ptr.To(gatewayv1.PathMatchPathPrefix), Value: ptr.To("/")}}},
+						},
+					},
+				},
+			}
+			ir.HTTPRoutes[key] = providerir.HTTPRouteContext{
+				HTTPRoute: route,
+				RuleBackendSources: [][]providerir.BackendSource{{
+					{Ingress: &ingress},
+				}},
+			}
+
+			errs := corsFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+			
+			if tc.expectedValid {
+				if len(errs) > 0 {
+					t.Fatalf("Unexpected errors: %v", errs)
+				}
+				cors := ir.HTTPRoutes[key].HTTPRoute.Spec.Rules[0].Filters[0].CORS
+				if cors.MaxAge != tc.expectedVal {
+					t.Errorf("Expected MaxAge %d, got %d", tc.expectedVal, cors.MaxAge)
+				}
+			} else {
+				if len(errs) == 0 {
+					t.Fatal("Expected error for invalid value, got none")
+				}
+			}
+		})
+	}
+}
