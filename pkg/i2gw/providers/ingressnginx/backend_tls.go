@@ -55,11 +55,9 @@ func backendTLSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedN
 				proxySSLSecret := source.Ingress.Annotations[ProxySSLSecretAnnotation]
 				proxySSLName := source.Ingress.Annotations[ProxySSLNameAnnotation]
 
-				isHTTPS := backendProtocol == "HTTPS" || backendProtocol == "GRPCS"
-
 				// If not HTTPS/GRPCS, skip.
 				// Nginx only speaks TLS to backend if backend-protocol is set to HTTPS/GRPCS.
-				if !isHTTPS {
+				if !( backendProtocol == "HTTPS" || backendProtocol == "GRPCS") {
 					continue
 				}
 
