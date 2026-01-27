@@ -49,16 +49,26 @@ var (
 		Version: "v1",
 		Kind:    "HealthCheckPolicy",
 	}
+
+	GatewayClassNameFlag = "gateway-class-name"
 )
+
 
 func init() {
 	i2gw.EmitterConstructorByName["gce"] = NewEmitter
+	i2gw.RegisterProviderSpecificFlag("gce", i2gw.ProviderSpecificFlag{
+		Name:         GatewayClassNameFlag,
+		Description:  "The name of the GatewayClass to use for the Gateway",
+		DefaultValue: "gke-l7-global-external-managed",
+	})
 }
 
-type Emitter struct{}
+type Emitter struct {
+	conf *i2gw.EmitterConf
+}
 
-func NewEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
-	return &Emitter{}
+func NewEmitter(conf *i2gw.EmitterConf) i2gw.Emitter {
+	return &Emitter{conf: conf}
 }
 
 func (c *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.ErrorList) {
@@ -68,13 +78,21 @@ func (c *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.Err
 	}
 	buildGceGatewayExtensions(ir, &gatewayResources)
 	buildGceServiceExtensions(ir, &gatewayResources)
-	updateGatewayClass(&gatewayResources)
+	c.updateGatewayClass(&gatewayResources)
 	return gatewayResources, nil
 }
 
-func updateGatewayClass(gatewayResources *i2gw.GatewayResources) {
+func (c *Emitter) updateGatewayClass(gatewayResources *i2gw.GatewayResources) {
+	gatewayClassName := "gke-l7-global-external-managed"
+	if c.conf != nil && c.conf.ProviderSpecificFlags != nil {
+		if flags, ok := c.conf.ProviderSpecificFlags["gce"]; ok {
+			if val, ok := flags[GatewayClassNameFlag]; ok && val != "" {
+				gatewayClassName = val
+			}
+		}
+	}
 	for i, gw := range gatewayResources.Gateways {
-		gw.Spec.GatewayClassName = "gke-l7-global-external-managed"
+		gw.Spec.GatewayClassName = gatewayv1.ObjectName(gatewayClassName)
 		gatewayResources.Gateways[i] = gw
 	}
 }

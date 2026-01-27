@@ -73,7 +73,8 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 	}
 
 	emitterConf := &EmitterConf{
-		AllowAlphaGatewayAPI: allowAlphaGatewayAPI,
+		AllowAlphaGatewayAPI:  allowAlphaGatewayAPI,
+		ProviderSpecificFlags: providerSpecificFlags,
 	}
 	newEmitterFunc, ok := EmitterConstructorByName[EmitterName(emitterName)]
 	if !ok {

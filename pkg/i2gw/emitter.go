@@ -62,4 +62,7 @@ type EmitterConstructor func(conf *EmitterConf) Emitter
 type EmitterConf struct {
 	// AllowAlphaGatewayAPI indicates whether Experimental Gateway API features (like CORS, URLRewrite) should be included in the output.
 	AllowAlphaGatewayAPI bool
+	// ProviderSpecificFlags contains the flags that were passed to the provider
+	ProviderSpecificFlags map[string]map[string]string
+
 }
