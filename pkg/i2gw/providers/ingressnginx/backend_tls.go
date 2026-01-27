@@ -26,6 +26,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 )
 
 func backendTLSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
@@ -44,6 +46,11 @@ func backendTLSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedN
 
 			for backendIdx, source := range backendSources {
 				if source.Ingress == nil {
+					continue
+				}
+
+				// Skip canary ingresses for BackendTLSPolicy generation
+				if source.Ingress.Annotations[CanaryAnnotation] == "true" {
 					continue
 				}
 
@@ -84,22 +91,47 @@ func backendTLSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedN
 				policyKey := types.NamespacedName{Namespace: namespace, Name: policyName}
 
 				// Check if we already created a policy for this service
-				policy, exists := ir.BackendTLSPolicies[policyKey]
-				if !exists {
+				existingPolicy, exists := ir.BackendTLSPolicies[policyKey]
+				var policy gatewayv1.BackendTLSPolicy
+				if exists {
+					policy = existingPolicy
+				} else {
 					policy = common.CreateBackendTLSPolicy(namespace, policyName, serviceName)
 				}
 
 				// Map proxy-ssl-name to Hostname
 				if proxySSLName != "" {
 					policy.Spec.Validation.Hostname = gatewayv1.PreciseHostname(proxySSLName)
+				} else {
+					// If proxy-ssl-name is not set, we default to the Service DNS name
+					// because Gateway API v1 BackendTLSPolicy requires Hostname to be non-empty (no omitempty tag).
+					// This aligns with typical cluster-internal TLS where the cert often matches the service DNS.
+					dnsName := fmt.Sprintf("%s.%s.svc.cluster.local", serviceName, namespace)
+					policy.Spec.Validation.Hostname = gatewayv1.PreciseHostname(dnsName)
 				}
 
 				// Handle CA Certificates
 				secretName := proxySSLSecret
-				if strings.Contains(secretName, "/") {
-					parts := strings.SplitN(secretName, "/", 2)
-					if len(parts) == 2 {
-						secretName = parts[1]
+				if secretName != "" {
+					if strings.Contains(secretName, "/") {
+						parts := strings.SplitN(secretName, "/", 2)
+						if len(parts) == 2 {
+							secretNamespace := parts[0]
+							secretName = parts[1]
+
+							// Gateway API requires BackendTLSPolicy CA Reference to be in the same namespace
+							// (unless using ReferenceGrants, but we are generating LocalObjectReference here which implies same namespace).
+							// If Ingress specifies a Secret in a different namespace, we cannot support it directly without ReferenceGrant.
+							// For now, we error/warn and skip.
+							if secretNamespace != namespace {
+								notify(notifications.ErrorNotification,
+									fmt.Sprintf("Ingress %s/%s specifies backend TLS secret %s in a different namespace. BackendTLSPolicy only supports local Secrets. Policy will not be generated.",
+										source.Ingress.Namespace, source.Ingress.Name, proxySSLSecret),
+									source.Ingress,
+								)
+								continue
+							}
+						}
 					}
 				}
 
@@ -112,14 +144,46 @@ func backendTLSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedN
 						}}
 					} else {
 						// Verify on, no secret provided -> Implies system trust.
-						// Gateway API: "If the list is empty, the backend's certificate will be verified against the system trust store."
-						policy.Spec.Validation.CACertificateRefs = []gatewayv1.LocalObjectReference{}
+						system := gatewayv1.WellKnownCACertificatesSystem
+						policy.Spec.Validation.WellKnownCACertificates = &system
 					}
 				} else {
 					// Verify off.
-					// We treat this as "System Trust" or "No explicit CA".
-					// Note: Gateway API v1 doesn't support "InsecureSkipVerify" in standard fields.
-					policy.Spec.Validation.CACertificateRefs = nil
+					// We treat this as "System Trust" because Gateway API v1 BackendTLSPolicy
+					// requires at least one validation method.
+					system := gatewayv1.WellKnownCACertificatesSystem
+					policy.Spec.Validation.WellKnownCACertificates = &system
+				}
+
+				if exists {
+					// Compare significant fields to see if there is a conflict
+					// We only check CA refs and Hostname for now as those are what we set
+					currentCA := policy.Spec.Validation.CACertificateRefs
+					existingCA := existingPolicy.Spec.Validation.CACertificateRefs
+					currentHostname := policy.Spec.Validation.Hostname
+					existingHostname := existingPolicy.Spec.Validation.Hostname
+
+					// Simple comparison
+					caAuthMismatch := false
+					if len(currentCA) != len(existingCA) {
+						caAuthMismatch = true
+					} else if len(currentCA) > 0 {
+						if currentCA[0].Name != existingCA[0].Name {
+							caAuthMismatch = true
+						}
+					}
+
+					hostnameMismatch := currentHostname != existingHostname
+
+					if caAuthMismatch || hostnameMismatch {
+						notify(notifications.WarningNotification,
+							fmt.Sprintf("Conflict detected for BackendTLSPolicy %s. Ingress %s/%s defines different TLS settings than a previously processed Ingress. Keeping the first one.",
+								policyName, source.Ingress.Namespace, source.Ingress.Name),
+							source.Ingress,
+						)
+					}
+					// If exists, we keep the existing one (first wins strategy)
+					continue
 				}
 
 				ir.BackendTLSPolicies[policyKey] = policy
