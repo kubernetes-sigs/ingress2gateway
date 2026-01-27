@@ -35,7 +35,7 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 			canaryFeature,
 			headerModifierFeature,
 			corsFeature,
-			gceFeature,
+
 		},
 	}
 }
