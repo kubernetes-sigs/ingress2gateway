@@ -17,6 +17,8 @@ limitations under the License.
 package ingressnginx
 
 import (
+	"strconv"
+
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -39,14 +41,23 @@ func regexFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[strin
 				continue
 			}
 
-			// Check if any source ingress has the regex annotation enabled.
-			// If merged from multiple sources, we assume consistency or take the first positive.
-			useRegex := false
-			for _, source := range sources {
-				if source.Ingress.Annotations[UseRegexAnnotation] == "true" {
-					useRegex = true
-					break
-				}
+			// Check if the source ingress has the regex annotation enabled.
+			ingress := getNonCanaryIngress(sources)
+			if ingress == nil {
+				continue
+			}
+
+			val, ok := ingress.Annotations[UseRegexAnnotation]
+			if !ok {
+				continue
+			}
+
+			useRegex, err := strconv.ParseBool(val)
+			if err != nil {
+				// Invalid boolean value, default to false or log invalid usage?
+				// For now, let's treat invalid as false (safe default).
+				// We definitely shouldn't panic or crash.
+				continue
 			}
 
 			if useRegex {
