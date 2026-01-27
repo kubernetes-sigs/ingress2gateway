@@ -19,6 +19,7 @@ package ingressnginx
 import (
 	"strconv"
 	"strings"
+	"time"
 
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -29,6 +30,7 @@ import (
 )
 
 func corsFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+	var errs field.ErrorList
 	for _, httpRouteContext := range ir.HTTPRoutes {
 		for i := range httpRouteContext.HTTPRoute.Spec.Rules {
 			if i >= len(httpRouteContext.RuleBackendSources) {
@@ -140,8 +142,16 @@ func corsFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string
 			// Nginx default is 1728000.
 			var maxAgeVal int32 = 1728000 // Default from Nginx
 			if maxAgeStr, ok := ingress.Annotations[CorsMaxAgeAnnotation]; ok && maxAgeStr != "" {
+				// Try parsing as integer (seconds)
 				if val, err := strconv.Atoi(maxAgeStr); err == nil {
 					maxAgeVal = int32(val)
+				} else {
+					// Try parsing as duration (e.g. "10s")
+					if d, err := time.ParseDuration(maxAgeStr); err == nil {
+						maxAgeVal = int32(d.Seconds())
+					} else {
+						errs = append(errs, field.Invalid(field.NewPath("metadata", "annotations", CorsMaxAgeAnnotation), maxAgeStr, "invalid cors-max-age value"))
+					}
 				}
 			}
 			// Gateway API MaxAge is likely specific. Check if MaxAge is a pointer?
@@ -154,5 +164,5 @@ func corsFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string
 			corsFilter.MaxAge = maxAgeVal
 		}
 	}
-	return nil
+	return errs
 }
