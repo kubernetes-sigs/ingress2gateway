@@ -74,10 +74,8 @@ func (c *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.Err
 
 func updateGatewayClass(gatewayResources *i2gw.GatewayResources) {
 	for i, gw := range gatewayResources.Gateways {
-		if gw.Spec.GatewayClassName == "nginx" {
-			gw.Spec.GatewayClassName = "gke-l7-global-external-managed"
-			gatewayResources.Gateways[i] = gw
-		}
+		gw.Spec.GatewayClassName = "gke-l7-global-external-managed"
+		gatewayResources.Gateways[i] = gw
 	}
 }
 
