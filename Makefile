@@ -15,6 +15,8 @@
 # We need all the Make variables exported as env vars.
 # Note that the ?= operator works regardless.
 
+REPO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+
 # Enable Go modules.
 export GO111MODULE=on
 
@@ -30,6 +32,14 @@ GIT_VERSION_STRING := $(shell git describe --tags --always --dirty 2>/dev/null)
 
 # Construct the LDFLAGS string to inject the version
 LDFLAGS := -ldflags="-X '$(I2GWPKG).Version=$(GIT_VERSION_STRING)'"
+
+# Directory for local binaries (used in CI where we can't install to /usr/local/bin).
+LOCAL_BIN := $(REPO_ROOT)/bin
+
+KIND_VERSION ?= v0.25.0
+
+# Default arguments for `go test` in e2e tests.
+I2GW_GO_TEST_ARGS ?= -race -v -count=1 -timeout=30m
 
 # Print the help menu.
 .PHONY: help
@@ -64,3 +74,75 @@ build: vet;$(info $(M)...Build the binary.)  @ ## Build the binary.
 .PHONY: verify
 verify:
 	hack/verify-all.sh -v
+
+# Detect OS and architecture for kind installation
+OS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
+ARCH := $(shell uname -m)
+ifeq ($(ARCH),x86_64)
+	ARCH := amd64
+endif
+ifeq ($(ARCH),aarch64)
+	ARCH := arm64
+endif
+
+KIND_BINARY_URL := https://kind.sigs.k8s.io/dl/$(KIND_VERSION)/kind-$(OS)-$(ARCH)
+KIND := $(shell command -v kind 2>/dev/null || echo "$(LOCAL_BIN)/kind")
+
+.PHONY: ensure-kind
+ensure-kind:
+	@if command -v kind >/dev/null 2>&1; then \
+		echo "Found kind binary: $$(kind version)"; \
+	elif [ -x "$(LOCAL_BIN)/kind" ]; then \
+		echo "Found kind binary in $(LOCAL_BIN): $$($(LOCAL_BIN)/kind version)"; \
+	else \
+		echo "kind binary not found. Installing kind $(KIND_VERSION) for $(OS)/$(ARCH)..."; \
+		mkdir -p $(LOCAL_BIN); \
+		curl -Lo $(LOCAL_BIN)/kind $(KIND_BINARY_URL); \
+		chmod +x $(LOCAL_BIN)/kind; \
+		echo "kind installed successfully to $(LOCAL_BIN)/kind"; \
+	fi
+
+.PHONY: kind
+kind: ensure-kind
+	@if ! $(KIND) get clusters | grep -q i2gw-e2e; then \
+		$(KIND) create cluster -n i2gw-e2e --kubeconfig $(REPO_ROOT)/kind-kubeconfig; \
+	else \
+		echo "Cluster i2gw-e2e already exists. Reusing it."; \
+		$(KIND) get kubeconfig --name i2gw-e2e > $(REPO_ROOT)/kind-kubeconfig; \
+	fi
+
+# Set I2GW_KUBECONFIG to a path to a kubeconfig file to run the tests against an existing cluster.
+# Running without setting this variable creates a local kind cluster and uses it for running the
+# tests.
+# See README.md for more info.
+.PHONY: e2e
+e2e: build ## Run end-to-end tests.
+	@if [ ! -z "$${KUBECONFIG}" ]; then \
+		echo "ERROR: KUBECONFIG is set in current shell. Refusing to run to avoid touching an"; \
+		echo "unrelated cluster."; \
+		echo "Unset KUBECONFIG and run 'I2GW_KUBECONFIG=/path/to/kubeconfig make e2e' to run"; \
+		echo "the tests against an existing cluster, or run 'make e2e' with no vars to use an"; \
+		echo "auto-created kind cluster."; \
+		exit 1; \
+	fi
+	@cleanup_kind=false; \
+	kubeconfig="$${I2GW_KUBECONFIG}"; \
+	if [ -z "$${I2GW_KUBECONFIG}" ]; then \
+		$(MAKE) kind || exit 1; \
+		kubeconfig="$(REPO_ROOT)/kind-kubeconfig"; \
+		cleanup_kind=true; \
+	fi; \
+	set -x; \
+	I2GW_BINARY_PATH=$(REPO_ROOT)/ingress2gateway KUBECONFIG=$${kubeconfig} \
+		go test $(I2GW_GO_TEST_ARGS) $(REPO_ROOT)/e2e; \
+	test_exit_code=$$?; \
+	set +x; \
+	if [ "$${cleanup_kind}" = "true" ] && [ "$${SKIP_CLEANUP}" != "1" ]; then \
+		$(MAKE) clean-kind; \
+	fi; \
+	exit $$test_exit_code
+
+.PHONY: clean-kind
+clean-kind:
+	$(KIND) delete cluster -n i2gw-e2e
+	rm -f $(REPO_ROOT)/kind-kubeconfig
