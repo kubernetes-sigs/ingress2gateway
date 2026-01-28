@@ -80,6 +80,9 @@ type PrintRunner struct {
 	// emitter indicates which emitter is used to generate the Gateway API resources.
 	// Defaults to "standard".
 	emitter string
+
+	// allowAlphaGatewayAPI indicates whether Experimental Gateway API features (like CORS, URLRewrite) should be included in the output.
+	allowAlphaGatewayAPI bool
 }
 
 // PrintGatewayAPIObjects performs necessary steps to digest and print
@@ -96,7 +99,7 @@ func (pr *PrintRunner) PrintGatewayAPIObjects(cmd *cobra.Command, _ []string) er
 		return fmt.Errorf("failed to initialize namespace filter: %w", err)
 	}
 
-	gatewayResources, notificationTablesMap, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers, pr.emitter, pr.getProviderSpecificFlags())
+	gatewayResources, notificationTablesMap, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers, pr.emitter, pr.getProviderSpecificFlags(), pr.allowAlphaGatewayAPI)
 	if err != nil {
 		return err
 	}
@@ -362,6 +365,8 @@ if specified with --namespace.`)
 	cmd.Flags().StringSliceVar(&pr.providers, "providers", []string{},
 		fmt.Sprintf("If present, the tool will try to convert only resources related to the specified providers, supported values are %v.", i2gw.GetSupportedProviders()))
 
+	cmd.Flags().BoolVar(&pr.allowAlphaGatewayAPI, "allow-alpha-gw-api", false, "If present, the tool will include Alpha/Experimental Gateway API fields (e.g. CORS, URLRewrite) in the output. Default is false.")
+
 	pr.providerSpecificFlags = make(map[string]*string)
 	for provider, flags := range i2gw.GetProviderSpecificFlagDefinitions() {
 		for _, flag := range flags {
@@ -391,6 +396,13 @@ func (pr *PrintRunner) getProviderSpecificFlags() map[string]map[string]string {
 	providerSpecificFlags := make(map[string]map[string]string)
 	for flagName, value := range pr.providerSpecificFlags {
 		provider, found := lo.Find(pr.providers, func(p string) bool { return strings.HasPrefix(flagName, fmt.Sprintf("%s-", p)) })
+		if !found {
+			// If not found in providers, check if it matches the emitter
+			if strings.HasPrefix(flagName, fmt.Sprintf("%s-", pr.emitter)) {
+				provider = pr.emitter
+				found = true
+			}
+		}
 		if !found {
 			continue
 		}

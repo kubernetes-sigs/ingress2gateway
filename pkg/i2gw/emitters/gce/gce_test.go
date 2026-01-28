@@ -223,6 +223,7 @@ func Test_irToGateway(t *testing.T) {
 	testCases := []struct {
 		name                     string
 		ir                       emitterir.EmitterIR
+		emitterConf              *i2gw.EmitterConf
 		expectedGatewayResources i2gw.GatewayResources
 		expectedErrors           field.ErrorList
 	}{
@@ -479,12 +480,54 @@ func Test_irToGateway(t *testing.T) {
 			},
 			expectedErrors: field.ErrorList{},
 		},
+		{
+			name: "ingress with custom GatewayClassName flag",
+			ir: emitterir.EmitterIR{
+				Gateways: map[types.NamespacedName]emitterir.GatewayContext{
+					{Namespace: testNamespace, Name: testGatewayName}: {
+						Gateway: testGateway,
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{
+					{Namespace: testNamespace, Name: testHTTPRouteName}: {
+						HTTPRoute: testHTTPRoute,
+					},
+				},
+			},
+			emitterConf: &i2gw.EmitterConf{
+				ProviderSpecificFlags: map[string]map[string]string{
+					"gce": {
+						GatewayClassNameFlag: "custom-gateway-class",
+					},
+				},
+			},
+			expectedGatewayResources: i2gw.GatewayResources{
+				Gateways: map[types.NamespacedName]gatewayv1.Gateway{
+					{Namespace: testNamespace, Name: testGatewayName}: {
+						ObjectMeta: metav1.ObjectMeta{Name: testGatewayName, Namespace: testNamespace},
+						Spec: gatewayv1.GatewaySpec{
+							GatewayClassName: gatewayv1.ObjectName("custom-gateway-class"),
+							Listeners: []gatewayv1.Listener{{
+								Name:     "test-mydomain-com-http",
+								Port:     80,
+								Protocol: gatewayv1.HTTPProtocolType,
+								Hostname: common.PtrTo(gatewayv1.Hostname(testHost)),
+							}},
+						},
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]gatewayv1.HTTPRoute{
+					{Namespace: testNamespace, Name: testHTTPRouteName}: testHTTPRoute,
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			emitter := &Emitter{}
+			emitter := &Emitter{conf: tc.emitterConf}
 			gatewayResources, errs := emitter.Emit(tc.ir)
 
 			if len(errs) != len(tc.expectedErrors) {
