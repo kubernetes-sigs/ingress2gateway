@@ -57,7 +57,6 @@ type HTTPRouteContext struct {
 	// This is provider-neutral and applied by the common emitter.
 	PathRewriteByRuleIdx map[int]*PathRewrite
 
-	Gce *gce.HTTPRouteIR
 }
 
 // PathRewrite represents provider-neutral path rewrite intent.
