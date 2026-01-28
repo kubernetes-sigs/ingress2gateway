@@ -26,7 +26,6 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // canaryConfig holds the parsed canary configuration from a single Ingress
@@ -42,7 +41,12 @@ func parseCanaryConfig(ingress *networkingv1.Ingress) (canaryConfig, error) {
 		weightTotal: 100, // default
 	}
 
-	if weight := ingress.Annotations[CanaryWeightAnnotation]; weight != "" {
+	weight := ingress.Annotations[CanaryWeightAnnotation]
+	if weight == "" {
+		weight = ingress.Annotations[CanaryByWeightAnnotation]
+	}
+
+	if weight != "" {
 		w, err := strconv.ParseInt(weight, 10, 32)
 		if err != nil {
 			return config, fmt.Errorf("invalid canary-weight annotation %q: %w", weight, err)
@@ -77,96 +81,114 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 
 	for _, rg := range ruleGroups {
 		key := types.NamespacedName{Namespace: rg.Namespace, Name: common.RouteName(rg.Name, rg.Host)}
-		httpRouteContext, ok := ir.HTTPRoutes[key]
-		if !ok {
-			continue
-		}
 
-		for ruleIdx, backendSources := range httpRouteContext.RuleBackendSources {
-			if ruleIdx >= len(httpRouteContext.HTTPRoute.Spec.Rules) {
-				errList = append(errList, field.InternalError(
-					field.NewPath("httproute", httpRouteContext.HTTPRoute.Name, "spec", "rules").Index(ruleIdx),
-					fmt.Errorf("rule index %d exceeds available rules", ruleIdx),
-				))
-				continue
-			}
-
-			// There must be a non canary backend and at most one canary backend
-			// This is done in place.
-			var canaryBackend *gatewayv1.HTTPBackendRef
-			var nonCanaryBackend *gatewayv1.HTTPBackendRef
-			var canaryConfig canaryConfig
-			var canarySourceIngress *networkingv1.Ingress
-
-			// Find the canary and non-canary backends
-			for backendIdx, source := range backendSources {
-				if source.Ingress == nil {
-					continue
-				}
-
-				backendRef := &httpRouteContext.HTTPRoute.Spec.Rules[ruleIdx].BackendRefs[backendIdx]
-
-				if source.Ingress.Annotations[CanaryAnnotation] == "true" {
-					if canaryBackend != nil {
-						errList = append(errList, field.Invalid(
-							field.NewPath("httproute", httpRouteContext.HTTPRoute.Name, "spec", "rules").Index(ruleIdx).Child("backendRefs"),
-							fmt.Sprintf("ingresses %s/%s and %s/%s", canarySourceIngress.Namespace, canarySourceIngress.Name, source.Ingress.Namespace, source.Ingress.Name),
-							"at most one canary backend is allowed per rule",
-						))
-						continue
-					}
-
-					config, err := parseCanaryConfig(source.Ingress)
-					if err != nil {
-						errList = append(errList, field.Invalid(
-							field.NewPath("ingress", source.Ingress.Namespace, source.Ingress.Name, "metadata", "annotations"),
-							source.Ingress.Annotations,
-							fmt.Sprintf("failed to parse canary configuration: %v", err),
-						))
-						continue
-					}
-
-					canaryBackend = backendRef
-					canaryConfig = config
-					canarySourceIngress = source.Ingress
-				} else {
-					if nonCanaryBackend != nil {
-						errList = append(errList, field.Invalid(
-							field.NewPath("httproute", httpRouteContext.HTTPRoute.Name, "spec", "rules").Index(ruleIdx).Child("backendRefs"),
-							"multiple non-canary backends",
-							"at most one non-canary backend is allowed per rule when using canary",
-						))
-						continue
-					}
-					nonCanaryBackend = backendRef
-				}
-			}
-
-			// If there is a canary backend, validate and set weights
-			if canaryBackend != nil {
-				if nonCanaryBackend == nil {
-					errList = append(errList, field.Invalid(
-						field.NewPath("httproute", httpRouteContext.HTTPRoute.Name, "spec", "rules").Index(ruleIdx).Child("backendRefs"),
-						"canary backend without non-canary backend",
-						"a non-canary backend is required when using canary",
+		if httpRouteContext, ok := ir.HTTPRoutes[key]; ok {
+			for ruleIdx, backendSources := range httpRouteContext.RuleBackendSources {
+				if ruleIdx >= len(httpRouteContext.HTTPRoute.Spec.Rules) {
+					errList = append(errList, field.InternalError(
+						field.NewPath("httproute", httpRouteContext.HTTPRoute.Name, "spec", "rules").Index(ruleIdx),
+						fmt.Errorf("rule index %d exceeds available rules", ruleIdx),
 					))
 					continue
 				}
 
-				canaryWeight := canaryConfig.weight
+				canaryWeight, nonCanaryWeight, config, canarySourceIngress, canaryBackendIdx, nonCanaryBackendIdx, parseErrs := getCanaryInfo(backendSources, "httproute", httpRouteContext.HTTPRoute.Name, ruleIdx)
+				errList = append(errList, parseErrs...)
+				if canaryBackendIdx != -1 && nonCanaryBackendIdx != -1 {
+					httpRouteContext.HTTPRoute.Spec.Rules[ruleIdx].BackendRefs[canaryBackendIdx].Weight = &canaryWeight
+					httpRouteContext.HTTPRoute.Spec.Rules[ruleIdx].BackendRefs[nonCanaryBackendIdx].Weight = &nonCanaryWeight
+					notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set weights (canary: %d, non-canary: %d, total: %d)",
+						canarySourceIngress.Namespace, canarySourceIngress.Name, canaryWeight, nonCanaryWeight, config.weightTotal), &httpRouteContext.HTTPRoute)
+				}
+			}
+		}
 
-				canaryBackend.Weight = &canaryWeight
-				nonCanaryWeight := canaryConfig.weightTotal - canaryWeight
-				nonCanaryBackend.Weight = &nonCanaryWeight
+		if grpcRouteContext, ok := ir.GRPCRoutes[key]; ok {
+			for ruleIdx, backendSources := range grpcRouteContext.RuleBackendSources {
+				if ruleIdx >= len(grpcRouteContext.GRPCRoute.Spec.Rules) {
+					errList = append(errList, field.InternalError(
+						field.NewPath("grpcroute", grpcRouteContext.GRPCRoute.Name, "spec", "rules").Index(ruleIdx),
+						fmt.Errorf("rule index %d exceeds available rules", ruleIdx),
+					))
+					continue
+				}
 
-				notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set weights (canary: %d, non-canary: %d, total: %d)",
-					canarySourceIngress.Namespace, canarySourceIngress.Name, canaryWeight, nonCanaryWeight, canaryConfig.weightTotal), &httpRouteContext.HTTPRoute)
+				canaryWeight, nonCanaryWeight, config, canarySourceIngress, canaryBackendIdx, nonCanaryBackendIdx, parseErrs := getCanaryInfo(backendSources, "grpcroute", grpcRouteContext.GRPCRoute.Name, ruleIdx)
+				errList = append(errList, parseErrs...)
+				if canaryBackendIdx != -1 && nonCanaryBackendIdx != -1 {
+					grpcRouteContext.GRPCRoute.Spec.Rules[ruleIdx].BackendRefs[canaryBackendIdx].Weight = &canaryWeight
+					grpcRouteContext.GRPCRoute.Spec.Rules[ruleIdx].BackendRefs[nonCanaryBackendIdx].Weight = &nonCanaryWeight
+					notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set weights (canary: %d, non-canary: %d, total: %d)",
+						canarySourceIngress.Namespace, canarySourceIngress.Name, canaryWeight, nonCanaryWeight, config.weightTotal), &grpcRouteContext.GRPCRoute)
+				}
 			}
 		}
 	}
 
-	if len(errList) > 0 {
-		return errList
+	return errList
+}
+
+func getCanaryInfo(backendSources []providerir.BackendSource, routeType, routeName string, ruleIdx int) (int32, int32, canaryConfig, *networkingv1.Ingress, int, int, field.ErrorList) {
+	var errList field.ErrorList
+	canaryBackendIdx := -1
+	nonCanaryBackendIdx := -1
+	var config canaryConfig
+	var canarySourceIngress *networkingv1.Ingress
+
+	for backendIdx, source := range backendSources {
+		if source.Ingress == nil {
+			continue
+		}
+
+		if source.Ingress.Annotations[CanaryAnnotation] == "true" {
+			if canaryBackendIdx != -1 {
+				errList = append(errList, field.Invalid(
+					field.NewPath(routeType, routeName, "spec", "rules").Index(ruleIdx).Child("backendRefs"),
+					"multiple canary backends",
+					"at most one canary backend is allowed per rule",
+				))
+				continue
+			}
+
+			parsedConfig, err := parseCanaryConfig(source.Ingress)
+			if err != nil {
+				errList = append(errList, field.Invalid(
+					field.NewPath("ingress", source.Ingress.Namespace, source.Ingress.Name, "metadata", "annotations"),
+					source.Ingress.Annotations,
+					fmt.Sprintf("failed to parse canary configuration: %v", err),
+				))
+				continue
+			}
+
+			canaryBackendIdx = backendIdx
+			config = parsedConfig
+			canarySourceIngress = source.Ingress
+		} else {
+			if nonCanaryBackendIdx != -1 {
+				errList = append(errList, field.Invalid(
+					field.NewPath(routeType, routeName, "spec", "rules").Index(ruleIdx).Child("backendRefs"),
+					"multiple non-canary backends",
+					"at most one non-canary backend is allowed per rule when using canary",
+				))
+				continue
+			}
+			nonCanaryBackendIdx = backendIdx
+		}
 	}
-	return nil
+
+	if canaryBackendIdx != -1 {
+		if nonCanaryBackendIdx == -1 {
+			errList = append(errList, field.Invalid(
+				field.NewPath(routeType, routeName, "spec", "rules").Index(ruleIdx).Child("backendRefs"),
+				"canary backend without non-canary backend",
+				"a non-canary backend is required when using canary",
+			))
+			return 0, 0, config, nil, -1, -1, errList
+		}
+		canaryWeight := config.weight
+		nonCanaryWeight := config.weightTotal - canaryWeight
+		return canaryWeight, nonCanaryWeight, config, canarySourceIngress, canaryBackendIdx, nonCanaryBackendIdx, errList
+	}
+
+	return 0, 0, config, nil, -1, -1, errList
 }

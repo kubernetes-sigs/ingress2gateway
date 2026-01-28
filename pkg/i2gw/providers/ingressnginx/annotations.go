@@ -20,6 +20,7 @@ const (
 	// Canary annotations
 	CanaryAnnotation            = "nginx.ingress.kubernetes.io/canary"
 	CanaryWeightAnnotation      = "nginx.ingress.kubernetes.io/canary-weight"
+	CanaryByWeightAnnotation    = "nginx.ingress.kubernetes.io/canary-by-weight"
 	CanaryWeightTotalAnnotation = "nginx.ingress.kubernetes.io/canary-weight-total"
 
 	// Rewrite annotations
@@ -31,6 +32,8 @@ const (
 	ConnectionProxyHeaderAnnotation = "nginx.ingress.kubernetes.io/connection-proxy-header"
 	CustomHeadersAnnotation         = "nginx.ingress.kubernetes.io/custom-headers"
 
+	// Backend protocol annotation
+	BackendProtocolAnnotation = "nginx.ingress.kubernetes.io/backend-protocol"
 	// R2gex
 	UseRegexAnnotation = "nginx.ingress.kubernetes.io/use-regex"
 
