@@ -65,11 +65,9 @@ func applyPathRewrites(ir *emitterir.EmitterIR) {
 // This ALWAYS runs after providers and before provider-specific emitters.
 // TODO: Implement common logic such as filtering by maturity status and/or individual features.
 func (e *Emitter) Emit(ir emitterir.EmitterIR) (emitterir.EmitterIR, field.ErrorList) {
-	var errs field.ErrorList
-
-	errs = append(errs, applyHTTPRouteRequestTimeouts(&ir)...)
+	errs := applyHTTPRouteRequestTimeouts(&ir)
 	applyPathRewrites(&ir)
-	return ir, nil
+	return ir, errs
 }
 
 func applyHTTPRouteRequestTimeouts(ir *emitterir.EmitterIR) field.ErrorList {
