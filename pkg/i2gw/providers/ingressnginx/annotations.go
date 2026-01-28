@@ -31,9 +31,16 @@ const (
 	ConnectionProxyHeaderAnnotation = "nginx.ingress.kubernetes.io/connection-proxy-header"
 	CustomHeadersAnnotation         = "nginx.ingress.kubernetes.io/custom-headers"
 
-	// R2gex
+	// Regex
 	UseRegexAnnotation = "nginx.ingress.kubernetes.io/use-regex"
 
 	// SSL Redirect annotation
 	SSLRedirectAnnotation = "nginx.ingress.kubernetes.io/ssl-redirect"
+
+
+	BackendProtocolAnnotation    = "nginx.ingress.kubernetes.io/backend-protocol"
+	ProxySSLVerifyAnnotation     = "nginx.ingress.kubernetes.io/proxy-ssl-verify"
+	ProxySSLSecretAnnotation     = "nginx.ingress.kubernetes.io/proxy-ssl-secret"
+	ProxySSLNameAnnotation       = "nginx.ingress.kubernetes.io/proxy-ssl-name"
+	ProxySSLServerNameAnnotation = "nginx.ingress.kubernetes.io/proxy-ssl-server-name"
 )
