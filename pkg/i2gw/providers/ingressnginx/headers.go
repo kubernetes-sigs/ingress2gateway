@@ -1,5 +1,5 @@
 /*
-Copyright 2023 The Kubernetes Authors.
+Copyright 2026 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -37,32 +37,23 @@ func headerModifierFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]
 
 			ingress := getNonCanaryIngress(sources)
 			if ingress == nil {
-				panic("No non-canary ingress found")
+				notify(notifications.InfoNotification, "Found canary ingress rule without non-canary ingress rule", &httpRouteContext.HTTPRoute)
+				continue
 			}
 
 			headersToSet := make(map[string]string)
 
-			_, hasRewriteTarget := ingress.Annotations[RewriteTargetAnnotation]
-
-			// 1. x-forwarded-prefix
-			// This annotation only works if rewrite-target is also present.
-			// TODO: X-Forwarded-Prefix is complex because it depends on rewrite-target.
-			// Deferring this to a future PR.
-			if val, ok := ingress.Annotations[XForwardedPrefixAnnotation]; ok && val != "" && hasRewriteTarget {
-				headersToSet["X-Forwarded-Prefix"] = val
-			}
-
-			// 2. upstream-vhost -> Host header
+			// 1. upstream-vhost -> Host header
 			if val, ok := ingress.Annotations[UpstreamVhostAnnotation]; ok && val != "" {
 				headersToSet["Host"] = val
 			}
 
-			// 3. connection-proxy-header -> Connection header
+			// 2. connection-proxy-header -> Connection header
 			if val, ok := ingress.Annotations[ConnectionProxyHeaderAnnotation]; ok && val != "" {
 				headersToSet["Connection"] = val
 			}
 
-			// 4. custom-headers -> Warn unsupported
+			// 3. custom-headers -> Warn unsupported
 			// TODO: implement custom-headers annotation.
 			if _, ok := ingress.Annotations[CustomHeadersAnnotation]; ok {
 				notify(notifications.WarningNotification, fmt.Sprintf("Ingress %s/%s uses '%s' which is not supported.", ingress.Namespace, ingress.Name, CustomHeadersAnnotation), &httpRouteContext.HTTPRoute)

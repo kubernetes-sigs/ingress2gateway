@@ -59,5 +59,5 @@ release.
 1. Tag the release using the commit on main where the PR merged. This can be done using the git CLI `git tag -sa $VERSION`.
 1. Run `git push origin $VERSION`, this will trigger a github workflow that will create the release.
 1. Verify the [releases page](https://github.com/kubernetes-sigs/ingress2gateway/releases) to ensure that the release meets the expectations.
-1. Optional: Send an annoncement email to `kubernetes-sig-network@googlegroups.com` with the subject `[ANNOUNCE] ingress2gateway $VERSION is released`
+1. Optional: Send an annoncement email to `sig-network@kubernetes.io` with the subject `[ANNOUNCE] ingress2gateway $VERSION is released`
 

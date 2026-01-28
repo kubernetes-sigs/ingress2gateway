@@ -987,7 +987,7 @@ func (c *resourcesToIRConverter) convertVsTCPRoutes(virtualService metav1.Object
 }
 
 func (c *resourcesToIRConverter) isVirtualServiceAllowedForGateway(gateway types.NamespacedName, vs *istioclientv1beta1.VirtualService, fieldPath *field.Path) bool {
-	// by default, if ExportTo is empty it allowes export of the VirtualService to all namespaces
+	// by default, if ExportTo is empty it allows export of the VirtualService to all namespaces
 	vsAllowedNamespaces := sets.New("*")
 	if len(vs.Spec.GetExportTo()) > 0 {
 		vsAllowedNamespaces = sets.New(vs.Spec.GetExportTo()...)
@@ -1010,7 +1010,7 @@ func (c *resourcesToIRConverter) isVirtualServiceAllowedForGateway(gateway types
 	for _, host := range vs.Spec.GetHosts() {
 		hosts, ok := allowedHosts[vs.Namespace]
 		if ok && matchAny(hosts.UnsortedList(), host) {
-			notify(notifications.InfoNotification, fmt.Sprintf("host for gateway \"%v\" matched from same namespace as VirtualService \"%v\", namesapce: %v", gateway, vs.Name, vs.Namespace), vs)
+			notify(notifications.InfoNotification, fmt.Sprintf("host for gateway \"%v\" matched from same namespace as VirtualService \"%v\", namespace: %v", gateway, vs.Name, vs.Namespace), vs)
 			return true
 		}
 
@@ -1056,7 +1056,7 @@ func (c *resourcesToIRConverter) generateReferences(vs *istioclientv1beta1.Virtu
 		}
 
 		if !ok {
-			notify(notifications.InfoNotification, fmt.Sprintf("namespace of \"%v\" gateway taken from namesapce of VirtualService", gwName), vs)
+			notify(notifications.InfoNotification, fmt.Sprintf("namespace of \"%v\" gateway taken from namespace of VirtualService", gwName), vs)
 		}
 
 		g := gatewayv1.Group(common.GatewayGVK.Group)

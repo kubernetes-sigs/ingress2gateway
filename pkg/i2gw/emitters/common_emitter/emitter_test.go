@@ -20,6 +20,8 @@ import (
 	"testing"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -58,10 +60,15 @@ func TestApplyHTTPRouteRequestTimeouts(t *testing.T) {
 		},
 	}
 
+	key := types.NamespacedName{Namespace: "ns", Name: "route"}
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			errList := applyHTTPRouteRequestTimeouts(&tc.ctx)
-			if tc.ctx.RequestTimeouts != nil {
+			ir := emitterir.EmitterIR{HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{key: tc.ctx}}
+			errList := applyHTTPRouteRequestTimeouts(&ir)
+
+			gotCtx := ir.HTTPRoutes[key]
+			if gotCtx.RequestTimeouts != nil {
 				t.Fatalf("expected RequestTimeouts to be nil after apply")
 			}
 			if tc.wantErr {
@@ -74,7 +81,7 @@ func TestApplyHTTPRouteRequestTimeouts(t *testing.T) {
 				t.Fatalf("expected no errors, got %v", errList)
 			}
 
-			got := tc.ctx.Spec.Rules[0].Timeouts
+			got := gotCtx.Spec.Rules[0].Timeouts
 			if tc.wantSet {
 				if got == nil || got.Request == nil {
 					t.Fatalf("expected request timeout to be set")
@@ -89,5 +96,50 @@ func TestApplyHTTPRouteRequestTimeouts(t *testing.T) {
 				t.Fatalf("expected timeouts to be nil, got %v", got)
 			}
 		})
+	}
+}
+
+func TestEmitter_Emit_appliesPathRewriteReplaceFullPath(t *testing.T) {
+	key := types.NamespacedName{Namespace: "ns", Name: "route"}
+
+	ir := emitterir.EmitterIR{
+		HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{
+			key: {
+				HTTPRoute: gatewayv1.HTTPRoute{
+					ObjectMeta: metav1.ObjectMeta{Namespace: key.Namespace, Name: key.Name},
+					Spec: gatewayv1.HTTPRouteSpec{
+						Rules: []gatewayv1.HTTPRouteRule{{}},
+					},
+				},
+				PathRewriteByRuleIdx: map[int]*emitterir.PathRewrite{
+					0: {ReplaceFullPath: "/foo"},
+				},
+			},
+		},
+	}
+
+	e := NewEmitter()
+	gotIR, errs := e.Emit(ir)
+	if len(errs) != 0 {
+		t.Fatalf("expected no errors, got: %v", errs)
+	}
+
+	got := gotIR.HTTPRoutes[key].Spec.Rules[0].Filters
+	if len(got) != 1 {
+		t.Fatalf("expected 1 filter, got %d: %#v", len(got), got)
+	}
+
+	f := got[0]
+	if f.Type != gatewayv1.HTTPRouteFilterURLRewrite {
+		t.Fatalf("expected filter type %q, got %q", gatewayv1.HTTPRouteFilterURLRewrite, f.Type)
+	}
+	if f.URLRewrite == nil || f.URLRewrite.Path == nil {
+		t.Fatalf("expected URLRewrite.Path to be set, got: %#v", f.URLRewrite)
+	}
+	if f.URLRewrite.Path.Type != gatewayv1.FullPathHTTPPathModifier {
+		t.Fatalf("expected Path.Type %q, got %q", gatewayv1.FullPathHTTPPathModifier, f.URLRewrite.Path.Type)
+	}
+	if f.URLRewrite.Path.ReplaceFullPath == nil || *f.URLRewrite.Path.ReplaceFullPath != "/foo" {
+		t.Fatalf("expected ReplaceFullPath /foo, got: %#v", f.URLRewrite.Path.ReplaceFullPath)
 	}
 }

@@ -55,6 +55,19 @@ type HTTPRouteContext struct {
 	gatewayv1.HTTPRoute
 	// RequestTimeoutsByRule holds desired HTTPRoute.spec.rules[i].timeouts.request values by rule index.
 	RequestTimeouts map[int]*gatewayv1.Duration
+
+	// PathRewriteByRuleIdx maps HTTPRoute rule indices to path rewrite intent.
+	// This is provider-neutral and applied by the common emitter.
+	PathRewriteByRuleIdx map[int]*PathRewrite
+}
+
+// PathRewrite represents provider-neutral path rewrite intent.
+// For now it only supports full-path replacement; more fields may be added later.
+type PathRewrite struct {
+	ReplaceFullPath string
+	// Headers to add on path rewrite.
+	Headers map[string]string
+	Regex   bool
 }
 
 type GatewayClassContext struct {

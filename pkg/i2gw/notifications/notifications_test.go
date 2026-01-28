@@ -17,6 +17,7 @@ limitations under the License.
 package notifications
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -151,6 +152,44 @@ func TestCreateNotificationsTables(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestNotificationAggregatorRace checks for data races in NotificationAggregator when accessed
+// concurrently.
+func TestNotificationAggregatorRace(_ *testing.T) {
+	na := NotificationAggregator{Notifications: map[string][]Notification{}}
+
+	providers := []string{"provider1", "provider2", "provider3", "provider4"}
+	var wg sync.WaitGroup
+
+	// Start multiple goroutines that dispatch notifications concurrently.
+	for _, provider := range providers {
+		wg.Add(1)
+		go func(p string) {
+			for range 100 {
+				na.DispatchNotification(
+					Notification{
+						Type:    WarningNotification,
+						Message: "concurrent warning",
+					},
+					p,
+				)
+			}
+			wg.Done()
+		}(provider)
+	}
+
+	// Concurrently read from the aggregator while writes are happening.
+	wg.Add(1)
+	go func() {
+		for range 100 {
+			_ = na.CreateNotificationTables()
+		}
+		wg.Done()
+	}()
+
+	// Wait for all goroutines to complete.
+	wg.Wait()
 }
 
 func TestConvertObjectsToStr(t *testing.T) {

@@ -1,5 +1,5 @@
 /*
-Copyright 2023 The Kubernetes Authors.
+Copyright 2026 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,4 +35,10 @@ const (
 	ProxyConnectTimeoutAnnotation = "nginx.ingress.kubernetes.io/proxy-connect-timeout"
 	ProxySendTimeoutAnnotation    = "nginx.ingress.kubernetes.io/proxy-send-timeout"
 	ProxyReadTimeoutAnnotation    = "nginx.ingress.kubernetes.io/proxy-read-timeout"
+
+	// Regex
+	UseRegexAnnotation = "nginx.ingress.kubernetes.io/use-regex"
+
+	// SSL Redirect annotation
+	SSLRedirectAnnotation = "nginx.ingress.kubernetes.io/ssl-redirect"
 )
