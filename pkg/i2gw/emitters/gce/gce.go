@@ -59,7 +59,7 @@ func init() {
 	i2gw.RegisterProviderSpecificFlag("gce", i2gw.ProviderSpecificFlag{
 		Name:         GatewayClassNameFlag,
 		Description:  "The name of the GatewayClass to use for the Gateway",
-		DefaultValue: "gke-l7-global-external-managed",
+		DefaultValue: "",
 	})
 }
 
@@ -83,7 +83,7 @@ func (c *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.Err
 }
 
 func (c *Emitter) updateGatewayClass(gatewayResources *i2gw.GatewayResources) {
-	gatewayClassName := "gke-l7-global-external-managed"
+	var gatewayClassName string
 	if c.conf != nil && c.conf.ProviderSpecificFlags != nil {
 		if flags, ok := c.conf.ProviderSpecificFlags["gce"]; ok {
 			if val, ok := flags[GatewayClassNameFlag]; ok && val != "" {
@@ -92,7 +92,11 @@ func (c *Emitter) updateGatewayClass(gatewayResources *i2gw.GatewayResources) {
 		}
 	}
 	for i, gw := range gatewayResources.Gateways {
-		gw.Spec.GatewayClassName = gatewayv1.ObjectName(gatewayClassName)
+		if gatewayClassName != "" {
+			gw.Spec.GatewayClassName = gatewayv1.ObjectName(gatewayClassName)
+		} else if gw.Spec.GatewayClassName == "" {
+			gw.Spec.GatewayClassName = "gke-l7-global-external-managed"
+		}
 		gatewayResources.Gateways[i] = gw
 	}
 }
