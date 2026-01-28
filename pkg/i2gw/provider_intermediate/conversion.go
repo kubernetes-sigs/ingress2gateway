@@ -43,9 +43,7 @@ func ToEmitterIR(pIR ProviderIR) emitterir.EmitterIR {
 	}
 	for k, v := range pIR.HTTPRoutes {
 		ctx := emitterir.HTTPRouteContext{HTTPRoute: v.HTTPRoute}
-		if v.ProviderSpecificIR.Gce != nil {
-			ctx.Gce = v.ProviderSpecificIR.Gce
-		}
+
 		eIR.HTTPRoutes[k] = ctx
 	}
 	for k, v := range pIR.GatewayClasses {
