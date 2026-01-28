@@ -65,6 +65,40 @@ func applyPathRewrites(ir *emitterir.EmitterIR) {
 // This ALWAYS runs after providers and before provider-specific emitters.
 // TODO: Implement common logic such as filtering by maturity status and/or individual features.
 func (e *Emitter) Emit(ir emitterir.EmitterIR) (emitterir.EmitterIR, field.ErrorList) {
+	errs := applyHTTPRouteRequestTimeouts(&ir)
 	applyPathRewrites(&ir)
-	return ir, nil
+	return ir, errs
+}
+
+func applyHTTPRouteRequestTimeouts(ir *emitterir.EmitterIR) field.ErrorList {
+	var errs field.ErrorList
+	for i, httpRouteContext := range ir.HTTPRoutes {
+		if httpRouteContext.RequestTimeouts == nil {
+			return nil
+		}
+
+		for ruleIdx, d := range httpRouteContext.RequestTimeouts {
+			if d == nil {
+				continue
+			}
+			if ruleIdx < 0 || ruleIdx >= len(httpRouteContext.Spec.Rules) {
+				errs = append(errs, field.Invalid(
+					field.NewPath("httpRoute", "spec", "rules").Index(ruleIdx),
+					ruleIdx,
+					"rule index out of range",
+				))
+				continue
+			}
+
+			rule := &httpRouteContext.Spec.Rules[ruleIdx]
+			if rule.Timeouts == nil {
+				rule.Timeouts = &gatewayv1.HTTPRouteTimeouts{}
+			}
+			rule.Timeouts.Request = d
+		}
+
+		httpRouteContext.RequestTimeouts = nil
+		ir.HTTPRoutes[i] = httpRouteContext
+	}
+	return errs
 }
