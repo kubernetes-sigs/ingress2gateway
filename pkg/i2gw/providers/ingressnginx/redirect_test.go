@@ -195,7 +195,7 @@ func Test_redirectFeature(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "both annotations present should error",
+			name: "both annotations present should choose temporal",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-ingress",
@@ -209,6 +209,23 @@ func Test_redirectFeature(t *testing.T) {
 					Rules: []networkingv1.IngressRule{
 						{
 							Host: "conflict.com",
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{
+										{
+											Path: "/",
+											Backend: networkingv1.IngressBackend{
+												Service: &networkingv1.IngressServiceBackend{
+													Name: "conflict",
+													Port: networkingv1.ServiceBackendPort{
+														Number: 8080,
+													},
+												},
+											},
+										},
+									},
+								},
+							},
 						},
 					},
 				},
@@ -220,7 +237,13 @@ func Test_redirectFeature(t *testing.T) {
 				},
 				Spec: gatewayv1.HTTPRouteSpec{
 					Hostnames: []gatewayv1.Hostname{"conflict.com"},
-					Rules:     []gatewayv1.HTTPRouteRule{{}},
+					Rules: []gatewayv1.HTTPRouteRule{
+						{
+							BackendRefs: []gatewayv1.HTTPBackendRef{
+								{BackendRef: gatewayv1.BackendRef{BackendObjectReference: gatewayv1.BackendObjectReference{Name: "conflict", Port: ptr.To(gatewayv1.PortNumber(8080))}}},
+							},
+						},
+					},
 				},
 			},
 			expectedHTTPRoute: &gatewayv1.HTTPRoute{
@@ -230,10 +253,26 @@ func Test_redirectFeature(t *testing.T) {
 				},
 				Spec: gatewayv1.HTTPRouteSpec{
 					Hostnames: []gatewayv1.Hostname{"conflict.com"},
-					Rules:     []gatewayv1.HTTPRouteRule{{}},
+					Rules: []gatewayv1.HTTPRouteRule{
+						{
+							Filters: []gatewayv1.HTTPRouteFilter{
+								{
+									Type: gatewayv1.HTTPRouteFilterRequestRedirect,
+									RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
+										StatusCode: ptr.To(302),
+									},
+								},
+							},
+						},
+						{
+							BackendRefs: []gatewayv1.HTTPBackendRef{
+								{BackendRef: gatewayv1.BackendRef{BackendObjectReference: gatewayv1.BackendObjectReference{Name: "conflict", Port: ptr.To(gatewayv1.PortNumber(8080))}}},
+							},
+						},
+					},
 				},
 			},
-			expectError: true,
+			expectError: false,
 		},
 		{
 			name: "no redirect annotations",
