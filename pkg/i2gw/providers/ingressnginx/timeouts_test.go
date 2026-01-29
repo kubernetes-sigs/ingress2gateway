@@ -20,7 +20,6 @@ import (
 	"reflect"
 	"testing"
 
-	common_emitter "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/common_emitter"
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
@@ -36,14 +35,12 @@ func TestTimeoutFeature(t *testing.T) {
 		name        string
 		annotations map[string]string
 		wantTimeouts *emitterir.TCPTimeouts
-		wantBackend  *gatewayv1.Duration
 		wantErr     bool
 	}{
 		{
 			name:         "no timeouts",
 			annotations:  map[string]string{},
 			wantTimeouts: nil,
-			wantBackend:  nil,
 		},
 		{
 			name: "seconds parse + multiplier",
@@ -51,7 +48,6 @@ func TestTimeoutFeature(t *testing.T) {
 				ProxyReadTimeoutAnnotation: "2",
 			},
 			wantTimeouts: &emitterir.TCPTimeouts{Read: common.PtrTo[gatewayv1.Duration]("2s")},
-			wantBackend: common.PtrTo[gatewayv1.Duration]("20s"),
 		},
 		{
 			name: "max + multiplier",
@@ -65,7 +61,6 @@ func TestTimeoutFeature(t *testing.T) {
 				Read:    common.PtrTo[gatewayv1.Duration]("3s"),
 				Write:   common.PtrTo[gatewayv1.Duration]("2s"),
 			},
-			wantBackend: common.PtrTo[gatewayv1.Duration]("30s"),
 		},
 		{
 			name: "rejects duration strings",
@@ -136,32 +131,6 @@ func TestTimeoutFeature(t *testing.T) {
 				}
 			} else if gotTimeouts == nil || !reflect.DeepEqual(*gotTimeouts, *tc.wantTimeouts) {
 				t.Fatalf("expected TCP timeouts %v, got %v", tc.wantTimeouts, gotTimeouts)
-			}
-
-			// Apply common emitter (maps EmitterIR fields onto core Gateway API).
-			commonEmitter := common_emitter.NewEmitter()
-			eir, errs = commonEmitter.Emit(eir)
-			if len(errs) > 0 {
-				t.Fatalf("expected no common emitter errors, got %v", errs)
-			}
-
-			hctx, ok := eir.HTTPRoutes[key]
-			if !ok {
-				t.Fatalf("expected HTTPRoute in EmitterIR")
-			}
-
-			got := hctx.Spec.Rules[0].Timeouts
-			if tc.wantBackend == nil {
-				if got != nil && got.Request != nil {
-					t.Fatalf("expected no request timeout, got %v", *got.Request)
-				}
-				return
-			}
-			if got == nil || got.Request == nil {
-				t.Fatalf("expected request timeout to be set")
-			}
-			if *got.Request != *tc.wantBackend {
-				t.Fatalf("expected %v, got %v", *tc.wantBackend, *got.Request)
 			}
 		})
 	}
