@@ -19,13 +19,13 @@ package ingressnginx
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -49,50 +49,48 @@ func parseIngressNginxTimeout(val string) (time.Duration, error) {
 	return time.Duration(secs) * time.Second, nil
 }
 
-func timeoutFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, pIR *providerir.ProviderIR, eIR *emitterir.EmitterIR) field.ErrorList {
+// applyTimeoutsToEmitterIR is a temporary bridge until timeout parsing is integrated
+// into the generic feature parsing flow.
+func applyTimeoutsToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) field.ErrorList {
 	var errList field.ErrorList
 
 	for key, httpRouteContext := range pIR.HTTPRoutes {
-		eHTTPContext := eIR.HTTPRoutes[key]
-		eHTTPContext.RequestTimeouts = make(map[int]*gatewayv1.Duration, len(eHTTPContext.Spec.Rules))
+		eHTTPContext, ok := eIR.HTTPRoutes[key]
+		if !ok {
+			continue
+		}
+		if eHTTPContext.TCPTimeoutsByRuleIdx == nil {
+			eHTTPContext.TCPTimeoutsByRuleIdx = make(map[int]*emitterir.TCPTimeouts, len(eHTTPContext.Spec.Rules))
+		}
 
 		for ruleIdx := range httpRouteContext.HTTPRoute.Spec.Rules {
+			if ruleIdx >= len(httpRouteContext.RuleBackendSources) {
+				continue
+			}
 			sources := httpRouteContext.RuleBackendSources[ruleIdx]
 			ingress := getNonCanaryIngress(sources)
 			if ingress == nil {
 				continue
 			}
 
-			var maxTimeout time.Duration
-			var anyTimeout bool
-			for _, ann := range []string{ProxyConnectTimeoutAnnotation, ProxySendTimeoutAnnotation, ProxyReadTimeoutAnnotation} {
-				if val, ok := ingress.Annotations[ann]; ok && val != "" {
-					d, err := parseIngressNginxTimeout(val)
-					if err != nil {
-						errList = append(errList, field.Invalid(
-							field.NewPath("ingress", ingress.Namespace, ingress.Name, "metadata", "annotations").Key(ann),
-							val,
-							fmt.Sprintf("invalid timeout: %v", err),
-						))
-						continue
-					}
-					anyTimeout = true
-					if d > maxTimeout {
-						maxTimeout = d
-					}
-				}
+			connect, err := parseIngressNginxTimeoutAnnotation(ingress, ProxyConnectTimeoutAnnotation, &errList)
+			read, readErr := parseIngressNginxTimeoutAnnotation(ingress, ProxyReadTimeoutAnnotation, &errList)
+			write, writeErr := parseIngressNginxTimeoutAnnotation(ingress, ProxySendTimeoutAnnotation, &errList)
+			if err != nil || readErr != nil || writeErr != nil {
+				// continue; errors recorded in errList
 			}
-
-			if !anyTimeout {
+			if connect == nil && read == nil && write == nil {
 				continue
 			}
 
-			maxTimeout *= timeoutMultiplier
-			gwDur := gatewayv1.Duration(maxTimeout.String())
-			eHTTPContext.RequestTimeouts[ruleIdx] = &gwDur
+			eHTTPContext.TCPTimeoutsByRuleIdx[ruleIdx] = &emitterir.TCPTimeouts{
+				Connect: connect,
+				Read:    read,
+				Write:   write,
+			}
 
 			notify(notifications.InfoNotification, fmt.Sprintf("parsed ingress-nginx proxy timeouts (x%d) from %s/%s for HTTPRoute %s/%s rule %d (timeouts.request): %s",
-				timeoutMultiplier, ingress.Namespace, ingress.Name, key.Namespace, key.Name, ruleIdx, gwDur), &httpRouteContext.HTTPRoute)
+				timeoutMultiplier, ingress.Namespace, ingress.Name, key.Namespace, key.Name, ruleIdx, formatTCPTimeouts(connect, read, write)), &httpRouteContext.HTTPRoute)
 			notify(
 				notifications.WarningNotification,
 				"ingress-nginx only supports TCP-level timeouts; i2gw has made a best-effort translation to Gateway API timeouts.request."+
@@ -101,11 +99,45 @@ func timeoutFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[str
 		}
 
 		eIR.HTTPRoutes[key] = eHTTPContext
-		pIR.HTTPRoutes[key] = httpRouteContext
 	}
 
 	if len(errList) > 0 {
 		return errList
 	}
 	return nil
+}
+
+func parseIngressNginxTimeoutAnnotation(ingress *networkingv1.Ingress, annotation string, errList *field.ErrorList) (*gatewayv1.Duration, error) {
+	val, ok := ingress.Annotations[annotation]
+	if !ok || val == "" {
+		return nil, nil
+	}
+	d, err := parseIngressNginxTimeout(val)
+	if err != nil {
+		*errList = append(*errList, field.Invalid(
+			field.NewPath("ingress", ingress.Namespace, ingress.Name, "metadata", "annotations").Key(annotation),
+			val,
+			fmt.Sprintf("invalid timeout: %v", err),
+		))
+		return nil, err
+	}
+	gwDur := gatewayv1.Duration(d.String())
+	return &gwDur, nil
+}
+
+func formatTCPTimeouts(connect, read, write *gatewayv1.Duration) string {
+	parts := []string{}
+	if connect != nil {
+		parts = append(parts, fmt.Sprintf("connect=%s", *connect))
+	}
+	if read != nil {
+		parts = append(parts, fmt.Sprintf("read=%s", *read))
+	}
+	if write != nil {
+		parts = append(parts, fmt.Sprintf("write=%s", *write))
+	}
+	if len(parts) == 0 {
+		return "none"
+	}
+	return strings.Join(parts, ", ")
 }

@@ -17,12 +17,16 @@ limitations under the License.
 package common_emitter
 
 import (
+	"time"
+
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 type Emitter struct{}
+
+const tcpTimeoutMultiplier = 10
 
 func NewEmitter() *Emitter {
 	return &Emitter{}
@@ -65,20 +69,20 @@ func applyPathRewrites(ir *emitterir.EmitterIR) {
 // This ALWAYS runs after providers and before provider-specific emitters.
 // TODO: Implement common logic such as filtering by maturity status and/or individual features.
 func (e *Emitter) Emit(ir emitterir.EmitterIR) (emitterir.EmitterIR, field.ErrorList) {
-	errs := applyHTTPRouteRequestTimeouts(&ir)
+	errs := applyTCPTimeouts(&ir)
 	applyPathRewrites(&ir)
 	return ir, errs
 }
 
-func applyHTTPRouteRequestTimeouts(ir *emitterir.EmitterIR) field.ErrorList {
+func applyTCPTimeouts(ir *emitterir.EmitterIR) field.ErrorList {
 	var errs field.ErrorList
 	for i, httpRouteContext := range ir.HTTPRoutes {
-		if httpRouteContext.RequestTimeouts == nil {
+		if httpRouteContext.TCPTimeoutsByRuleIdx == nil {
 			return nil
 		}
 
-		for ruleIdx, d := range httpRouteContext.RequestTimeouts {
-			if d == nil {
+		for ruleIdx, timeouts := range httpRouteContext.TCPTimeoutsByRuleIdx {
+			if timeouts == nil {
 				continue
 			}
 			if ruleIdx < 0 || ruleIdx >= len(httpRouteContext.Spec.Rules) {
@@ -94,11 +98,34 @@ func applyHTTPRouteRequestTimeouts(ir *emitterir.EmitterIR) field.ErrorList {
 			if rule.Timeouts == nil {
 				rule.Timeouts = &gatewayv1.HTTPRouteTimeouts{}
 			}
-			rule.Timeouts.Request = d
+			maxTimeout, ok := maxParsedDuration(timeouts.Connect, timeouts.Read, timeouts.Write)
+			if ok {
+				requestTimeout := gatewayv1.Duration((maxTimeout * time.Duration(tcpTimeoutMultiplier)).String())
+				rule.Timeouts.Request = &requestTimeout
+			}
 		}
 
-		httpRouteContext.RequestTimeouts = nil
+		httpRouteContext.TCPTimeoutsByRuleIdx = nil
 		ir.HTTPRoutes[i] = httpRouteContext
 	}
 	return errs
+}
+
+func maxParsedDuration(durations ...*gatewayv1.Duration) (time.Duration, bool) {
+	var max time.Duration
+	var found bool
+	for _, d := range durations {
+		if d == nil {
+			continue
+		}
+		parsed, err := time.ParseDuration(string(*d))
+		if err != nil {
+			continue
+		}
+		if !found || parsed > max {
+			max = parsed
+			found = true
+		}
+	}
+	return max, found
 }

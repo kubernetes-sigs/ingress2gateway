@@ -25,8 +25,9 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-func TestApplyHTTPRouteRequestTimeouts(t *testing.T) {
+func TestApplyTCPTimeouts(t *testing.T) {
 	d := gatewayv1.Duration("10s")
+	tenSeconds := emitterir.TCPTimeouts{Connect: &d}
 
 	testCases := []struct {
 		name    string
@@ -37,24 +38,24 @@ func TestApplyHTTPRouteRequestTimeouts(t *testing.T) {
 		{
 			name: "sets request timeout",
 			ctx: emitterir.HTTPRouteContext{
-				HTTPRoute:       gatewayv1.HTTPRoute{Spec: gatewayv1.HTTPRouteSpec{Rules: []gatewayv1.HTTPRouteRule{{}}}},
-				RequestTimeouts: map[int]*gatewayv1.Duration{0: &d},
+				HTTPRoute:            gatewayv1.HTTPRoute{Spec: gatewayv1.HTTPRouteSpec{Rules: []gatewayv1.HTTPRouteRule{{}}}},
+				TCPTimeoutsByRuleIdx: map[int]*emitterir.TCPTimeouts{0: &tenSeconds},
 			},
 			wantSet: true,
 		},
 		{
 			name: "nil duration ignored",
 			ctx: emitterir.HTTPRouteContext{
-				HTTPRoute:       gatewayv1.HTTPRoute{Spec: gatewayv1.HTTPRouteSpec{Rules: []gatewayv1.HTTPRouteRule{{}}}},
-				RequestTimeouts: map[int]*gatewayv1.Duration{0: nil},
+				HTTPRoute:            gatewayv1.HTTPRoute{Spec: gatewayv1.HTTPRouteSpec{Rules: []gatewayv1.HTTPRouteRule{{}}}},
+				TCPTimeoutsByRuleIdx: map[int]*emitterir.TCPTimeouts{0: nil},
 			},
 			wantSet: false,
 		},
 		{
 			name: "out of range rule index",
 			ctx: emitterir.HTTPRouteContext{
-				HTTPRoute:       gatewayv1.HTTPRoute{Spec: gatewayv1.HTTPRouteSpec{Rules: []gatewayv1.HTTPRouteRule{{}}}},
-				RequestTimeouts: map[int]*gatewayv1.Duration{1: &d},
+				HTTPRoute:            gatewayv1.HTTPRoute{Spec: gatewayv1.HTTPRouteSpec{Rules: []gatewayv1.HTTPRouteRule{{}}}},
+				TCPTimeoutsByRuleIdx: map[int]*emitterir.TCPTimeouts{1: &tenSeconds},
 			},
 			wantErr: true,
 		},
@@ -65,11 +66,11 @@ func TestApplyHTTPRouteRequestTimeouts(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ir := emitterir.EmitterIR{HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{key: tc.ctx}}
-			errList := applyHTTPRouteRequestTimeouts(&ir)
+			errList := applyTCPTimeouts(&ir)
 
 			gotCtx := ir.HTTPRoutes[key]
-			if gotCtx.RequestTimeouts != nil {
-				t.Fatalf("expected RequestTimeouts to be nil after apply")
+			if gotCtx.TCPTimeoutsByRuleIdx != nil {
+				t.Fatalf("expected TCPTimeoutsByRuleIdx to be nil after apply")
 			}
 			if tc.wantErr {
 				if len(errList) == 0 {
@@ -86,8 +87,8 @@ func TestApplyHTTPRouteRequestTimeouts(t *testing.T) {
 				if got == nil || got.Request == nil {
 					t.Fatalf("expected request timeout to be set")
 				}
-				if *got.Request != d {
-					t.Fatalf("expected %v, got %v", d, *got.Request)
+				if *got.Request != gatewayv1.Duration("1m40s") {
+					t.Fatalf("expected %v, got %v", gatewayv1.Duration("1m40s"), *got.Request)
 				}
 				return
 			}

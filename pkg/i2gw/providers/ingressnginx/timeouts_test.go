@@ -17,9 +17,11 @@ limitations under the License.
 package ingressnginx
 
 import (
+	"reflect"
 	"testing"
 
 	common_emitter "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/common_emitter"
+	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -33,19 +35,22 @@ func TestTimeoutFeature(t *testing.T) {
 	testCases := []struct {
 		name        string
 		annotations map[string]string
-		wantBackend *gatewayv1.Duration
+		wantTimeouts *emitterir.TCPTimeouts
+		wantBackend  *gatewayv1.Duration
 		wantErr     bool
 	}{
 		{
-			name:        "no timeouts",
-			annotations: map[string]string{},
-			wantBackend: nil,
+			name:         "no timeouts",
+			annotations:  map[string]string{},
+			wantTimeouts: nil,
+			wantBackend:  nil,
 		},
 		{
 			name: "seconds parse + multiplier",
 			annotations: map[string]string{
 				ProxyReadTimeoutAnnotation: "2",
 			},
+			wantTimeouts: &emitterir.TCPTimeouts{Read: common.PtrTo[gatewayv1.Duration]("2s")},
 			wantBackend: common.PtrTo[gatewayv1.Duration]("20s"),
 		},
 		{
@@ -54,6 +59,11 @@ func TestTimeoutFeature(t *testing.T) {
 				ProxyConnectTimeoutAnnotation: "1",
 				ProxySendTimeoutAnnotation:    "2",
 				ProxyReadTimeoutAnnotation:    "3",
+			},
+			wantTimeouts: &emitterir.TCPTimeouts{
+				Connect: common.PtrTo[gatewayv1.Duration]("1s"),
+				Read:    common.PtrTo[gatewayv1.Duration]("3s"),
+				Write:   common.PtrTo[gatewayv1.Duration]("2s"),
 			},
 			wantBackend: common.PtrTo[gatewayv1.Duration]("30s"),
 		},
@@ -103,7 +113,7 @@ func TestTimeoutFeature(t *testing.T) {
 
 			eir := providerir.ToEmitterIR(ir)
 
-			errs := timeoutFeature([]networkingv1.Ingress{ing}, nil, &ir, &eir)
+			errs := applyTimeoutsToEmitterIR(ir, &eir)
 			if tc.wantErr {
 				if len(errs) == 0 {
 					t.Fatalf("expected error")
@@ -117,6 +127,15 @@ func TestTimeoutFeature(t *testing.T) {
 			// Timeout feature should populate IR, not mutate the HTTPRoute directly.
 			if got := ir.HTTPRoutes[key].HTTPRoute.Spec.Rules[0].Timeouts; got != nil {
 				t.Fatalf("expected no direct HTTPRoute mutation, got timeouts %v", got)
+			}
+
+			gotTimeouts := eir.HTTPRoutes[key].TCPTimeoutsByRuleIdx[0]
+			if tc.wantTimeouts == nil {
+				if gotTimeouts != nil {
+					t.Fatalf("expected no TCP timeouts, got %v", gotTimeouts)
+				}
+			} else if gotTimeouts == nil || !reflect.DeepEqual(*gotTimeouts, *tc.wantTimeouts) {
+				t.Fatalf("expected TCP timeouts %v, got %v", tc.wantTimeouts, gotTimeouts)
 			}
 
 			// Apply common emitter (maps EmitterIR fields onto core Gateway API).

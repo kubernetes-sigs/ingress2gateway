@@ -53,12 +53,19 @@ type GatewayContext struct {
 
 type HTTPRouteContext struct {
 	gatewayv1.HTTPRoute
-	// RequestTimeoutsByRule holds desired HTTPRoute.spec.rules[i].timeouts.request values by rule index.
-	RequestTimeouts map[int]*gatewayv1.Duration
+	// TCPTimeoutsByRuleIdx holds provider TCP-level timeouts by HTTPRoute rule index.
+	TCPTimeoutsByRuleIdx map[int]*TCPTimeouts
 
 	// PathRewriteByRuleIdx maps HTTPRoute rule indices to path rewrite intent.
 	// This is provider-neutral and applied by the common emitter.
 	PathRewriteByRuleIdx map[int]*PathRewrite
+}
+
+// TCPTimeouts holds TCP-level timeout configuration for a single HTTPRoute rule.
+type TCPTimeouts struct {
+	Connect *gatewayv1.Duration
+	Read    *gatewayv1.Duration
+	Write   *gatewayv1.Duration
 }
 
 // PathRewrite represents provider-neutral path rewrite intent.
