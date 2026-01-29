@@ -62,22 +62,29 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 				continue
 			}
 
-			// Both annotations present is an error
-			if hasPermanent && hasTemporal {
-				errs = append(errs, field.Invalid(
-					field.NewPath("ingress", rule.Ingress.Namespace, rule.Ingress.Name, "metadata", "annotations"),
-					rule.Ingress.Annotations,
-					fmt.Sprintf("cannot use both %s and %s annotations simultaneously", PermanentRedirectAnnotation, TemporalRedirectAnnotation),
-				))
-				continue
-			}
-
 			// Determine redirect URL and status code
+			// If both are present, temporal takes priority
 			var redirectURL string
 			var statusCode int
 			var annotationUsed string
 
-			if hasPermanent {
+			if hasTemporal {
+				redirectURL = temporalRedirectURL
+				statusCode = 302
+				annotationUsed = TemporalRedirectAnnotation
+
+				// Warn if both annotations are present
+				if hasPermanent {
+					notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s has both %s and %s annotations, using %s",
+						rule.Ingress.Namespace, rule.Ingress.Name, PermanentRedirectAnnotation, TemporalRedirectAnnotation, TemporalRedirectAnnotation), &rule.Ingress)
+				}
+
+				// Warn about unsupported custom status code annotation
+				if rule.Ingress.Annotations[TemporalRedirectCodeAnnotation] != "" {
+					notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported annotation %s",
+						rule.Ingress.Namespace, rule.Ingress.Name, TemporalRedirectCodeAnnotation), &rule.Ingress)
+				}
+			} else {
 				redirectURL = permanentRedirectURL
 				statusCode = 301
 				annotationUsed = PermanentRedirectAnnotation
@@ -86,16 +93,6 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 				if rule.Ingress.Annotations[PermanentRedirectCodeAnnotation] != "" {
 					notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported annotation %s",
 						rule.Ingress.Namespace, rule.Ingress.Name, PermanentRedirectCodeAnnotation), &rule.Ingress)
-				}
-			} else {
-				redirectURL = temporalRedirectURL
-				statusCode = 302
-				annotationUsed = TemporalRedirectAnnotation
-
-				// Warn about unsupported custom status code annotation
-				if rule.Ingress.Annotations[TemporalRedirectCodeAnnotation] != "" {
-					notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported annotation %s",
-						rule.Ingress.Namespace, rule.Ingress.Name, TemporalRedirectCodeAnnotation), &rule.Ingress)
 				}
 			}
 
