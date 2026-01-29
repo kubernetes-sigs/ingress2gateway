@@ -69,6 +69,10 @@ type HTTPRouteContext struct {
 
 	// RuleBackendSources[i][j] is the source of the jth backend in the ith element of HTTPRoute.Spec.Rules.
 	RuleBackendSources [][]BackendSource
+
+	// CorsPolicyByRuleIdx maps HTTPRoute rule indices to CORS policy intent.
+	// This is provider-neutral and applied by the common emitter.
+	CorsPolicyByRuleIdx map[int]*gatewayv1.HTTPCORSFilter
 }
 
 type ProviderSpecificHTTPRouteIR struct {

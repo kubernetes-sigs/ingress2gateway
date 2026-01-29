@@ -82,8 +82,11 @@ type PrintRunner struct {
 	// Defaults to "standard".
 	emitter string
 
-	// allowAlphaGatewayAPI indicates whether Experimental Gateway API features (like CORS, URLRewrite) should be included in the output.
-	allowAlphaGatewayAPI bool
+	// gatewayClassName indicates the GatewayClass to be used in the output.
+	gatewayClassName string
+
+	// allowExperimentalGatewayAPI indicates whether Experimental Gateway API features (like CORS, URLRewrite) should be included in the output.
+	allowExperimentalGatewayAPI bool
 }
 
 // PrintGatewayAPIObjects performs necessary steps to digest and print
@@ -100,7 +103,7 @@ func (pr *PrintRunner) PrintGatewayAPIObjects(cmd *cobra.Command, _ []string) er
 		return fmt.Errorf("failed to initialize namespace filter: %w", err)
 	}
 
-	gatewayResources, notificationTablesMap, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers, pr.emitter, pr.getProviderSpecificFlags(), pr.allowAlphaGatewayAPI)
+	gatewayResources, notificationTablesMap, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers, pr.emitter, pr.getProviderSpecificFlags(), pr.allowExperimentalGatewayAPI, pr.gatewayClassName)
 	if err != nil {
 		return err
 	}
@@ -366,7 +369,8 @@ if specified with --namespace.`)
 	cmd.Flags().StringSliceVar(&pr.providers, "providers", []string{},
 		fmt.Sprintf("If present, the tool will try to convert only resources related to the specified providers, supported values are %v.", i2gw.GetSupportedProviders()))
 
-	cmd.Flags().BoolVar(&pr.allowAlphaGatewayAPI, "allow-alpha-gw-api", false, "If present, the tool will include Alpha/Experimental Gateway API fields (e.g. CORS, URLRewrite) in the output. Default is false.")
+	cmd.Flags().BoolVar(&pr.allowExperimentalGatewayAPI, "allow-experimental-gw-api", false, "If present, the tool will include Alpha/Experimental Gateway API fields (e.g. CORS, URLRewrite) in the output. Default is false.")
+	cmd.Flags().StringVar(&pr.gatewayClassName, "gateway-class-name", "", "The name of the GatewayClass to use for the Gateway. If not specified, a default one may be used by the emitter.")
 
 	pr.providerSpecificFlags = make(map[string]*string)
 	for provider, flags := range i2gw.GetProviderSpecificFlagDefinitions() {

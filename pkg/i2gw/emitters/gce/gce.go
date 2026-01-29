@@ -49,18 +49,10 @@ var (
 		Version: "v1",
 		Kind:    "HealthCheckPolicy",
 	}
-
-	GatewayClassNameFlag = "gateway-class-name"
 )
-
 
 func init() {
 	i2gw.EmitterConstructorByName["gce"] = NewEmitter
-	i2gw.RegisterProviderSpecificFlag("gce", i2gw.ProviderSpecificFlag{
-		Name:         GatewayClassNameFlag,
-		Description:  "The name of the GatewayClass to use for the Gateway",
-		DefaultValue: "",
-	})
 }
 
 type Emitter struct {
@@ -84,12 +76,8 @@ func (c *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.Err
 
 func (c *Emitter) updateGatewayClass(gatewayResources *i2gw.GatewayResources) {
 	var gatewayClassName string
-	if c.conf != nil && c.conf.ProviderSpecificFlags != nil {
-		if flags, ok := c.conf.ProviderSpecificFlags["gce"]; ok {
-			if val, ok := flags[GatewayClassNameFlag]; ok && val != "" {
-				gatewayClassName = val
-			}
-		}
+	if c.conf != nil && c.conf.GatewayClassName != "" {
+		gatewayClassName = c.conf.GatewayClassName
 	}
 	for i, gw := range gatewayResources.Gateways {
 		if gatewayClassName != "" {

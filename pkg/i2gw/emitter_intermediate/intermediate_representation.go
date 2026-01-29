@@ -61,6 +61,10 @@ type HTTPRouteContext struct {
         // BodySizeByRuleIdx maps HTTPRoute rule indices to body size intent.
         // This is provider-neutral and applied by each custom emitter.
         BodySizeByRuleIdx map[int]*BodySize
+
+        // CorsPolicyByRuleIdx maps HTTPRoute rule indices to CORS policy intent.
+        // This is provider-neutral and applied by the common emitter.
+        CorsPolicyByRuleIdx map[int]*gatewayv1.HTTPCORSFilter
 }
 
 // PathRewrite represents provider-neutral path rewrite intent.

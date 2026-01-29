@@ -31,7 +31,7 @@ import (
 
 func corsFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
-	for _, httpRouteContext := range ir.HTTPRoutes {
+	for key, httpRouteContext := range ir.HTTPRoutes {
 		for i := range httpRouteContext.HTTPRoute.Spec.Rules {
 			if i >= len(httpRouteContext.RuleBackendSources) {
 				continue
@@ -49,26 +49,11 @@ func corsFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string
 				continue
 			}
 
-			rule := &httpRouteContext.HTTPRoute.Spec.Rules[i]
-
-			// Check if CORS filter already exists (unlikely in this flow, but good practice)
-			var corsFilter *gatewayv1.HTTPCORSFilter
-			for _, f := range rule.Filters {
-				if f.Type == gatewayv1.HTTPRouteFilterCORS && f.CORS != nil {
-					corsFilter = f.CORS
-					break
-				}
+			if httpRouteContext.CorsPolicyByRuleIdx == nil {
+				httpRouteContext.CorsPolicyByRuleIdx = make(map[int]*gatewayv1.HTTPCORSFilter)
 			}
 
-			if corsFilter == nil {
-				// Create new filter
-				newFilter := gatewayv1.HTTPRouteFilter{
-					Type: gatewayv1.HTTPRouteFilterCORS,
-					CORS: &gatewayv1.HTTPCORSFilter{},
-				}
-				rule.Filters = append(rule.Filters, newFilter)
-				corsFilter = rule.Filters[len(rule.Filters)-1].CORS
-			}
+			corsFilter := &gatewayv1.HTTPCORSFilter{}
 
 			// Allow Origin
 			if origin, ok := ingress.Annotations[CorsAllowOriginAnnotation]; ok && origin != "" {
@@ -154,15 +139,12 @@ func corsFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string
 					}
 				}
 			}
-			// Gateway API MaxAge is likely specific. Check if MaxAge is a pointer?
-			// Diagnostic tool said "Field: MaxAge, Type: int32". So direct assignment.
-			// Assuming it supports direct assignment of int32.
-			
-			// Warning: If MaxAge field DOES NOT exist (e.g. if I am wrong about struct), build fails.
-			// I am trusting diagnostic tool output.
-			
+
 			corsFilter.MaxAge = maxAgeVal
+
+			httpRouteContext.CorsPolicyByRuleIdx[i] = corsFilter
 		}
+		ir.HTTPRoutes[key] = httpRouteContext
 	}
 	return errs
 }

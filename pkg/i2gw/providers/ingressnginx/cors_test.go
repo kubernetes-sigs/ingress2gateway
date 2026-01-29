@@ -49,11 +49,11 @@ func TestCorsFeature(t *testing.T) {
 				},
 			},
 			expectedCors: &gatewayv1.HTTPCORSFilter{
-				AllowOrigins: []gatewayv1.CORSOrigin{"*"},
-				AllowMethods: []gatewayv1.HTTPMethodWithWildcard{"GET", "PUT", "POST", "DELETE", "PATCH", "OPTIONS"},
-				AllowHeaders: []gatewayv1.HTTPHeaderName{"DNT", "Keep-Alive", "User-Agent", "X-Requested-With", "If-Modified-Since", "Cache-Control", "Content-Type", "Range", "Authorization"},
+				AllowOrigins:     []gatewayv1.CORSOrigin{"*"},
+				AllowMethods:     []gatewayv1.HTTPMethodWithWildcard{"GET", "PUT", "POST", "DELETE", "PATCH", "OPTIONS"},
+				AllowHeaders:     []gatewayv1.HTTPHeaderName{"DNT", "Keep-Alive", "User-Agent", "X-Requested-With", "If-Modified-Since", "Cache-Control", "Content-Type", "Range", "Authorization"},
 				AllowCredentials: ptr.To(true),
-				MaxAge: 1728000,
+				MaxAge:           1728000,
 			},
 		},
 		{
@@ -63,8 +63,8 @@ func TestCorsFeature(t *testing.T) {
 					Name:      "cors-origin",
 					Namespace: "default",
 					Annotations: map[string]string{
-						"nginx.ingress.kubernetes.io/enable-cors":       "true",
-						"nginx.ingress.kubernetes.io/cors-allow-origin": "https://foo.com, https://bar.com",
+						"nginx.ingress.kubernetes.io/enable-cors":         "true",
+						"nginx.ingress.kubernetes.io/cors-allow-origin":   "https://foo.com, https://bar.com",
 						"nginx.ingress.kubernetes.io/cors-expose-headers": "X-Exposed-1, X-Exposed-2",
 					},
 				},
@@ -73,12 +73,12 @@ func TestCorsFeature(t *testing.T) {
 				},
 			},
 			expectedCors: &gatewayv1.HTTPCORSFilter{
-				AllowOrigins: []gatewayv1.CORSOrigin{"https://foo.com", "https://bar.com"},
-				AllowMethods: []gatewayv1.HTTPMethodWithWildcard{"GET", "PUT", "POST", "DELETE", "PATCH", "OPTIONS"},
-				AllowHeaders: []gatewayv1.HTTPHeaderName{"DNT", "Keep-Alive", "User-Agent", "X-Requested-With", "If-Modified-Since", "Cache-Control", "Content-Type", "Range", "Authorization"},
-				ExposeHeaders: []gatewayv1.HTTPHeaderName{"X-Exposed-1", "X-Exposed-2"},
+				AllowOrigins:     []gatewayv1.CORSOrigin{"https://foo.com", "https://bar.com"},
+				AllowMethods:     []gatewayv1.HTTPMethodWithWildcard{"GET", "PUT", "POST", "DELETE", "PATCH", "OPTIONS"},
+				AllowHeaders:     []gatewayv1.HTTPHeaderName{"DNT", "Keep-Alive", "User-Agent", "X-Requested-With", "If-Modified-Since", "Cache-Control", "Content-Type", "Range", "Authorization"},
+				ExposeHeaders:    []gatewayv1.HTTPHeaderName{"X-Exposed-1", "X-Exposed-2"},
 				AllowCredentials: ptr.To(true),
-				MaxAge: 1728000,
+				MaxAge:           1728000,
 			},
 		},
 		{
@@ -98,11 +98,11 @@ func TestCorsFeature(t *testing.T) {
 				},
 			},
 			expectedCors: &gatewayv1.HTTPCORSFilter{
-				AllowOrigins: []gatewayv1.CORSOrigin{"*"},
-				AllowMethods: []gatewayv1.HTTPMethodWithWildcard{"GET", "PUT", "POST", "DELETE", "PATCH", "OPTIONS"},
-				AllowHeaders: []gatewayv1.HTTPHeaderName{"DNT", "Keep-Alive", "User-Agent", "X-Requested-With", "If-Modified-Since", "Cache-Control", "Content-Type", "Range", "Authorization"},
+				AllowOrigins:     []gatewayv1.CORSOrigin{"*"},
+				AllowMethods:     []gatewayv1.HTTPMethodWithWildcard{"GET", "PUT", "POST", "DELETE", "PATCH", "OPTIONS"},
+				AllowHeaders:     []gatewayv1.HTTPHeaderName{"DNT", "Keep-Alive", "User-Agent", "X-Requested-With", "If-Modified-Since", "Cache-Control", "Content-Type", "Range", "Authorization"},
 				AllowCredentials: ptr.To(false),
-				MaxAge: 600,
+				MaxAge:           600,
 			},
 		},
 		{
@@ -153,11 +153,8 @@ func TestCorsFeature(t *testing.T) {
 
 			result := ir.HTTPRoutes[key]
 			var cors *gatewayv1.HTTPCORSFilter
-			for _, f := range result.HTTPRoute.Spec.Rules[0].Filters {
-				if f.Type == gatewayv1.HTTPRouteFilterCORS {
-					cors = f.CORS
-					break
-				}
+			if result.CorsPolicyByRuleIdx != nil {
+				cors = result.CorsPolicyByRuleIdx[0]
 			}
 
 			if tc.expectedCors == nil {
@@ -222,7 +219,7 @@ func TestCorsFeature(t *testing.T) {
 			} else if cors.AllowCredentials != nil {
 				t.Errorf("Expected nil allowCredentials, got %v", *cors.AllowCredentials)
 			}
-			
+
 			// Validate MaxAge
 			if cors.MaxAge != tc.expectedCors.MaxAge {
 				t.Errorf("Expected MaxAge %v, got %v", tc.expectedCors.MaxAge, cors.MaxAge)
@@ -281,7 +278,7 @@ func TestCorsMaxAgeParsing(t *testing.T) {
 					Rules: []networkingv1.IngressRule{{Host: "example.com"}},
 				},
 			}
-			
+
 			key := types.NamespacedName{Namespace: ingress.Namespace, Name: common.RouteName(ingress.Name, "example.com")}
 			route := gatewayv1.HTTPRoute{
 				ObjectMeta: metav1.ObjectMeta{Namespace: ingress.Namespace, Name: key.Name},
@@ -301,12 +298,15 @@ func TestCorsMaxAgeParsing(t *testing.T) {
 			}
 
 			errs := corsFeature([]networkingv1.Ingress{ingress}, nil, &ir)
-			
+
 			if tc.expectedValid {
 				if len(errs) > 0 {
 					t.Fatalf("Unexpected errors: %v", errs)
 				}
-				cors := ir.HTTPRoutes[key].HTTPRoute.Spec.Rules[0].Filters[0].CORS
+				if ir.HTTPRoutes[key].CorsPolicyByRuleIdx == nil || ir.HTTPRoutes[key].CorsPolicyByRuleIdx[0] == nil {
+					t.Fatalf("Expected CORS policy, got nil")
+				}
+				cors := ir.HTTPRoutes[key].CorsPolicyByRuleIdx[0]
 				if cors.MaxAge != tc.expectedVal {
 					t.Errorf("Expected MaxAge %d, got %d", tc.expectedVal, cors.MaxAge)
 				}

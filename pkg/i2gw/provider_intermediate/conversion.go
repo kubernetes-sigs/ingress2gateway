@@ -19,6 +19,7 @@ package providerir
 import (
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"k8s.io/apimachinery/pkg/types"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 func ToEmitterIR(pIR ProviderIR) emitterir.EmitterIR {
@@ -42,7 +43,16 @@ func ToEmitterIR(pIR ProviderIR) emitterir.EmitterIR {
 		eIR.Gateways[k] = ctx
 	}
 	for k, v := range pIR.HTTPRoutes {
+		if len(v.HTTPRoute.Spec.Rules) > 0 {
+
+		}
 		ctx := emitterir.HTTPRouteContext{HTTPRoute: v.HTTPRoute}
+		if len(v.CorsPolicyByRuleIdx) > 0 {
+			ctx.CorsPolicyByRuleIdx = make(map[int]*gatewayv1.HTTPCORSFilter, len(v.CorsPolicyByRuleIdx))
+			for idx, policy := range v.CorsPolicyByRuleIdx {
+				ctx.CorsPolicyByRuleIdx[idx] = policy
+			}
+		}
 
 		eIR.HTTPRoutes[k] = ctx
 	}

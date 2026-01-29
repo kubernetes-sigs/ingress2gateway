@@ -22,12 +22,10 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-type Emitter struct {
-	allowAlpha bool
-}
+type Emitter struct{}
 
-func NewEmitter(allowAlpha bool) *Emitter {
-	return &Emitter{allowAlpha: allowAlpha}
+func NewEmitter() *Emitter {
+	return &Emitter{}
 }
 
 func applyPathRewrites(ir *emitterir.EmitterIR) {
@@ -63,30 +61,27 @@ func applyPathRewrites(ir *emitterir.EmitterIR) {
 	}
 }
 
+func applyCorsPolicies(ir *emitterir.EmitterIR) {
+	for key, routeCtx := range ir.HTTPRoutes {
+		for ruleIdx, policy := range routeCtx.CorsPolicyByRuleIdx {
+			if policy == nil {
+				continue
+			}
+			routeCtx.Spec.Rules[ruleIdx].Filters = append(routeCtx.Spec.Rules[ruleIdx].Filters, gatewayv1.HTTPRouteFilter{
+				Type: gatewayv1.HTTPRouteFilterCORS,
+				CORS: policy,
+			})
+			// routeCtx.CorsPolicyByRuleIdx[ruleIdx] = nil -- REMOVED clearing to preserve intent
+		}
+		ir.HTTPRoutes[key] = routeCtx
+	}
+}
+
 // Emit processes the IR to apply common logic (like deduplication) and returns the modified IR.
 // This ALWAYS runs after providers and before provider-specific emitters.
 // TODO: Implement common logic such as filtering by maturity status and/or individual features.
 func (e *Emitter) Emit(ir emitterir.EmitterIR) (emitterir.EmitterIR, field.ErrorList) {
 	applyPathRewrites(&ir)
-	if !e.allowAlpha {
-		// Filter out Alpha/Experimental features here.
-		// 1. CORS
-		filterOutCORS(ir)
-	}
+	applyCorsPolicies(&ir)
 	return ir, nil
-}
-
-func filterOutCORS(ir emitterir.EmitterIR) {
-	for _, httpRouteContext := range ir.HTTPRoutes {
-		for i, rule := range httpRouteContext.HTTPRoute.Spec.Rules {
-			var newFilters []gatewayv1.HTTPRouteFilter
-			for _, f := range rule.Filters {
-				if f.Type == gatewayv1.HTTPRouteFilterCORS {
-					continue
-				}
-				newFilters = append(newFilters, f)
-			}
-			httpRouteContext.HTTPRoute.Spec.Rules[i].Filters = newFilters
-		}
-	}
 }

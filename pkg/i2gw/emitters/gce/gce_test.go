@@ -495,11 +495,7 @@ func Test_irToGateway(t *testing.T) {
 				},
 			},
 			emitterConf: &i2gw.EmitterConf{
-				ProviderSpecificFlags: map[string]map[string]string{
-					"gce": {
-						GatewayClassNameFlag: "custom-gateway-class",
-					},
-				},
+				GatewayClassName: "custom-gateway-class",
 			},
 			expectedGatewayResources: i2gw.GatewayResources{
 				Gateways: map[types.NamespacedName]gatewayv1.Gateway{
