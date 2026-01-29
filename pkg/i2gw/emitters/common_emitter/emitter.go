@@ -112,7 +112,7 @@ func applyTCPTimeouts(ir *emitterir.EmitterIR) field.ErrorList {
 }
 
 func maxParsedDuration(durations ...*gatewayv1.Duration) (time.Duration, bool) {
-	var max time.Duration
+	var maxDuration time.Duration
 	var found bool
 	for _, d := range durations {
 		if d == nil {
@@ -122,10 +122,10 @@ func maxParsedDuration(durations ...*gatewayv1.Duration) (time.Duration, bool) {
 		if err != nil {
 			continue
 		}
-		if !found || parsed > max {
-			max = parsed
+		if !found || parsed > maxDuration {
+			maxDuration = parsed
 			found = true
 		}
 	}
-	return max, found
+	return maxDuration, found
 }

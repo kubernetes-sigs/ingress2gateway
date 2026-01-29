@@ -73,12 +73,9 @@ func applyTimeoutsToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterI
 				continue
 			}
 
-			connect, err := parseIngressNginxTimeoutAnnotation(ingress, ProxyConnectTimeoutAnnotation, &errList)
-			read, readErr := parseIngressNginxTimeoutAnnotation(ingress, ProxyReadTimeoutAnnotation, &errList)
-			write, writeErr := parseIngressNginxTimeoutAnnotation(ingress, ProxySendTimeoutAnnotation, &errList)
-			if err != nil || readErr != nil || writeErr != nil {
-				// continue; errors recorded in errList
-			}
+			connect, _ := parseIngressNginxTimeoutAnnotation(ingress, ProxyConnectTimeoutAnnotation, &errList)
+			read, _ := parseIngressNginxTimeoutAnnotation(ingress, ProxyReadTimeoutAnnotation, &errList)
+			write, _ := parseIngressNginxTimeoutAnnotation(ingress, ProxySendTimeoutAnnotation, &errList)
 			if connect == nil && read == nil && write == nil {
 				continue
 			}

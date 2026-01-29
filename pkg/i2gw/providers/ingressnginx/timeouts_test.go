@@ -32,10 +32,10 @@ import (
 
 func TestTimeoutFeature(t *testing.T) {
 	testCases := []struct {
-		name        string
-		annotations map[string]string
+		name         string
+		annotations  map[string]string
 		wantTimeouts *emitterir.TCPTimeouts
-		wantErr     bool
+		wantErr      bool
 	}{
 		{
 			name:         "no timeouts",
