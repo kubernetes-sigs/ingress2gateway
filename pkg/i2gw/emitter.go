@@ -62,6 +62,4 @@ type EmitterConstructor func(conf *EmitterConf) Emitter
 type EmitterConf struct {
 	// AllowExperimentalGatewayAPI indicates whether Experimental Gateway API features (like CORS, URLRewrite) should be included in the output.
 	AllowExperimentalGatewayAPI bool
-	// GatewayClassName is the name of the GatewayClass to be used in the output.
-	GatewayClassName string
 }

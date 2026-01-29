@@ -55,12 +55,10 @@ func init() {
 	i2gw.EmitterConstructorByName["gce"] = NewEmitter
 }
 
-type Emitter struct {
-	conf *i2gw.EmitterConf
-}
+type Emitter struct{}
 
-func NewEmitter(conf *i2gw.EmitterConf) i2gw.Emitter {
-	return &Emitter{conf: conf}
+func NewEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
+	return &Emitter{}
 }
 
 func (c *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.ErrorList) {
@@ -70,23 +68,7 @@ func (c *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.Err
 	}
 	buildGceGatewayExtensions(ir, &gatewayResources)
 	buildGceServiceExtensions(ir, &gatewayResources)
-	c.updateGatewayClass(&gatewayResources)
 	return gatewayResources, nil
-}
-
-func (c *Emitter) updateGatewayClass(gatewayResources *i2gw.GatewayResources) {
-	var gatewayClassName string
-	if c.conf != nil && c.conf.GatewayClassName != "" {
-		gatewayClassName = c.conf.GatewayClassName
-	}
-	for i, gw := range gatewayResources.Gateways {
-		if gatewayClassName != "" {
-			gw.Spec.GatewayClassName = gatewayv1.ObjectName(gatewayClassName)
-		} else if gw.Spec.GatewayClassName == "" {
-			gw.Spec.GatewayClassName = "gke-l7-global-external-managed"
-		}
-		gatewayResources.Gateways[i] = gw
-	}
 }
 
 func buildGceGatewayExtensions(ir emitterir.EmitterIR, gatewayResources *i2gw.GatewayResources) {
