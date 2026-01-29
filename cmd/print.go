@@ -81,9 +81,7 @@ type PrintRunner struct {
 	// emitter indicates which emitter is used to generate the Gateway API resources.
 	// Defaults to "standard".
 	emitter string
-
-
-
+	
 	// allowExperimentalGatewayAPI indicates whether Experimental Gateway API features (like CORS, URLRewrite) should be included in the output.
 	allowExperimentalGatewayAPI bool
 }
@@ -399,13 +397,6 @@ func (pr *PrintRunner) getProviderSpecificFlags() map[string]map[string]string {
 	providerSpecificFlags := make(map[string]map[string]string)
 	for flagName, value := range pr.providerSpecificFlags {
 		provider, found := lo.Find(pr.providers, func(p string) bool { return strings.HasPrefix(flagName, fmt.Sprintf("%s-", p)) })
-		if !found {
-			// If not found in providers, check if it matches the emitter
-			if strings.HasPrefix(flagName, fmt.Sprintf("%s-", pr.emitter)) {
-				provider = pr.emitter
-				found = true
-			}
-		}
 		if !found {
 			continue
 		}
