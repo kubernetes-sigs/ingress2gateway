@@ -72,6 +72,11 @@ linters:
           - gocyclo
           - errcheck
           - dupl
+      # Exclude gosec G104 (unhandled errors) from test files
+      - path: '_test\.go'
+        linters:
+          - gosec
+        text: "G104"
       # Allow underscores in emitter package names
       - path: pkg/i2gw/emitters/
         linters:
@@ -79,6 +84,14 @@ linters:
         text: "var-naming: don't use an underscore in package name"
       - path: '(.+)\.go$'
         text: "Using the variable on range scope `tc` in function literal"
+      # Allow capitalized error messages
+      - linters:
+          - staticcheck
+        text: "ST1005:"
+      # Allow embedded field, currently this style is used in many places
+      - linters:
+          - staticcheck
+        text: "QF1008:"
 
 formatters:
   enable:

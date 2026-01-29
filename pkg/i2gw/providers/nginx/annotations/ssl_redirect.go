@@ -42,6 +42,7 @@ func SSLRedirectFeature(ingresses []networkingv1.Ingress, _ map[types.Namespaced
 			legacyRedirect, legacyExists := rule.Ingress.Annotations[legacySSLRedirectAnnotation]
 
 			// Check if either SSL redirect annotation is enabled
+			//nolint:staticcheck
 			if !((modernExists && modernRedirect == "true") || (legacyExists && legacyRedirect == "true")) {
 				continue
 			}
