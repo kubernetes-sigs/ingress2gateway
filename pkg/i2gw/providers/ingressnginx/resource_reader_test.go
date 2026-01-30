@@ -68,13 +68,13 @@ func TestResourceReader_FiltersByIngressClass_FromFile(t *testing.T) {
 	dir := t.TempDir()
 	filePath := filepath.Join(dir, "ingress.yaml")
 
-	f, err := os.Create(filePath)
+	f, err := os.Create(filepath.Clean(filePath))
 	if err != nil {
 		t.Fatalf("failed to create file: %v", err)
 	}
 	defer f.Close()
 
-	if _, err := io.WriteString(f, ingressText); err != nil {
+	if _, err = io.WriteString(f, ingressText); err != nil {
 		t.Fatalf("failed to write string: %v", err)
 	}
 
