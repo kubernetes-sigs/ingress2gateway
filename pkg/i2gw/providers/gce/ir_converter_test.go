@@ -26,6 +26,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	apiv1 "k8s.io/api/core/v1"
@@ -1148,7 +1149,7 @@ func TestGetBackendConfigMapping(t *testing.T) {
 			}
 			gceProvider.storage.BackendConfigs = backendConfigs
 
-			beConfigToSvcs := getBackendConfigMapping(context.TODO(), gceProvider.storage)
+			beConfigToSvcs := getBackendConfigMapping(logging.Noop(), context.TODO(), gceProvider.storage)
 			if !reflect.DeepEqual(beConfigToSvcs, tc.expectedBeConfigToSvcs) {
 				t.Errorf("Got BackendConfig mapping %v, expected %v", beConfigToSvcs, tc.expectedBeConfigToSvcs)
 			}
@@ -1244,7 +1245,7 @@ func TestGetBackendConfigName(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			ctx := context.TODO()
 			ctx = context.WithValue(ctx, serviceKey, tc.service)
-			gotName, gotExists := getBackendConfigName(ctx, tc.service, tc.beConfigKey)
+			gotName, gotExists := getBackendConfigName(logging.Noop(), ctx, tc.service, tc.beConfigKey)
 			if gotExists != tc.expectedExists {
 				t.Errorf("getBackendConfigName() got exist = %v, expected %v", gotExists, tc.expectedExists)
 			}

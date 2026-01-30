@@ -17,12 +17,15 @@ limitations under the License.
 package crds
 
 import (
+	"log/slog"
+
 	kongv1beta1 "github.com/kong/kubernetes-ingress-controller/v2/pkg/apis/configuration/v1beta1"
 )
 
 type ruleGroupKey string
 
 type tcpIngressAggregator struct {
+	log        *slog.Logger
 	ruleGroups map[ruleGroupKey]*tcpIngressRuleGroup
 }
 

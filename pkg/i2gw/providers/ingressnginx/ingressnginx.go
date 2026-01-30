@@ -20,9 +20,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -43,6 +45,7 @@ func init() {
 
 // Provider implements the i2gw.Provider interface.
 type Provider struct {
+	log                    *slog.Logger
 	storage                *storage
 	resourceReader         *resourceReader
 	resourcesToIRConverter *resourcesToIRConverter
@@ -50,10 +53,12 @@ type Provider struct {
 
 // NewProvider constructs and returns the ingress-nginx implementation of i2gw.Provider.
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
+	log := logging.WithProvider(Name)
 	return &Provider{
+		log:                    log,
 		storage:                newResourcesStorage(),
 		resourceReader:         newResourceReader(conf),
-		resourcesToIRConverter: newResourcesToIRConverter(),
+		resourcesToIRConverter: newResourcesToIRConverter(log),
 	}
 }
 
@@ -63,11 +68,11 @@ func (p *Provider) ToIR() (emitterir.EmitterIR, field.ErrorList) {
 	pIR, errs := p.resourcesToIRConverter.convert(p.storage)
 	eIR := providerir.ToEmitterIR(pIR)
 	applyRewriteTargetToEmitterIR(pIR, &eIR)
-	applyIPRangeControlToEmitterIR(pIR, &eIR)
-	errs = append(errs, applyTimeoutsToEmitterIR(pIR, &eIR)...)
+	applyIPRangeControlToEmitterIR(p.log, pIR, &eIR)
+	errs = append(errs, applyTimeoutsToEmitterIR(p.log, pIR, &eIR)...)
 	errs = append(errs, applyCorsToEmitterIR(pIR, &eIR)...)
 	errs = append(errs, addDefaultSSLRedirect(&pIR, &eIR)...)
-	errs = append(errs, applyBodySizeToEmitterIR(pIR, &eIR)...)
+	errs = append(errs, applyBodySizeToEmitterIR(p.log, pIR, &eIR)...)
 	return eIR, errs
 }
 

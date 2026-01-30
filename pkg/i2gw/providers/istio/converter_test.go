@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"google.golang.org/protobuf/types/known/durationpb"
 	istiov1beta1 "istio.io/api/networking/v1beta1"
@@ -326,7 +327,7 @@ func Test_resourcesToIRConverter_convertGateway(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := newResourcesToIRConverter()
+			c := newResourcesToIRConverter(logging.Noop())
 			got, errList := c.convertGateway(tt.args.gw, field.NewPath(""))
 			if tt.wantError && len(errList) == 0 {
 				t.Errorf("resourcesToIRConverter.convertGateway().errList = %+v, wantError %+v", errList, tt.wantError)
@@ -1378,7 +1379,7 @@ func Test_resourcesToIRConverter_convertVsHTTPRoutes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &resourcesToIRConverter{ctx: context.Background()}
+			c := &resourcesToIRConverter{ctx: context.Background(), log: logging.Noop()}
 			c.ctx = context.WithValue(c.ctx, virtualServiceKey, tt.args.virtualService)
 			httpRoutes, errList := c.convertVsHTTPRoutes(tt.args.virtualService.ObjectMeta, tt.args.istioHTTPRoutes, tt.args.allowedHostnames, field.NewPath(""))
 			if tt.wantError && len(errList) == 0 {
@@ -1507,7 +1508,7 @@ func Test_resourcesToIRConverter_convertVsTLSRoutes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &resourcesToIRConverter{ctx: context.Background()}
+			c := &resourcesToIRConverter{ctx: context.Background(), log: logging.Noop()}
 			c.ctx = context.WithValue(c.ctx, virtualServiceKey, tt.args.virtualService)
 			if got := c.convertVsTLSRoutes(tt.args.virtualService.ObjectMeta, tt.args.istioTLSRoutes, field.NewPath("")); !apiequality.Semantic.DeepEqual(got, tt.want) {
 				t.Errorf("resourcesToIRConverter.convertVsTLSRoutes() = %+v, want %+v, diff (-want +got): %s", got, tt.want, cmp.Diff(tt.want, got))
@@ -1619,7 +1620,7 @@ func Test_resourcesToIRConverter_convertVsTCPRoutes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &resourcesToIRConverter{ctx: context.Background()}
+			c := &resourcesToIRConverter{ctx: context.Background(), log: logging.Noop()}
 			c.ctx = context.WithValue(c.ctx, virtualServiceKey, tt.args.virtualService)
 			if got := c.convertVsTCPRoutes(tt.args.virtualService.ObjectMeta, tt.args.istioTCPRoutes, field.NewPath("")); !apiequality.Semantic.DeepEqual(got, tt.want) {
 				t.Errorf("resourcesToIRConverter.convertVsTCPRoutes() = %+v, want %+v, diff (-want +got): %s", got, tt.want, cmp.Diff(tt.want, got))
@@ -1765,7 +1766,7 @@ func Test_resourcesToIRConverter_generateReferenceGrants(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &resourcesToIRConverter{}
+			c := &resourcesToIRConverter{log: logging.Noop()}
 			if got := c.generateReferenceGrant(tt.args.params); !apiequality.Semantic.DeepEqual(got, tt.want) {
 				t.Errorf("resourcesToIRConverter.generateReferenceGrant() = %+v, want %+v, diff (-want +got): %s", got, tt.want, cmp.Diff(tt.want, got))
 			}
@@ -1949,6 +1950,7 @@ func Test_resourcesToIRConverter_isGatewayAllowedForVirtualService(t *testing.T)
 		t.Run(tt.name, func(t *testing.T) {
 			c := &resourcesToIRConverter{
 				gwAllowedHosts: tt.fields.gwAllowedHosts,
+				log:            logging.Noop(),
 			}
 			if got := c.isVirtualServiceAllowedForGateway(tt.args.gateway, tt.args.vs, field.NewPath("")); got != tt.want {
 				t.Errorf("resourcesToIRConverter.isVirtualServiceAllowedForGateway() = %v, want %v", got, tt.want)
@@ -2086,6 +2088,7 @@ func Test_resourcesToIRConverter_generateReferences(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &resourcesToIRConverter{
 				gwAllowedHosts: tt.fields.gwAllowedHosts,
+				log:            logging.Noop(),
 			}
 			gotParentReferences, gotReferenceGrants := c.generateReferences(tt.args.vs, field.NewPath(""))
 			if !apiequality.Semantic.DeepEqual(gotParentReferences, tt.wantParentReferences) {
@@ -2181,7 +2184,7 @@ func Test_convertHostnames(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.WithValue(context.Background(), virtualServiceKey, tc.virtualService)
-			actual := convertHostnames(ctx, tc.hostnames, field.NewPath(""))
+			actual := convertHostnames(ctx, logging.Noop(), tc.hostnames, field.NewPath(""))
 			if !apiequality.Semantic.DeepEqual(actual, tc.expected) {
 				t.Errorf("convertHostnames() = %v, want %v", actual, tc.expected)
 			}

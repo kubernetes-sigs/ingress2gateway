@@ -19,6 +19,7 @@ package annotations
 import (
 	"testing"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/stretchr/testify/require"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -106,7 +107,7 @@ func TestSSLServicesAnnotation(t *testing.T) {
 				BackendTLSPolicies: make(map[types.NamespacedName]gatewayv1.BackendTLSPolicy),
 			}
 
-			errs := processSSLServicesAnnotation(ingress, tt.annotation, &ir)
+			errs := processSSLServicesAnnotation(logging.Noop(), ingress, tt.annotation, &ir)
 			if len(errs) > 0 {
 				t.Errorf("Unexpected errors: %v", errs)
 				return
@@ -195,7 +196,7 @@ func TestSSLServicesFeature(t *testing.T) {
 				BackendTLSPolicies: make(map[types.NamespacedName]gatewayv1.BackendTLSPolicy),
 			}
 
-			errs := SSLServicesFeature(tt.ingresses, nil, &ir)
+			errs := SSLServicesFeature(logging.Noop(), tt.ingresses, nil, &ir)
 			if len(errs) > 0 {
 				t.Errorf("Unexpected errors: %v", errs)
 				return

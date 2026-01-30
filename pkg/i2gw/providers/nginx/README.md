@@ -38,11 +38,11 @@ ingress2gateway print --providers=nginx --input-file=nginx-ingress.yaml
 
 ## Gateway API Mapping
 
-| NGINX Annotation                    | Gateway API Resource              |
+| NGINX Annotation                     | Gateway API Resource              |
 |--------------------------------------|-----------------------------------|
 | `nginx.org/ssl-services`             | BackendTLSPolicy                  |
 | `nginx.org/grpc-services`            | GRPCRoute                         |
-| `nginx.org/websocket-services`       | Informational notification only  |
+| `nginx.org/websocket-services`       | Informational logs only           |
 | `nginx.org/proxy-hide-headers`       | HTTPRoute ResponseHeaderModifier  |
 | `nginx.org/proxy-set-headers`        | HTTPRoute RequestHeaderModifier   |
 | `nginx.org/rewrites`                 | HTTPRoute URLRewrite filter       |

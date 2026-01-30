@@ -18,6 +18,7 @@ package annotations
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 
 	networkingv1 "k8s.io/api/networking/v1"
@@ -32,7 +33,7 @@ import (
 
 // SSLRedirectFeature converts SSL redirect annotations to Gateway API RequestRedirect filters.
 // Both nginx.org/redirect-to-https and ingress.kubernetes.io/ssl-redirect function identically.
-func SSLRedirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func SSLRedirectFeature(_ *slog.Logger, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 
 	ruleGroups := common.GetRuleGroups(ingresses)

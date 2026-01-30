@@ -17,6 +17,8 @@ limitations under the License.
 package nginx
 
 import (
+	"log/slog"
+
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
@@ -27,12 +29,14 @@ import (
 )
 
 type resourcesToIRConverter struct {
+	log                           *slog.Logger
 	featureParsers                []i2gw.FeatureParser
 	implementationSpecificOptions i2gw.ProviderImplementationSpecificOptions
 }
 
-func newResourcesToIRConverter() *resourcesToIRConverter {
+func newResourcesToIRConverter(log *slog.Logger) *resourcesToIRConverter {
 	return &resourcesToIRConverter{
+		log: log,
 		featureParsers: []i2gw.FeatureParser{
 			annotations.ListenPortsFeature,
 			annotations.RewriteTargetFeature,
@@ -62,7 +66,7 @@ func (c *resourcesToIRConverter) convert(storage *storage) (providerir.ProviderI
 	}
 
 	for _, parseFeatureFunc := range c.featureParsers {
-		errs := parseFeatureFunc(ingressList, storage.ServicePorts, &ir)
+		errs := parseFeatureFunc(c.log, ingressList, storage.ServicePorts, &ir)
 		errorList = append(errorList, errs...)
 	}
 

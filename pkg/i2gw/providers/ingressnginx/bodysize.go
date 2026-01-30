@@ -18,11 +18,12 @@ package ingressnginx
 
 import (
 	"fmt"
+	"log/slog"
 	"regexp"
 	"strings"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -83,7 +84,7 @@ func convertNginxSizeToK8sQuantity(nginxSize string) (string, error) {
 // Currently supported annotations are:
 // - nginx.ingress.kubernetes.io/proxy-body-size
 // - nginx.ingress.kubernetes.io/client-body-buffer-size
-func applyBodySizeToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) field.ErrorList {
+func applyBodySizeToEmitterIR(log *slog.Logger, pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) field.ErrorList {
 	var errs field.ErrorList
 
 	for key, pRouteCtx := range pIR.HTTPRoutes {
@@ -165,13 +166,29 @@ func applyBodySizeToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterI
 			bodySizeIR := emitterir.BodySize{}
 			if maxSize != nil {
 				bodySizeIR.MaxSize = maxSize
-				notify(notifications.InfoNotification, fmt.Sprintf("parsed proxy-body-size annotation of ingress %s/%s and set %s to HTTPRoute rule index %d",
-					ing.Namespace, ing.Name, maxSize.String(), ruleIdx), &eRouteCtx.HTTPRoute)
+				log.Info(
+					fmt.Sprintf(
+						"parsed proxy-body-size annotation of ingress %s/%s and set %s to HTTPRoute rule index %d",
+						ing.Namespace,
+						ing.Name,
+						maxSize.String(),
+						ruleIdx,
+					),
+					logging.ObjectRef(&eRouteCtx.HTTPRoute),
+				)
 			}
 			if bufferSize != nil {
 				bodySizeIR.BufferSize = bufferSize
-				notify(notifications.InfoNotification, fmt.Sprintf("parsed client-body-buffer-size annotation of ingress %s/%s and set %s to HTTPRoute rule index %d",
-					ing.Namespace, ing.Name, bufferSize.String(), ruleIdx), &eRouteCtx.HTTPRoute)
+				log.Info(
+					fmt.Sprintf(
+						"parsed client-body-buffer-size annotation of ingress %s/%s and set %s to HTTPRoute rule index %d",
+						ing.Namespace,
+						ing.Name,
+						bufferSize.String(),
+						ruleIdx,
+					),
+					logging.ObjectRef(&eRouteCtx.HTTPRoute),
+				)
 			}
 
 			eRouteCtx.BodySizeByRuleIdx[ruleIdx] = &bodySizeIR

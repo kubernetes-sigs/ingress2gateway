@@ -27,6 +27,7 @@ import (
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
@@ -498,7 +499,7 @@ func TestHeaderManipulationFeature(t *testing.T) {
 				},
 			}
 
-			errs := HeaderManipulationFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+			errs := HeaderManipulationFeature(logging.Noop(), []networkingv1.Ingress{ingress}, nil, &ir)
 			if len(errs) > 0 {
 				t.Fatalf("Unexpected errors: %v", errs)
 			}
@@ -817,7 +818,7 @@ func TestHeaderManipulationWithSourceIngressMapping(t *testing.T) {
 	ir.HTTPRoutes[routeKey] = providerir.HTTPRouteContext{HTTPRoute: httpRoute}
 
 	// Apply header manipulation
-	errs := HeaderManipulationFeature([]networkingv1.Ingress{ingress1, ingress2}, nil, &ir)
+	errs := HeaderManipulationFeature(logging.Noop(), []networkingv1.Ingress{ingress1, ingress2}, nil, &ir)
 	if len(errs) > 0 {
 		t.Fatalf("HeaderManipulationFeature returned errors: %v", errs)
 	}

@@ -18,7 +18,7 @@ package openapi3
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"regexp"
 	"slices"
 	"sort"
@@ -36,7 +36,6 @@ import (
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
@@ -65,17 +64,18 @@ type ResourcesToIRConverter interface {
 }
 
 // NewResourcesToIRConverter returns a resourcesToIRConverter of OpenAPI Specifications 3.x from a storage into Gateway API resources.
-func NewResourcesToIRConverter(conf *i2gw.ProviderConf) ResourcesToIRConverter {
+func NewResourcesToIRConverter(log *slog.Logger, conf *i2gw.ProviderConf) ResourcesToIRConverter {
 	converter := &resourcesToIRConverter{
+		log:          log,
 		namespace:    conf.Namespace,
 		tlsSecretRef: types.NamespacedName{},
-		backendRef:   toBackendRef(""),
+		backendRef:   toBackendRef(log, ""),
 	}
 
 	if ps := conf.ProviderSpecificFlags[ProviderName]; ps != nil {
 		converter.gatewayClassName = ps[GatewayClassFlag]
 		converter.tlsSecretRef = toNamespacedName(ps[TLSSecretFlag])
-		converter.backendRef = toBackendRef(ps[BackendFlag])
+		converter.backendRef = toBackendRef(log, ps[BackendFlag])
 	}
 
 	return converter
@@ -87,6 +87,7 @@ type backendRef struct {
 }
 
 type resourcesToIRConverter struct {
+	log              *slog.Logger
 	namespace        string
 	gatewayClassName string
 	tlsSecretRef     types.NamespacedName
@@ -122,21 +123,49 @@ func (c *resourcesToIRConverter) Convert(storage Storage) (emitterir.EmitterIR, 
 		httpRoutes, gateways := c.toHTTPRoutesAndGateways(spec, resourcesNamePrefix, errors)
 		for _, httpRoute := range httpRoutes {
 			ir.HTTPRoutes[types.NamespacedName{Name: httpRoute.GetName(), Namespace: httpRoute.GetNamespace()}] = emitterir.HTTPRouteContext{HTTPRoute: httpRoute}
-			notify(notifications.InfoNotification, fmt.Sprintf("successfully created HTTPRoute \"%v/%v\" from OpenAPI spec \"%v\"", httpRoute.Namespace, httpRoute.Name, spec.Info.Title))
+			c.log.Info(
+				fmt.Sprintf(
+					"successfully created HTTPRoute \"%v/%v\" from OpenAPI spec \"%v\"",
+					httpRoute.Namespace,
+					httpRoute.Name,
+					spec.Info.Title,
+				),
+			)
 		}
 
 		// build reference grants for the resources
 		if referenceGrant := c.buildHTTPRouteBackendReferenceGrant(); referenceGrant != nil {
 			ir.ReferenceGrants[types.NamespacedName{Name: referenceGrant.GetName(), Namespace: referenceGrant.GetNamespace()}] = emitterir.ReferenceGrantContext{ReferenceGrant: *referenceGrant}
-			notify(notifications.InfoNotification, fmt.Sprintf("successfully created ReferenceGrant \"%v/%v\" from OpenAPI spec \"%v\"", referenceGrant.Namespace, referenceGrant.Name, spec.Info.Title))
+			c.log.Info(
+				fmt.Sprintf(
+					"successfully created ReferenceGrant \"%v/%v\" from OpenAPI spec \"%v\"",
+					referenceGrant.Namespace,
+					referenceGrant.Name,
+					spec.Info.Title,
+				),
+			)
 		}
 		for _, gateway := range gateways {
 			ir.Gateways[types.NamespacedName{Name: gateway.GetName(), Namespace: gateway.GetNamespace()}] = emitterir.GatewayContext{Gateway: gateway}
 			if referenceGrant := c.buildGatewayTLSSecretReferenceGrant(gateway); referenceGrant != nil {
 				ir.ReferenceGrants[types.NamespacedName{Name: referenceGrant.GetName(), Namespace: referenceGrant.GetNamespace()}] = emitterir.ReferenceGrantContext{ReferenceGrant: *referenceGrant}
-				notify(notifications.InfoNotification, fmt.Sprintf("successfully created ReferenceGrant \"%v/%v\" from OpenAPI spec \"%v\"", referenceGrant.Namespace, referenceGrant.Name, spec.Info.Title))
+				c.log.Info(
+					fmt.Sprintf(
+						"successfully created ReferenceGrant \"%v/%v\" from OpenAPI spec \"%v\"",
+						referenceGrant.Namespace,
+						referenceGrant.Name,
+						spec.Info.Title,
+					),
+				)
 			}
-			notify(notifications.InfoNotification, fmt.Sprintf("successfully created Gateway \"%v/%v\" from OpenAPI spec \"%v\"", gateway.Namespace, gateway.Name, spec.Info.Title))
+			c.log.Info(
+				fmt.Sprintf(
+					"successfully created Gateway \"%v/%v\" from OpenAPI spec \"%v\"",
+					gateway.Namespace,
+					gateway.Name,
+					spec.Info.Title,
+				),
+			)
 		}
 	}
 
@@ -672,7 +701,7 @@ func toNamespacedName(s string) types.NamespacedName {
 
 // toBackendRef converts a backend reference string to a backendRef object, including namespaced reference to the
 // Backend and port number if available.
-func toBackendRef(s string) backendRef {
+func toBackendRef(log *slog.Logger, s string) backendRef {
 	ref := backendRef{NamespacedName: types.NamespacedName{}}
 	if s == "" {
 		return ref
@@ -682,7 +711,7 @@ func toBackendRef(s string) backendRef {
 	if len(parts) > 1 {
 		port, err := strconv.ParseUint(parts[1], 10, 32)
 		if err != nil {
-			log.Printf("%s provider: invalid backend: %v", ProviderName, err)
+			log.Error(fmt.Sprintf("invalid backend: %v", err))
 			return ref
 		}
 		ref.port = common.PtrTo(gatewayv1.PortNumber(port))

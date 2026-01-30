@@ -23,7 +23,7 @@ import (
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
@@ -44,20 +44,22 @@ type Provider struct {
 }
 
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
+	log := logging.WithProvider(ProviderName)
 	// Add BackendConfig and FrontendConfig to Schema when reading in-cluster
 	// so these resources can be recognized.
 	if conf.Client != nil {
 		if err := backendconfigv1.AddToScheme(conf.Client.Scheme()); err != nil {
-			notify(notifications.ErrorNotification, "Failed to add v1 BackendConfig Scheme")
+			log.Error("Failed to add v1 BackendConfig Scheme")
 		}
 		if err := frontendconfigv1beta1.AddToScheme(conf.Client.Scheme()); err != nil {
-			notify(notifications.ErrorNotification, "Failed to add v1beta1 FrontendConfig Scheme")
+			log.Error("Failed to add v1beta1 FrontendConfig Scheme")
 		}
 	}
+
 	return &Provider{
 		storage:     newResourcesStorage(),
 		reader:      newResourceReader(conf),
-		irConverter: newResourcesToIRConverter(conf),
+		irConverter: newResourcesToIRConverter(log, conf),
 	}
 }
 

@@ -19,9 +19,10 @@ package kong
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -37,7 +38,7 @@ import (
 // konghq.com/methods: "GET,POST"
 //
 // All the values defined and separated by comma, MUST be ORed.
-func methodMatchingFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func methodMatchingFeature(log *slog.Logger, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	ruleGroups := common.GetRuleGroups(ingresses)
 	for _, rg := range ruleGroups {
 		for _, rule := range rg.Rules {
@@ -50,13 +51,13 @@ func methodMatchingFeature(ingresses []networkingv1.Ingress, _ map[types.Namespa
 			if len(errs) != 0 {
 				return errs
 			}
-			patchHTTPRouteMethodMatching(&httpRouteContext.HTTPRoute, methods)
+			patchHTTPRouteMethodMatching(log, &httpRouteContext.HTTPRoute, methods)
 		}
 	}
 	return nil
 }
 
-func patchHTTPRouteMethodMatching(httpRoute *gatewayv1.HTTPRoute, methods []gatewayv1.HTTPMethod) {
+func patchHTTPRouteMethodMatching(log *slog.Logger, httpRoute *gatewayv1.HTTPRoute, methods []gatewayv1.HTTPMethod) {
 	for i, rule := range httpRoute.Spec.Rules {
 		matches := []gatewayv1.HTTPRouteMatch{}
 		for _, match := range rule.Matches {
@@ -69,7 +70,14 @@ func patchHTTPRouteMethodMatching(httpRoute *gatewayv1.HTTPRoute, methods []gate
 		}
 		if len(matches) > 0 {
 			httpRoute.Spec.Rules[i].Matches = matches
-			notify(notifications.InfoNotification, fmt.Sprintf("parsed \"%v\" annotation of ingress and patched %v fields", kongAnnotation(methodsKey), field.NewPath("httproute", "spec", "rules").Key("").Child("matches").Key("").Child("method")), httpRoute)
+			log.Info(
+				fmt.Sprintf(
+					"parsed \"%v\" annotation of ingress and patched %v fields",
+					kongAnnotation(methodsKey),
+					field.NewPath("httproute", "spec", "rules").Key("").Child("matches").Key("").Child("method"),
+				),
+				logging.ObjectRef(httpRoute),
+			)
 		}
 	}
 }

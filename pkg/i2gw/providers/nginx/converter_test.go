@@ -18,6 +18,8 @@ package nginx
 
 import (
 	"testing"
+
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 )
 
 func TestNewResourcesToIRConverter(t *testing.T) {
@@ -32,7 +34,7 @@ func TestNewResourcesToIRConverter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := newResourcesToIRConverter(); got == nil {
+			if got := newResourcesToIRConverter(logging.Noop()); got == nil {
 				t.Errorf("newResourcesToIRConverter() = %v, want non-nil", got)
 			}
 		})

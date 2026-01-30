@@ -18,6 +18,7 @@ package annotations
 
 import (
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 
@@ -37,7 +38,7 @@ type portConfiguration struct {
 }
 
 // ListenPortsFeature processes nginx.org/listen-ports and nginx.org/listen-ports-ssl annotations
-func ListenPortsFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func ListenPortsFeature(_ *slog.Logger, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 
 	ruleGroups := common.GetRuleGroups(ingresses)

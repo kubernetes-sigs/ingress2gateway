@@ -18,12 +18,13 @@ package gce
 
 import (
 	"context"
+	"log/slog"
 
 	"encoding/json"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/gce/extensions"
@@ -44,6 +45,7 @@ const (
 
 // resourcesToIRConverter implements the ToIR function of i2gw.ResourcesToIRConverter interface.
 type resourcesToIRConverter struct {
+	log  *slog.Logger
 	conf *i2gw.ProviderConf
 
 	implementationSpecificOptions i2gw.ProviderImplementationSpecificOptions
@@ -51,11 +53,12 @@ type resourcesToIRConverter struct {
 }
 
 // newResourcesToIRConverter returns an ingress-gce resourcesToIRConverter instance.
-func newResourcesToIRConverter(conf *i2gw.ProviderConf) resourcesToIRConverter {
+func newResourcesToIRConverter(log *slog.Logger, conf *i2gw.ProviderConf) resourcesToIRConverter {
 	return resourcesToIRConverter{
+		log:  log,
 		conf: conf,
 		implementationSpecificOptions: i2gw.ProviderImplementationSpecificOptions{
-			ToImplementationSpecificHTTPPathTypeMatch: implementationSpecificHTTPPathTypeMatch,
+			ToImplementationSpecificHTTPPathTypeMatch: implementationSpecificHTTPPathTypeMatch(log),
 		},
 		ctx: context.Background(),
 	}
@@ -85,7 +88,8 @@ func (c *resourcesToIRConverter) convertToIR(storage *storage) (providerir.Provi
 		return providerir.ProviderIR{}, errs
 	}
 	buildGceGatewayIR(c.ctx, storage, &ir)
-	buildGceServiceIR(c.ctx, storage, &ir)
+	buildGceServiceIR(c.log, c.ctx, storage, &ir)
+
 	return ir, errs
 }
 
@@ -151,18 +155,18 @@ func feConfigToGceGatewayIR(feConfig *frontendconfigv1beta1.FrontendConfig) gce.
 
 type serviceNames []types.NamespacedName
 
-func buildGceServiceIR(ctx context.Context, storage *storage, ir *providerir.ProviderIR) {
+func buildGceServiceIR(log *slog.Logger, ctx context.Context, storage *storage, ir *providerir.ProviderIR) {
 	if ir.Services == nil {
 		ir.Services = make(map[types.NamespacedName]providerir.ProviderSpecificServiceIR)
 	}
 
-	beConfigToSvcs := getBackendConfigMapping(ctx, storage)
+	beConfigToSvcs := getBackendConfigMapping(log, ctx, storage)
 	for beConfigKey, beConfig := range storage.BackendConfigs {
 		if beConfig == nil {
 			continue
 		}
 		if err := extensions.ValidateBeConfig(beConfig); err != nil {
-			notify(notifications.ErrorNotification, err.Error(), beConfig)
+			log.Error(err.Error(), logging.ObjectRef(beConfig))
 			continue
 		}
 		gceServiceIR := beConfigToGceServiceIR(beConfig)
@@ -175,7 +179,7 @@ func buildGceServiceIR(ctx context.Context, storage *storage, ir *providerir.Pro
 	}
 }
 
-func getBackendConfigMapping(ctx context.Context, storage *storage) map[types.NamespacedName]serviceNames {
+func getBackendConfigMapping(log *slog.Logger, ctx context.Context, storage *storage) map[types.NamespacedName]serviceNames {
 	beConfigToSvcs := make(map[types.NamespacedName]serviceNames)
 
 	for _, service := range storage.Services {
@@ -183,7 +187,7 @@ func getBackendConfigMapping(ctx context.Context, storage *storage) map[types.Na
 		ctx = context.WithValue(ctx, serviceKey, service)
 
 		// Read BackendConfig based on v1 BackendConfigKey.
-		beConfigName, exists := getBackendConfigName(ctx, service, backendConfigKey)
+		beConfigName, exists := getBackendConfigName(log, ctx, service, backendConfigKey)
 		if exists {
 			beConfigKey := types.NamespacedName{Namespace: service.Namespace, Name: beConfigName}
 			beConfigToSvcs[beConfigKey] = append(beConfigToSvcs[beConfigKey], svc)
@@ -191,7 +195,7 @@ func getBackendConfigMapping(ctx context.Context, storage *storage) map[types.Na
 		}
 
 		// Read BackendConfig based on v1beta1 BackendConfigKey.
-		beConfigName, exists = getBackendConfigName(ctx, service, betaBackendConfigKey)
+		beConfigName, exists = getBackendConfigName(log, ctx, service, betaBackendConfigKey)
 		if exists {
 			beConfigKey := types.NamespacedName{Namespace: service.Namespace, Name: beConfigName}
 			beConfigToSvcs[beConfigKey] = append(beConfigToSvcs[beConfigKey], svc)
@@ -203,13 +207,13 @@ func getBackendConfigMapping(ctx context.Context, storage *storage) map[types.Na
 
 // Get names of the BackendConfig in the cluster based on the BackendConfig
 // annotation on k8s Services.
-func getBackendConfigName(ctx context.Context, service *apiv1.Service, backendConfigKey string) (string, bool) {
+func getBackendConfigName(log *slog.Logger, ctx context.Context, service *apiv1.Service, backendConfigKey string) (string, bool) {
 	val, exists := getBackendConfigAnnotation(service, backendConfigKey)
 	if !exists {
 		return "", false
 	}
 
-	return parseBackendConfigName(ctx, val)
+	return parseBackendConfigName(log, ctx, val)
 }
 
 // Get the backend config annotation from the K8s service if it exists.
@@ -229,22 +233,27 @@ type backendConfigs struct {
 // Parse the name of the BackendConfig based on the annotation.
 // If different BackendConfigs are used on the same service, pick the one with
 // the alphabetically smallest name.
-func parseBackendConfigName(ctx context.Context, val string) (string, bool) {
+func parseBackendConfigName(log *slog.Logger, ctx context.Context, val string) (string, bool) {
 	service := ctx.Value(serviceKey).(*apiv1.Service)
 
 	var configs backendConfigs
 	if err := json.Unmarshal([]byte(val), &configs); err != nil {
-		notify(notifications.ErrorNotification, "BackendConfig annotation is invalid json", service)
+		log.Error("BackendConfig annotation is invalid json", logging.ObjectRef(service))
 		return "", false
 	}
 
 	if configs.Default == "" && len(configs.Ports) == 0 {
-		notify(notifications.ErrorNotification, "No BackendConfig's found in annotation", service)
+		log.Error("No BackendConfig's found in annotation", logging.ObjectRef(service))
 		return "", false
 	}
 
 	if len(configs.Ports) != 0 {
-		notify(notifications.ErrorNotification, "HealthCheckPolicy and GCPBackendPolicy can only be attached on the whole service, so having a dedicate policy for each port is not yet supported. Picking the first BackendConfig to translate to corresponding Gateway policy.", service)
+		log.Error(
+			"HealthCheckPolicy and GCPBackendPolicy can only be attached on the whole service, "+
+				"so having a dedicate policy for each port is not yet supported. "+
+				"Picking the first BackendConfig to translate to corresponding Gateway policy.",
+			logging.ObjectRef(service),
+		)
 		// Return the BackendConfig associated with the alphabetically smallest port.
 		var backendConfigName string
 		var lowestPort string

@@ -17,6 +17,7 @@ limitations under the License.
 package annotations
 
 import (
+	"log/slog"
 	"strings"
 
 	networkingv1 "k8s.io/api/networking/v1"
@@ -25,13 +26,13 @@ import (
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
 // PathRegexFeature converts nginx.org/path-regex annotation to regex path matching
-func PathRegexFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func PathRegexFeature(log *slog.Logger, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 
 	// Valid values for path-regex annotation
@@ -63,13 +64,17 @@ func PathRegexFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNa
 				pathMatchType = gatewayv1.PathMatchRegularExpression
 
 				// Add a general warning about NGF not supporting regex
-				message := "nginx.org/path-regex: PathMatchRegularExpression is not supported by NGINX Gateway Fabric - only Exact and PathPrefix are supported"
-				notify(notifications.WarningNotification, message, &rule.Ingress)
+				log.Warn(
+					"nginx.org/path-regex: PathMatchRegularExpression is not supported by NGINX Gateway Fabric - only Exact and PathPrefix are supported",
+					logging.ObjectRef(&rule.Ingress),
+				)
 
 				// Add a warning for case_insensitive since Gateway API doesn't guarantee it
 				if pathRegex == "case_insensitive" {
-					message := "nginx.org/path-regex: case_insensitive - injected (?i) regex flag but case insensitive behavior depends on Gateway implementation support"
-					notify(notifications.WarningNotification, message, &rule.Ingress)
+					log.Warn(
+						"nginx.org/path-regex: case_insensitive - injected (?i) regex flag but case insensitive behavior depends on Gateway implementation support",
+						logging.ObjectRef(&rule.Ingress),
+					)
 				}
 			}
 

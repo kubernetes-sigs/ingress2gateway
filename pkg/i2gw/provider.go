@@ -19,6 +19,7 @@ package i2gw
 import (
 	"context"
 	"io"
+	"log/slog"
 	"sync"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
@@ -92,7 +93,7 @@ type ProviderImplementationSpecificOptions struct {
 //
 // Different FeatureParsers will run in undetermined order. The function must
 // modify / create only the required fields of the IR and nothing else.
-type FeatureParser func([]networkingv1.Ingress, map[types.NamespacedName]map[string]int32, *providerir.ProviderIR) field.ErrorList
+type FeatureParser func(*slog.Logger, []networkingv1.Ingress, map[types.NamespacedName]map[string]int32, *providerir.ProviderIR) field.ErrorList
 
 var providerSpecificFlagDefinitions = providerSpecificFlags{
 	flags: make(map[ProviderName]map[string]ProviderSpecificFlag),

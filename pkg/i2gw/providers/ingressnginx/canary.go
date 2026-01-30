@@ -18,9 +18,10 @@ package ingressnginx
 
 import (
 	"fmt"
+	"log/slog"
 	"strconv"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -40,20 +41,34 @@ type canaryConfig struct {
 }
 
 // parseCanaryConfig extracts canary weight configuration from an Ingress
-func parseCanaryConfig(ingress *networkingv1.Ingress) (canaryConfig, error) {
+func parseCanaryConfig(log *slog.Logger, ingress *networkingv1.Ingress) (canaryConfig, error) {
 	config := canaryConfig{
 		weight:      0,
 		weightTotal: 100, // default
 	}
 
 	if ingress.Annotations[CanaryByHeaderPattern] != "" {
-		notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported annotation %s",
-			ingress.Namespace, ingress.Name, CanaryByHeaderPattern), ingress)
+		log.Warn(
+			fmt.Sprintf(
+				"ingress %s/%s uses unsupported annotation %s",
+				ingress.Namespace,
+				ingress.Name,
+				CanaryByHeaderPattern,
+			),
+			logging.ObjectRef(ingress),
+		)
 	}
 
 	if ingress.Annotations[CanaryByCookie] != "" {
-		notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported annotation %s",
-			ingress.Namespace, ingress.Name, CanaryByCookie), ingress)
+		log.Warn(
+			fmt.Sprintf(
+				"ingress %s/%s uses unsupported annotation %s",
+				ingress.Namespace,
+				ingress.Name,
+				CanaryByCookie,
+			),
+			logging.ObjectRef(ingress),
+		)
 	}
 
 	if ingress.Annotations[CanaryByHeader] != "" {
@@ -91,7 +106,7 @@ func parseCanaryConfig(ingress *networkingv1.Ingress) (canaryConfig, error) {
 	return config, nil
 }
 
-func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func canaryFeature(log *slog.Logger, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	ruleGroups := common.GetRuleGroups(ingresses)
 	var errList field.ErrorList
 
@@ -137,7 +152,7 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 						continue
 					}
 
-					config, err := parseCanaryConfig(source.Ingress)
+					config, err := parseCanaryConfig(log, source.Ingress)
 					if err != nil {
 						errList = append(errList, field.Invalid(
 							field.NewPath("ingress", source.Ingress.Namespace, source.Ingress.Name, "metadata", "annotations"),
@@ -188,8 +203,17 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 				nonCanaryWeight := canaryConf.weightTotal - canaryWeight
 				nonCanaryBackend.Weight = &nonCanaryWeight
 
-				notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set weights (canary: %d, non-canary: %d, total: %d)",
-					canarySourceIngress.Namespace, canarySourceIngress.Name, canaryWeight, nonCanaryWeight, canaryConf.weightTotal), &httpRouteContext.HTTPRoute)
+				log.Info(
+					fmt.Sprintf(
+						"parsed canary annotations of ingress %s/%s and set weights (canary: %d, non-canary: %d, total: %d)",
+						canarySourceIngress.Namespace,
+						canarySourceIngress.Name,
+						canaryWeight,
+						nonCanaryWeight,
+						canaryConf.weightTotal,
+					),
+					logging.ObjectRef(&httpRouteContext.HTTPRoute),
+				)
 			}
 
 			if canaryConf.isHeader {
@@ -247,8 +271,15 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 					neverRuleBackendSources := []providerir.BackendSource{nonCanaryBackendSource}
 					httpRouteContext.RuleBackendSources = append(httpRouteContext.RuleBackendSources, neverRuleBackendSources)
 
-					notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set header \"%s\" with value \"never\" for non-canary backend",
-						canarySourceIngress.Namespace, canarySourceIngress.Name, canaryConf.header), &httpRouteContext.HTTPRoute)
+					log.Info(
+						fmt.Sprintf(
+							"parsed canary annotations of ingress %s/%s and set header \"%s\" with value \"never\" for non-canary backend",
+							canarySourceIngress.Namespace,
+							canarySourceIngress.Name,
+							canaryConf.header,
+						),
+						logging.ObjectRef(&httpRouteContext.HTTPRoute),
+					)
 				}
 
 				// If weight isn't set, we need to remove the canary backend from the original rule
@@ -271,8 +302,16 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 
 				// Update the IR
 				ir.HTTPRoutes[key] = httpRouteContext
-				notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set header \"%s\" with value \"%s\"",
-					canarySourceIngress.Namespace, canarySourceIngress.Name, canaryConf.header, canaryConf.headerValue), &httpRouteContext.HTTPRoute)
+				log.Info(
+					fmt.Sprintf(
+						"parsed canary annotations of ingress %s/%s and set header \"%s\" with value \"%s\"",
+						canarySourceIngress.Namespace,
+						canarySourceIngress.Name,
+						canaryConf.header,
+						canaryConf.headerValue,
+					),
+					logging.ObjectRef(&httpRouteContext.HTTPRoute),
+				)
 			}
 		}
 	}

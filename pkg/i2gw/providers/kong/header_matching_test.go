@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -250,7 +251,7 @@ func TestHeaderMatchingFeature(t *testing.T) {
 				t.Errorf("Expected no errors, got %d: %+v", len(errs), errs)
 			}
 
-			errs = headerMatchingFeature(tc.ingresses, map[types.NamespacedName]map[string]int32{}, &gatewayResources)
+			errs = headerMatchingFeature(logging.Noop(), tc.ingresses, map[types.NamespacedName]map[string]int32{}, &gatewayResources)
 			if len(errs) != len(tc.expectedErrors) {
 				t.Errorf("Expected %d errors, got %d: %+v", len(tc.expectedErrors), len(errs), errs)
 			} else {

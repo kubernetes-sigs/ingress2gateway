@@ -17,6 +17,8 @@ limitations under the License.
 package cilium
 
 import (
+	"log/slog"
+
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
@@ -26,13 +28,15 @@ import (
 
 // resourcesToIRConverter implements the ToIR function of i2gw.ResourcesToIRConverter interface.
 type resourcesToIRConverter struct {
+	log                           *slog.Logger
 	featureParsers                []i2gw.FeatureParser
 	implementationSpecificOptions i2gw.ProviderImplementationSpecificOptions
 }
 
 // newResourcesToIRConverter returns a cilium resourcesToIRConverter instance.
-func newResourcesToIRConverter() *resourcesToIRConverter {
+func newResourcesToIRConverter(log *slog.Logger) *resourcesToIRConverter {
 	return &resourcesToIRConverter{
+		log: log,
 		featureParsers: []i2gw.FeatureParser{
 			forceHTTPSFeature,
 		},
@@ -56,7 +60,7 @@ func (c *resourcesToIRConverter) convertToIR(storage *storage) (providerir.Provi
 
 	for _, parseFeatureFunc := range c.featureParsers {
 		// Apply the feature parsing function to the gateway resources, one by one.
-		parseErrs := parseFeatureFunc(ingressList, storage.ServicePorts, &ir)
+		parseErrs := parseFeatureFunc(c.log, ingressList, storage.ServicePorts, &ir)
 		// Append the parsing errors to the error list.
 		errs = append(errs, parseErrs...)
 	}

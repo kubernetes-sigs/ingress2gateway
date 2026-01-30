@@ -18,8 +18,9 @@ package apisix
 
 import (
 	"fmt"
+	"log/slog"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -29,7 +30,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-func httpToHTTPSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func httpToHTTPSFeature(log *slog.Logger, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 	httpToHTTPSAnnotation := apisixAnnotation("http-to-https")
 	ruleGroups := common.GetRuleGroups(ingresses)
@@ -56,7 +57,14 @@ func httpToHTTPSFeature(ingresses []networkingv1.Ingress, _ map[types.Namespaced
 					httpRoute.Spec.Rules[i] = rule
 				}
 				if annotationFound && ok {
-					notify(notifications.InfoNotification, fmt.Sprintf("parsed \"%v\" annotation of ingress and patched %v fields", httpToHTTPSAnnotation, field.NewPath("httproute", "spec", "rules").Key("").Child("filters")), &httpRoute)
+					log.Info(
+						fmt.Sprintf(
+							"parsed \"%v\" annotation of ingress and patched %v fields",
+							httpToHTTPSAnnotation,
+							field.NewPath("httproute", "spec", "rules").Key("").Child("filters"),
+						),
+						logging.ObjectRef(&httpRoute),
+					)
 				}
 			}
 		}

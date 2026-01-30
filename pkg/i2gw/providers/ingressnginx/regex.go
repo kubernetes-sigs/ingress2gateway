@@ -17,6 +17,7 @@ limitations under the License.
 package ingressnginx
 
 import (
+	"log/slog"
 	"strconv"
 
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
@@ -28,7 +29,7 @@ import (
 
 // regexFeature converts the "nginx.ingress.kubernetes.io/use-regex" annotation
 // to Gateway API HTTPRoute RegularExpression path match.
-func regexFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func regexFeature(_ *slog.Logger, _ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 
 	for _, httpRouteCtx := range ir.HTTPRoutes {

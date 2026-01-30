@@ -17,6 +17,8 @@ limitations under the License.
 package kong
 
 import (
+	"log/slog"
+
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
@@ -28,13 +30,15 @@ import (
 
 // resourcesToIRConverter implements the ToIR function of i2gw.ResourcesToIRConverter interface.
 type resourcesToIRConverter struct {
+	log                           *slog.Logger
 	featureParsers                []i2gw.FeatureParser
 	implementationSpecificOptions i2gw.ProviderImplementationSpecificOptions
 }
 
-// newResourcesToIRConverter returns an kong converter instance.
-func newResourcesToIRConverter() *resourcesToIRConverter {
+// newResourcesToIRConverter returns a kong converter instance.
+func newResourcesToIRConverter(log *slog.Logger) *resourcesToIRConverter {
 	return &resourcesToIRConverter{
+		log: log,
 		featureParsers: []i2gw.FeatureParser{
 			headerMatchingFeature,
 			methodMatchingFeature,
@@ -59,12 +63,10 @@ func (c *resourcesToIRConverter) convert(storage *storage) (providerir.ProviderI
 		return providerir.ProviderIR{}, errorList
 	}
 
-	tcpGatewayIR, notificationsAggregator, errs := crds.TCPIngressToGatewayIR(storage.TCPIngresses)
+	tcpGatewayIR, errs := crds.TCPIngressToGatewayIR(c.log, storage.TCPIngresses)
 	if len(errs) > 0 {
 		errorList = append(errorList, errs...)
 	}
-
-	dispatchNotification(notificationsAggregator)
 
 	if len(errorList) > 0 {
 		return providerir.ProviderIR{}, errorList
@@ -78,7 +80,7 @@ func (c *resourcesToIRConverter) convert(storage *storage) (providerir.ProviderI
 
 	for _, parseFeatureFunc := range c.featureParsers {
 		// Apply the feature parsing function to the gateway resources, one by one.
-		errs = parseFeatureFunc(ingressList, storage.ServicePorts, &ir)
+		errs = parseFeatureFunc(c.log, ingressList, storage.ServicePorts, &ir)
 		// Append the parsing errors to the error list.
 		errorList = append(errorList, errs...)
 	}
