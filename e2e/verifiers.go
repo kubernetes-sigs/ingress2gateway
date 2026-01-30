@@ -61,6 +61,7 @@ type HttpGetVerifier struct {
 	Host string
 	Path string
 	BodyPrefix string // Check that the body starts with this prefix
+	BodyIncludes []string
 }
 
 func (v *HttpGetVerifier) Verify(ctx context.Context, log logger, addr string, ingress *networkingv1.Ingress) error {
@@ -99,6 +100,12 @@ func (v *HttpGetVerifier) Verify(ctx context.Context, log logger, addr string, i
 
 	if !strings.HasPrefix(string(body), v.BodyPrefix) {
 		return fmt.Errorf("unexpected HTTP body: does not start with %q", v.BodyPrefix)
+	}
+	
+	for _, include := range v.BodyIncludes {
+		if !strings.Contains(string(body), include) {
+			return fmt.Errorf("unexpected HTTP body: does not include %q", include)
+		}
 	}
 
 	return nil

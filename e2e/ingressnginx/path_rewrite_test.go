@@ -26,11 +26,11 @@ import (
 )
 
 
-func TestCanary(t *testing.T) {
+func TestPathRewrite(t *testing.T) {
 	t.Parallel()
 	t.Run("to Istio", func(t *testing.T) {
 		t.Parallel()
-		t.Run("canary", func(t *testing.T) {
+		t.Run("basic conversion", func(t *testing.T) {
 			e2e.RunTestCase(t, &e2e.TestCase{
 				GatewayImplementation: istio.ProviderName,
 				Providers:             []string{ingressnginx.Name},
@@ -42,26 +42,15 @@ func TestCanary(t *testing.T) {
 				Ingresses: []*networkingv1.Ingress{
 					e2e.BasicIngress().
 						WithName("foo1").
-						WithHost("canary.com").
 						WithIngressClass(ingressnginx.NginxIngressClass).
-						Build(),
-					e2e.BasicIngress().
-						WithName("foo2").
-						WithHost("canary.com").
-						WithIngressClass(ingressnginx.NginxIngressClass).
-						WithAnnotation("nginx.ingress.kubernetes.io/canary", "true").
-						WithAnnotation("nginx.ingress.kubernetes.io/canary-weight", "20").
-						WithBackend(e2e.DummyAppName2).
+						WithPath("/abc").
+						WithAnnotation("nginx.ingress.kubernetes.io/rewrite-target", "/header").
+						WithAnnotation("nginx.ingress.kubernetes.io/x-forwarded-prefix", "/abc").
 						Build(),
 				},
 				Verifiers: map[string][]e2e.Verifier{
 					"foo1": {
-						&e2e.CanaryVerifier{
-							Verifier: &e2e.HttpGetVerifier{Host: "canary.com", Path: "/hostname", BodyPrefix: "dummy-app2"},
-							Runs:       200,
-							MinSuccesses: 0.7,
-							MaxSuccesses: 0.9,
-						},
+						&e2e.HttpGetVerifier{Path: "/abc", BodyIncludes: []string{`"X-Forwarded-Prefix":["/abc"]`}},
 					},
 				},
 			})

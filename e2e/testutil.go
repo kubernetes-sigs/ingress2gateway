@@ -601,6 +601,19 @@ func (b *ingressBuilder) WithHost(host string) *ingressBuilder {
 	return b
 }
 
+func (b *ingressBuilder) WithPath(path string) *ingressBuilder {
+	for i := range b.Spec.Rules {
+		rule := b.Spec.Rules[i]
+		for j := range b.Spec.Rules[i].IngressRuleValue.HTTP.Paths {
+			p := rule.IngressRuleValue.HTTP.Paths[j]
+			p.Path = path
+			rule.IngressRuleValue.HTTP.Paths[j] = p
+		}
+		b.Spec.Rules[i] = rule
+	}
+	return b
+}
+
 func (b *ingressBuilder) WithBackend(svc string) *ingressBuilder {
 	for i := range b.Spec.Rules {
 		rule := b.Spec.Rules[i]
