@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -367,7 +368,7 @@ func Test_parseCanaryConfig(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			config, err := parseCanaryConfig(&tc.ingress)
+			config, err := parseCanaryConfig(logging.Noop(), &tc.ingress)
 
 			if tc.expectError {
 				if err == nil {

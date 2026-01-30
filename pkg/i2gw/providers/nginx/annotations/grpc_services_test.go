@@ -25,6 +25,7 @@ import (
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
@@ -89,7 +90,7 @@ func TestGRPCServicesRemoveHTTPRoute(t *testing.T) {
 	}
 
 	// Execute
-	errs := GRPCServicesFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+	errs := GRPCServicesFeature(logging.Noop(), []networkingv1.Ingress{ingress}, nil, &ir)
 	if len(errs) > 0 {
 		t.Errorf("Unexpected errors: %v", errs)
 		return
@@ -273,7 +274,7 @@ func TestGRPCServicesWithMixedServices(t *testing.T) {
 	}
 
 	// Execute
-	errs := GRPCServicesFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+	errs := GRPCServicesFeature(logging.Noop(), []networkingv1.Ingress{ingress}, nil, &ir)
 	if len(errs) > 0 {
 		t.Errorf("Unexpected errors: %v", errs)
 		return

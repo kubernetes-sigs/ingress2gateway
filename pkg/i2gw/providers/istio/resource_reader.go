@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -34,11 +34,13 @@ import (
 
 type reader struct {
 	conf *i2gw.ProviderConf
+	log  *slog.Logger
 }
 
-func newResourceReader(conf *i2gw.ProviderConf) reader {
+func newResourceReader(log *slog.Logger, conf *i2gw.ProviderConf) reader {
 	return reader{
 		conf: conf,
+		log:  log,
 	}
 }
 
@@ -86,7 +88,7 @@ func (r *reader) readUnstructuredObjects(objects []*unstructured.Unstructured) (
 
 	for _, obj := range objects {
 		if obj.GetAPIVersion() != APIVersion {
-			log.Printf("%v provider: skipped resource with unsupported APIVersion: %v", ProviderName, obj.GetAPIVersion())
+			r.log.Info(fmt.Sprintf("skipped resource with unsupported APIVersion: %v", obj.GetAPIVersion()))
 			continue
 		}
 
@@ -112,7 +114,7 @@ func (r *reader) readUnstructuredObjects(objects []*unstructured.Unstructured) (
 				Name:      vs.Name,
 			}] = &vs
 		default:
-			log.Printf("%v provider: skipped resource with unsupported Kind: %v", ProviderName, objKind)
+			r.log.Info(fmt.Sprintf("skipped resource with unsupported Kind: %v", objKind))
 			continue
 		}
 	}

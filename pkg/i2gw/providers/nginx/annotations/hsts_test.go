@@ -25,6 +25,7 @@ import (
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
@@ -175,7 +176,7 @@ func TestHSTSFeature(t *testing.T) {
 			}
 
 			// Execute
-			errs := HSTSFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+			errs := HSTSFeature(logging.Noop(), []networkingv1.Ingress{ingress}, nil, &ir)
 			if len(errs) > 0 {
 				t.Fatalf("Unexpected errors: %v", errs)
 			}

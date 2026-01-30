@@ -17,6 +17,7 @@ limitations under the License.
 package annotations
 
 import (
+	"log/slog"
 	"strconv"
 	"strings"
 
@@ -25,21 +26,21 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
 // HSTSFeature converts HSTS annotations to HTTPRoute ResponseHeaderModifier filters.
 // Supports nginx.org/hsts, nginx.org/hsts-max-age, and nginx.org/hsts-include-subdomains annotations.
-func HSTSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func HSTSFeature(log *slog.Logger, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 
 	ruleGroups := common.GetRuleGroups(ingresses)
 	for _, rg := range ruleGroups {
 		for _, rule := range rg.Rules {
 			if hsts, ok := rule.Ingress.Annotations[nginxHSTSAnnotation]; ok && hsts == "true" {
-				errs = append(errs, processHSTSAnnotation(rule.Ingress, ir)...)
+				errs = append(errs, processHSTSAnnotation(log, rule.Ingress, ir)...)
 			}
 		}
 	}
@@ -48,7 +49,7 @@ func HSTSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]ma
 }
 
 //nolint:unparam // ErrorList return type maintained for consistency
-func processHSTSAnnotation(ingress networkingv1.Ingress, ir *providerir.ProviderIR) field.ErrorList {
+func processHSTSAnnotation(log *slog.Logger, ingress networkingv1.Ingress, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 
 	hstsHeader := "Strict-Transport-Security"
@@ -58,7 +59,10 @@ func processHSTSAnnotation(ingress networkingv1.Ingress, ir *providerir.Provider
 	// Parse the HSTS max-age value
 	if maxAge, ok := ingress.Annotations[nginxHSTSMaxAgeAnnotation]; ok && maxAge != "" {
 		if _, err := strconv.Atoi(maxAge); err != nil {
-			notify(notifications.ErrorNotification, "nginx.org/hsts-max-age: Invalid max-age value, must be a number", &ingress)
+			log.Error(
+				"nginx.org/hsts-max-age: Invalid max-age value, must be a number",
+				logging.ObjectRef(&ingress),
+			)
 			// Continue with default value instead of failing
 		} else {
 			hstsMaxAge = maxAge
