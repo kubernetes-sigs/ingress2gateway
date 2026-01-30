@@ -18,11 +18,13 @@ package nginx
 
 import (
 	"context"
+	"log/slog"
 
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 )
 
@@ -33,6 +35,7 @@ func init() {
 }
 
 type Provider struct {
+	log *slog.Logger
 	*storage
 	*resourceReader
 	*resourcesToIRConverter
@@ -40,9 +43,11 @@ type Provider struct {
 
 // NewProvider constructs and returns the nginx implementation of i2gw.Provider
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
+	log := logging.WithProvider(Name)
 	return &Provider{
+		log:                    log,
 		resourceReader:         newResourceReader(conf),
-		resourcesToIRConverter: newResourcesToIRConverter(),
+		resourcesToIRConverter: newResourcesToIRConverter(log),
 	}
 }
 

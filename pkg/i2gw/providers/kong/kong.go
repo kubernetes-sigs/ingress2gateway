@@ -18,11 +18,13 @@ package kong
 
 import (
 	"context"
+	"log/slog"
 
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 )
 
@@ -36,16 +38,19 @@ func init() {
 
 // Provider implements the i2gw.Provider interface.
 type Provider struct {
-	*storage
-	*resourceReader
-	*resourcesToIRConverter
+	log                    *slog.Logger
+	storage                *storage
+	resourceReader         *resourceReader
+	resourcesToIRConverter *resourcesToIRConverter
 }
 
 // NewProvider constructs and returns the kong implementation of i2gw.Provider.
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
+	log := logging.WithProvider(Name)
 	return &Provider{
+		log:                    log,
 		resourceReader:         newResourceReader(conf),
-		resourcesToIRConverter: newResourcesToIRConverter(),
+		resourcesToIRConverter: newResourcesToIRConverter(log),
 	}
 }
 
@@ -57,7 +62,7 @@ func (p *Provider) ToIR() (emitterir.EmitterIR, field.ErrorList) {
 }
 
 func (p *Provider) ReadResourcesFromCluster(ctx context.Context) error {
-	storage, err := p.readResourcesFromCluster(ctx)
+	storage, err := p.resourceReader.readResourcesFromCluster(ctx)
 	if err != nil {
 		return err
 	}
@@ -66,7 +71,7 @@ func (p *Provider) ReadResourcesFromCluster(ctx context.Context) error {
 }
 
 func (p *Provider) ReadResourcesFromFile(_ context.Context, filename string) error {
-	storage, err := p.readResourcesFromFile(filename)
+	storage, err := p.resourceReader.readResourcesFromFile(filename)
 	if err != nil {
 		return err
 	}

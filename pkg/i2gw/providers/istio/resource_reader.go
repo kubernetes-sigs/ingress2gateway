@@ -20,11 +20,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	istiov1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -84,9 +84,12 @@ func (r *reader) readResourcesFromFile(_ context.Context, filename string) (*sto
 func (r *reader) readUnstructuredObjects(objects []*unstructured.Unstructured) (*storage, error) {
 	res := newResourcesStorage()
 
+	log := logging.WithProvider(ProviderName)
+
 	for _, obj := range objects {
 		if obj.GetAPIVersion() != APIVersion {
-			log.Printf("%v provider: skipped resource with unsupported APIVersion: %v", ProviderName, obj.GetAPIVersion())
+			// TODO: Log provider as an attribute and simplify the string.
+			log.Info(fmt.Sprintf("%v provider: skipped resource with unsupported APIVersion: %v", ProviderName, obj.GetAPIVersion()))
 			continue
 		}
 
@@ -112,7 +115,8 @@ func (r *reader) readUnstructuredObjects(objects []*unstructured.Unstructured) (
 				Name:      vs.Name,
 			}] = &vs
 		default:
-			log.Printf("%v provider: skipped resource with unsupported Kind: %v", ProviderName, objKind)
+			// TODO: Log provider as an attribute and simplify the string.
+			log.Info(fmt.Sprintf("%v provider: skipped resource with unsupported Kind: %v", ProviderName, objKind))
 			continue
 		}
 	}
