@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	networkingv1 "k8s.io/api/networking/v1"
@@ -28,25 +29,50 @@ import (
 
 // Validates that a service is accessible and working correctly. The addr parameter is a
 // "host:port" string representing the service endpoint.
-type verifier interface {
-	verify(ctx context.Context, log logger, addr string, ingress *networkingv1.Ingress) error
+type Verifier interface {
+	Verify(ctx context.Context, log logger, addr string, ingress *networkingv1.Ingress) error
 }
 
-type httpGetVerifier struct {
-	host string
-	path string
+type CanaryVerifier struct {
+	Verifier Verifier
+	MinSuccesses float64
+	MaxSuccesses float64
+	Runs int
 }
 
-func (v *httpGetVerifier) verify(ctx context.Context, log logger, addr string, ingress *networkingv1.Ingress) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("http://%s%s", addr, v.path), nil)
+func (v *CanaryVerifier) Verify(ctx context.Context, log logger, addr string, ingress *networkingv1.Ingress) error {
+	successes := 0
+	for i := 0; i < v.Runs; i++ {
+		err := v.Verifier.Verify(ctx, log, addr, ingress)
+		if err != nil {
+			log.Logf("Canary verifier run %d/%d succeeded", i+1, v.Runs)
+			successes++
+		}
+	}
+	
+	successRate := float64(successes) / float64(v.Runs)
+	if successRate <= v.MinSuccesses || successRate >= v.MaxSuccesses {
+		return fmt.Errorf("canary verifier failed: success rate %.2f not in range [%.2f, %.2f]", successRate, v.MinSuccesses, v.MaxSuccesses)
+	}
+	return nil
+}
+
+type HttpGetVerifier struct {
+	Host string
+	Path string
+	BodyPrefix string // Check that the body starts with this prefix
+}
+
+func (v *HttpGetVerifier) Verify(ctx context.Context, log logger, addr string, ingress *networkingv1.Ingress) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("http://%s%s", addr, v.Path), nil)
 	if err != nil {
 		return fmt.Errorf("constructing HTTP request: %w", err)
 	}
 
 	// If the Host field is specified in the test case, use that. Otherwise, default to deriving
 	// the (auto-generated) host from the ingress.
-	if v.host != "" {
-		req.Host = v.host
+	if v.Host != "" {
+		req.Host = v.Host
 	} else if len(ingress.Spec.Rules) > 0 && ingress.Spec.Rules[0].Host != "" {
 		req.Host = ingress.Spec.Rules[0].Host
 	} else {
@@ -69,8 +95,11 @@ func (v *httpGetVerifier) verify(ctx context.Context, log logger, addr string, i
 	if err != nil {
 		return fmt.Errorf("reading HTTP body: %w", err)
 	}
-
 	log.Logf("Got a healthy response: %s", body)
+
+	if !strings.HasPrefix(string(body), v.BodyPrefix) {
+		return fmt.Errorf("unexpected HTTP body: does not start with %q", v.BodyPrefix)
+	}
 
 	return nil
 }
