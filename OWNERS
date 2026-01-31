@@ -7,8 +7,10 @@ approvers:
   - youngnick
 
 reviewers:
+  - bexxmodd
   - LiorLieberman
   - rikatz
+  - spencerhance
   - Stevenjin8
 emeritus_approvers:
   - bowei
