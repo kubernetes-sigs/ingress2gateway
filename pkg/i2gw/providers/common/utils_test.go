@@ -915,7 +915,7 @@ func TestCreateBackendTLSPolicy(t *testing.T) {
 
 			require.Len(t, policy.Spec.TargetRefs, 1)
 			require.Equal(t, gatewayv1.ObjectName(tc.serviceName), policy.Spec.TargetRefs[0].Name)
-			require.Equal(t, "", string(policy.Spec.TargetRefs[0].Group)) // Core group
+			require.Empty(t, string(policy.Spec.TargetRefs[0].Group)) // Core group
 			require.Equal(t, "Service", string(policy.Spec.TargetRefs[0].Kind))
 		})
 	}

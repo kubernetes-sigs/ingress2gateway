@@ -1,8 +1,6 @@
 module github.com/kubernetes-sigs/ingress2gateway
 
-go 1.24.0
-
-toolchain go1.24.6
+go 1.25.3
 
 require (
 	github.com/GoogleCloudPlatform/gke-gateway-api v1.3.0

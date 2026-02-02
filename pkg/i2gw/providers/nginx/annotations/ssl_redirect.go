@@ -42,6 +42,7 @@ func SSLRedirectFeature(ingresses []networkingv1.Ingress, _ map[types.Namespaced
 			legacyRedirect, legacyExists := rule.Ingress.Annotations[legacySSLRedirectAnnotation]
 
 			// Check if either SSL redirect annotation is enabled
+			//nolint:staticcheck
 			if !((modernExists && modernRedirect == "true") || (legacyExists && legacyRedirect == "true")) {
 				continue
 			}
@@ -112,7 +113,11 @@ func ensureHTTPSListener(ingress networkingv1.Ingress, rule networkingv1.Ingress
 		TLS: &gatewayv1.ListenerTLSConfig{
 			Mode: ptr.To(gatewayv1.TLSModeTerminate),
 			CertificateRefs: []gatewayv1.SecretObjectReference{
-				{Name: gatewayv1.ObjectName(fmt.Sprintf("%s-tls", strings.ReplaceAll(rule.Host, ".", "-")))},
+				{
+					Group: ptr.To(gatewayv1.Group("")),
+					Kind:  ptr.To(gatewayv1.Kind("Secret")),
+					Name:  gatewayv1.ObjectName(fmt.Sprintf("%s-tls", strings.ReplaceAll(rule.Host, ".", "-"))),
+				},
 			},
 		},
 	}
