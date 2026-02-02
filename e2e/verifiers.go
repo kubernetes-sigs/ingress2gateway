@@ -34,10 +34,10 @@ type Verifier interface {
 }
 
 type CanaryVerifier struct {
-	Verifier Verifier
+	Verifier     Verifier
 	MinSuccesses float64
 	MaxSuccesses float64
-	Runs int
+	Runs         int
 }
 
 func (v *CanaryVerifier) Verify(ctx context.Context, log logger, addr string, ingress *networkingv1.Ingress) error {
@@ -49,7 +49,7 @@ func (v *CanaryVerifier) Verify(ctx context.Context, log logger, addr string, in
 			successes++
 		}
 	}
-	
+
 	successRate := float64(successes) / float64(v.Runs)
 	if successRate <= v.MinSuccesses || successRate >= v.MaxSuccesses {
 		return fmt.Errorf("canary verifier failed: success rate %.2f not in range [%.2f, %.2f]", successRate, v.MinSuccesses, v.MaxSuccesses)
@@ -58,8 +58,8 @@ func (v *CanaryVerifier) Verify(ctx context.Context, log logger, addr string, in
 }
 
 type HttpGetVerifier struct {
-	Host string
-	Path string
+	Host       string
+	Path       string
 	BodyPrefix string // Check that the body starts with this prefix
 }
 
