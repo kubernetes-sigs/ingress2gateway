@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
@@ -62,7 +63,7 @@ func (r *reader) readResourcesFromCluster(ctx context.Context) (*storage, error)
 }
 
 func (r *reader) readResourcesFromFile(_ context.Context, filename string) (*storage, error) {
-	stream, err := os.ReadFile(filename)
+	stream, err := os.ReadFile(filepath.Clean(filename))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file %v: %w", filename, err)
 	}
