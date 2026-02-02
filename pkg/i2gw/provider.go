@@ -77,20 +77,13 @@ type ResourcesToIRConverter interface {
 
 // ImplementationSpecificHTTPPathTypeMatchConverter is an option to customize the ingress implementationSpecific
 // match type conversion.
-type ImplementationSpecificHTTPPathTypeMatchConverter func(*gatewayv1.HTTPPathMatch, *networkingv1.Ingress)
-
-// SelectRepresentativeIngressFunc is a function that selects the most appropriate ingress
-// from a list of ingresses that share the same path. This is useful when multiple ingresses
-// define the same path (e.g., a main ingress and a canary ingress) and provider-specific
-// logic is needed to determine which ingress's annotations should be used for path matching.
-type SelectRepresentativeIngressFunc func([]*networkingv1.Ingress) *networkingv1.Ingress
+type ImplementationSpecificHTTPPathTypeMatchConverter func(*gatewayv1.HTTPPathMatch, []networkingv1.Ingress)
 
 // ProviderImplementationSpecificOptions contains customized implementation-specific fields and functions.
 // These will be used by the common package to customize the provider-specific behavior for all the
 // implementation-specific fields of the ingress API.
 type ProviderImplementationSpecificOptions struct {
 	ToImplementationSpecificHTTPPathTypeMatch ImplementationSpecificHTTPPathTypeMatchConverter
-	SelectRepresentativeIngress               SelectRepresentativeIngressFunc
 }
 
 // FeatureParser is a function that reads the Ingresses, and applies

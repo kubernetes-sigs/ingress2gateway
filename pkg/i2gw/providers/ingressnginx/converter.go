@@ -38,7 +38,6 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 		},
 		implementationSpecificOptions: i2gw.ProviderImplementationSpecificOptions{
 			ToImplementationSpecificHTTPPathTypeMatch: implementationSpecificHTTPPathTypeMatch,
-			SelectRepresentativeIngress:               selectRepresentativeIngress,
 		},
 	}
 }

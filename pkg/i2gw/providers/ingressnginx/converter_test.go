@@ -370,6 +370,7 @@ func Test_ToIR(t *testing.T) {
 								},
 								Hostnames: []gatewayv1.Hostname{"test.mydomain.com"},
 								Rules: []gatewayv1.HTTPRouteRule{{
+									Name: ptrTo(gatewayv1.SectionName("rule-0")),
 									Matches: []gatewayv1.HTTPRouteMatch{{
 										Path: &gatewayv1.HTTPPathMatch{
 											Type:  ptrTo(gatewayv1.PathMatchRegularExpression),

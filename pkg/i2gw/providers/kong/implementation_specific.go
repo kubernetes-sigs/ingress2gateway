@@ -24,7 +24,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-func implementationSpecificHTTPPathTypeMatch(path *gatewayv1.HTTPPathMatch, ingress *networkingv1.Ingress) {
+func implementationSpecificHTTPPathTypeMatch(path *gatewayv1.HTTPPathMatch, ingresses []networkingv1.Ingress) {
 	pmPrefix := gatewayv1.PathMatchPathPrefix
 	pmRegex := gatewayv1.PathMatchRegularExpression
 	if strings.HasPrefix(*path.Value, "/~") {

@@ -37,7 +37,7 @@ func Test_implementationSpecificHTTPPathTypeMatch(t *testing.T) {
 			name:      "regex path with use-regex annotation",
 			inputPath: "/.*/execution/.*",
 			annotations: map[string]string{
-				useRegexAnnotation: "true",
+				UseRegexAnnotation: "true",
 			},
 			expectedType:  gatewayv1.PathMatchRegularExpression,
 			expectedValue: "/.*/execution/.*",
@@ -46,7 +46,7 @@ func Test_implementationSpecificHTTPPathTypeMatch(t *testing.T) {
 			name:      "regex path with use-regex annotation set to true",
 			inputPath: "/api/v3/amp/login.*",
 			annotations: map[string]string{
-				useRegexAnnotation: "true",
+				UseRegexAnnotation: "true",
 			},
 			expectedType:  gatewayv1.PathMatchRegularExpression,
 			expectedValue: "/api/v3/amp/login.*",
@@ -55,7 +55,7 @@ func Test_implementationSpecificHTTPPathTypeMatch(t *testing.T) {
 			name:      "use-regex with value 1 (strconv.ParseBool)",
 			inputPath: "/api/v1/.*",
 			annotations: map[string]string{
-				useRegexAnnotation: "1",
+				UseRegexAnnotation: "1",
 			},
 			expectedType:  gatewayv1.PathMatchRegularExpression,
 			expectedValue: "/api/v1/.*",
@@ -64,7 +64,7 @@ func Test_implementationSpecificHTTPPathTypeMatch(t *testing.T) {
 			name:      "use-regex with value TRUE (strconv.ParseBool)",
 			inputPath: "/api/v2/.*",
 			annotations: map[string]string{
-				useRegexAnnotation: "TRUE",
+				UseRegexAnnotation: "TRUE",
 			},
 			expectedType:  gatewayv1.PathMatchRegularExpression,
 			expectedValue: "/api/v2/.*",
@@ -73,7 +73,7 @@ func Test_implementationSpecificHTTPPathTypeMatch(t *testing.T) {
 			name:      "use-regex with value t (strconv.ParseBool)",
 			inputPath: "/api/v3/.*",
 			annotations: map[string]string{
-				useRegexAnnotation: "t",
+				UseRegexAnnotation: "t",
 			},
 			expectedType:  gatewayv1.PathMatchRegularExpression,
 			expectedValue: "/api/v3/.*",
@@ -91,7 +91,7 @@ func Test_implementationSpecificHTTPPathTypeMatch(t *testing.T) {
 			name:      "path with use-regex set to false defaults to Prefix",
 			inputPath: "/api/v1/users",
 			annotations: map[string]string{
-				useRegexAnnotation: "false",
+				UseRegexAnnotation: "false",
 			},
 			expectedType:  gatewayv1.PathMatchPathPrefix,
 			expectedValue: "/api/v1/users",
@@ -100,7 +100,7 @@ func Test_implementationSpecificHTTPPathTypeMatch(t *testing.T) {
 			name:      "use-regex with value 0 (strconv.ParseBool false)",
 			inputPath: "/api/v2/users",
 			annotations: map[string]string{
-				useRegexAnnotation: "0",
+				UseRegexAnnotation: "0",
 			},
 			expectedType:  gatewayv1.PathMatchPathPrefix,
 			expectedValue: "/api/v2/users",
@@ -109,7 +109,7 @@ func Test_implementationSpecificHTTPPathTypeMatch(t *testing.T) {
 			name:      "use-regex with invalid value defaults to Prefix",
 			inputPath: "/api/v3/users",
 			annotations: map[string]string{
-				useRegexAnnotation: "invalid",
+				UseRegexAnnotation: "invalid",
 			},
 			expectedType:  gatewayv1.PathMatchPathPrefix,
 			expectedValue: "/api/v3/users",
@@ -135,7 +135,7 @@ func Test_implementationSpecificHTTPPathTypeMatch(t *testing.T) {
 				},
 			}
 
-			implementationSpecificHTTPPathTypeMatch(path, ingress)
+			implementationSpecificHTTPPathTypeMatch(path, []networkingv1.Ingress{*ingress})
 
 			assert.NotNil(t, path.Type)
 			assert.Equal(t, tc.expectedType, *path.Type)
@@ -250,49 +250,49 @@ func Test_isCanary(t *testing.T) {
 		{
 			name: "canary with value true",
 			annotations: map[string]string{
-				canaryAnnotation: "true",
+				CanaryAnnotation: "true",
 			},
 			expectedResult: true,
 		},
 		{
 			name: "canary with value 1",
 			annotations: map[string]string{
-				canaryAnnotation: "1",
+				CanaryAnnotation: "1",
 			},
 			expectedResult: true,
 		},
 		{
 			name: "canary with value TRUE",
 			annotations: map[string]string{
-				canaryAnnotation: "TRUE",
+				CanaryAnnotation: "TRUE",
 			},
 			expectedResult: true,
 		},
 		{
 			name: "canary with value t",
 			annotations: map[string]string{
-				canaryAnnotation: "t",
+				CanaryAnnotation: "t",
 			},
 			expectedResult: true,
 		},
 		{
 			name: "canary with value false",
 			annotations: map[string]string{
-				canaryAnnotation: "false",
+				CanaryAnnotation: "false",
 			},
 			expectedResult: false,
 		},
 		{
 			name: "canary with value 0",
 			annotations: map[string]string{
-				canaryAnnotation: "0",
+				CanaryAnnotation: "0",
 			},
 			expectedResult: false,
 		},
 		{
 			name: "canary with invalid value",
 			annotations: map[string]string{
-				canaryAnnotation: "invalid",
+				CanaryAnnotation: "invalid",
 			},
 			expectedResult: false,
 		},
@@ -316,36 +316,22 @@ func Test_isCanary(t *testing.T) {
 	}
 }
 
-func Test_selectRepresentativeIngress(t *testing.T) {
+func Test_implementationSpecificHTTPPathTypeMatch_withCanary(t *testing.T) {
 	testCases := []struct {
-		name             string
-		ingresses        []*networkingv1.Ingress
-		expectedName     string
-		expectedHasRegex bool
+		name         string
+		inputPath    string
+		ingresses    []networkingv1.Ingress
+		expectedType gatewayv1.PathMatchType
 	}{
 		{
-			name: "single ingress with use-regex",
-			ingresses: []*networkingv1.Ingress{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "main",
-						Annotations: map[string]string{
-							useRegexAnnotation: "true",
-						},
-					},
-				},
-			},
-			expectedName:     "main",
-			expectedHasRegex: true,
-		},
-		{
-			name: "canary inherits use-regex from main - main has regex",
-			ingresses: []*networkingv1.Ingress{
+			name:      "canary inherits use-regex from main - main has regex",
+			inputPath: "/api/.*",
+			ingresses: []networkingv1.Ingress{
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "canary",
 						Annotations: map[string]string{
-							canaryAnnotation: "true",
+							CanaryAnnotation: "true",
 						},
 					},
 				},
@@ -353,23 +339,23 @@ func Test_selectRepresentativeIngress(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "main",
 						Annotations: map[string]string{
-							useRegexAnnotation: "true",
+							UseRegexAnnotation: "true",
 						},
 					},
 				},
 			},
-			expectedName:     "main",
-			expectedHasRegex: true,
+			expectedType: gatewayv1.PathMatchRegularExpression,
 		},
 		{
-			name: "canary has use-regex but main doesn't - should use main (no regex)",
-			ingresses: []*networkingv1.Ingress{
+			name:      "canary has use-regex but main doesn't - should use main (no regex)",
+			inputPath: "/api/v1",
+			ingresses: []networkingv1.Ingress{
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "canary",
 						Annotations: map[string]string{
-							canaryAnnotation:   "true",
-							useRegexAnnotation: "true", // This should be ignored
+							CanaryAnnotation:   "true",
+							UseRegexAnnotation: "true", // This should be ignored
 						},
 					},
 				},
@@ -380,57 +366,17 @@ func Test_selectRepresentativeIngress(t *testing.T) {
 					},
 				},
 			},
-			expectedName:     "main",
-			expectedHasRegex: false,
+			expectedType: gatewayv1.PathMatchPathPrefix,
 		},
 		{
-			name: "main without use-regex",
-			ingresses: []*networkingv1.Ingress{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:        "main",
-						Annotations: map[string]string{},
-					},
-				},
-			},
-			expectedName:     "main",
-			expectedHasRegex: false,
-		},
-		{
-			name: "multiple ingresses without use-regex",
-			ingresses: []*networkingv1.Ingress{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "canary",
-						Annotations: map[string]string{
-							canaryAnnotation: "true",
-						},
-					},
-				},
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:        "main",
-						Annotations: map[string]string{},
-					},
-				},
-			},
-			expectedName:     "main",
-			expectedHasRegex: false,
-		},
-		{
-			name:             "empty list",
-			ingresses:        []*networkingv1.Ingress{},
-			expectedName:     "",
-			expectedHasRegex: false,
-		},
-		{
-			name: "all canaries - should return first",
-			ingresses: []*networkingv1.Ingress{
+			name:      "all canaries - should default to prefix",
+			inputPath: "/api/v2",
+			ingresses: []networkingv1.Ingress{
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "canary1",
 						Annotations: map[string]string{
-							canaryAnnotation: "true",
+							CanaryAnnotation: "true",
 						},
 					},
 				},
@@ -438,45 +384,22 @@ func Test_selectRepresentativeIngress(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "canary2",
 						Annotations: map[string]string{
-							canaryAnnotation: "true",
+							CanaryAnnotation: "true",
 						},
 					},
 				},
 			},
-			expectedName:     "canary1",
-			expectedHasRegex: false,
+			expectedType: gatewayv1.PathMatchPathPrefix,
 		},
 		{
-			name: "canary with value 1 (strconv.ParseBool)",
-			ingresses: []*networkingv1.Ingress{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "canary",
-						Annotations: map[string]string{
-							canaryAnnotation: "1",
-						},
-					},
-				},
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "main",
-						Annotations: map[string]string{
-							useRegexAnnotation: "true",
-						},
-					},
-				},
-			},
-			expectedName:     "main",
-			expectedHasRegex: true,
-		},
-		{
-			name: "canary with value false - should be treated as main",
-			ingresses: []*networkingv1.Ingress{
+			name:      "canary with value false - should be treated as main",
+			inputPath: "/api/v3",
+			ingresses: []networkingv1.Ingress{
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "not-really-canary",
 						Annotations: map[string]string{
-							canaryAnnotation: "false",
+							CanaryAnnotation: "false",
 						},
 					},
 				},
@@ -484,26 +407,25 @@ func Test_selectRepresentativeIngress(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "actual-main",
 						Annotations: map[string]string{
-							useRegexAnnotation: "true",
+							UseRegexAnnotation: "true",
 						},
 					},
 				},
 			},
-			expectedName:     "not-really-canary",
-			expectedHasRegex: false,
+			expectedType: gatewayv1.PathMatchPathPrefix,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := selectRepresentativeIngress(tc.ingresses)
-			if len(tc.ingresses) == 0 {
-				assert.Nil(t, result)
-			} else {
-				assert.NotNil(t, result)
-				assert.Equal(t, tc.expectedName, result.Name)
-				assert.Equal(t, tc.expectedHasRegex, hasUseRegex(result))
+			path := &gatewayv1.HTTPPathMatch{
+				Value: &tc.inputPath,
 			}
+
+			implementationSpecificHTTPPathTypeMatch(path, tc.ingresses)
+
+			assert.NotNil(t, path.Type)
+			assert.Equal(t, tc.expectedType, *path.Type)
 		})
 	}
 }

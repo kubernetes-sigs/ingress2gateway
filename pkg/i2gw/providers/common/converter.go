@@ -367,9 +367,9 @@ func (rg *ingressRuleGroup) toHTTPRoute(servicePorts map[types.NamespacedName]ma
 	for _, key := range ingressPathsByMatchKey.keys {
 		paths := ingressPathsByMatchKey.data[key]
 		path := paths[0]
-		representativeIngress := selectRepresentativeIngress(paths, options)
+		ingresses := getIngressesFromPaths(paths)
 		fieldPath := field.NewPath("spec", "rules").Index(path.ruleIdx).Child(path.ruleType).Child("paths").Index(path.pathIdx)
-		match, err := toHTTPRouteMatch(path.path, representativeIngress, fieldPath, options.ToImplementationSpecificHTTPPathTypeMatch)
+		match, err := toHTTPRouteMatch(path.path, ingresses, fieldPath, options.ToImplementationSpecificHTTPPathTypeMatch)
 		if err != nil {
 			errors = append(errors, err)
 			continue
@@ -393,25 +393,13 @@ func (rg *ingressRuleGroup) toHTTPRoute(servicePorts map[types.NamespacedName]ma
 	return httpRoute, allRuleBackendSources, errors
 }
 
-// selectRepresentativeIngress selects the most appropriate ingress from a list of paths
-// that share the same path match key. This is important when multiple ingresses define
-// the same path (e.g., a main ingress and a canary ingress).
-//
-// If a SelectRepresentativeIngress function is provided in options, it will be used.
-// Otherwise, the first ingress is returned.
-func selectRepresentativeIngress(paths []ingressPath, options i2gw.ProviderImplementationSpecificOptions) *networkingv1.Ingress {
-	if len(paths) == 0 {
-		return nil
+// getIngressesFromPaths extracts the unique ingresses from a list of paths.
+func getIngressesFromPaths(paths []ingressPath) []networkingv1.Ingress {
+	ingresses := make([]networkingv1.Ingress, len(paths))
+	for i, p := range paths {
+		ingresses[i] = *p.sourceIngress
 	}
-
-	if options.SelectRepresentativeIngress != nil {
-		ingresses := make([]*networkingv1.Ingress, len(paths))
-		for i, p := range paths {
-			ingresses[i] = p.sourceIngress
-		}
-		return options.SelectRepresentativeIngress(ingresses)
-	}
-	return paths[0].sourceIngress
+	return ingresses
 }
 
 func (rg *ingressRuleGroup) configureBackendRef(servicePorts map[types.NamespacedName]map[string]int32, paths []ingressPath) ([]gatewayv1.HTTPBackendRef, []providerir.BackendSource, field.ErrorList) {
@@ -446,7 +434,7 @@ func getPathMatchKey(ip ingressPath) pathMatchKey {
 	return pathMatchKey(fmt.Sprintf("%s/%s", pathType, ip.path.Path))
 }
 
-func toHTTPRouteMatch(routePath networkingv1.HTTPIngressPath, ingress *networkingv1.Ingress, path *field.Path, toImplementationSpecificPathMatch i2gw.ImplementationSpecificHTTPPathTypeMatchConverter) (*gatewayv1.HTTPRouteMatch, *field.Error) {
+func toHTTPRouteMatch(routePath networkingv1.HTTPIngressPath, ingresses []networkingv1.Ingress, path *field.Path, toImplementationSpecificPathMatch i2gw.ImplementationSpecificHTTPPathTypeMatchConverter) (*gatewayv1.HTTPRouteMatch, *field.Error) {
 	pmPrefix := gatewayv1.PathMatchPathPrefix
 	pmExact := gatewayv1.PathMatchExact
 
@@ -466,7 +454,7 @@ func toHTTPRouteMatch(routePath networkingv1.HTTPIngressPath, ingress *networkin
 	// is not given by the provider, an error is returned.
 	case networkingv1.PathTypeImplementationSpecific:
 		if toImplementationSpecificPathMatch != nil {
-			toImplementationSpecificPathMatch(match.Path, ingress)
+			toImplementationSpecificPathMatch(match.Path, ingresses)
 		} else {
 			return nil, field.Invalid(path.Child("pathType"), routePath.PathType, "implementationSpecific path type is not supported in generic translation, and your provider does not provide custom support to translate it")
 		}

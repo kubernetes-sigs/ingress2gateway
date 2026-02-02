@@ -23,10 +23,6 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-const (
-	useRegexAnnotation = "nginx.ingress.kubernetes.io/use-regex"
-)
-
 // parseBoolAnnotation checks if an ingress has a specific annotation set to true.
 // It uses strconv.ParseBool to handle various boolean representations (true, 1, t, TRUE, etc.).
 func parseBoolAnnotation(ingress *networkingv1.Ingress, annotationKey string) bool {
@@ -42,33 +38,11 @@ func parseBoolAnnotation(ingress *networkingv1.Ingress, annotationKey string) bo
 }
 
 func hasUseRegex(ingress *networkingv1.Ingress) bool {
-	return parseBoolAnnotation(ingress, useRegexAnnotation)
+	return parseBoolAnnotation(ingress, UseRegexAnnotation)
 }
 
 func isCanary(ingress *networkingv1.Ingress) bool {
-	return parseBoolAnnotation(ingress, canaryAnnotation)
-}
-
-// selectRepresentativeIngress selects the most appropriate ingress from a list
-// of ingresses that share the same path. For ingress-nginx, canary ingresses
-// inherit annotations from their main (non-canary) ingress. Therefore, we should
-// always select the main ingress for path matching, as the canary will inherit
-// its use-regex setting.
-//
-// According to NGINX Ingress documentation:
-// "when you mark an ingress as canary, then all the other non-canary annotations
-// will be ignored (inherited from the corresponding main ingress)"
-func selectRepresentativeIngress(ingresses []*networkingv1.Ingress) *networkingv1.Ingress {
-	if len(ingresses) == 0 {
-		return nil
-	}
-
-	for _, ing := range ingresses {
-		if !isCanary(ing) {
-			return ing
-		}
-	}
-	return ingresses[0]
+	return parseBoolAnnotation(ingress, CanaryAnnotation)
 }
 
 // implementationSpecificHTTPPathTypeMatch handles the ImplementationSpecific path type
@@ -76,16 +50,25 @@ func selectRepresentativeIngress(ingresses []*networkingv1.Ingress) *networkingv
 // as regular expressions only if the annotation "nginx.ingress.kubernetes.io/use-regex"
 // is present and parses to true. Otherwise, it defaults to Prefix matching.
 //
-// Note: For canary ingresses, annotations are inherited from the main ingress.
-// The selectRepresentativeIngress function ensures that the main (non-canary) ingress
-// is passed to this function, so canaries automatically inherit the use-regex setting.
-func implementationSpecificHTTPPathTypeMatch(path *gatewayv1.HTTPPathMatch, ingress *networkingv1.Ingress) {
+// For canary ingresses, annotations are inherited from the main ingress. This function
+// automatically selects the non-canary ingress from the list to determine the path type,
+// ensuring that canaries inherit the use-regex setting from their main ingress.
+func implementationSpecificHTTPPathTypeMatch(path *gatewayv1.HTTPPathMatch, ingresses []networkingv1.Ingress) {
 	pmPrefix := gatewayv1.PathMatchPathPrefix
 	pmRegex := gatewayv1.PathMatchRegularExpression
 
-	if hasUseRegex(ingress) {
-		path.Type = &pmRegex
-		return
+	// Find the non-canary ingress to check for use-regex annotation
+	for i := range ingresses {
+		if !isCanary(&ingresses[i]) {
+			if hasUseRegex(&ingresses[i]) {
+				path.Type = &pmRegex
+				return
+			}
+			path.Type = &pmPrefix
+			return
+		}
 	}
+
+	// If all ingresses are canaries (edge case), default to prefix
 	path.Type = &pmPrefix
 }

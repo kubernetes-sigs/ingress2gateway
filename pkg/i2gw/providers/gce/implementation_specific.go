@@ -40,7 +40,7 @@ import (
 // | /v1                                   | /v1 Exact                              |
 // | /v1/                                  | /v1/ Exact                             |
 // | /v1/*                                 | /v1 Prefix                             |
-func implementationSpecificHTTPPathTypeMatch(path *gatewayv1.HTTPPathMatch, ingress *networkingv1.Ingress) {
+func implementationSpecificHTTPPathTypeMatch(path *gatewayv1.HTTPPathMatch, ingresses []networkingv1.Ingress) {
 	pmExact := gatewayv1.PathMatchExact
 	pmPrefix := gatewayv1.PathMatchPathPrefix
 
