@@ -22,10 +22,16 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-type Emitter struct{}
+type EmitterConf struct {
+	AllowExperimentalGatewayAPI bool
+}
 
-func NewEmitter() *Emitter {
-	return &Emitter{}
+type Emitter struct {
+	conf *EmitterConf
+}
+
+func NewEmitter(conf *EmitterConf) *Emitter {
+	return &Emitter{conf: conf}
 }
 
 func applyPathRewrites(ir *emitterir.EmitterIR) {
@@ -61,7 +67,10 @@ func applyPathRewrites(ir *emitterir.EmitterIR) {
 	}
 }
 
-func applyCorsPolicies(ir *emitterir.EmitterIR) {
+func (e *Emitter) applyCorsPolicies(ir *emitterir.EmitterIR) {
+	if e.conf != nil && !e.conf.AllowExperimentalGatewayAPI {
+		return
+	}
 	for key, routeCtx := range ir.HTTPRoutes {
 		for ruleIdx, policy := range routeCtx.CorsPolicyByRuleIdx {
 			if policy == nil {
@@ -71,7 +80,7 @@ func applyCorsPolicies(ir *emitterir.EmitterIR) {
 				Type: gatewayv1.HTTPRouteFilterCORS,
 				CORS: policy,
 			})
-			// routeCtx.CorsPolicyByRuleIdx[ruleIdx] = nil -- REMOVED clearing to preserve intent
+			routeCtx.CorsPolicyByRuleIdx[ruleIdx] = nil
 		}
 		ir.HTTPRoutes[key] = routeCtx
 	}
@@ -82,6 +91,6 @@ func applyCorsPolicies(ir *emitterir.EmitterIR) {
 // TODO: Implement common logic such as filtering by maturity status and/or individual features.
 func (e *Emitter) Emit(ir emitterir.EmitterIR) (emitterir.EmitterIR, field.ErrorList) {
 	applyPathRewrites(&ir)
-	applyCorsPolicies(&ir)
+	e.applyCorsPolicies(&ir)
 	return ir, nil
 }

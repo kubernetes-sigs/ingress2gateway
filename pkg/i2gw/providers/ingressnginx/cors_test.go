@@ -19,6 +19,7 @@ package ingressnginx
 import (
 	"testing"
 
+	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -28,7 +29,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-func TestCorsFeature(t *testing.T) {
+func TestApplyCorsToEmitterIR(t *testing.T) {
 	testCases := []struct {
 		name         string
 		ingress      networkingv1.Ingress
@@ -125,9 +126,13 @@ func TestCorsFeature(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ir := providerir.ProviderIR{
+			pIR := providerir.ProviderIR{
 				HTTPRoutes: make(map[types.NamespacedName]providerir.HTTPRouteContext),
 			}
+			eIR := emitterir.EmitterIR{
+				HTTPRoutes: make(map[types.NamespacedName]emitterir.HTTPRouteContext),
+			}
+
 			key := types.NamespacedName{Namespace: tc.ingress.Namespace, Name: common.RouteName(tc.ingress.Name, "example.com")}
 			route := gatewayv1.HTTPRoute{
 				ObjectMeta: metav1.ObjectMeta{Namespace: tc.ingress.Namespace, Name: key.Name},
@@ -139,19 +144,26 @@ func TestCorsFeature(t *testing.T) {
 					},
 				},
 			}
-			ir.HTTPRoutes[key] = providerir.HTTPRouteContext{
+
+			// Provider IR setup (for sources)
+			pIR.HTTPRoutes[key] = providerir.HTTPRouteContext{
 				HTTPRoute: route,
 				RuleBackendSources: [][]providerir.BackendSource{{
 					{Ingress: &tc.ingress},
 				}},
 			}
 
-			errs := corsFeature([]networkingv1.Ingress{tc.ingress}, nil, &ir)
+			// Emitter IR setup (target)
+			eIR.HTTPRoutes[key] = emitterir.HTTPRouteContext{
+				HTTPRoute: route,
+			}
+
+			errs := applyCorsToEmitterIR(pIR, &eIR)
 			if len(errs) > 0 {
 				t.Fatalf("Unexpected errors: %v", errs)
 			}
 
-			result := ir.HTTPRoutes[key]
+			result := eIR.HTTPRoutes[key]
 			var cors *gatewayv1.HTTPCORSFilter
 			if result.CorsPolicyByRuleIdx != nil {
 				cors = result.CorsPolicyByRuleIdx[0]
@@ -242,18 +254,6 @@ func TestCorsMaxAgeParsing(t *testing.T) {
 			expectedVal:   100,
 		},
 		{
-			name:          "valid duration string",
-			annotationVal: "10s",
-			expectedValid: true,
-			expectedVal:   10,
-		},
-		{
-			name:          "valid duration minutes",
-			annotationVal: "1m",
-			expectedValid: true,
-			expectedVal:   60,
-		},
-		{
 			name:          "invalid value",
 			annotationVal: "invalid",
 			expectedValid: false,
@@ -262,10 +262,14 @@ func TestCorsMaxAgeParsing(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ir := providerir.ProviderIR{
+			pIR := providerir.ProviderIR{
 				HTTPRoutes: make(map[types.NamespacedName]providerir.HTTPRouteContext),
 			}
-			ingress := networkingv1.Ingress{
+			eIR := emitterir.EmitterIR{
+				HTTPRoutes: make(map[types.NamespacedName]emitterir.HTTPRouteContext),
+			}
+
+			ing := networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "cors-test",
 					Namespace: "default",
@@ -279,9 +283,9 @@ func TestCorsMaxAgeParsing(t *testing.T) {
 				},
 			}
 
-			key := types.NamespacedName{Namespace: ingress.Namespace, Name: common.RouteName(ingress.Name, "example.com")}
+			key := types.NamespacedName{Namespace: ing.Namespace, Name: common.RouteName(ing.Name, "example.com")}
 			route := gatewayv1.HTTPRoute{
-				ObjectMeta: metav1.ObjectMeta{Namespace: ingress.Namespace, Name: key.Name},
+				ObjectMeta: metav1.ObjectMeta{Namespace: ing.Namespace, Name: key.Name},
 				Spec: gatewayv1.HTTPRouteSpec{
 					Rules: []gatewayv1.HTTPRouteRule{
 						{
@@ -290,23 +294,27 @@ func TestCorsMaxAgeParsing(t *testing.T) {
 					},
 				},
 			}
-			ir.HTTPRoutes[key] = providerir.HTTPRouteContext{
+
+			pIR.HTTPRoutes[key] = providerir.HTTPRouteContext{
 				HTTPRoute: route,
 				RuleBackendSources: [][]providerir.BackendSource{{
-					{Ingress: &ingress},
+					{Ingress: &ing},
 				}},
 			}
+			eIR.HTTPRoutes[key] = emitterir.HTTPRouteContext{
+				HTTPRoute: route,
+			}
 
-			errs := corsFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+			errs := applyCorsToEmitterIR(pIR, &eIR)
 
 			if tc.expectedValid {
 				if len(errs) > 0 {
 					t.Fatalf("Unexpected errors: %v", errs)
 				}
-				if ir.HTTPRoutes[key].CorsPolicyByRuleIdx == nil || ir.HTTPRoutes[key].CorsPolicyByRuleIdx[0] == nil {
+				if eIR.HTTPRoutes[key].CorsPolicyByRuleIdx == nil || eIR.HTTPRoutes[key].CorsPolicyByRuleIdx[0] == nil {
 					t.Fatalf("Expected CORS policy, got nil")
 				}
-				cors := ir.HTTPRoutes[key].CorsPolicyByRuleIdx[0]
+				cors := eIR.HTTPRoutes[key].CorsPolicyByRuleIdx[0]
 				if cors.MaxAge != tc.expectedVal {
 					t.Errorf("Expected MaxAge %d, got %d", tc.expectedVal, cors.MaxAge)
 				}

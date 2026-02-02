@@ -42,9 +42,9 @@ const (
 	SSLRedirectAnnotation = "nginx.ingress.kubernetes.io/ssl-redirect"
 
 	// CORS annotations
-	EnableCorsAnnotation       = "nginx.ingress.kubernetes.io/enable-cors"
-	CorsAllowOriginAnnotation  = "nginx.ingress.kubernetes.io/cors-allow-origin"
-	CorsAllowHeadersAnnotation = "nginx.ingress.kubernetes.io/cors-allow-headers"
+	EnableCorsAnnotation           = "nginx.ingress.kubernetes.io/enable-cors"
+	CorsAllowOriginAnnotation      = "nginx.ingress.kubernetes.io/cors-allow-origin"
+	CorsAllowHeadersAnnotation     = "nginx.ingress.kubernetes.io/cors-allow-headers"
 	CorsAllowMethodsAnnotation     = "nginx.ingress.kubernetes.io/cors-allow-methods"
 	CorsAllowCredentialsAnnotation = "nginx.ingress.kubernetes.io/cors-allow-credentials"
 	CorsExposeHeadersAnnotation    = "nginx.ingress.kubernetes.io/cors-expose-headers"

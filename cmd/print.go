@@ -81,7 +81,7 @@ type PrintRunner struct {
 	// emitter indicates which emitter is used to generate the Gateway API resources.
 	// Defaults to "standard".
 	emitter string
-	
+
 	// allowExperimentalGatewayAPI indicates whether Experimental Gateway API features (like CORS, URLRewrite) should be included in the output.
 	allowExperimentalGatewayAPI bool
 }

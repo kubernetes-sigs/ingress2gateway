@@ -19,44 +19,53 @@ package ingressnginx
 import (
 	"strconv"
 	"strings"
-	"time"
 
+	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
-	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-func corsFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+// applyCorsToEmitterIR parses CORS annotations and populates the EmitterIR.
+// It matches the pattern of applyRewriteTargetToEmitterIR by applying changes directly to EmitterIR
+// after the initial ProviderIR -> EmitterIR conversion.
+func applyCorsToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) field.ErrorList {
 	var errs field.ErrorList
-	for key, httpRouteContext := range ir.HTTPRoutes {
-		for i := range httpRouteContext.HTTPRoute.Spec.Rules {
-			if i >= len(httpRouteContext.RuleBackendSources) {
+	for key, pRouteCtx := range pIR.HTTPRoutes {
+		eRouteCtx, ok := eIR.HTTPRoutes[key]
+		if !ok {
+			continue
+		}
+
+		for ruleIdx := range pRouteCtx.HTTPRoute.Spec.Rules {
+			if ruleIdx >= len(pRouteCtx.RuleBackendSources) {
 				continue
 			}
-			sources := httpRouteContext.RuleBackendSources[i]
+			sources := pRouteCtx.RuleBackendSources[ruleIdx]
 
-			ingress := getNonCanaryIngress(sources)
-			if ingress == nil {
+			ing := getNonCanaryIngress(sources)
+			if ing == nil {
 				continue
 			}
 
 			// Check if CORS is enabled
-			enableCors, ok := ingress.Annotations[EnableCorsAnnotation]
-			if !ok || enableCors != "true" {
+			enableCors, ok := ing.Annotations[EnableCorsAnnotation]
+			if !ok {
+				continue
+			}
+			if enabled, err := strconv.ParseBool(enableCors); err != nil || !enabled {
 				continue
 			}
 
-			if httpRouteContext.CorsPolicyByRuleIdx == nil {
-				httpRouteContext.CorsPolicyByRuleIdx = make(map[int]*gatewayv1.HTTPCORSFilter)
+			if eRouteCtx.CorsPolicyByRuleIdx == nil {
+				eRouteCtx.CorsPolicyByRuleIdx = make(map[int]*gatewayv1.HTTPCORSFilter)
 			}
 
 			corsFilter := &gatewayv1.HTTPCORSFilter{}
 
 			// Allow Origin
-			if origin, ok := ingress.Annotations[CorsAllowOriginAnnotation]; ok && origin != "" {
+			if origin, ok := ing.Annotations[CorsAllowOriginAnnotation]; ok && origin != "" {
 				origins := strings.Split(origin, ",")
 				for _, o := range origins {
 					o = strings.TrimSpace(o)
@@ -71,7 +80,7 @@ func corsFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string
 			}
 
 			// Allow Methods
-			if methods, ok := ingress.Annotations[CorsAllowMethodsAnnotation]; ok && methods != "" {
+			if methods, ok := ing.Annotations[CorsAllowMethodsAnnotation]; ok && methods != "" {
 				methodList := strings.Split(methods, ",")
 				for _, m := range methodList {
 					m = strings.TrimSpace(m)
@@ -86,7 +95,7 @@ func corsFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string
 			}
 
 			// Allow Headers
-			if headers, ok := ingress.Annotations[CorsAllowHeadersAnnotation]; ok && headers != "" {
+			if headers, ok := ing.Annotations[CorsAllowHeadersAnnotation]; ok && headers != "" {
 				headerList := strings.Split(headers, ",")
 				for _, h := range headerList {
 					h = strings.TrimSpace(h)
@@ -104,7 +113,7 @@ func corsFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string
 			}
 
 			// Expose Headers
-			if exposeHeaders, ok := ingress.Annotations[CorsExposeHeadersAnnotation]; ok && exposeHeaders != "" {
+			if exposeHeaders, ok := ing.Annotations[CorsExposeHeadersAnnotation]; ok && exposeHeaders != "" {
 				headerList := strings.Split(exposeHeaders, ",")
 				for _, h := range headerList {
 					h = strings.TrimSpace(h)
@@ -116,35 +125,31 @@ func corsFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string
 			}
 
 			// Allow Credentials
-			// Nginx default is true. Only false if explicitly set to "false".
-			if creds, ok := ingress.Annotations[CorsAllowCredentialsAnnotation]; ok && creds == "false" {
-				corsFilter.AllowCredentials = ptr.To(false)
-			} else {
-				corsFilter.AllowCredentials = ptr.To(true)
+			// Nginx default is true. Only false if explicitly set to "false" (or other falsy values).
+			corsFilter.AllowCredentials = ptr.To(true)
+			if creds, ok := ing.Annotations[CorsAllowCredentialsAnnotation]; ok {
+				if allowed, err := strconv.ParseBool(creds); err == nil && !allowed {
+					corsFilter.AllowCredentials = ptr.To(false)
+				}
 			}
 
 			// Max Age
 			// Nginx default is 1728000.
 			var maxAgeVal int32 = 1728000 // Default from Nginx
-			if maxAgeStr, ok := ingress.Annotations[CorsMaxAgeAnnotation]; ok && maxAgeStr != "" {
+			if maxAgeStr, ok := ing.Annotations[CorsMaxAgeAnnotation]; ok && maxAgeStr != "" {
 				// Try parsing as integer (seconds)
 				if val, err := strconv.Atoi(maxAgeStr); err == nil {
 					maxAgeVal = int32(val)
 				} else {
-					// Try parsing as duration (e.g. "10s")
-					if d, err := time.ParseDuration(maxAgeStr); err == nil {
-						maxAgeVal = int32(d.Seconds())
-					} else {
-						errs = append(errs, field.Invalid(field.NewPath("metadata", "annotations", CorsMaxAgeAnnotation), maxAgeStr, "invalid cors-max-age value"))
-					}
+					errs = append(errs, field.Invalid(field.NewPath("metadata", "annotations", CorsMaxAgeAnnotation), maxAgeStr, "invalid cors-max-age value"))
 				}
 			}
 
 			corsFilter.MaxAge = maxAgeVal
 
-			httpRouteContext.CorsPolicyByRuleIdx[i] = corsFilter
+			eRouteCtx.CorsPolicyByRuleIdx[ruleIdx] = corsFilter
 		}
-		ir.HTTPRoutes[key] = httpRouteContext
+		eIR.HTTPRoutes[key] = eRouteCtx
 	}
 	return errs
 }

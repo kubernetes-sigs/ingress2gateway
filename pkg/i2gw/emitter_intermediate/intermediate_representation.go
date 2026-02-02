@@ -63,7 +63,9 @@ type HTTPRouteContext struct {
         BodySizeByRuleIdx map[int]*BodySize
 
         // CorsPolicyByRuleIdx maps HTTPRoute rule indices to CORS policy intent.
-        // This is provider-neutral and applied by the common emitter.
+        // This map is populated by providers that support CORS (e.g., via annotations) and is
+        // applied by the CommonEmitter. This separation allows the CORS logic to be provider-neutral
+        // and consistently applied across different providers, subject to feature gating.
         CorsPolicyByRuleIdx map[int]*gatewayv1.HTTPCORSFilter
 }
 

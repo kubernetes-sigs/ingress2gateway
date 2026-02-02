@@ -45,7 +45,7 @@ func TestEmitter_Emit_appliesPathRewriteReplaceFullPath(t *testing.T) {
 	}
 
 	// Use allowAlpha=false as default, serves same purpose here
-	e := NewEmitter()
+	e := NewEmitter(nil)
 	gotIR, errs := e.Emit(ir)
 	if len(errs) != 0 {
 		t.Fatalf("expected no errors, got: %v", errs)
@@ -74,29 +74,39 @@ func TestEmitter_Emit_appliesPathRewriteReplaceFullPath(t *testing.T) {
 func TestEmitCORSFiltering(t *testing.T) {
 	testCases := []struct {
 		name                 string
+		allowExperimental    bool
 		initialFilters       []gatewayv1.HTTPRouteFilter
+		corsInSidecar        *gatewayv1.HTTPCORSFilter
 		expectedFiltersCount int
 	}{
 		{
-			name: "cors preserved",
-			initialFilters: []gatewayv1.HTTPRouteFilter{
-				{Type: gatewayv1.HTTPRouteFilterCORS, CORS: &gatewayv1.HTTPCORSFilter{}},
-			},
+			name:                 "experimental allowed + cors in sidecar -> cors added",
+			allowExperimental:    true,
+			corsInSidecar:        &gatewayv1.HTTPCORSFilter{},
 			expectedFiltersCount: 1,
 		},
 		{
-			name: "other filters preserved",
+			name:                 "experimental denied + cors in sidecar -> cors NOT added",
+			allowExperimental:    false,
+			corsInSidecar:        &gatewayv1.HTTPCORSFilter{},
+			expectedFiltersCount: 0,
+		},
+		{
+			name:              "other filters preserved regardless of flag",
+			allowExperimental: false,
 			initialFilters: []gatewayv1.HTTPRouteFilter{
 				{Type: gatewayv1.HTTPRouteFilterRequestHeaderModifier},
-				{Type: gatewayv1.HTTPRouteFilterCORS, CORS: &gatewayv1.HTTPCORSFilter{}},
 			},
-			expectedFiltersCount: 2,
+			corsInSidecar:        &gatewayv1.HTTPCORSFilter{},
+			expectedFiltersCount: 1, // only header modifier
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			e := NewEmitter()
+			e := NewEmitter(&EmitterConf{
+				AllowExperimentalGatewayAPI: tc.allowExperimental,
+			})
 
 			ir := emitterir.EmitterIR{
 				HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{
@@ -107,6 +117,9 @@ func TestEmitCORSFiltering(t *testing.T) {
 									{Filters: tc.initialFilters},
 								},
 							},
+						},
+						CorsPolicyByRuleIdx: map[int]*gatewayv1.HTTPCORSFilter{
+							0: tc.corsInSidecar,
 						},
 					},
 				},

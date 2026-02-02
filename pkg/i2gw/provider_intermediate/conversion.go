@@ -19,7 +19,6 @@ package providerir
 import (
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"k8s.io/apimachinery/pkg/types"
-	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 func ToEmitterIR(pIR ProviderIR) emitterir.EmitterIR {
@@ -37,9 +36,6 @@ func ToEmitterIR(pIR ProviderIR) emitterir.EmitterIR {
 
 	for k, v := range pIR.Gateways {
 		ctx := emitterir.GatewayContext{Gateway: v.Gateway}
-		if v.ProviderSpecificIR.Gce != nil {
-			ctx.Gce = v.ProviderSpecificIR.Gce
-		}
 		eIR.Gateways[k] = ctx
 	}
 	for k, v := range pIR.HTTPRoutes {
@@ -47,12 +43,6 @@ func ToEmitterIR(pIR ProviderIR) emitterir.EmitterIR {
 
 		}
 		ctx := emitterir.HTTPRouteContext{HTTPRoute: v.HTTPRoute}
-		if len(v.CorsPolicyByRuleIdx) > 0 {
-			ctx.CorsPolicyByRuleIdx = make(map[int]*gatewayv1.HTTPCORSFilter, len(v.CorsPolicyByRuleIdx))
-			for idx, policy := range v.CorsPolicyByRuleIdx {
-				ctx.CorsPolicyByRuleIdx[idx] = policy
-			}
-		}
 
 		eIR.HTTPRoutes[k] = ctx
 	}
@@ -76,11 +66,6 @@ func ToEmitterIR(pIR ProviderIR) emitterir.EmitterIR {
 	}
 	for k, v := range pIR.ReferenceGrants {
 		eIR.ReferenceGrants[k] = emitterir.ReferenceGrantContext{ReferenceGrant: v}
-	}
-	for k, v := range pIR.Services {
-		if v.Gce != nil {
-			eIR.GceServices[k] = *v.Gce
-		}
 	}
 
 	return eIR

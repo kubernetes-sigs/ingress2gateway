@@ -80,7 +80,9 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 		return nil, nil, fmt.Errorf("%s is not a supported emitter", emitterName)
 	}
 	emitter := newEmitterFunc(emitterConf)
-	commonEmitter := common_emitter.NewEmitter()
+	commonEmitter := common_emitter.NewEmitter(&common_emitter.EmitterConf{
+		AllowExperimentalGatewayAPI: emitterConf.AllowExperimentalGatewayAPI,
+	})
 
 	var (
 		gatewayResources []GatewayResources
