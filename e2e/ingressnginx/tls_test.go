@@ -81,5 +81,82 @@ func TestTLS(t *testing.T) {
 				},
 			})
 		})
+		t.Run("ssl-redirect annotation", func(t *testing.T) {
+			suffix, err := e2e.RandString(6)
+			if err != nil {
+				t.Fatalf("creating host suffix: %v", err)
+			}
+			redirectHost := "tls-redirect-" + suffix + ".example.com"
+			noRedirectHost := "tls-noredirect-" + suffix + ".example.com"
+			redirectSecret, err := e2e.GenerateTLSTestSecret("tls-redirect-"+suffix, redirectHost)
+			if err != nil {
+				t.Fatalf("creating redirect TLS secret: %v", err)
+			}
+			noRedirectSecret, err := e2e.GenerateTLSTestSecret("tls-noredirect-"+suffix, noRedirectHost)
+			if err != nil {
+				t.Fatalf("creating no-redirect TLS secret: %v", err)
+			}
+			e2e.RunTestCase(t, &e2e.TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{ingressnginx.Name},
+				ProviderFlags: map[string]map[string]string{
+					ingressnginx.Name: {
+						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
+					},
+				},
+				Secrets: []*corev1.Secret{redirectSecret.Secret, noRedirectSecret.Secret},
+				Ingresses: []*networkingv1.Ingress{
+					e2e.BasicIngress().
+						WithName("redirect").
+						WithHost(redirectHost).
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						WithTLSSecret(redirectSecret.Secret.Name, redirectHost).
+						Build(),
+					e2e.BasicIngress().
+						WithName("no-redirect").
+						WithHost(noRedirectHost).
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						WithAnnotation("nginx.ingress.kubernetes.io/ssl-redirect", "false").
+						WithTLSSecret(noRedirectSecret.Secret.Name, noRedirectHost).
+						Build(),
+				},
+				Verifiers: map[string][]e2e.Verifier{
+					"redirect": {
+						&e2e.HttpGetVerifier{
+							Host:      redirectHost,
+							Path:      "/",
+							UseTLS:    true,
+							CACertPEM: redirectSecret.CACert,
+						},
+						&e2e.HttpGetVerifier{
+							Host:   redirectHost,
+							Path:   "/",
+							Code:   308,
+							UseTLS: false,
+							HeaderMatches: []e2e.HeaderMatch{
+								{
+									Name:    "Location",
+									Pattern: "^https://" + redirectHost + "/?$",
+								},
+							},
+						},
+					},
+					"no-redirect": {
+						&e2e.HttpGetVerifier{
+							Host:      noRedirectHost,
+							Path:      "/",
+							UseTLS:    true,
+							CACertPEM: noRedirectSecret.CACert,
+						},
+						&e2e.HttpGetVerifier{
+							Host:   noRedirectHost,
+							Path:   "/",
+							Code:   200,
+							UseTLS: false,
+						},
+					},
+				},
+			})
+		})
 	})
 }
