@@ -153,8 +153,8 @@ func RunTestCase(t *testing.T, tc *TestCase) {
 	}
 
 	if len(tc.Secrets) > 0 {
-		cleanupSecrets, err := createSecrets(ctx, t, k8sClient, appNS, tc.Secrets, skipCleanup)
-		require.NoError(t, err, "creating secrets")
+		cleanupSecrets, secretsErr := createSecrets(ctx, t, k8sClient, appNS, tc.Secrets, skipCleanup)
+		require.NoError(t, secretsErr, "creating secrets")
 		t.Cleanup(cleanupSecrets)
 	}
 

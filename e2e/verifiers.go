@@ -40,10 +40,10 @@ type Addresses struct {
 }
 
 type CanaryVerifier struct {
-	Verifier Verifier
+	Verifier     Verifier
 	MinSuccesses float64
 	MaxSuccesses float64
-	Runs int
+	Runs         int
 }
 
 func (v *CanaryVerifier) Verify(ctx context.Context, log logger, addr Addresses, ingress *networkingv1.Ingress) error {
@@ -55,7 +55,7 @@ func (v *CanaryVerifier) Verify(ctx context.Context, log logger, addr Addresses,
 			successes++
 		}
 	}
-	
+
 	successRate := float64(successes) / float64(v.Runs)
 	if successRate <= v.MinSuccesses || successRate >= v.MaxSuccesses {
 		return fmt.Errorf("canary verifier failed: success rate %.2f not in range [%.2f, %.2f]", successRate, v.MinSuccesses, v.MaxSuccesses)
@@ -64,18 +64,18 @@ func (v *CanaryVerifier) Verify(ctx context.Context, log logger, addr Addresses,
 }
 
 type HttpGetVerifier struct {
-	Host string
-	Path string
-	Code int
-	BodyPrefix string // Check that the body starts with this prefix
-	BodyIncludes []string
+	Host          string
+	Path          string
+	Code          int
+	BodyPrefix    string // Check that the body starts with this prefix
+	BodyIncludes  []string
 	HeaderMatches []HeaderMatch
-	UseTLS bool
-	CACertPEM []byte
+	UseTLS        bool
+	CACertPEM     []byte
 }
 
 type HeaderMatch struct {
-	Name string
+	Name    string
 	Pattern string
 }
 
@@ -116,6 +116,7 @@ func (v *HttpGetVerifier) Verify(ctx context.Context, log logger, addr Addresses
 		transport.TLSClientConfig = &tls.Config{
 			RootCAs:    certPool,
 			ServerName: host,
+			MinVersion: tls.VersionTLS12,
 		}
 	}
 
@@ -141,9 +142,9 @@ func (v *HttpGetVerifier) Verify(ctx context.Context, log logger, addr Addresses
 		if headerMatch.Name == "" {
 			return fmt.Errorf("header match name cannot be empty")
 		}
-		pattern, err := regexp.Compile(headerMatch.Pattern)
-		if err != nil {
-			return fmt.Errorf("invalid header regex for %s: %w", headerMatch.Name, err)
+		pattern, compileErr := regexp.Compile(headerMatch.Pattern)
+		if compileErr != nil {
+			return fmt.Errorf("invalid header regex for %s: %w", headerMatch.Name, compileErr)
 		}
 		values := res.Header.Values(headerMatch.Name)
 		if len(values) == 0 {
@@ -170,7 +171,7 @@ func (v *HttpGetVerifier) Verify(ctx context.Context, log logger, addr Addresses
 	if !strings.HasPrefix(string(body), v.BodyPrefix) {
 		return fmt.Errorf("unexpected HTTP body: does not start with %q", v.BodyPrefix)
 	}
-	
+
 	for _, include := range v.BodyIncludes {
 		if !strings.Contains(string(body), include) {
 			return fmt.Errorf("unexpected HTTP body: does not include %q", include)

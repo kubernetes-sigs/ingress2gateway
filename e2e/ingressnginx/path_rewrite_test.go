@@ -25,7 +25,6 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
-
 func TestPathRewrite(t *testing.T) {
 	t.Parallel()
 	t.Run("to Istio", func(t *testing.T) {

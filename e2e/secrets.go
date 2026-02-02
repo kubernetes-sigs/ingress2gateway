@@ -76,7 +76,7 @@ func generateSelfSignedTLSSecret(name, namespace, commonName string, hosts []str
 	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
 	keyBytes, err := x509.MarshalECPrivateKey(key)
 	if err != nil {
-		return nil, fmt.Errorf("marshalling private key: %w", err)
+		return nil, fmt.Errorf("marshaling private key: %w", err)
 	}
 	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyBytes})
 

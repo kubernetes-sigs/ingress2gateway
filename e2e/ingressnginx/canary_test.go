@@ -25,7 +25,6 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
-
 func TestCanary(t *testing.T) {
 	t.Parallel()
 	t.Run("to Istio", func(t *testing.T) {
@@ -57,8 +56,8 @@ func TestCanary(t *testing.T) {
 				Verifiers: map[string][]e2e.Verifier{
 					"foo1": {
 						&e2e.CanaryVerifier{
-							Verifier: &e2e.HttpGetVerifier{Host: "canary.com", Path: "/hostname", BodyPrefix: "dummy-app2"},
-							Runs:       200,
+							Verifier:     &e2e.HttpGetVerifier{Host: "canary.com", Path: "/hostname", BodyPrefix: "dummy-app2"},
+							Runs:         200,
 							MinSuccesses: 0.7,
 							MaxSuccesses: 0.9,
 						},
