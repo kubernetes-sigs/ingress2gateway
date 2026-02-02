@@ -27,14 +27,12 @@ func init() {
 	i2gw.EmitterConstructorByName["standard"] = NewEmitter
 }
 
-type Emitter struct {
-	conf *i2gw.EmitterConf
-}
+type Emitter struct{}
 
 // Emitter is the standard emitter that converts the intermediate representation
 // to Gateway API resources without any provider-specific modifications.
-func NewEmitter(conf *i2gw.EmitterConf) i2gw.Emitter {
-	return &Emitter{conf: conf}
+func NewEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
+	return &Emitter{}
 }
 
 // Emit converts the provider intermediate representation to Gateway API resources.
