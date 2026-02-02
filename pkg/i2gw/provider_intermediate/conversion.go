@@ -35,16 +35,10 @@ func ToEmitterIR(pIR ProviderIR) emitterir.EmitterIR {
 	}
 
 	for k, v := range pIR.Gateways {
-		ctx := emitterir.GatewayContext{Gateway: v.Gateway}
-		eIR.Gateways[k] = ctx
+		eIR.Gateways[k] = emitterir.GatewayContext{Gateway: v.Gateway}
 	}
 	for k, v := range pIR.HTTPRoutes {
-		if len(v.HTTPRoute.Spec.Rules) > 0 {
-
-		}
-		ctx := emitterir.HTTPRouteContext{HTTPRoute: v.HTTPRoute}
-
-		eIR.HTTPRoutes[k] = ctx
+		eIR.HTTPRoutes[k] = emitterir.HTTPRouteContext{HTTPRoute: v.HTTPRoute}
 	}
 	for k, v := range pIR.GatewayClasses {
 		eIR.GatewayClasses[k] = emitterir.GatewayClassContext{GatewayClass: v}
