@@ -159,8 +159,8 @@ func startPortForwardToPod(
 	select {
 	case <-readyChan:
 		// Port forward is ready.
-	case err := <-errChan:
-		return nil, "", fmt.Errorf("port forward failed: %w", err)
+	case pfErr := <-errChan:
+		return nil, "", fmt.Errorf("port forward failed: %w", pfErr)
 	case <-ctx.Done():
 		close(stopChan)
 		return nil, "", ctx.Err()

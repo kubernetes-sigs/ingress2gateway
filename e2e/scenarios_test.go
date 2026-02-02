@@ -84,6 +84,31 @@ func TestIngressNginx(t *testing.T) {
 				},
 			})
 		})
+		t.Run("multiple ingresses", func(t *testing.T) {
+			RunTestCase(t, &TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{ingressnginx.Name},
+				ProviderFlags: map[string]map[string]string{
+					ingressnginx.Name: {
+						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
+					},
+				},
+				Ingresses: []*networkingv1.Ingress{
+					BasicIngress().
+						WithName("foo").
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						Build(),
+					BasicIngress().
+						WithName("bar").
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						Build(),
+				},
+				Verifiers: map[string][]Verifier{
+					"foo": {&HttpGetVerifier{Path: "/"}},
+					"bar": {&HttpGetVerifier{Path: "/"}},
+				},
+			})
+		})
 	})
 	// TODO: The Cilium implementation requires Cilium to be the cluster CNI. To run Cilium tests,
 	// create a kind cluster with disableDefaultCNI: true.

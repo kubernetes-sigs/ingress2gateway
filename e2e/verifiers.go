@@ -85,7 +85,7 @@ func (v *HttpGetVerifier) Verify(ctx context.Context, log logger, addr string, i
 	if err != nil {
 		return fmt.Errorf("doing request: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	if res.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected HTTP status code: got %d, want %d", res.StatusCode, http.StatusOK)

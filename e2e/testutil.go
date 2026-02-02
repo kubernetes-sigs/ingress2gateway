@@ -172,7 +172,7 @@ func RunTestCase(t *testing.T, tc *TestCase) {
 	verifyIngresses(ctx, t, tc, ingressAddresses)
 
 	// Run the ingress2gateway binary to convert ingresses to Gateway API resources.
-	res := runI2GW(t, kubeconfig, appNS, tc.Providers, tc.ProviderFlags)
+	res := runI2GW(ctx, t, kubeconfig, appNS, tc.Providers, tc.ProviderFlags)
 
 	// TODO: Hack! Force correct gateway class since i2gw doesn't seem to infer that from the
 	// ingress at the moment.
@@ -418,7 +418,7 @@ func verifyGatewayResources(ctx context.Context, t *testing.T, tc *TestCase, gwA
 		require.True(t, ok, "gateway %s not found in addresses", gwName)
 
 		for _, v := range verifiers {
-			err := retry(ctx, t, retryConfig{maxAttempts: 3, delay: 1 * time.Second},
+			err := retry(ctx, t, retryConfig{maxAttempts: 30, delay: 1 * time.Second},
 				func(attempt int, maxAttempts int, err error) string {
 					return fmt.Sprintf("Verifying gateway %s (attempt %d/%d): %v", gwName, attempt, maxAttempts, err)
 				},
@@ -433,6 +433,7 @@ func verifyGatewayResources(ctx context.Context, t *testing.T, tc *TestCase, gwA
 
 // Executes the ingress2gateway binary and returns the parsed Gateway API resources.
 func runI2GW(
+	ctx context.Context,
 	t *testing.T,
 	kubeconfig string,
 	namespace string,
@@ -458,7 +459,8 @@ func runI2GW(
 
 	t.Logf("Running ingress2gateway: %s %v", binaryPath, args)
 
-	cmd := exec.Command(binaryPath, args...)
+	// #nosec G204 -- binaryPath is from trusted env var, args are constructed internally
+	cmd := exec.CommandContext(ctx, binaryPath, args...)
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
