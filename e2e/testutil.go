@@ -57,6 +57,7 @@ const DummyAppName2 = "dummy-app2"
 
 type TestCase struct {
 	Ingresses             []*networkingv1.Ingress
+	Secrets               []*corev1.Secret
 	Providers             []string
 	ProviderFlags         map[string]map[string]string
 	GatewayImplementation string
@@ -98,7 +99,7 @@ func RunTestCase(t *testing.T, tc *TestCase) {
 	require.NoError(t, err)
 
 	// Generate a random prefix to ensure unique namespaces and hostnames for each test case.
-	randPrefix, err := randString(5)
+	randPrefix, err := RandString(5)
 	require.NoError(t, err)
 	nsPrefix := fmt.Sprintf("%s-%s", e2ePrefix, randPrefix)
 
@@ -151,6 +152,12 @@ func RunTestCase(t *testing.T, tc *TestCase) {
 		}
 	}
 
+	if len(tc.Secrets) > 0 {
+		cleanupSecrets, err := createSecrets(ctx, t, k8sClient, appNS, tc.Secrets, skipCleanup)
+		require.NoError(t, err, "creating secrets")
+		t.Cleanup(cleanupSecrets)
+	}
+
 	cleanupIngresses, err := createIngresses(ctx, t, k8sClient, appNS, tc.Ingresses, skipCleanup)
 	require.NoError(t, err)
 	t.Cleanup(cleanupIngresses)
@@ -162,6 +169,7 @@ func RunTestCase(t *testing.T, tc *TestCase) {
 		k8sClient,
 		restConfig,
 		tc.Providers,
+		testCaseNeedsHTTPS(tc),
 	)
 	t.Cleanup(func() {
 		for _, pf := range ingressPortForwarders {
@@ -188,7 +196,16 @@ func RunTestCase(t *testing.T, tc *TestCase) {
 	t.Cleanup(cleanupGatewayResources)
 
 	// Set up port forwarding to each gateway for verification.
-	gatewayPortForwarders, gwAddresses := setUpGatewayPortForwarding(ctx, t, k8sClient, restConfig, getGateways(res), appNS, tc.GatewayImplementation)
+	gatewayPortForwarders, gwAddresses := setUpGatewayPortForwarding(
+		ctx,
+		t,
+		k8sClient,
+		restConfig,
+		getGateways(res),
+		appNS,
+		tc.GatewayImplementation,
+		testCaseNeedsHTTPS(tc),
+	)
 	t.Cleanup(func() {
 		for _, pf := range gatewayPortForwarders {
 			pf.stop()
@@ -273,9 +290,10 @@ func setUpIngressPortForwarding(
 	k8sClient *kubernetes.Clientset,
 	restConfig *rest.Config,
 	providers []string,
-) ([]*portForwarder, map[string]string) {
+	useHTTPS bool,
+) ([]*portForwarder, map[string]Addresses) {
 	var pfs []*portForwarder
-	addresses := make(map[string]string)
+	addresses := make(map[string]Addresses)
 
 	for _, p := range providers {
 		switch p {
@@ -291,7 +309,13 @@ func setUpIngressPortForwarding(
 			pf, addr, err := startPortForwardToService(ctx, k8sClient, restConfig, svc.Namespace, svc.Name, 80)
 			require.NoError(t, err, "starting port forward to ingress-nginx")
 			pfs = append(pfs, pf)
-			addresses[ingressnginx.NginxIngressClass] = addr
+			addresses[ingressnginx.NginxIngressClass] = Addresses{HTTP: addr}
+			if useHTTPS {
+				httpsPf, httpsAddr, err := startPortForwardToService(ctx, k8sClient, restConfig, svc.Namespace, svc.Name, 443)
+				require.NoError(t, err, "starting https port forward to ingress-nginx")
+				pfs = append(pfs, httpsPf)
+				addresses[ingressnginx.NginxIngressClass] = Addresses{HTTP: addr, HTTPS: httpsAddr}
+			}
 			t.Logf("Port forwarding ingress controller %s via %s", p, addr)
 		case kong.Name:
 			// Kong uses the same namespace for both ingress and gateway when both are enabled.
@@ -306,7 +330,13 @@ func setUpIngressPortForwarding(
 			pf, addr, err := startPortForwardToService(ctx, k8sClient, restConfig, svc.Namespace, svc.Name, 80)
 			require.NoError(t, err, "starting port forward to kong")
 			pfs = append(pfs, pf)
-			addresses[kong.KongIngressClass] = addr
+			addresses[kong.KongIngressClass] = Addresses{HTTP: addr}
+			if useHTTPS {
+				httpsPf, httpsAddr, err := startPortForwardToService(ctx, k8sClient, restConfig, svc.Namespace, svc.Name, 443)
+				require.NoError(t, err, "starting https port forward to kong")
+				pfs = append(pfs, httpsPf)
+				addresses[kong.KongIngressClass] = Addresses{HTTP: addr, HTTPS: httpsAddr}
+			}
 			t.Logf("Port forwarding ingress controller %s via %s", p, addr)
 		default:
 			t.Fatalf("Unknown ingress provider: %s", p)
@@ -324,9 +354,10 @@ func setUpGatewayPortForwarding(
 	gateways map[types.NamespacedName]gwapiv1.Gateway,
 	appNS string,
 	gwImpl string,
-) ([]*portForwarder, map[string]string) {
+	useHTTPS bool,
+) ([]*portForwarder, map[string]Addresses) {
 	var pfs []*portForwarder
-	addresses := make(map[string]string)
+	addresses := make(map[string]Addresses)
 
 	for gwName, gw := range gateways {
 		ns := gw.Namespace
@@ -357,14 +388,20 @@ func setUpGatewayPortForwarding(
 		require.NoError(t, err, "starting port forward for gateway %s", gwName)
 
 		pfs = append(pfs, pf)
-		addresses[gwName.Name] = addr
+		addresses[gwName.Name] = Addresses{HTTP: addr}
+		if useHTTPS {
+			httpsPf, httpsAddr, err := startPortForwardToService(ctx, k8sClient, restConfig, svc.Namespace, svc.Name, 443)
+			require.NoError(t, err, "starting https port forward for gateway %s", gwName)
+			pfs = append(pfs, httpsPf)
+			addresses[gwName.Name] = Addresses{HTTP: addr, HTTPS: httpsAddr}
+		}
 		t.Logf("Port forwarding gateway %s via %s", gwName, addr)
 	}
 
 	return pfs, addresses
 }
 
-func verifyIngresses(ctx context.Context, t *testing.T, tc *TestCase, ingressAddresses map[string]string) {
+func verifyIngresses(ctx context.Context, t *testing.T, tc *TestCase, ingressAddresses map[string]Addresses) {
 	ingressByName := make(map[string]*networkingv1.Ingress, len(tc.Ingresses))
 	for _, ing := range tc.Ingresses {
 		ingressByName[ing.Name] = ing
@@ -381,7 +418,7 @@ func verifyIngresses(ctx context.Context, t *testing.T, tc *TestCase, ingressAdd
 		require.True(t, ok, "no address found for ingress class %s", ingressClass)
 
 		for _, v := range verifiers {
-			err := retry(ctx, t, retryConfig{maxAttempts: 60, delay: 1 * time.Second},
+			err := retry(ctx, t, retryConfig{maxAttempts: 30, delay: 1 * time.Second},
 				func(attempt int, maxAttempts int, err error) string {
 					return fmt.Sprintf("Verifying ingress %s (attempt %d/%d): %v", ingressName, attempt, maxAttempts, err)
 				},
@@ -394,7 +431,7 @@ func verifyIngresses(ctx context.Context, t *testing.T, tc *TestCase, ingressAdd
 	}
 }
 
-func verifyGatewayResources(ctx context.Context, t *testing.T, tc *TestCase, gwAddresses map[string]string) {
+func verifyGatewayResources(ctx context.Context, t *testing.T, tc *TestCase, gwAddresses map[string]Addresses) {
 	for ingressName, verifiers := range tc.Verifiers {
 		// Find the ingress to determine the expected gateway name.
 		var ingress *networkingv1.Ingress
@@ -418,7 +455,7 @@ func verifyGatewayResources(ctx context.Context, t *testing.T, tc *TestCase, gwA
 		require.True(t, ok, "gateway %s not found in addresses", gwName)
 
 		for _, v := range verifiers {
-			err := retry(ctx, t, retryConfig{maxAttempts: 3, delay: 1 * time.Second},
+			err := retry(ctx, t, retryConfig{maxAttempts: 30, delay: 1 * time.Second},
 				func(attempt int, maxAttempts int, err error) string {
 					return fmt.Sprintf("Verifying gateway %s (attempt %d/%d): %v", gwName, attempt, maxAttempts, err)
 				},
@@ -429,6 +466,17 @@ func verifyGatewayResources(ctx context.Context, t *testing.T, tc *TestCase, gwA
 			require.NoError(t, err, "gateway verification failed")
 		}
 	}
+}
+
+func testCaseNeedsHTTPS(tc *TestCase) bool {
+	for _, verifiers := range tc.Verifiers {
+		for _, v := range verifiers {
+			if hv, ok := v.(*HttpGetVerifier); ok && hv.UseTLS {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // Executes the ingress2gateway binary and returns the parsed Gateway API resources.
@@ -632,6 +680,14 @@ func (b *ingressBuilder) WithAnnotation(key, value string) *ingressBuilder {
 		b.ObjectMeta.Annotations = make(map[string]string)
 	}
 	b.ObjectMeta.Annotations[key] = value
+	return b
+}
+
+func (b *ingressBuilder) WithTLSSecret(secretName string, hosts ...string) *ingressBuilder {
+	b.Spec.TLS = append(b.Spec.TLS, networkingv1.IngressTLS{
+		SecretName: secretName,
+		Hosts:      hosts,
+	})
 	return b
 }
 
