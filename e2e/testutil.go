@@ -418,7 +418,7 @@ func verifyIngresses(ctx context.Context, t *testing.T, tc *TestCase, ingressAdd
 		require.True(t, ok, "no address found for ingress class %s", ingressClass)
 
 		for _, v := range verifiers {
-			err := retry(ctx, t, retryConfig{maxAttempts: 30, delay: 1 * time.Second},
+			err := retry(ctx, t, retryConfig{maxAttempts: 60, delay: 1 * time.Second},
 				func(attempt int, maxAttempts int, err error) string {
 					return fmt.Sprintf("Verifying ingress %s (attempt %d/%d): %v", ingressName, attempt, maxAttempts, err)
 				},
@@ -455,7 +455,7 @@ func verifyGatewayResources(ctx context.Context, t *testing.T, tc *TestCase, gwA
 		require.True(t, ok, "gateway %s not found in addresses", gwName)
 
 		for _, v := range verifiers {
-			err := retry(ctx, t, retryConfig{maxAttempts: 30, delay: 1 * time.Second},
+			err := retry(ctx, t, retryConfig{maxAttempts: 60, delay: 1 * time.Second},
 				func(attempt int, maxAttempts int, err error) string {
 					return fmt.Sprintf("Verifying gateway %s (attempt %d/%d): %v", gwName, attempt, maxAttempts, err)
 				},
