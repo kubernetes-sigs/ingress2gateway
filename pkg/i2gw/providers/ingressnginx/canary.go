@@ -181,8 +181,8 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 			}
 
 			// Set weights if isWeight is true or both header and weight are not set (all traffic should go to non-canary)
-			if canaryConfig.isWeight || !canaryConfig.isHeader {
-				canaryWeight := canaryConfig.weight
+			if canaryConf.isWeight || !canaryConf.isHeader {
+				canaryWeight := canaryConf.weight
 
 				canaryBackend.Weight = &canaryWeight
 				nonCanaryWeight := canaryConf.weightTotal - canaryWeight
@@ -192,10 +192,10 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 					canarySourceIngress.Namespace, canarySourceIngress.Name, canaryWeight, nonCanaryWeight, canaryConf.weightTotal), &httpRouteContext.HTTPRoute)
 			}
 
-			if canaryConfig.isHeader {
+			if canaryConf.isHeader {
 				var header = "always"
-				if canaryConfig.headerValue != "" {
-					header = canaryConfig.headerValue
+				if canaryConf.headerValue != "" {
+					header = canaryConf.headerValue
 				}
 				canaryBackendCopy := *canaryBackend
 				// Remove weight from the header-matched backend
@@ -205,7 +205,7 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 						{
 							Headers: []gatewayv1.HTTPHeaderMatch{
 								{
-									Name:  gatewayv1.HTTPHeaderName(canaryConfig.header),
+									Name:  gatewayv1.HTTPHeaderName(canaryConf.header),
 									Value: header,
 								},
 							},
@@ -223,7 +223,7 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 
 				// When canary-by-header-value is not specified, we need to add a rule for "never"
 				// that routes to the non-canary backend
-				if canaryConfig.headerValue == "" {
+				if canaryConf.headerValue == "" {
 					nonCanaryBackendCopy := *nonCanaryBackend
 					nonCanaryBackendCopy.Weight = nil
 					neverRule := gatewayv1.HTTPRouteRule{
@@ -231,7 +231,7 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 							{
 								Headers: []gatewayv1.HTTPHeaderMatch{
 									{
-										Name:  gatewayv1.HTTPHeaderName(canaryConfig.header),
+										Name:  gatewayv1.HTTPHeaderName(canaryConf.header),
 										Value: "never",
 									},
 								},
@@ -248,12 +248,12 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 					httpRouteContext.RuleBackendSources = append(httpRouteContext.RuleBackendSources, neverRuleBackendSources)
 
 					notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set header \"%s\" with value \"never\" for non-canary backend",
-						canarySourceIngress.Namespace, canarySourceIngress.Name, canaryConfig.header), &httpRouteContext.HTTPRoute)
+						canarySourceIngress.Namespace, canarySourceIngress.Name, canaryConf.header), &httpRouteContext.HTTPRoute)
 				}
 
 				// If weight isn't set, we need to remove the canary backend from the original rule
 				// and only keep the non-canary backend
-				if !canaryConfig.isWeight {
+				if !canaryConf.isWeight {
 					// Find and remove the canary backend from the original rule's BackendRefs
 					var filteredBackendRefs []gatewayv1.HTTPBackendRef
 					var filteredBackendSources []providerir.BackendSource
@@ -272,7 +272,7 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 				// Update the IR
 				ir.HTTPRoutes[key] = httpRouteContext
 				notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set header \"%s\" with value \"%s\"",
-					canarySourceIngress.Namespace, canarySourceIngress.Name, canaryConfig.header, canaryConfig.headerValue), &httpRouteContext.HTTPRoute)
+					canarySourceIngress.Namespace, canarySourceIngress.Name, canaryConf.header, canaryConf.headerValue), &httpRouteContext.HTTPRoute)
 			}
 		}
 	}
