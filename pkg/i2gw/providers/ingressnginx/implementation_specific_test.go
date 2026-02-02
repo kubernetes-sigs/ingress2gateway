@@ -1,5 +1,5 @@
 /*
-Copyright 2025 The Kubernetes Authors.
+Copyright 2026 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -79,8 +79,8 @@ func Test_implementationSpecificHTTPPathTypeMatch(t *testing.T) {
 			expectedValue: "/api/v3/.*",
 		},
 		{
-			name:      "path without use-regex annotation defaults to Prefix",
-			inputPath: "/page/track",
+			name:        "path without use-regex annotation defaults to Prefix",
+			inputPath:   "/page/track",
 			annotations: map[string]string{
 				// No use-regex annotation
 			},
@@ -429,4 +429,3 @@ func Test_implementationSpecificHTTPPathTypeMatch_withCanary(t *testing.T) {
 		})
 	}
 }
-
