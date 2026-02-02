@@ -180,7 +180,7 @@ func RunTestCase(t *testing.T, tc *TestCase) {
 	verifyIngresses(ctx, t, tc, ingressAddresses)
 
 	// Run the ingress2gateway binary to convert ingresses to Gateway API resources.
-	res := runI2GW(t, kubeconfig, appNS, tc.Providers, tc.ProviderFlags)
+	res := runI2GW(ctx, t, kubeconfig, appNS, tc.Providers, tc.ProviderFlags)
 
 	// TODO: Hack! Force correct gateway class since i2gw doesn't seem to infer that from the
 	// ingress at the moment.
@@ -481,6 +481,7 @@ func testCaseNeedsHTTPS(tc *TestCase) bool {
 
 // Executes the ingress2gateway binary and returns the parsed Gateway API resources.
 func runI2GW(
+	ctx context.Context,
 	t *testing.T,
 	kubeconfig string,
 	namespace string,
@@ -506,7 +507,8 @@ func runI2GW(
 
 	t.Logf("Running ingress2gateway: %s %v", binaryPath, args)
 
-	cmd := exec.Command(binaryPath, args...)
+	// #nosec G204 -- binaryPath is from trusted env var, args are constructed internally
+	cmd := exec.CommandContext(ctx, binaryPath, args...)
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

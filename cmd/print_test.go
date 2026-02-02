@@ -224,7 +224,7 @@ preferences: {}
 
 	kubeConfigFile := fmt.Sprintf("%s/config", dir)
 
-	f, err := os.Create(kubeConfigFile)
+	f, err := os.Create(filepath.Clean(kubeConfigFile))
 	if err != nil {
 		return nil, err
 	}

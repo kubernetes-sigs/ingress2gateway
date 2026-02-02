@@ -128,7 +128,7 @@ func (v *HttpGetVerifier) Verify(ctx context.Context, log logger, addr Addresses
 	if err != nil {
 		return fmt.Errorf("doing request: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	if v.Code == 0 {
 		v.Code = http.StatusOK
