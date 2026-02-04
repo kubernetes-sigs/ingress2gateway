@@ -67,16 +67,15 @@ type HttpGetVerifier struct {
 	Host          string
 	Path          string
 	Code          int
-	BodyPrefix    string // Check that the body starts with this prefix
-	BodyIncludes  []string
 	HeaderMatches []HeaderMatch
 	UseTLS        bool
 	CACertPEM     []byte
+	BodyRegex     *regexp.Regexp
 }
 
 type HeaderMatch struct {
 	Name    string
-	Pattern string
+	Pattern *regexp.Regexp
 }
 
 func (v *HttpGetVerifier) Verify(ctx context.Context, log logger, addr Addresses, ingress *networkingv1.Ingress) error {
@@ -142,17 +141,13 @@ func (v *HttpGetVerifier) Verify(ctx context.Context, log logger, addr Addresses
 		if headerMatch.Name == "" {
 			return fmt.Errorf("header match name cannot be empty")
 		}
-		pattern, compileErr := regexp.Compile(headerMatch.Pattern)
-		if compileErr != nil {
-			return fmt.Errorf("invalid header regex for %s: %w", headerMatch.Name, compileErr)
-		}
 		values := res.Header.Values(headerMatch.Name)
 		if len(values) == 0 {
 			return fmt.Errorf("missing header %q on response", headerMatch.Name)
 		}
 		matched := false
 		for _, value := range values {
-			if pattern.MatchString(value) {
+			if headerMatch.Pattern.MatchString(value) {
 				matched = true
 				break
 			}
@@ -168,14 +163,8 @@ func (v *HttpGetVerifier) Verify(ctx context.Context, log logger, addr Addresses
 	}
 	log.Logf("Got a healthy response: %s", body)
 
-	if !strings.HasPrefix(string(body), v.BodyPrefix) {
-		return fmt.Errorf("unexpected HTTP body: does not start with %q", v.BodyPrefix)
-	}
-
-	for _, include := range v.BodyIncludes {
-		if !strings.Contains(string(body), include) {
-			return fmt.Errorf("unexpected HTTP body: does not include %q", include)
-		}
+	if v.BodyRegex != nil && !v.BodyRegex.MatchString(string(body)) {
+		return fmt.Errorf("unexpected HTTP body: does not match %v", v.BodyRegex)
 	}
 
 	return nil

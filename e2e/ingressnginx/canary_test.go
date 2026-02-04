@@ -17,6 +17,7 @@ limitations under the License.
 package ingressnginx
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/kubernetes-sigs/ingress2gateway/e2e"
@@ -29,7 +30,7 @@ func TestCanary(t *testing.T) {
 	t.Parallel()
 	t.Run("to Istio", func(t *testing.T) {
 		t.Parallel()
-		t.Run("canary", func(t *testing.T) {
+		t.Run("base canary", func(t *testing.T) {
 			e2e.RunTestCase(t, &e2e.TestCase{
 				GatewayImplementation: istio.ProviderName,
 				Providers:             []string{ingressnginx.Name},
@@ -56,7 +57,7 @@ func TestCanary(t *testing.T) {
 				Verifiers: map[string][]e2e.Verifier{
 					"foo1": {
 						&e2e.CanaryVerifier{
-							Verifier:     &e2e.HttpGetVerifier{Host: "canary.com", Path: "/hostname", BodyPrefix: "dummy-app2"},
+							Verifier:     &e2e.HttpGetVerifier{Host: "canary.com", Path: "/hostname", BodyRegex: regexp.MustCompile("^dummy-app2")},
 							Runs:         200,
 							MinSuccesses: 0.7,
 							MaxSuccesses: 0.9,

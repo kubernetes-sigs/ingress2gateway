@@ -17,6 +17,7 @@ limitations under the License.
 package ingressnginx
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/kubernetes-sigs/ingress2gateway/e2e"
@@ -49,7 +50,7 @@ func TestPathRewrite(t *testing.T) {
 				},
 				Verifiers: map[string][]e2e.Verifier{
 					"foo1": {
-						&e2e.HttpGetVerifier{Path: "/abc", BodyIncludes: []string{`"X-Forwarded-Prefix":["/abc"]`}},
+						&e2e.HttpGetVerifier{Path: "/abc", BodyRegex: regexp.MustCompile(`"X-Forwarded-Prefix":\["/abc"\]`)},
 					},
 				},
 			})

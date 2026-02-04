@@ -17,6 +17,7 @@ limitations under the License.
 package ingressnginx
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/kubernetes-sigs/ingress2gateway/e2e"
@@ -73,7 +74,7 @@ func TestTLS(t *testing.T) {
 							HeaderMatches: []e2e.HeaderMatch{
 								{
 									Name:    "Location",
-									Pattern: "^https://" + host + "/?$",
+									Pattern: regexp.MustCompile("^https://" + host + "/?$"),
 								},
 							},
 						},
@@ -136,7 +137,7 @@ func TestTLS(t *testing.T) {
 							HeaderMatches: []e2e.HeaderMatch{
 								{
 									Name:    "Location",
-									Pattern: "^https://" + redirectHost + "/?$",
+									Pattern: regexp.MustCompile("^https://" + redirectHost + "/?$"),
 								},
 							},
 						},
