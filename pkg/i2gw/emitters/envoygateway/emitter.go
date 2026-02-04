@@ -17,12 +17,14 @@ limitations under the License.
 package envoygateway_emitter
 
 import (
+	"log/slog"
+
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/utils"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 )
 
 const emitterName = "envoy-gateway"
@@ -42,22 +44,26 @@ func NewEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
 }
 
 func (e *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.ErrorList) {
+	log := logging.WithProvider(emitterName)
 	gatewayResources, errs := utils.ToGatewayResources(ir)
 	if len(errs) != 0 {
 		return i2gw.GatewayResources{}, errs
 	}
-	e.ToEnvoyGatewayResources(ir, &gatewayResources)
+	e.ToEnvoyGatewayResources(log, ir, &gatewayResources)
 
 	return gatewayResources, nil
 }
 
-func (e *Emitter) ToEnvoyGatewayResources(ir emitterir.EmitterIR, gwResources *i2gw.GatewayResources) {
-	e.EmitBuffer(ir, gwResources)
+func (e *Emitter) ToEnvoyGatewayResources(log *slog.Logger, ir emitterir.EmitterIR, gwResources *i2gw.GatewayResources) {
+	e.EmitBuffer(log, ir, gwResources)
 
 	for _, backendTrafficPolicy := range e.builderMap.BackendTrafficPolicies {
 		obj, err := i2gw.CastToUnstructured(backendTrafficPolicy)
 		if err != nil {
-			notify(notifications.ErrorNotification, "Failed to cast BackendTrafficPolicy to unstructured", backendTrafficPolicy)
+			log.Error(
+				"Failed to cast BackendTrafficPolicy to unstructured",
+				logging.ObjectRef(backendTrafficPolicy),
+			)
 			continue
 		}
 		gwResources.GatewayExtensions = append(gwResources.GatewayExtensions, *obj)
