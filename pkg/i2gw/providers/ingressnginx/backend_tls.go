@@ -144,8 +144,16 @@ func backendTLSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedN
 					}
 				}
 
-				if proxySSLVerify == "on" {
+				if proxySSLVerify == "on" || proxySSLSecret != "" {
 					if proxySSLSecret != "" {
+						if proxySSLVerify == "off" {
+							notify(notifications.WarningNotification,
+								fmt.Sprintf("Ingress %s/%s has %s set to 'off' but specifies %s. Gateway API requires validation, so we are enabling validation using the provided Secret.",
+									primaryIngress.Namespace, primaryIngress.Name, ProxySSLVerifyAnnotation, ProxySSLSecretAnnotation),
+								primaryIngress,
+							)
+						}
+
 						policy.Spec.Validation.CACertificateRefs = []gatewayv1.LocalObjectReference{{
 							Group: "",
 							Kind:  "Secret",
@@ -160,7 +168,7 @@ func backendTLSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedN
 						policy.Spec.Validation.CACertificateRefs = nil
 					}
 				} else {
-					// Verify off.
+					// Verify off (and no secret).
 					// Gateway API v1 BackendTLSPolicy requires at least one validation method, so we default to System.
 					// We warn the user that validation is being enabled (as "off" is not strictly supported).
 					notify(notifications.WarningNotification,
