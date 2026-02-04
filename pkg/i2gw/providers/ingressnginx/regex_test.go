@@ -131,7 +131,7 @@ func TestRegexFeature(t *testing.T) {
 
 			// Manual IR setup simulating what common.ToIR would produce
 			key := types.NamespacedName{Namespace: tc.ingress.Namespace, Name: common.RouteName(tc.ingress.Name, "example.com")}
-			
+
 			// Determine initial match type based on input PathType (simulating generic conversion)
 			var initialMatchType *gatewayv1.PathMatchType
 			if *tc.ingress.Spec.Rules[0].HTTP.Paths[0].PathType == networkingv1.PathTypePrefix {
@@ -140,7 +140,7 @@ func TestRegexFeature(t *testing.T) {
 				// ImplementationSpecific often defaults to Prefix if not handled, or just stays nil/impl-specific
 				// For the sake of this test, let's assume common.ToIR set it to something or we are testing the overwrite.
 				// But common.ToIR throws error for ImplSpecific if no custom converter.
-				// However, regexFeature runs AFTER common.ToIR. 
+				// However, regexFeature runs AFTER common.ToIR.
 				// Let's assume common.ToIR generated a Prefix match (soft default) or checks if feature handles it.
 				// Actually, simplified: we just want to see if regexFeature *updates* it.
 				// So we init with Prefix for both cases.
@@ -177,12 +177,12 @@ func TestRegexFeature(t *testing.T) {
 			}
 
 			regexFeature([]networkingv1.Ingress{tc.ingress}, nil, &ir)
-			
+
 			// We expect only 1 route
 			if len(ir.HTTPRoutes) != 1 {
 				t.Fatalf("Expected 1 HTTPRoute, got %d", len(ir.HTTPRoutes))
 			}
-			
+
 			for _, routeCtx := range ir.HTTPRoutes {
 				if len(routeCtx.Spec.Rules) != 1 {
 					t.Fatalf("Expected 1 Rule, got %d", len(routeCtx.Spec.Rules))
