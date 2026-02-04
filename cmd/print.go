@@ -40,9 +40,6 @@ import (
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/nginx"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/openapi3"
 
-	// Call init for notifications
-	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
-
 	// Call init for emitters
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/envoygateway"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/gce"
@@ -100,13 +97,9 @@ func (pr *PrintRunner) PrintGatewayAPIObjects(cmd *cobra.Command, _ []string) er
 		return fmt.Errorf("failed to initialize namespace filter: %w", err)
 	}
 
-	gatewayResources, notificationTablesMap, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers, pr.emitter, pr.getProviderSpecificFlags(), pr.allowExperimentalGatewayAPI)
+	gatewayResources, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers, pr.emitter, pr.getProviderSpecificFlags(), pr.allowExperimentalGatewayAPI)
 	if err != nil {
 		return err
-	}
-
-	for _, table := range notificationTablesMap {
-		fmt.Fprintln(os.Stderr, table)
 	}
 
 	pr.outputResult(gatewayResources)
