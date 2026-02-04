@@ -36,6 +36,10 @@ const (
 	ProxySendTimeoutAnnotation    = "nginx.ingress.kubernetes.io/proxy-send-timeout"
 	ProxyReadTimeoutAnnotation    = "nginx.ingress.kubernetes.io/proxy-read-timeout"
 
+	// Body Size annotations
+	ProxyBodySizeAnnotation        = "nginx.ingress.kubernetes.io/proxy-body-size"
+	ClientBodyBufferSizeAnnotation = "nginx.ingress.kubernetes.io/client-body-buffer-size"
+
 	// Regex
 	UseRegexAnnotation = "nginx.ingress.kubernetes.io/use-regex"
 

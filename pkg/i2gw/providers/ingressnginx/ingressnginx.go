@@ -64,6 +64,7 @@ func (p *Provider) ToIR() (emitterir.EmitterIR, field.ErrorList) {
 	applyRewriteTargetToEmitterIR(pIR, &eIR)
 	errs = append(errs, applyTimeoutsToEmitterIR(pIR, &eIR)...)
 	errs = append(errs, addDefaultSSLRedirect(&pIR, &eIR)...)
+	errs = append(errs, applyBodySizeToEmitterIR(pIR, &eIR)...)
 	return eIR, errs
 }
 
