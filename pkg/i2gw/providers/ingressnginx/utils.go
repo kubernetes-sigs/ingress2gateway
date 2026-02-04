@@ -31,5 +31,9 @@ func getNonCanaryIngress(sources []providerir.BackendSource) *networkingv1.Ingre
 		}
 	}
 
+	if len(sources) > 0 {
+		return sources[0].Ingress
+	}
+
 	return nil
 }

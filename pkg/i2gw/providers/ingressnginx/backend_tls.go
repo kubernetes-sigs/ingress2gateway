@@ -49,16 +49,6 @@ func backendTLSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedN
 				
 				// Identify the "main" ingress for this backend occurrence to check annotations.
 				// We care about the annotations on the non-canary ingress (if multiple sources exist for same backend).
-				// We actually need the ingress that *owns* this backend ref source.
-				// Wait, backendSources is a list of BackendSource. Each BackendSource corresponds to *one* Ingress backend.
-				// But we are iterating over them. 
-				// Actually, `backendSources` is []BackendSource.
-				// A single BackendRef in the HTTPRoute might have come from multiple Ingress backends (e.g. merge).
-				// But usually 1:1 or N:1.
-				// The outer loop iterates `backendSources` which effectively corresponds to `rule.BackendRefs[backendIdx]`.
-				// Wait, no. `ruleBackendSources` is `[][]BackendSource`.
-				// `backendSources` is `[]BackendSource` corresponding to `rule.BackendRefs[backendIdx]`.
-				// So ALL these sources map to the SAME backend ref.
 				
 				// We want to use the annotations from the "primary" (non-canary) ingress to determine Policy.
 				primaryIngress := getNonCanaryIngress(backendSources)
