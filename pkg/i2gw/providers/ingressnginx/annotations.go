@@ -31,6 +31,10 @@ const (
 	ConnectionProxyHeaderAnnotation = "nginx.ingress.kubernetes.io/connection-proxy-header"
 	CustomHeadersAnnotation         = "nginx.ingress.kubernetes.io/custom-headers"
 
+	// Body Size annotations
+	ProxyBodySizeAnnotation        = "nginx.ingress.kubernetes.io/proxy-body-size"
+	ClientBodyBufferSizeAnnotation = "nginx.ingress.kubernetes.io/client-body-buffer-size"
+
 	// R2gex
 	UseRegexAnnotation = "nginx.ingress.kubernetes.io/use-regex"
 
