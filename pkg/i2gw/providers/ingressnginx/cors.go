@@ -137,8 +137,8 @@ func applyCorsToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) f
 			// Nginx default is 1728000.
 			var maxAgeVal int32 = 1728000 // Default from Nginx
 			if maxAgeStr, ok := ing.Annotations[CorsMaxAgeAnnotation]; ok && maxAgeStr != "" {
-				// Try parsing as integer (seconds)
-				if val, err := strconv.Atoi(maxAgeStr); err == nil {
+				// Try parsing as integer (seconds) using ParseInt with bitSize 32
+				if val, err := strconv.ParseInt(maxAgeStr, 10, 32); err == nil {
 					maxAgeVal = int32(val)
 				} else {
 					errs = append(errs, field.Invalid(field.NewPath("metadata", "annotations", CorsMaxAgeAnnotation), maxAgeStr, "invalid cors-max-age value"))
