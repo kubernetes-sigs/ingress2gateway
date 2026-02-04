@@ -17,28 +17,33 @@ limitations under the License.
 package kgateway
 
 import (
+	"log/slog"
 	"sort"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/utils"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const emitterName = "kgateway"
+
 func init() {
-	i2gw.EmitterConstructorByName["kgateway"] = NewEmitter
+	i2gw.EmitterConstructorByName[emitterName] = NewEmitter
 }
 
 type Emitter struct {
 	builderMap *BuilderMap
+	log        *slog.Logger
 }
 
 // NewEmitter returns a new instance of KgatewayEmitter
 func NewEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
 	return &Emitter{
 		builderMap: NewBuilderMap(),
+		log:        logging.WithEmitter(emitterName),
 	}
 }
 
@@ -95,7 +100,7 @@ func (e *Emitter) ToKgatewayResources(ir emitterir.EmitterIR, gwResources *i2gw.
 	for _, obj := range kgatewayObjs {
 		u, err := i2gw.CastToUnstructured(obj)
 		if err != nil {
-			notify(notifications.ErrorNotification, "Failed to cast TrafficPolicy to unstructured", obj)
+			e.log.Error("Failed to cast TrafficPolicy to unstructured", logging.ObjectRef(obj))
 			continue
 		}
 		gwResources.GatewayExtensions = append(gwResources.GatewayExtensions, *u)

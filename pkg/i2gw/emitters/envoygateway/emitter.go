@@ -17,12 +17,14 @@ limitations under the License.
 package envoygateway_emitter
 
 import (
+	"log/slog"
+
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/utils"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 )
 
 const emitterName = "envoy-gateway"
@@ -33,11 +35,13 @@ func init() {
 
 type Emitter struct {
 	builderMap *BuilderMap
+	log        *slog.Logger
 }
 
 func NewEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
 	return &Emitter{
 		builderMap: NewBuilderMap(),
+		log:        logging.WithEmitter(emitterName),
 	}
 }
 
@@ -58,7 +62,10 @@ func (e *Emitter) ToEnvoyGatewayResources(ir emitterir.EmitterIR, gwResources *i
 	for _, backendTrafficPolicy := range e.builderMap.BackendTrafficPolicies {
 		obj, err := i2gw.CastToUnstructured(backendTrafficPolicy)
 		if err != nil {
-			notify(notifications.ErrorNotification, "Failed to cast BackendTrafficPolicy to unstructured", backendTrafficPolicy)
+			e.log.Error(
+				"Failed to cast BackendTrafficPolicy to unstructured",
+				logging.ObjectRef(backendTrafficPolicy),
+			)
 			continue
 		}
 		gwResources.GatewayExtensions = append(gwResources.GatewayExtensions, *obj)
@@ -67,7 +74,10 @@ func (e *Emitter) ToEnvoyGatewayResources(ir emitterir.EmitterIR, gwResources *i
 	for _, securityPolicy := range e.builderMap.SecurityPolicies {
 		obj, err := i2gw.CastToUnstructured(securityPolicy)
 		if err != nil {
-			notify(notifications.ErrorNotification, "Failed to cast SecurityPolicy to unstructured", securityPolicy)
+			e.log.Error(
+				"Failed to cast SecurityPolicy to unstructured",
+				logging.ObjectRef(securityPolicy),
+			)
 			continue
 		}
 		gwResources.GatewayExtensions = append(gwResources.GatewayExtensions, *obj)
