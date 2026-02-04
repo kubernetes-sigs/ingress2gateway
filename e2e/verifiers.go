@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
+	"regexp"
 	"time"
 
 	networkingv1 "k8s.io/api/networking/v1"
@@ -58,9 +58,9 @@ func (v *CanaryVerifier) Verify(ctx context.Context, log logger, addr string, in
 }
 
 type HttpGetVerifier struct {
-	Host       string
-	Path       string
-	BodyPrefix string // Check that the body starts with this prefix
+	Host      string
+	Path      string
+	BodyRegex *regexp.Regexp
 }
 
 func (v *HttpGetVerifier) Verify(ctx context.Context, log logger, addr string, ingress *networkingv1.Ingress) error {
@@ -97,8 +97,8 @@ func (v *HttpGetVerifier) Verify(ctx context.Context, log logger, addr string, i
 	}
 	log.Logf("Got a healthy response: %s", body)
 
-	if !strings.HasPrefix(string(body), v.BodyPrefix) {
-		return fmt.Errorf("unexpected HTTP body: does not start with %q", v.BodyPrefix)
+	if v.BodyRegex != nil && !v.BodyRegex.MatchString(string(body)) {
+		return fmt.Errorf("unexpected HTTP body: does not match %v", v.BodyRegex)
 	}
 
 	return nil
