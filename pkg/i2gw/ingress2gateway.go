@@ -72,7 +72,9 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 		}
 	}
 
-	emitterConf := &EmitterConf{}
+	emitterConf := &EmitterConf{
+		ProviderSpecificFlags: providerSpecificFlags,
+	}
 	newEmitterFunc, ok := EmitterConstructorByName[EmitterName(emitterName)]
 	if !ok {
 		return nil, nil, fmt.Errorf("%s is not a supported emitter", emitterName)

@@ -61,4 +61,5 @@ type EmitterConstructor func(conf *EmitterConf) Emitter
 
 type EmitterConf struct {
 	// TODO: add fields as needed.
+	ProviderSpecificFlags map[string]map[string]string
 }
