@@ -80,7 +80,17 @@ func (c *resourcesToIRConverter) convertToIR(storage *storage) (providerir.Provi
 		return providerir.ProviderIR{}, errs
 	}
 
-	errs = setGCEGatewayClasses(ingressList, ir.Gateways)
+	// Extract gatewayClassName from provider-specific flags
+	var gatewayClassName string
+	if c.conf != nil && c.conf.ProviderSpecificFlags != nil {
+		if flags, ok := c.conf.ProviderSpecificFlags["gce"]; ok {
+			if val, ok := flags[GatewayClassNameFlag]; ok && val != "" {
+				gatewayClassName = val
+			}
+		}
+	}
+
+	errs = setGCEGatewayClasses(ingressList, ir.Gateways, gatewayClassName)
 	if len(errs) > 0 {
 		return providerir.ProviderIR{}, errs
 	}
