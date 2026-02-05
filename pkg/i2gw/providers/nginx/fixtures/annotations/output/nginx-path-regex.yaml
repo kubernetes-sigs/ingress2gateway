@@ -1,16 +1,9 @@
-Notifications from NGINX:
-+--------------+-------------------------------------------------------------------------------------------------------------------------------------+----------------------------------+
-| MESSAGE TYPE |                                                            NOTIFICATION                                                             |          CALLING OBJECT          |
-+--------------+-------------------------------------------------------------------------------------------------------------------------------------+----------------------------------+
-| WARNING      | nginx.org/path-regex: PathMatchRegularExpression is not supported by NGINX Gateway Fabric - only Exact and PathPrefix are supported | Ingress: default/test-path-regex |
-+--------------+-------------------------------------------------------------------------------------------------------------------------------------+----------------------------------+
-
+[33mWARN [0m nginx.org/path-regex: PathMatchRegularExpression is not supported by NGINX Gateway Fabric - only Exact and PathPrefix are supported [90m(path_matching.go:67)[0m[90m provider=nginx object=Ingress:default/test-path-regex[0m
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   annotations:
-    gateway.networking.k8s.io/generator: ingress2gateway-dev
-  creationTimestamp: null
+    gateway.networking.k8s.io/generator: ingress2gateway-v0.5.0-rc1-22-g2a1aef7
   name: nginx
   namespace: default
 spec:
@@ -26,8 +19,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   annotations:
-    gateway.networking.k8s.io/generator: ingress2gateway-dev
-  creationTimestamp: null
+    gateway.networking.k8s.io/generator: ingress2gateway-v0.5.0-rc1-22-g2a1aef7
   name: test-path-regex-example-com
   namespace: default
 spec:
@@ -43,6 +35,7 @@ spec:
     - path:
         type: RegularExpression
         value: /api/v[0-9]+
+    name: rule-0
   - backendRefs:
     - name: static-service
       port: 8080
@@ -50,5 +43,6 @@ spec:
     - path:
         type: RegularExpression
         value: /static
+    name: rule-1
 status:
   parents: []
