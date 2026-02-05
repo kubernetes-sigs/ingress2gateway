@@ -148,6 +148,13 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 					if err == nil {
 						portNumber := gatewayv1.PortNumber(port)
 						redirectFilterConfig.Port = &portNumber
+					} else {
+						errs = append(errs, field.Invalid(
+							field.NewPath("ingress", rule.Ingress.Namespace, rule.Ingress.Name, "metadata", "annotations", annotationUsed),
+							redirectURL,
+							fmt.Sprintf("invalid port in redirect URL: %v", err),
+						))
+						continue
 					}
 				}
 
