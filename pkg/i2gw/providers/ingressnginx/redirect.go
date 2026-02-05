@@ -225,7 +225,7 @@ func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR)
 			}
 		}
 
-		if !(hasSecrets && enableRedirect) {
+		if !hasSecrets || !enableRedirect {
 			continue
 		}
 
