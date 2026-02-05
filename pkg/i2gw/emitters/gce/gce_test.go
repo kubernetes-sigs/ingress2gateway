@@ -614,3 +614,57 @@ func getTestHealthCheckPolicyUnstrctured(serviceNamespace, serviceName, protocol
 
 	return *hcPolicyUnstructured
 }
+
+
+func Test_GatewayClassNameOverride(t *testing.T) {
+	testCases := []struct {
+		name              string
+		conf              *i2gw.EmitterConf
+		ir                emitterir.EmitterIR
+		expectedClassName string
+	}{
+		{
+			name: "flag set overrides default",
+			conf: &i2gw.EmitterConf{
+				ProviderSpecificFlags: map[string]map[string]string{
+					"gce": {GatewayClassNameFlag: "custom-class"},
+				},
+			},
+			ir: emitterir.EmitterIR{
+				Gateways: map[types.NamespacedName]emitterir.GatewayContext{
+					{Namespace: "default", Name: "gw1"}: {Gateway: gatewayv1.Gateway{Spec: gatewayv1.GatewaySpec{GatewayClassName: "original"}}},
+				},
+			},
+			expectedClassName: "custom-class",
+		},
+		{
+			name: "flag unset preserves original",
+			conf: &i2gw.EmitterConf{
+				ProviderSpecificFlags: map[string]map[string]string{
+					"gce": {},
+				},
+			},
+			ir: emitterir.EmitterIR{
+				Gateways: map[types.NamespacedName]emitterir.GatewayContext{
+					{Namespace: "default", Name: "gw1"}: {Gateway: gatewayv1.Gateway{Spec: gatewayv1.GatewaySpec{GatewayClassName: "original"}}},
+				},
+			},
+			expectedClassName: "original",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := NewEmitter(tc.conf)
+			res, _ := e.Emit(tc.ir)
+			if len(res.Gateways) != 1 {
+				t.Fatalf("expected 1 gateway, got %d", len(res.Gateways))
+			}
+			for _, gw := range res.Gateways {
+				if string(gw.Spec.GatewayClassName) != tc.expectedClassName {
+					t.Errorf("expected class %s, got %s", tc.expectedClassName, gw.Spec.GatewayClassName)
+				}
+			}
+		})
+	}
+}
