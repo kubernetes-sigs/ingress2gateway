@@ -32,6 +32,10 @@ const (
 	ConnectionProxyHeaderAnnotation = "nginx.ingress.kubernetes.io/connection-proxy-header"
 	CustomHeadersAnnotation         = "nginx.ingress.kubernetes.io/custom-headers"
 
+	// Body Size annotations
+	ProxyBodySizeAnnotation        = "nginx.ingress.kubernetes.io/proxy-body-size"
+	ClientBodyBufferSizeAnnotation = "nginx.ingress.kubernetes.io/client-body-buffer-size"
+
 	// Backend protocol annotation
 	BackendProtocolAnnotation = "nginx.ingress.kubernetes.io/backend-protocol"
 	// R2gex
@@ -39,4 +43,14 @@ const (
 
 	// SSL Redirect annotation
 	SSLRedirectAnnotation = "nginx.ingress.kubernetes.io/ssl-redirect"
+
+	// CORS annotations
+	EnableCorsAnnotation       = "nginx.ingress.kubernetes.io/enable-cors"
+	CorsAllowOriginAnnotation  = "nginx.ingress.kubernetes.io/cors-allow-origin"
+	CorsAllowHeadersAnnotation = "nginx.ingress.kubernetes.io/cors-allow-headers"
+	CorsAllowMethodsAnnotation = "nginx.ingress.kubernetes.io/cors-allow-methods"
+	//nolint:gosec // false positive, this is an annotation key
+	CorsAllowCredentialsAnnotation = "nginx.ingress.kubernetes.io/cors-allow-credentials"
+	CorsExposeHeadersAnnotation    = "nginx.ingress.kubernetes.io/cors-expose-headers"
+	CorsMaxAgeAnnotation           = "nginx.ingress.kubernetes.io/cors-max-age"
 )
