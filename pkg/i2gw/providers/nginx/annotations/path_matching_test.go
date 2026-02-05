@@ -378,7 +378,7 @@ func TestPathRegexCaseInsensitiveWarningOnly(t *testing.T) {
 
 	errs := PathRegexFeature(logging.Noop(), []networkingv1.Ingress{ingress}, nil, &ir)
 
-	// Should have no errors since we're using notifications now
+	// Should have no errors since warnings are logged via slog.
 	if len(errs) != 0 {
 		t.Errorf("Expected 0 errors, got %d", len(errs))
 		return
@@ -389,10 +389,6 @@ func TestPathRegexCaseInsensitiveWarningOnly(t *testing.T) {
 	if *updatedRoute.HTTPRoute.Spec.Rules[0].Matches[0].Path.Type != gatewayv1.PathMatchRegularExpression {
 		t.Errorf("Expected path type to be PathMatchRegularExpression")
 	}
-
-	// Note: Testing notifications requires access to the notification aggregator,
-	// which is more complex to test in unit tests. The notification dispatch
-	// is tested through integration tests.
 }
 
 func TestPathRegexCaseInsensitiveFlagInjection(t *testing.T) {
