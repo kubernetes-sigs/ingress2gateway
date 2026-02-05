@@ -54,7 +54,6 @@ type GatewayContext struct {
 
 type HTTPRouteContext struct {
 	gatewayv1.HTTPRoute
-
 	// PathRewriteByRuleIdx maps HTTPRoute rule indices to path rewrite intent.
 	// This is provider-neutral and applied by the common emitter.
 	PathRewriteByRuleIdx map[int]*PathRewrite
@@ -62,6 +61,12 @@ type HTTPRouteContext struct {
 	// BodySizeByRuleIdx maps HTTPRoute rule indices to body size intent.
 	// This is provider-neutral and applied by each custom emitter.
 	BodySizeByRuleIdx map[int]*BodySize
+
+	// CorsPolicyByRuleIdx maps HTTPRoute rule indices to CORS policy intent.
+	// This map is populated by providers that support CORS (e.g., via annotations) and is
+	// applied by the CommonEmitter. This separation allows the CORS logic to be provider-neutral
+	// and consistently applied across different providers, subject to feature gating.
+	CorsPolicyByRuleIdx map[int]*gatewayv1.HTTPCORSFilter
 }
 
 // PathRewrite represents provider-neutral path rewrite intent.
