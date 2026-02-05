@@ -64,18 +64,27 @@ func (v *CanaryVerifier) Verify(ctx context.Context, log logger, addr Addresses,
 }
 
 type HttpGetVerifier struct {
-	Host          string
-	Path          string
-	Code          int
-	HeaderMatches []HeaderMatch
-	UseTLS        bool
-	CACertPEM     []byte
-	BodyRegex     *regexp.Regexp
+	Host           string
+	Path           string
+	Method         string
+	RequestHeaders map[string]string
+	AllowedCodes   []int
+	HeaderMatches  []HeaderMatch
+	HeaderExcludes []HeaderExclude
+	HeaderAbsent   []string
+	UseTLS         bool
+	CACertPEM      []byte
+	BodyRegex      *regexp.Regexp
 }
 
 type HeaderMatch struct {
-	Name    string
-	Pattern *regexp.Regexp
+	Name     string
+	Patterns []*regexp.Regexp
+}
+
+type HeaderExclude struct {
+	Name     string
+	Patterns []*regexp.Regexp
 }
 
 func (v *HttpGetVerifier) Verify(ctx context.Context, log logger, addr Addresses, ingress *networkingv1.Ingress) error {
@@ -96,11 +105,18 @@ func (v *HttpGetVerifier) Verify(ctx context.Context, log logger, addr Addresses
 	if targetAddr == "" {
 		return fmt.Errorf("no %s address available for verifier", scheme)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s://%s%s", scheme, targetAddr, v.Path), nil)
+	method := v.Method
+	if method == "" {
+		method = http.MethodGet
+	}
+	req, err := http.NewRequestWithContext(ctx, method, fmt.Sprintf("%s://%s%s", scheme, targetAddr, v.Path), nil)
 	if err != nil {
 		return fmt.Errorf("constructing HTTP request: %w", err)
 	}
 
+	for name, value := range v.RequestHeaders {
+		req.Header.Set(name, value)
+	}
 	req.Host = host
 
 	transport := http.DefaultTransport.(*http.Transport).Clone()
@@ -130,30 +146,72 @@ func (v *HttpGetVerifier) Verify(ctx context.Context, log logger, addr Addresses
 	}
 	defer func() { _ = res.Body.Close() }()
 
-	if v.Code == 0 {
-		v.Code = http.StatusOK
+	allowedCodes := v.AllowedCodes
+	if len(allowedCodes) == 0 {
+		allowedCodes = []int{http.StatusOK}
 	}
-	if res.StatusCode != v.Code {
-		return fmt.Errorf("unexpected HTTP status code: got %d, want %d", res.StatusCode, v.Code)
+	allowed := false
+	for _, code := range allowedCodes {
+		if res.StatusCode == code {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
+		return fmt.Errorf("unexpected HTTP status code: got %d, want one of %v", res.StatusCode, allowedCodes)
 	}
 
 	for _, headerMatch := range v.HeaderMatches {
 		if headerMatch.Name == "" {
 			return fmt.Errorf("header match name cannot be empty")
 		}
+		if len(headerMatch.Patterns) == 0 {
+			return fmt.Errorf("header match patterns cannot be empty for %q", headerMatch.Name)
+		}
 		values := res.Header.Values(headerMatch.Name)
 		if len(values) == 0 {
 			return fmt.Errorf("missing header %q on response", headerMatch.Name)
 		}
-		matched := false
-		for _, value := range values {
-			if headerMatch.Pattern.MatchString(value) {
-				matched = true
-				break
+		for _, pattern := range headerMatch.Patterns {
+			matched := false
+			for _, value := range values {
+				if pattern.MatchString(value) {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				return fmt.Errorf("header %q did not match %q (got %q)", headerMatch.Name, pattern, strings.Join(values, ", "))
 			}
 		}
-		if !matched {
-			return fmt.Errorf("header %q did not match %q (got %q)", headerMatch.Name, headerMatch.Pattern, strings.Join(values, ", "))
+	}
+
+	for _, headerExclude := range v.HeaderExcludes {
+		if headerExclude.Name == "" {
+			return fmt.Errorf("header exclude name cannot be empty")
+		}
+		if len(headerExclude.Patterns) == 0 {
+			return fmt.Errorf("header exclude patterns cannot be empty for %q", headerExclude.Name)
+		}
+		values := res.Header.Values(headerExclude.Name)
+		if len(values) == 0 {
+			continue
+		}
+		for _, pattern := range headerExclude.Patterns {
+			for _, value := range values {
+				if pattern.MatchString(value) {
+					return fmt.Errorf("header %q matched excluded pattern %q (got %q)", headerExclude.Name, pattern, strings.Join(values, ", "))
+				}
+			}
+		}
+	}
+
+	for _, headerName := range v.HeaderAbsent {
+		if headerName == "" {
+			return fmt.Errorf("header absent name cannot be empty")
+		}
+		if len(res.Header.Values(headerName)) > 0 {
+			return fmt.Errorf("unexpected header %q on response", headerName)
 		}
 	}
 

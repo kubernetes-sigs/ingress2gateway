@@ -56,12 +56,13 @@ const DummyAppName1 = "dummy-app1"
 const DummyAppName2 = "dummy-app2"
 
 type TestCase struct {
-	Ingresses             []*networkingv1.Ingress
-	Secrets               []*corev1.Secret
-	Providers             []string
-	ProviderFlags         map[string]map[string]string
-	GatewayImplementation string
-	Verifiers             map[string][]Verifier
+	Ingresses              []*networkingv1.Ingress
+	Secrets                []*corev1.Secret
+	Providers              []string
+	ProviderFlags          map[string]map[string]string
+	GatewayImplementation  string
+	AllowExperimentalGWAPI bool
+	Verifiers              map[string][]Verifier
 }
 
 func RunTestCase(t *testing.T, tc *TestCase) {
@@ -180,7 +181,7 @@ func RunTestCase(t *testing.T, tc *TestCase) {
 	verifyIngresses(ctx, t, tc, ingressAddresses)
 
 	// Run the ingress2gateway binary to convert ingresses to Gateway API resources.
-	res := runI2GW(ctx, t, kubeconfig, appNS, tc.Providers, tc.ProviderFlags)
+	res := runI2GW(ctx, t, kubeconfig, appNS, tc.Providers, tc.ProviderFlags, tc.AllowExperimentalGWAPI)
 
 	// TODO: Hack! Force correct gateway class since i2gw doesn't seem to infer that from the
 	// ingress at the moment.
@@ -487,6 +488,7 @@ func runI2GW(
 	namespace string,
 	providers []string,
 	providerFlags map[string]map[string]string,
+	allowExperimental bool,
 ) []i2gw.GatewayResources {
 	binaryPath := os.Getenv("I2GW_BINARY_PATH")
 	require.NotEmpty(t, binaryPath, "environment variable I2GW_BINARY_PATH not set")
@@ -496,6 +498,9 @@ func runI2GW(
 		"--kubeconfig", kubeconfig,
 		"--namespace", namespace,
 		"--providers", strings.Join(providers, ","),
+	}
+	if allowExperimental {
+		args = append(args, "--allow-experimental-gw-api")
 	}
 
 	// Add provider-specific flags.

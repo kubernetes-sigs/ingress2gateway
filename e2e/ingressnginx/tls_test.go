@@ -67,14 +67,14 @@ func TestTLS(t *testing.T) {
 							CACertPEM: tlsSecret.CACert,
 						},
 						&e2e.HttpGetVerifier{
-							Host:   host,
-							Path:   "/",
-							Code:   308,
-							UseTLS: false,
+							Host:         host,
+							Path:         "/",
+							AllowedCodes: []int{308},
+							UseTLS:       false,
 							HeaderMatches: []e2e.HeaderMatch{
 								{
-									Name:    "Location",
-									Pattern: regexp.MustCompile("^https://" + host + "/?$"),
+									Name:     "Location",
+									Patterns: []*regexp.Regexp{regexp.MustCompile("^https://" + host + "/?$")},
 								},
 							},
 						},
@@ -130,14 +130,14 @@ func TestTLS(t *testing.T) {
 							CACertPEM: redirectSecret.CACert,
 						},
 						&e2e.HttpGetVerifier{
-							Host:   redirectHost,
-							Path:   "/",
-							Code:   308,
-							UseTLS: false,
+							Host:         redirectHost,
+							Path:         "/",
+							AllowedCodes: []int{308},
+							UseTLS:       false,
 							HeaderMatches: []e2e.HeaderMatch{
 								{
-									Name:    "Location",
-									Pattern: regexp.MustCompile("^https://" + redirectHost + "/?$"),
+									Name:     "Location",
+									Patterns: []*regexp.Regexp{regexp.MustCompile("^https://" + redirectHost + "/?$")},
 								},
 							},
 						},
@@ -152,7 +152,6 @@ func TestTLS(t *testing.T) {
 						&e2e.HttpGetVerifier{
 							Host:   noRedirectHost,
 							Path:   "/",
-							Code:   200,
 							UseTLS: false,
 						},
 					},
