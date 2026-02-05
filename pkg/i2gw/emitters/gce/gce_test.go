@@ -614,7 +614,6 @@ func getTestHealthCheckPolicyUnstrctured(serviceNamespace, serviceName, protocol
 	return *hcPolicyUnstructured
 }
 
-
 func Test_GatewayClassNameOverride(t *testing.T) {
 	testCases := []struct {
 		name              string
