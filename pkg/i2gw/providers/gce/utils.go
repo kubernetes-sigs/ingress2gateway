@@ -28,7 +28,7 @@ import (
 )
 
 // setGCEGatewayClasses updates the list of Gateways to use GCE GatewayClass.
-func setGCEGatewayClasses(ingresses []networkingv1.Ingress, gatewayContexts map[types.NamespacedName]providerir.GatewayContext) field.ErrorList {
+func setGCEGatewayClasses(ingresses []networkingv1.Ingress, gatewayContexts map[types.NamespacedName]providerir.GatewayContext, gatewayClassName string) field.ErrorList {
 	var errs field.ErrorList
 
 	// Since we already validated ingress resources when reading, there are
@@ -42,7 +42,7 @@ func setGCEGatewayClasses(ingresses []networkingv1.Ingress, gatewayContexts map[
 		gwKey := types.NamespacedName{Namespace: ingress.Namespace, Name: common.GetIngressClass(ingress)}
 		existingGateway := gatewayContexts[gwKey].Gateway
 
-		newGateway, err := setGCEGatewayClass(ingress, existingGateway)
+		newGateway, err := setGCEGatewayClass(ingress, existingGateway, gatewayClassName)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -55,7 +55,12 @@ func setGCEGatewayClasses(ingresses []networkingv1.Ingress, gatewayContexts map[
 }
 
 // setGCEGatewayClass sets the Gateway to the corresponding GCE GatewayClass.
-func setGCEGatewayClass(ingress networkingv1.Ingress, gateway gatewayv1.Gateway) (gatewayv1.Gateway, *field.Error) {
+func setGCEGatewayClass(ingress networkingv1.Ingress, gateway gatewayv1.Gateway, gatewayClassName string) (gatewayv1.Gateway, *field.Error) {
+	if gatewayClassName != "" {
+		gateway.Spec.GatewayClassName = gatewayv1.ObjectName(gatewayClassName)
+		return gateway, nil
+	}
+
 	ingressClass := common.GetIngressClass(ingress)
 
 	ingressName := fmt.Sprintf("%s/%s", ingress.Namespace, ingress.Name)
