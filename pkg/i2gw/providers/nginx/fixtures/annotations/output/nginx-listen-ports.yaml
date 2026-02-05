@@ -2,8 +2,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   annotations:
-    gateway.networking.k8s.io/generator: ingress2gateway-dev
-  creationTimestamp: null
+    gateway.networking.k8s.io/generator: ingress2gateway-v0.5.0-rc1-30-gf64a9e4
   name: nginx
   namespace: default
 spec:
@@ -34,8 +33,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   annotations:
-    gateway.networking.k8s.io/generator: ingress2gateway-dev
-  creationTimestamp: null
+    gateway.networking.k8s.io/generator: ingress2gateway-v0.5.0-rc1-30-gf64a9e4
   name: listen-ports-test-custom-ports-example-com
   namespace: default
 spec:
@@ -51,5 +49,6 @@ spec:
     - path:
         type: PathPrefix
         value: /app
+    name: rule-0
 status:
   parents: []

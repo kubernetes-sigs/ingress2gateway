@@ -1,17 +1,13 @@
-Notifications from NGINX:
-+--------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------+
-| MESSAGE TYPE |                                                                                               NOTIFICATION                                                                                               |           CALLING OBJECT           |
-+--------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------+
-| WARNING      | nginx.org/ssl-services: BackendTLSPolicy created but requires manual configuration. You must set the 'validation.hostname' field to match your backend service's TLS certificate hostname, and configure | Ingress: default/ssl-services-test |
-|              | appropriate CA certificates or certificateRefs for TLS verification.                                                                                                                                     |                                    |
-+--------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------------------------+
-
+┌─ WARN  ────────────────────────────────────────
+│  nginx.org/ssl-services: BackendTLSPolicy created but requires manual configuration. You must set the 'validation.hostname' field to match your backend service's TLS certificate hostname, and configure appropriate CA certificates or certificateRefs for TLS verification.
+│  provider: nginx
+│  object: Ingress:default/ssl-services-test
+└─ ssl_services.go:74
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   annotations:
-    gateway.networking.k8s.io/generator: ingress2gateway-dev
-  creationTimestamp: null
+    gateway.networking.k8s.io/generator: ingress2gateway-v0.5.0-rc1-30-gf64a9e4
   name: nginx
   namespace: default
 spec:
@@ -27,8 +23,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   annotations:
-    gateway.networking.k8s.io/generator: ingress2gateway-dev
-  creationTimestamp: null
+    gateway.networking.k8s.io/generator: ingress2gateway-v0.5.0-rc1-30-gf64a9e4
   name: ssl-services-test-cafe-example-com
   namespace: default
 spec:
@@ -44,6 +39,7 @@ spec:
     - path:
         type: PathPrefix
         value: /ssl
+    name: rule-0
   - backendRefs:
     - name: tea
       port: 80
@@ -51,15 +47,15 @@ spec:
     - path:
         type: PathPrefix
         value: /tea
+    name: rule-1
 status:
   parents: []
 ---
-apiVersion: gateway.networking.k8s.io/v1alpha3
+apiVersion: gateway.networking.k8s.io/v1
 kind: BackendTLSPolicy
 metadata:
   annotations:
-    gateway.networking.k8s.io/generator: ingress2gateway-dev
-  creationTimestamp: null
+    gateway.networking.k8s.io/generator: ingress2gateway-v0.5.0-rc1-30-gf64a9e4
   name: ssl-services-test-secure-app-backend-tls
   namespace: default
 spec:
