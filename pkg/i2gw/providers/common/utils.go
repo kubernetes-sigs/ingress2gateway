@@ -155,6 +155,9 @@ func groupIngressPathsByMatchKey(rules []ingressRule) orderedIngressPathsByMatch
 	}
 
 	for i, ir := range rules {
+		if ir.rule.HTTP == nil {
+			continue
+		}
 		for j, path := range ir.rule.HTTP.Paths {
 			ip := ingressPath{
 				ruleIdx:       i,
