@@ -31,11 +31,16 @@ const (
 	ConnectionProxyHeaderAnnotation = "nginx.ingress.kubernetes.io/connection-proxy-header"
 	CustomHeadersAnnotation         = "nginx.ingress.kubernetes.io/custom-headers"
 
+	// Timeout annotations
+	ProxyConnectTimeoutAnnotation = "nginx.ingress.kubernetes.io/proxy-connect-timeout"
+	ProxySendTimeoutAnnotation    = "nginx.ingress.kubernetes.io/proxy-send-timeout"
+	ProxyReadTimeoutAnnotation    = "nginx.ingress.kubernetes.io/proxy-read-timeout"
+
 	// Body Size annotations
 	ProxyBodySizeAnnotation        = "nginx.ingress.kubernetes.io/proxy-body-size"
 	ClientBodyBufferSizeAnnotation = "nginx.ingress.kubernetes.io/client-body-buffer-size"
 
-	// R2gex
+	// Regex
 	UseRegexAnnotation = "nginx.ingress.kubernetes.io/use-regex"
 
 	// SSL Redirect annotation
