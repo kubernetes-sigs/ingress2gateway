@@ -18,42 +18,111 @@ package e2e
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
+	"strings"
 	"time"
 
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
-// Validates that a service is accessible and working correctly. The addr parameter is a
-// "host:port" string representing the service endpoint.
-type verifier interface {
-	verify(ctx context.Context, log logger, addr string, ingress *networkingv1.Ingress) error
+type Verifier interface {
+	Verify(ctx context.Context, log logger, addr Addresses, ingress *networkingv1.Ingress) error
 }
 
-type httpGetVerifier struct {
-	host string
-	path string
+type Addresses struct {
+	HTTP  string
+	HTTPS string
 }
 
-func (v *httpGetVerifier) verify(ctx context.Context, log logger, addr string, ingress *networkingv1.Ingress) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("http://%s%s", addr, v.path), nil)
+type CanaryVerifier struct {
+	Verifier     Verifier
+	MinSuccesses float64
+	MaxSuccesses float64
+	Runs         int
+}
+
+func (v *CanaryVerifier) Verify(ctx context.Context, log logger, addr Addresses, ingress *networkingv1.Ingress) error {
+	successes := 0
+	for i := 0; i < v.Runs; i++ {
+		err := v.Verifier.Verify(ctx, log, addr, ingress)
+		if err != nil {
+			log.Logf("Canary verifier run %d/%d succeeded", i+1, v.Runs)
+			successes++
+		}
+	}
+
+	successRate := float64(successes) / float64(v.Runs)
+	if successRate <= v.MinSuccesses || successRate >= v.MaxSuccesses {
+		return fmt.Errorf("canary verifier failed: success rate %.2f not in range [%.2f, %.2f]", successRate, v.MinSuccesses, v.MaxSuccesses)
+	}
+	return nil
+}
+
+type HttpGetVerifier struct {
+	Host          string
+	Path          string
+	Code          int
+	HeaderMatches []HeaderMatch
+	UseTLS        bool
+	CACertPEM     []byte
+	BodyRegex     *regexp.Regexp
+}
+
+type HeaderMatch struct {
+	Name    string
+	Pattern *regexp.Regexp
+}
+
+func (v *HttpGetVerifier) Verify(ctx context.Context, log logger, addr Addresses, ingress *networkingv1.Ingress) error {
+	host := v.Host
+	if host == "" && len(ingress.Spec.Rules) > 0 && ingress.Spec.Rules[0].Host != "" {
+		host = ingress.Spec.Rules[0].Host
+	}
+	if host == "" {
+		return fmt.Errorf("no host specified: set HTTPGetVerifier.Host or ensure ingress has a rule with a host")
+	}
+
+	scheme := "http"
+	targetAddr := addr.HTTP
+	if v.UseTLS {
+		scheme = "https"
+		targetAddr = addr.HTTPS
+	}
+	if targetAddr == "" {
+		return fmt.Errorf("no %s address available for verifier", scheme)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s://%s%s", scheme, targetAddr, v.Path), nil)
 	if err != nil {
 		return fmt.Errorf("constructing HTTP request: %w", err)
 	}
 
-	// If the Host field is specified in the test case, use that. Otherwise, default to deriving
-	// the (auto-generated) host from the ingress.
-	if v.host != "" {
-		req.Host = v.host
-	} else if len(ingress.Spec.Rules) > 0 && ingress.Spec.Rules[0].Host != "" {
-		req.Host = ingress.Spec.Rules[0].Host
-	} else {
-		return fmt.Errorf("no host specified: set HTTPGetVerifier.Host or ensure ingress has a rule with a host")
+	req.Host = host
+
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	if v.UseTLS {
+		if len(v.CACertPEM) == 0 {
+			return fmt.Errorf("no CA cert provided for TLS verification")
+		}
+		certPool := x509.NewCertPool()
+		if ok := certPool.AppendCertsFromPEM(v.CACertPEM); !ok {
+			return fmt.Errorf("failed to parse CA cert PEM")
+		}
+		transport.TLSClientConfig = &tls.Config{
+			RootCAs:    certPool,
+			ServerName: host,
+			MinVersion: tls.VersionTLS12,
+		}
 	}
 
-	client := http.Client{Timeout: 5 * time.Second}
+	client := http.Client{Timeout: 5 * time.Second, Transport: transport}
+	client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
 
 	res, err := client.Do(req)
 	if err != nil {
@@ -61,16 +130,42 @@ func (v *httpGetVerifier) verify(ctx context.Context, log logger, addr string, i
 	}
 	defer func() { _ = res.Body.Close() }()
 
-	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected HTTP status code: got %d, want %d", res.StatusCode, http.StatusOK)
+	if v.Code == 0 {
+		v.Code = http.StatusOK
+	}
+	if res.StatusCode != v.Code {
+		return fmt.Errorf("unexpected HTTP status code: got %d, want %d", res.StatusCode, v.Code)
+	}
+
+	for _, headerMatch := range v.HeaderMatches {
+		if headerMatch.Name == "" {
+			return fmt.Errorf("header match name cannot be empty")
+		}
+		values := res.Header.Values(headerMatch.Name)
+		if len(values) == 0 {
+			return fmt.Errorf("missing header %q on response", headerMatch.Name)
+		}
+		matched := false
+		for _, value := range values {
+			if headerMatch.Pattern.MatchString(value) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return fmt.Errorf("header %q did not match %q (got %q)", headerMatch.Name, headerMatch.Pattern, strings.Join(values, ", "))
+		}
 	}
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return fmt.Errorf("reading HTTP body: %w", err)
 	}
-
 	log.Logf("Got a healthy response: %s", body)
+
+	if v.BodyRegex != nil && !v.BodyRegex.MatchString(string(body)) {
+		return fmt.Errorf("unexpected HTTP body: does not match %v", v.BodyRegex)
+	}
 
 	return nil
 }
