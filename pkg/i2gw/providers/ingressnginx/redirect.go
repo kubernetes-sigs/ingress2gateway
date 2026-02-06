@@ -38,6 +38,7 @@ func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR)
 	for key, httpRouteContext := range pir.HTTPRoutes {
 		hasSecrets := false
 		enableRedirect := true
+		forceRedirect := false
 
 		for _, sources := range httpRouteContext.RuleBackendSources {
 			ingress := getNonCanaryIngress(sources)
@@ -50,6 +51,19 @@ func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR)
 				hasSecrets = true
 			}
 
+			// Check the force-ssl-redirect annotation.
+			if val, ok := ingress.Annotations[ForceSSLRedirectAnnotation]; ok {
+				parsed, err := strconv.ParseBool(val)
+				if err != nil {
+					return field.ErrorList{field.Invalid(
+						field.NewPath("ingress", ingress.Namespace, ingress.Name, "metadata", "annotations"),
+						ingress.Annotations,
+						fmt.Sprintf("failed to parse force-ssl-redirect configuration: %v", err),
+					)}
+				}
+				forceRedirect = parsed
+			}
+
 			// Check the ssl-redirect annotation.
 			if val, ok := ingress.Annotations[SSLRedirectAnnotation]; ok {
 				parsed, err := strconv.ParseBool(val)
@@ -57,14 +71,14 @@ func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR)
 					return field.ErrorList{field.Invalid(
 						field.NewPath("ingress", ingress.Namespace, ingress.Name, "metadata", "annotations"),
 						ingress.Annotations,
-						fmt.Sprintf("failed to parse canary configuration: %v", err),
+						fmt.Sprintf("failed to parse ssl-redirect configuration: %v", err),
 					)}
 				}
 				enableRedirect = parsed
 			}
 		}
 
-		if !hasSecrets || !enableRedirect {
+		if (!hasSecrets && !forceRedirect) || !enableRedirect {
 			continue
 		}
 
@@ -109,6 +123,75 @@ func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR)
 			eHTTPRouteContext.Spec.ParentRefs[i].Port = ptr.To[int32](443)
 		}
 		eir.HTTPRoutes[key] = eHTTPRouteContext
+	}
+	return nil
+}
+
+func addWWWRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR) field.ErrorList {
+	for _, httpRouteContext := range pir.HTTPRoutes {
+		wwwRedirect := false
+
+		for _, sources := range httpRouteContext.RuleBackendSources {
+			ingress := getNonCanaryIngress(sources)
+			if ingress == nil {
+				continue
+			}
+
+			if val, ok := ingress.Annotations[FromToWWWRedirectAnnotation]; ok {
+				parsed, err := strconv.ParseBool(val)
+				if err != nil {
+					return field.ErrorList{field.Invalid(
+						field.NewPath("ingress", ingress.Namespace, ingress.Name, "metadata", "annotations"),
+						ingress.Annotations,
+						fmt.Sprintf("failed to parse from-to-www-redirect configuration: %v", err),
+					)}
+				}
+				wwwRedirect = parsed
+			}
+		}
+
+		if !wwwRedirect {
+			continue
+		}
+
+		for _, hostname := range httpRouteContext.HTTPRoute.Spec.Hostnames {
+			h := string(hostname)
+			if len(h) >= 4 && h[:4] == "www." {
+				continue
+			}
+
+			redirectRoute := gatewayv1.HTTPRoute{
+				TypeMeta: httpRouteContext.HTTPRoute.TypeMeta,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("%s-www-redirect", httpRouteContext.HTTPRoute.Name),
+					Namespace: httpRouteContext.HTTPRoute.Namespace,
+				},
+				Spec: gatewayv1.HTTPRouteSpec{
+					Hostnames: []gatewayv1.Hostname{hostname},
+					Rules: []gatewayv1.HTTPRouteRule{
+						{
+							Filters: []gatewayv1.HTTPRouteFilter{
+								{
+									Type: gatewayv1.HTTPRouteFilterRequestRedirect,
+									RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
+										Hostname:   ptr.To(gatewayv1.PreciseHostname("www." + h)),
+										StatusCode: ptr.To(308),
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+			redirectRoute.Spec.ParentRefs = httpRouteContext.HTTPRoute.Spec.DeepCopy().ParentRefs
+
+			eir.HTTPRoutes[types.NamespacedName{
+				Namespace: redirectRoute.Namespace,
+				Name:      redirectRoute.Name,
+			}] = emitterir.HTTPRouteContext{
+				HTTPRoute: redirectRoute,
+			}
+		}
 	}
 	return nil
 }
