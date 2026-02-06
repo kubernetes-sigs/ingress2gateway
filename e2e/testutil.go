@@ -524,43 +524,36 @@ func parseYAMLOutput(t *testing.T, data []byte) []i2gw.GatewayResources {
 			err := json.Unmarshal(objBytes, &gc)
 			require.NoError(t, err, "failed to unmarshal GatewayClass")
 			res.GatewayClasses[nn] = gc
-
 		case apiVersion == "gateway.networking.k8s.io/v1" && kind == "HTTPRoute":
 			var hr gwapiv1.HTTPRoute
 			err := json.Unmarshal(objBytes, &hr)
 			require.NoError(t, err, "failed to unmarshal HTTPRoute")
 			res.HTTPRoutes[nn] = hr
-
 		case apiVersion == "gateway.networking.k8s.io/v1" && kind == "GRPCRoute":
 			var gr gwapiv1.GRPCRoute
 			err := json.Unmarshal(objBytes, &gr)
 			require.NoError(t, err, "failed to unmarshal GRPCRoute")
 			res.GRPCRoutes[nn] = gr
-
 		case apiVersion == "gateway.networking.k8s.io/v1alpha2" && kind == "TLSRoute":
 			var tr v1alpha2.TLSRoute
 			err := json.Unmarshal(objBytes, &tr)
 			require.NoError(t, err, "failed to unmarshal TLSRoute")
 			res.TLSRoutes[nn] = tr
-
 		case apiVersion == "gateway.networking.k8s.io/v1alpha2" && kind == "TCPRoute":
 			var tcpr v1alpha2.TCPRoute
 			err := json.Unmarshal(objBytes, &tcpr)
 			require.NoError(t, err, "failed to unmarshal TCPRoute")
 			res.TCPRoutes[nn] = tcpr
-
 		case apiVersion == "gateway.networking.k8s.io/v1alpha2" && kind == "UDPRoute":
 			var udpr v1alpha2.UDPRoute
 			err := json.Unmarshal(objBytes, &udpr)
 			require.NoError(t, err, "failed to unmarshal UDPRoute")
 			res.UDPRoutes[nn] = udpr
-
 		case apiVersion == "gateway.networking.k8s.io/v1" && kind == "BackendTLSPolicy":
 			var btls gwapiv1.BackendTLSPolicy
 			err := json.Unmarshal(objBytes, &btls)
 			require.NoError(t, err, "failed to unmarshal BackendTLSPolicy")
 			res.BackendTLSPolicies[nn] = btls
-
 		case apiVersion == "gateway.networking.k8s.io/v1beta1" && kind == "ReferenceGrant":
 			var rg v1beta1.ReferenceGrant
 			err := json.Unmarshal(objBytes, &rg)
