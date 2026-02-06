@@ -1184,81 +1184,6 @@ func TestAddDefaultSSLRedirect_noTLS(t *testing.T) {
 
 func TestAddDefaultSSLRedirect_crossIngressTLSWithOptOut(t *testing.T) {
 	key := types.NamespacedName{Namespace: "default", Name: "route"}
-
-	ingWithTLS := networkingv1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   key.Namespace,
-			Name:        "ing-tls",
-			Annotations: map[string]string{},
-		},
-		Spec: networkingv1.IngressSpec{
-			TLS:   []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
-			Rules: []networkingv1.IngressRule{{Host: "example.com"}},
-		},
-	}
-
-	// Ingress B has no TLS but explicitly opts out of ssl-redirect.
-	// Even though the hostname has TLS, this path should not redirect.
-	ingNoTLSOptOut := networkingv1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: key.Namespace,
-			Name:      "ing-no-tls-optout",
-			Annotations: map[string]string{
-				SSLRedirectAnnotation: "false",
-			},
-		},
-		Spec: networkingv1.IngressSpec{},
-	}
-
-	pathA := "/a"
-	pathB := "/b"
-	route := gatewayv1.HTTPRoute{
-		ObjectMeta: metav1.ObjectMeta{Namespace: key.Namespace, Name: key.Name},
-		Spec: gatewayv1.HTTPRouteSpec{
-			CommonRouteSpec: gatewayv1.CommonRouteSpec{
-				ParentRefs: []gatewayv1.ParentReference{{Name: gatewayv1.ObjectName("gw")}},
-			},
-			Hostnames: []gatewayv1.Hostname{"example.com"},
-			Rules: []gatewayv1.HTTPRouteRule{
-				{Matches: []gatewayv1.HTTPRouteMatch{{Path: &gatewayv1.HTTPPathMatch{Value: &pathA}}}},
-				{Matches: []gatewayv1.HTTPRouteMatch{{Path: &gatewayv1.HTTPPathMatch{Value: &pathB}}}},
-			},
-		},
-	}
-
-	pIR := providerir.ProviderIR{HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{}}
-	pIR.HTTPRoutes[key] = providerir.HTTPRouteContext{
-		HTTPRoute: route,
-		RuleBackendSources: [][]providerir.BackendSource{
-			{{Ingress: &ingWithTLS}},
-			{{Ingress: &ingNoTLSOptOut}},
-		},
-	}
-
-	eIR := emitterir.EmitterIR{HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{}}
-	eIR.HTTPRoutes[key] = emitterir.HTTPRouteContext{HTTPRoute: route}
-
-	(&Provider{}).addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ingWithTLS, ingNoTLSOptOut}, &pIR, &eIR)
-
-	// Consolidated: /a redirect + /b passthrough in one route.
-	httpKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
-	httpCtx, ok := eIR.HTTPRoutes[httpKey]
-	if !ok {
-		t.Fatalf("expected http route to be created")
-	}
-	if len(httpCtx.Spec.Rules) != 2 {
-		t.Fatalf("expected 2 rules, got %d", len(httpCtx.Spec.Rules))
-	}
-	if *httpCtx.Spec.Rules[0].Matches[0].Path.Value != "/a" {
-		t.Fatalf("expected first rule to match /a, got %s", *httpCtx.Spec.Rules[0].Matches[0].Path.Value)
-	}
-	if *httpCtx.Spec.Rules[1].Matches[0].Path.Value != "/b" {
-		t.Fatalf("expected second rule (passthrough) to match /b, got %s", *httpCtx.Spec.Rules[1].Matches[0].Path.Value)
-	}
-}
-
-func TestAddDefaultSSLRedirect_crossIngressTLSThreeWayMixed(t *testing.T) {
-	key := types.NamespacedName{Namespace: "default", Name: "route"}
 	parentRefs := []gatewayv1.ParentReference{{Name: gatewayv1.ObjectName("gw")}}
 
 	ingWithTLS := networkingv1.Ingress{
@@ -1284,7 +1209,6 @@ func TestAddDefaultSSLRedirect_crossIngressTLSThreeWayMixed(t *testing.T) {
 		Spec: networkingv1.IngressSpec{},
 	}
 
-	// Ingress C: no TLS, default ssl-redirect (inherits from hostname).
 	ingNoTLSDefault := networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   key.Namespace,
@@ -1297,6 +1221,7 @@ func TestAddDefaultSSLRedirect_crossIngressTLSThreeWayMixed(t *testing.T) {
 	pathA := "/a"
 	pathB := "/b"
 	pathC := "/c"
+
 	route := gatewayv1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{Namespace: key.Namespace, Name: key.Name},
 		Spec: gatewayv1.HTTPRouteSpec{
@@ -1369,6 +1294,7 @@ func TestAddDefaultSSLRedirect_allIngressesNoTLS(t *testing.T) {
 
 	pathA := "/a"
 	pathB := "/b"
+
 	route := gatewayv1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{Namespace: key.Namespace, Name: key.Name},
 		Spec: gatewayv1.HTTPRouteSpec{
@@ -1408,6 +1334,7 @@ func TestAddDefaultSSLRedirect_allIngressesNoTLS(t *testing.T) {
 		t.Fatalf("expected original route parentRef port to remain nil, got %v", *origCtx.Spec.ParentRefs[0].Port)
 	}
 }
+
 func TestBuildTrailingSlashRedirectRules(t *testing.T) {
 	prefix := gatewayv1.PathMatchPathPrefix
 	exact := gatewayv1.PathMatchExact
@@ -1557,4 +1484,136 @@ func TestBuildTrailingSlashRedirectRules(t *testing.T) {
 			t.Fatalf("expected 1 deduplicated redirect rule, got %d", len(got))
 		}
 	})
+}
+
+func TestAddDefaultSSLRedirect_forceSSLRedirectAnnotation(t *testing.T) {
+	key := types.NamespacedName{Namespace: "default", Name: "route"}
+	parentRefs := []gatewayv1.ParentReference{{Name: gatewayv1.ObjectName("gw")}}
+
+	ing := networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: key.Namespace,
+			Name:      "ing",
+			Annotations: map[string]string{
+				ForceSSLRedirectAnnotation: "true",
+			},
+		},
+		Spec: networkingv1.IngressSpec{
+			Rules: []networkingv1.IngressRule{{Host: "example.com"}},
+		},
+	}
+
+	route := gatewayv1.HTTPRoute{
+		ObjectMeta: metav1.ObjectMeta{Namespace: key.Namespace, Name: key.Name},
+		Spec: gatewayv1.HTTPRouteSpec{
+			CommonRouteSpec: gatewayv1.CommonRouteSpec{
+				ParentRefs: append([]gatewayv1.ParentReference(nil), parentRefs...),
+			},
+			Hostnames: []gatewayv1.Hostname{"example.com"},
+			Rules:     []gatewayv1.HTTPRouteRule{{Matches: []gatewayv1.HTTPRouteMatch{{}}}},
+		},
+	}
+
+	pIR := providerir.ProviderIR{HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{}}
+	pIR.HTTPRoutes[key] = providerir.HTTPRouteContext{
+		HTTPRoute: route,
+		RuleBackendSources: [][]providerir.BackendSource{{
+			{Ingress: &ing},
+		}},
+	}
+
+	eIR := emitterir.EmitterIR{HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{}}
+	eIR.HTTPRoutes[key] = emitterir.HTTPRouteContext{HTTPRoute: route}
+
+	(&Provider{}).addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ing}, &pIR, &eIR)
+
+	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
+	redirectCtx, ok := eIR.HTTPRoutes[redirectKey]
+	if !ok {
+		t.Fatalf("expected redirect route %v to be added", redirectKey)
+	}
+
+	if len(redirectCtx.Spec.ParentRefs) != 1 || redirectCtx.Spec.ParentRefs[0].Port == nil || *redirectCtx.Spec.ParentRefs[0].Port != 80 {
+		t.Fatalf("expected redirect route parentRef port 80, got %#v", redirectCtx.Spec.ParentRefs)
+	}
+
+	origCtx := eIR.HTTPRoutes[key]
+	if len(origCtx.Spec.ParentRefs) != 1 || origCtx.Spec.ParentRefs[0].Port == nil || *origCtx.Spec.ParentRefs[0].Port != 443 {
+		t.Fatalf("expected original route parentRef port 443, got %#v", origCtx.Spec.ParentRefs)
+	}
+
+	if len(redirectCtx.Spec.Rules) != 1 || len(redirectCtx.Spec.Rules[0].Filters) != 1 {
+		t.Fatalf("expected redirect route to have 1 rule with 1 filter, got %#v", redirectCtx.Spec.Rules)
+	}
+
+	f := redirectCtx.Spec.Rules[0].Filters[0]
+	if f.Type != gatewayv1.HTTPRouteFilterRequestRedirect || f.RequestRedirect == nil {
+		t.Fatalf("expected RequestRedirect filter, got %#v", f)
+	}
+	if f.RequestRedirect.Scheme == nil || *f.RequestRedirect.Scheme != "https" {
+		t.Fatalf("expected scheme https, got %#v", f.RequestRedirect.Scheme)
+	}
+	if f.RequestRedirect.StatusCode == nil || *f.RequestRedirect.StatusCode != 308 {
+		t.Fatalf("expected status code 308, got %#v", f.RequestRedirect.StatusCode)
+	}
+}
+
+func TestAddWWWRedirect_enabled(t *testing.T) {
+	key := types.NamespacedName{Namespace: "default", Name: "route"}
+	parentRefs := []gatewayv1.ParentReference{{Name: gatewayv1.ObjectName("gw")}}
+
+	ing := networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: key.Namespace,
+			Name:      "ing",
+			Annotations: map[string]string{
+				FromToWWWRedirectAnnotation: "true",
+			},
+		},
+		Spec: networkingv1.IngressSpec{},
+	}
+
+	route := gatewayv1.HTTPRoute{
+		ObjectMeta: metav1.ObjectMeta{Namespace: key.Namespace, Name: key.Name},
+		Spec: gatewayv1.HTTPRouteSpec{
+			CommonRouteSpec: gatewayv1.CommonRouteSpec{
+				ParentRefs: append([]gatewayv1.ParentReference(nil), parentRefs...),
+			},
+			Hostnames: []gatewayv1.Hostname{"example.com"},
+		},
+	}
+
+	pIR := providerir.ProviderIR{HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{}}
+	pIR.HTTPRoutes[key] = providerir.HTTPRouteContext{
+		HTTPRoute: route,
+		RuleBackendSources: [][]providerir.BackendSource{{
+			{Ingress: &ing},
+		}},
+	}
+
+	eIR := emitterir.EmitterIR{HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{}}
+	eIR.HTTPRoutes[key] = emitterir.HTTPRouteContext{HTTPRoute: route}
+
+	(&Provider{}).addWWWRedirect(&pIR, &eIR)
+
+	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-www-redirect"}
+	redirectCtx, ok := eIR.HTTPRoutes[redirectKey]
+	if !ok {
+		t.Fatalf("expected redirect route %v to be added", redirectKey)
+	}
+
+	if len(redirectCtx.Spec.Rules) != 1 || len(redirectCtx.Spec.Rules[0].Filters) != 1 {
+		t.Fatalf("expected redirect route to have 1 rule with 1 filter, got %#v", redirectCtx.Spec.Rules)
+	}
+
+	f := redirectCtx.Spec.Rules[0].Filters[0]
+	if f.Type != gatewayv1.HTTPRouteFilterRequestRedirect || f.RequestRedirect == nil {
+		t.Fatalf("expected RequestRedirect filter, got %#v", f)
+	}
+	if f.RequestRedirect.Hostname == nil || *f.RequestRedirect.Hostname != "www.example.com" {
+		t.Fatalf("expected hostname www.example.com, got %#v", f.RequestRedirect.Hostname)
+	}
+	if f.RequestRedirect.StatusCode == nil || *f.RequestRedirect.StatusCode != 308 {
+		t.Fatalf("expected status code 308, got %#v", f.RequestRedirect.StatusCode)
+	}
 }

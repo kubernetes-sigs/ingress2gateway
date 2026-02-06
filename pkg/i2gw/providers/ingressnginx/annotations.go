@@ -60,7 +60,8 @@ const (
 	UseRegexAnnotation = "nginx.ingress.kubernetes.io/use-regex"
 
 	// SSL Redirect annotation
-	SSLRedirectAnnotation = "nginx.ingress.kubernetes.io/ssl-redirect"
+	SSLRedirectAnnotation      = "nginx.ingress.kubernetes.io/ssl-redirect"
+	ForceSSLRedirectAnnotation = "nginx.ingress.kubernetes.io/force-ssl-redirect"
 	// CORS annotations
 	EnableCorsAnnotation       = "nginx.ingress.kubernetes.io/enable-cors"
 	CorsAllowOriginAnnotation  = "nginx.ingress.kubernetes.io/cors-allow-origin"

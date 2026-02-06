@@ -220,6 +220,19 @@ func (p *Provider) addSSLAndTrailingSlashRedirects(ingresses []networkingv1.Ingr
 	// Find hosts with TLS enabled.
 	hostsWithTLS := make(map[string]struct{})
 	for _, ing := range ingresses {
+		forceSSL := false
+		if val, ok := ing.Annotations[ForceSSLRedirectAnnotation]; ok {
+			forceSSL, _ = strconv.ParseBool(val)
+		}
+
+		if forceSSL {
+			for _, rule := range ing.Spec.Rules {
+				if rule.Host != "" {
+					hostsWithTLS[rule.Host] = struct{}{}
+				}
+			}
+		}
+
 		for _, tls := range ing.Spec.TLS {
 			if len(tls.Hosts) > 0 {
 				for _, host := range tls.Hosts {
@@ -476,4 +489,73 @@ func pathPrefixCovers(prefix, path string) bool {
 	}
 	// Path is longer than prefix; check segment boundary.
 	return prefix[len(prefix)-1] == '/' || path[len(prefix)] == '/'
+}
+
+func (p *Provider) addWWWRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR) field.ErrorList {
+	for _, httpRouteContext := range pir.HTTPRoutes {
+		wwwRedirect := false
+
+		for _, sources := range httpRouteContext.RuleBackendSources {
+			ingress := getNonCanaryIngress(sources)
+			if ingress == nil {
+				continue
+			}
+
+			if val, ok := ingress.Annotations[FromToWWWRedirectAnnotation]; ok {
+				parsed, err := strconv.ParseBool(val)
+				if err != nil {
+					return field.ErrorList{field.Invalid(
+						field.NewPath("ingress", ingress.Namespace, ingress.Name, "metadata", "annotations"),
+						ingress.Annotations,
+						fmt.Sprintf("failed to parse from-to-www-redirect configuration: %v", err),
+					)}
+				}
+				wwwRedirect = parsed
+			}
+		}
+
+		if !wwwRedirect {
+			continue
+		}
+
+		for _, hostname := range httpRouteContext.HTTPRoute.Spec.Hostnames {
+			h := string(hostname)
+			if len(h) >= 4 && h[:4] == "www." {
+				continue
+			}
+
+			redirectRoute := gatewayv1.HTTPRoute{
+				TypeMeta: httpRouteContext.HTTPRoute.TypeMeta,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("%s-www-redirect", httpRouteContext.HTTPRoute.Name),
+					Namespace: httpRouteContext.HTTPRoute.Namespace,
+				},
+				Spec: gatewayv1.HTTPRouteSpec{
+					Hostnames: []gatewayv1.Hostname{hostname},
+					Rules: []gatewayv1.HTTPRouteRule{
+						{
+							Filters: []gatewayv1.HTTPRouteFilter{
+								{
+									Type: gatewayv1.HTTPRouteFilterRequestRedirect,
+									RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
+										Hostname:   ptr.To(gatewayv1.PreciseHostname("www." + h)),
+										StatusCode: ptr.To(308),
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+			redirectRoute.Spec.ParentRefs = httpRouteContext.HTTPRoute.Spec.DeepCopy().ParentRefs
+
+			eir.HTTPRoutes[types.NamespacedName{
+				Namespace: redirectRoute.Namespace,
+				Name:      redirectRoute.Name,
+			}] = emitterir.HTTPRouteContext{
+				HTTPRoute: redirectRoute,
+			}
+		}
+	}
+	return nil
 }
