@@ -220,18 +220,7 @@ func (p *Provider) addSSLAndTrailingSlashRedirects(ingresses []networkingv1.Ingr
 	// Find hosts with TLS enabled.
 	hostsWithTLS := make(map[string]struct{})
 	for _, ing := range ingresses {
-		forceSSL := false
-		if val, ok := ing.Annotations[ForceSSLRedirectAnnotation]; ok {
-			forceSSL, _ = strconv.ParseBool(val)
-		}
 
-		if forceSSL {
-			for _, rule := range ing.Spec.Rules {
-				if rule.Host != "" {
-					hostsWithTLS[rule.Host] = struct{}{}
-				}
-			}
-		}
 
 		for _, tls := range ing.Spec.TLS {
 			if len(tls.Hosts) > 0 {
