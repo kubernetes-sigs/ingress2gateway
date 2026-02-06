@@ -18,6 +18,7 @@ package kong
 
 import (
 	"context"
+	"io"
 
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
@@ -65,8 +66,8 @@ func (p *Provider) ReadResourcesFromCluster(ctx context.Context) error {
 	return nil
 }
 
-func (p *Provider) ReadResourcesFromFile(_ context.Context, filename string) error {
-	storage, err := p.readResourcesFromFile(filename)
+func (p *Provider) ReadResourcesFromFile(_ context.Context, reader io.Reader) error {
+	storage, err := p.readResourcesFromFile(reader)
 	if err != nil {
 		return err
 	}
