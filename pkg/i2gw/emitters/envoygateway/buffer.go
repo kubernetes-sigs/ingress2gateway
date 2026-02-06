@@ -33,6 +33,11 @@ func (e *Emitter) EmitBuffer(ir emitterir.EmitterIR, gwResources *i2gw.GatewayRe
 		MergeBodySizeIR(&ctx)
 
 		for idx, bs := range ctx.BodySizeByRuleIdx {
+			// if BodySize is nil, it means that BodySize IR has already applied by common emitter.
+			if bs == nil {
+				continue
+			}
+
 			var sectionName *gwapiv1.SectionName
 			if idx != RouteRuleAllIndex && idx < len(ctx.Spec.Rules) {
 				sectionName = ctx.Spec.Rules[idx].Name
