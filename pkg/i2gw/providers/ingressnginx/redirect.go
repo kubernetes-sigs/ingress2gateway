@@ -38,7 +38,6 @@ func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR)
 	for key, httpRouteContext := range pir.HTTPRoutes {
 		hasSecrets := false
 		enableRedirect := true
-		forceRedirect := false
 
 		for _, sources := range httpRouteContext.RuleBackendSources {
 			ingress := getNonCanaryIngress(sources)
@@ -49,19 +48,6 @@ func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR)
 			// Check if the ingress has TLS secrets.
 			if len(ingress.Spec.TLS) > 0 {
 				hasSecrets = true
-			}
-
-			// Check the force-ssl-redirect annotation.
-			if val, ok := ingress.Annotations[ForceSSLRedirectAnnotation]; ok {
-				parsed, err := strconv.ParseBool(val)
-				if err != nil {
-					return field.ErrorList{field.Invalid(
-						field.NewPath("ingress", ingress.Namespace, ingress.Name, "metadata", "annotations"),
-						ingress.Annotations,
-						fmt.Sprintf("failed to parse force-ssl-redirect configuration: %v", err),
-					)}
-				}
-				forceRedirect = parsed
 			}
 
 			// Check the ssl-redirect annotation.
@@ -78,7 +64,7 @@ func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR)
 			}
 		}
 
-		if (!hasSecrets && !forceRedirect) || !enableRedirect {
+		if !hasSecrets || !enableRedirect {
 			continue
 		}
 
@@ -128,6 +114,10 @@ func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR)
 }
 
 func addWWWRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR) field.ErrorList {
+	// Note: If both `from-to-www-redirect` and `permanent-redirect` (from PR #299) are set on the
+	// same Ingress, this feature generates a completely separate HTTPRoute dedicated to the 'www' redirect,
+	// while PR #299 appends a RequestRedirect filter to the *existing* HTTPRoute. The Gateway API
+	// natively handles this overlap cleanly by selecting the most specific match or older timestamp.
 	for _, httpRouteContext := range pir.HTTPRoutes {
 		wwwRedirect := false
 
