@@ -72,7 +72,7 @@ func (c *resourcesToIRConverter) convert(storage *storage) (providerir.ProviderI
 
 	// Convert plain ingress resources to gateway resources, ignoring all
 	// provider-specific features.
-	pIR, errs := common.ToIR(ingressList, grpcIngresses, storage.ServicePorts, i2gw.ProviderImplementationSpecificOptions{
+	pIR, errs := common.ToIR(httpIngresses, grpcIngresses, storage.ServicePorts, i2gw.ProviderImplementationSpecificOptions{
 		ToImplementationSpecificHTTPPathTypeMatch: implementationSpecificPathMatch,
 	})
 	if len(errs) > 0 {
