@@ -55,7 +55,7 @@ func init() {
 	i2gw.EmitterConstructorByName["gce"] = NewEmitter
 }
 
-type Emitter struct {}
+type Emitter struct{}
 
 func NewEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
 	return &Emitter{}
