@@ -17,6 +17,10 @@ limitations under the License.
 package envoygateway_emitter
 
 import (
+	"reflect"
+
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 )
 
@@ -31,21 +35,33 @@ func MergeBodySizeIR(ctx *emitterir.HTTPRouteContext) {
 			first = bs
 			continue
 		}
-		if (first.BufferSize == nil) != (bs.BufferSize == nil) {
-			return
-		}
-		if first.BufferSize != nil && !first.BufferSize.Equal(*bs.BufferSize) {
-			return
-		}
-		if (first.MaxSize == nil) != (bs.MaxSize == nil) {
-			return
-		}
-		if first.MaxSize != nil && !first.MaxSize.Equal(*bs.MaxSize) {
+		if !reflect.DeepEqual(first, bs) {
 			return
 		}
 	}
 
 	ctx.BodySizeByRuleIdx = map[int]*emitterir.BodySize{
+		RouteRuleAllIndex: first,
+	}
+}
+
+func MergeCorsIR(ctx *emitterir.HTTPRouteContext) {
+	if len(ctx.CorsPolicyByRuleIdx) != len(ctx.Spec.Rules) {
+		return
+	}
+
+	var first *gatewayv1.HTTPCORSFilter
+	for _, cp := range ctx.CorsPolicyByRuleIdx {
+		if first == nil {
+			first = cp
+			continue
+		}
+		if !reflect.DeepEqual(first, cp) {
+			return
+		}
+	}
+
+	ctx.CorsPolicyByRuleIdx = map[int]*gatewayv1.HTTPCORSFilter{
 		RouteRuleAllIndex: first,
 	}
 }

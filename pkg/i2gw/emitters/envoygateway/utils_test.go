@@ -17,11 +17,13 @@ limitations under the License.
 package envoygateway_emitter
 
 import (
+	"reflect"
 	"testing"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -185,6 +187,194 @@ func TestMergeBodySizeIR(t *testing.T) {
 					t.Errorf("expected BodySizeByRuleIdx length to remain %d, got %d", len(tt.bodySizeMap), len(ctx.BodySizeByRuleIdx))
 				}
 				if _, exists := ctx.BodySizeByRuleIdx[RouteRuleAllIndex]; exists {
+					t.Errorf("expected no entry at RouteRuleAllIndex=%d, but found one", RouteRuleAllIndex)
+				}
+			}
+		})
+	}
+}
+
+func TestMergeCorsIR(t *testing.T) {
+	corsPolicy1 := &gatewayv1.HTTPCORSFilter{
+		AllowOrigins:     []gatewayv1.CORSOrigin{"https://example.com", "https://foo.com"},
+		AllowMethods:     []gatewayv1.HTTPMethodWithWildcard{"GET", "POST"},
+		AllowHeaders:     []gatewayv1.HTTPHeaderName{"Content-Type", "Authorization"},
+		ExposeHeaders:    []gatewayv1.HTTPHeaderName{"X-Custom-Header"},
+		AllowCredentials: ptr.To(true),
+		MaxAge:           3600,
+	}
+
+	corsPolicySame := &gatewayv1.HTTPCORSFilter{
+		AllowOrigins:     []gatewayv1.CORSOrigin{"https://example.com", "https://foo.com"},
+		AllowMethods:     []gatewayv1.HTTPMethodWithWildcard{"GET", "POST"},
+		AllowHeaders:     []gatewayv1.HTTPHeaderName{"Content-Type", "Authorization"},
+		ExposeHeaders:    []gatewayv1.HTTPHeaderName{"X-Custom-Header"},
+		AllowCredentials: ptr.To(true),
+		MaxAge:           3600,
+	}
+
+	corsPolicyDifferentOrigins := &gatewayv1.HTTPCORSFilter{
+		AllowOrigins:     []gatewayv1.CORSOrigin{"https://different.com"},
+		AllowMethods:     []gatewayv1.HTTPMethodWithWildcard{"GET", "POST"},
+		AllowHeaders:     []gatewayv1.HTTPHeaderName{"Content-Type", "Authorization"},
+		ExposeHeaders:    []gatewayv1.HTTPHeaderName{"X-Custom-Header"},
+		AllowCredentials: ptr.To(true),
+		MaxAge:           3600,
+	}
+
+	corsPolicyDifferentMethods := &gatewayv1.HTTPCORSFilter{
+		AllowOrigins:     []gatewayv1.CORSOrigin{"https://example.com", "https://foo.com"},
+		AllowMethods:     []gatewayv1.HTTPMethodWithWildcard{"GET", "PUT"},
+		AllowHeaders:     []gatewayv1.HTTPHeaderName{"Content-Type", "Authorization"},
+		ExposeHeaders:    []gatewayv1.HTTPHeaderName{"X-Custom-Header"},
+		AllowCredentials: ptr.To(true),
+		MaxAge:           3600,
+	}
+
+	corsPolicyDifferentCredentials := &gatewayv1.HTTPCORSFilter{
+		AllowOrigins:     []gatewayv1.CORSOrigin{"https://example.com", "https://foo.com"},
+		AllowMethods:     []gatewayv1.HTTPMethodWithWildcard{"GET", "POST"},
+		AllowHeaders:     []gatewayv1.HTTPHeaderName{"Content-Type", "Authorization"},
+		ExposeHeaders:    []gatewayv1.HTTPHeaderName{"X-Custom-Header"},
+		AllowCredentials: ptr.To(false),
+		MaxAge:           3600,
+	}
+
+	corsPolicyDifferentMaxAge := &gatewayv1.HTTPCORSFilter{
+		AllowOrigins:     []gatewayv1.CORSOrigin{"https://example.com", "https://foo.com"},
+		AllowMethods:     []gatewayv1.HTTPMethodWithWildcard{"GET", "POST"},
+		AllowHeaders:     []gatewayv1.HTTPHeaderName{"Content-Type", "Authorization"},
+		ExposeHeaders:    []gatewayv1.HTTPHeaderName{"X-Custom-Header"},
+		AllowCredentials: ptr.To(true),
+		MaxAge:           7200,
+	}
+
+	tests := []struct {
+		name           string
+		numRules       int
+		corsPolicyMap  map[int]*gatewayv1.HTTPCORSFilter
+		wantMerged     bool
+		wantCorsPolicy *gatewayv1.HTTPCORSFilter
+	}{
+		{
+			name:     "all rules have same CORS policy - should merge",
+			numRules: 3,
+			corsPolicyMap: map[int]*gatewayv1.HTTPCORSFilter{
+				0: corsPolicy1,
+				1: corsPolicySame,
+				2: corsPolicy1,
+			},
+			wantMerged:     true,
+			wantCorsPolicy: corsPolicy1,
+		},
+		{
+			name:     "two rules with same CORS policy - should merge",
+			numRules: 2,
+			corsPolicyMap: map[int]*gatewayv1.HTTPCORSFilter{
+				0: corsPolicy1,
+				1: corsPolicySame,
+			},
+			wantMerged:     true,
+			wantCorsPolicy: corsPolicy1,
+		},
+		{
+			name:     "different origins - should not merge",
+			numRules: 2,
+			corsPolicyMap: map[int]*gatewayv1.HTTPCORSFilter{
+				0: corsPolicy1,
+				1: corsPolicyDifferentOrigins,
+			},
+			wantMerged: false,
+		},
+		{
+			name:     "different methods - should not merge",
+			numRules: 2,
+			corsPolicyMap: map[int]*gatewayv1.HTTPCORSFilter{
+				0: corsPolicy1,
+				1: corsPolicyDifferentMethods,
+			},
+			wantMerged: false,
+		},
+		{
+			name:     "different credentials - should not merge",
+			numRules: 2,
+			corsPolicyMap: map[int]*gatewayv1.HTTPCORSFilter{
+				0: corsPolicy1,
+				1: corsPolicyDifferentCredentials,
+			},
+			wantMerged: false,
+		},
+		{
+			name:     "different max age - should not merge",
+			numRules: 2,
+			corsPolicyMap: map[int]*gatewayv1.HTTPCORSFilter{
+				0: corsPolicy1,
+				1: corsPolicyDifferentMaxAge,
+			},
+			wantMerged: false,
+		},
+		{
+			name:     "CORS policy map length doesn't match rules - should not merge",
+			numRules: 3,
+			corsPolicyMap: map[int]*gatewayv1.HTTPCORSFilter{
+				0: corsPolicy1,
+				1: corsPolicySame,
+			},
+			wantMerged: false,
+		},
+		{
+			name:          "empty CORS policy map - should not merge",
+			numRules:      2,
+			corsPolicyMap: map[int]*gatewayv1.HTTPCORSFilter{},
+			wantMerged:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create HTTPRouteContext with specified number of rules
+			ctx := &emitterir.HTTPRouteContext{
+				HTTPRoute: gatewayv1.HTTPRoute{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-route",
+						Namespace: "default",
+					},
+					Spec: gatewayv1.HTTPRouteSpec{
+						Rules: make([]gatewayv1.HTTPRouteRule, tt.numRules),
+					},
+				},
+				CorsPolicyByRuleIdx: tt.corsPolicyMap,
+			}
+
+			MergeCorsIR(ctx)
+
+			if tt.wantMerged {
+				// Should have merged to RouteRuleAllIndex
+				if len(ctx.CorsPolicyByRuleIdx) != 1 {
+					t.Errorf("expected CorsPolicyByRuleIdx to have 1 entry, got %d", len(ctx.CorsPolicyByRuleIdx))
+					return
+				}
+
+				merged, ok := ctx.CorsPolicyByRuleIdx[RouteRuleAllIndex]
+				if !ok {
+					t.Errorf("expected CorsPolicyByRuleIdx to have entry at RouteRuleAllIndex=%d", RouteRuleAllIndex)
+					return
+				}
+
+				if merged == nil {
+					t.Errorf("expected merged CORS policy to be non-nil")
+					return
+				}
+
+				if !reflect.DeepEqual(merged, tt.wantCorsPolicy) {
+					t.Errorf("merged CORS policy doesn't match expected.\ngot:  %+v\nwant: %+v", merged, tt.wantCorsPolicy)
+				}
+			} else {
+				// Should not have merged - CorsPolicyByRuleIdx should be unchanged
+				if len(ctx.CorsPolicyByRuleIdx) != len(tt.corsPolicyMap) {
+					t.Errorf("expected CorsPolicyByRuleIdx length to remain %d, got %d", len(tt.corsPolicyMap), len(ctx.CorsPolicyByRuleIdx))
+				}
+				if _, exists := ctx.CorsPolicyByRuleIdx[RouteRuleAllIndex]; exists {
 					t.Errorf("expected no entry at RouteRuleAllIndex=%d, but found one", RouteRuleAllIndex)
 				}
 			}
