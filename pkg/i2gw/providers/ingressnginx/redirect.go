@@ -57,7 +57,7 @@ func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR)
 					return field.ErrorList{field.Invalid(
 						field.NewPath("ingress", ingress.Namespace, ingress.Name, "metadata", "annotations"),
 						ingress.Annotations,
-						fmt.Sprintf("failed to parse canary configuration: %v", err),
+						fmt.Sprintf("failed to parse ssl-redirect configuration: %v", err),
 					)}
 				}
 				enableRedirect = parsed
@@ -109,6 +109,79 @@ func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR)
 			eHTTPRouteContext.Spec.ParentRefs[i].Port = ptr.To[int32](443)
 		}
 		eir.HTTPRoutes[key] = eHTTPRouteContext
+	}
+	return nil
+}
+
+func addWWWRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR) field.ErrorList {
+	// Note: If both `from-to-www-redirect` and `permanent-redirect` (from PR #299) are set on the
+	// same Ingress, this feature generates a completely separate HTTPRoute dedicated to the 'www' redirect,
+	// while PR #299 appends a RequestRedirect filter to the *existing* HTTPRoute. The Gateway API
+	// natively handles this overlap cleanly by selecting the most specific match or older timestamp.
+	for _, httpRouteContext := range pir.HTTPRoutes {
+		wwwRedirect := false
+
+		for _, sources := range httpRouteContext.RuleBackendSources {
+			ingress := getNonCanaryIngress(sources)
+			if ingress == nil {
+				continue
+			}
+
+			if val, ok := ingress.Annotations[FromToWWWRedirectAnnotation]; ok {
+				parsed, err := strconv.ParseBool(val)
+				if err != nil {
+					return field.ErrorList{field.Invalid(
+						field.NewPath("ingress", ingress.Namespace, ingress.Name, "metadata", "annotations"),
+						ingress.Annotations,
+						fmt.Sprintf("failed to parse from-to-www-redirect configuration: %v", err),
+					)}
+				}
+				wwwRedirect = parsed
+			}
+		}
+
+		if !wwwRedirect {
+			continue
+		}
+
+		for _, hostname := range httpRouteContext.HTTPRoute.Spec.Hostnames {
+			h := string(hostname)
+			if len(h) >= 4 && h[:4] == "www." {
+				continue
+			}
+
+			redirectRoute := gatewayv1.HTTPRoute{
+				TypeMeta: httpRouteContext.HTTPRoute.TypeMeta,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("%s-www-redirect", httpRouteContext.HTTPRoute.Name),
+					Namespace: httpRouteContext.HTTPRoute.Namespace,
+				},
+				Spec: gatewayv1.HTTPRouteSpec{
+					Hostnames: []gatewayv1.Hostname{hostname},
+					Rules: []gatewayv1.HTTPRouteRule{
+						{
+							Filters: []gatewayv1.HTTPRouteFilter{
+								{
+									Type: gatewayv1.HTTPRouteFilterRequestRedirect,
+									RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
+										Hostname:   ptr.To(gatewayv1.PreciseHostname("www." + h)),
+										StatusCode: ptr.To(308),
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+			redirectRoute.Spec.ParentRefs = httpRouteContext.HTTPRoute.Spec.DeepCopy().ParentRefs
+
+			eir.HTTPRoutes[types.NamespacedName{
+				Namespace: redirectRoute.Namespace,
+				Name:      redirectRoute.Name,
+			}] = emitterir.HTTPRouteContext{
+				HTTPRoute: redirectRoute,
+			}
+		}
 	}
 	return nil
 }
