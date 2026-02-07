@@ -18,9 +18,10 @@ package ingressnginx
 
 import (
 	"fmt"
+	"log/slog"
 	"strconv"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -71,7 +72,7 @@ func parseCanaryConfig(ingress *networkingv1.Ingress) (canaryConfig, error) {
 	return config, nil
 }
 
-func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func canaryFeature(log *slog.Logger, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	ruleGroups := common.GetRuleGroups(ingresses)
 	var errList field.ErrorList
 
@@ -159,8 +160,17 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 				nonCanaryWeight := canaryConf.weightTotal - canaryWeight
 				nonCanaryBackend.Weight = &nonCanaryWeight
 
-				notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set weights (canary: %d, non-canary: %d, total: %d)",
-					canarySourceIngress.Namespace, canarySourceIngress.Name, canaryWeight, nonCanaryWeight, canaryConf.weightTotal), &httpRouteContext.HTTPRoute)
+				log.Info(
+					fmt.Sprintf(
+						"parsed canary annotations of ingress %s/%s and set weights (canary: %d, non-canary: %d, total: %d)",
+						canarySourceIngress.Namespace,
+						canarySourceIngress.Name,
+						canaryWeight,
+						nonCanaryWeight,
+						canaryConf.weightTotal,
+					),
+					logging.ObjectRef(&httpRouteContext.HTTPRoute),
+				)
 			}
 		}
 	}

@@ -22,7 +22,6 @@ import (
 	"sort"
 
 	common_emitter "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/common_emitter"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -37,18 +36,18 @@ const GeneratorAnnotationKey = "gateway.networking.k8s.io/generator"
 // Examples: "v0.4.0", "v0.4.0-5-gabcdef", "v0.4.0-5-gabcdef-dirty"
 var Version = "dev" // Default value if not built with linker flags
 
-func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string, providers []string, emitterName string, providerSpecificFlags map[string]map[string]string, allowExperimentalGatewayAPI bool) ([]GatewayResources, map[string]string, error) {
+func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string, providers []string, emitterName string, providerSpecificFlags map[string]map[string]string, allowExperimentalGatewayAPI bool) ([]GatewayResources, error) {
 	var clusterClient client.Client
 
 	if inputFile == "" {
 		conf, err := config.GetConfig()
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to get client config: %w", err)
+			return nil, fmt.Errorf("failed to get client config: %w", err)
 		}
 
 		cl, err := client.New(conf, client.Options{})
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to create client: %w", err)
+			return nil, fmt.Errorf("failed to create client: %w", err)
 		}
 		clusterClient = client.NewNamespacedClient(cl, namespace)
 	}
@@ -59,16 +58,16 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 		ProviderSpecificFlags: providerSpecificFlags,
 	}, providers)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if inputFile != "" {
 		if err = readProviderResourcesFromFile(ctx, providerByName, inputFile); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	} else {
 		if err = readProviderResourcesFromCluster(ctx, providerByName); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
@@ -77,7 +76,7 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 	}
 	newEmitterFunc, ok := EmitterConstructorByName[EmitterName(emitterName)]
 	if !ok {
-		return nil, nil, fmt.Errorf("%s is not a supported emitter", emitterName)
+		return nil, fmt.Errorf("%s is not a supported emitter", emitterName)
 	}
 	emitter := newEmitterFunc(emitterConf)
 	commonEmitter := common_emitter.NewEmitter(&common_emitter.EmitterConf{
@@ -99,12 +98,11 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 		errs = append(errs, conversionErrs...)
 		gatewayResources = append(gatewayResources, providerGatewayResources)
 	}
-	notificationTablesMap := notifications.NotificationAggr.CreateNotificationTables()
 	if len(errs) > 0 {
-		return nil, notificationTablesMap, aggregatedErrs(errs)
+		return nil, aggregatedErrs(errs)
 	}
 
-	return gatewayResources, notificationTablesMap, nil
+	return gatewayResources, nil
 }
 
 func readProviderResourcesFromFile(ctx context.Context, providerByName map[ProviderName]Provider, inputFile string) error {
