@@ -59,7 +59,7 @@ func processGRPCServicesAnnotation(ingress networkingv1.Ingress, grpcServices st
 
 	// Initialize GRPCRoutes map if needed
 	if ir.GRPCRoutes == nil {
-		ir.GRPCRoutes = make(map[types.NamespacedName]gatewayv1.GRPCRoute)
+		ir.GRPCRoutes = make(map[types.NamespacedName]providerir.GRPCRouteContext)
 	}
 
 	// Mark services as gRPC in provider-specific IR
@@ -172,7 +172,9 @@ func processGRPCServicesAnnotation(ingress networkingv1.Ingress, grpcServices st
 				},
 			}
 
-			ir.GRPCRoutes[routeKey] = grpcRoute
+			ir.GRPCRoutes[routeKey] = providerir.GRPCRouteContext{
+				GRPCRoute: grpcRoute,
+			}
 
 			// Remove HTTP rules that correspond to gRPC services from the HTTPRoute
 			if httpRouteExists {
