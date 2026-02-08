@@ -25,6 +25,81 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
+func TestApplyTCPTimeouts(t *testing.T) {
+	d := gatewayv1.Duration("10s")
+	tenSeconds := emitterir.TCPTimeouts{Connect: &d}
+
+	testCases := []struct {
+		name    string
+		ctx     emitterir.HTTPRouteContext
+		wantSet bool
+		wantErr bool
+	}{
+		{
+			name: "sets request timeout",
+			ctx: emitterir.HTTPRouteContext{
+				HTTPRoute:            gatewayv1.HTTPRoute{Spec: gatewayv1.HTTPRouteSpec{Rules: []gatewayv1.HTTPRouteRule{{}}}},
+				TCPTimeoutsByRuleIdx: map[int]*emitterir.TCPTimeouts{0: &tenSeconds},
+			},
+			wantSet: true,
+		},
+		{
+			name: "nil duration ignored",
+			ctx: emitterir.HTTPRouteContext{
+				HTTPRoute:            gatewayv1.HTTPRoute{Spec: gatewayv1.HTTPRouteSpec{Rules: []gatewayv1.HTTPRouteRule{{}}}},
+				TCPTimeoutsByRuleIdx: map[int]*emitterir.TCPTimeouts{0: nil},
+			},
+			wantSet: false,
+		},
+		{
+			name: "out of range rule index",
+			ctx: emitterir.HTTPRouteContext{
+				HTTPRoute:            gatewayv1.HTTPRoute{Spec: gatewayv1.HTTPRouteSpec{Rules: []gatewayv1.HTTPRouteRule{{}}}},
+				TCPTimeoutsByRuleIdx: map[int]*emitterir.TCPTimeouts{1: &tenSeconds},
+			},
+			wantErr: true,
+		},
+	}
+
+	key := types.NamespacedName{Namespace: "ns", Name: "route"}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ir := emitterir.EmitterIR{HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{key: tc.ctx}}
+			errList := applyTCPTimeouts(&ir)
+
+			gotCtx := ir.HTTPRoutes[key]
+			if gotCtx.TCPTimeoutsByRuleIdx != nil {
+				t.Fatalf("expected TCPTimeoutsByRuleIdx to be nil after apply")
+			}
+			if tc.wantErr {
+				if len(errList) == 0 {
+					t.Fatalf("expected error")
+				}
+				return
+			}
+			if len(errList) > 0 {
+				t.Fatalf("expected no errors, got %v", errList)
+			}
+
+			got := gotCtx.Spec.Rules[0].Timeouts
+			if tc.wantSet {
+				if got == nil || got.Request == nil {
+					t.Fatalf("expected request timeout to be set")
+				}
+				if *got.Request != gatewayv1.Duration("1m40s") {
+					t.Fatalf("expected %v, got %v", gatewayv1.Duration("1m40s"), *got.Request)
+				}
+				return
+			}
+
+			if got != nil {
+				t.Fatalf("expected timeouts to be nil, got %v", got)
+			}
+		})
+	}
+}
+
 func TestEmitter_Emit_appliesPathRewriteReplaceFullPath(t *testing.T) {
 	key := types.NamespacedName{Namespace: "ns", Name: "route"}
 
@@ -44,7 +119,8 @@ func TestEmitter_Emit_appliesPathRewriteReplaceFullPath(t *testing.T) {
 		},
 	}
 
-	e := NewEmitter()
+	// Use allowAlpha=false as default, serves same purpose here
+	e := NewEmitter(nil)
 	gotIR, errs := e.Emit(ir)
 	if len(errs) != 0 {
 		t.Fatalf("expected no errors, got: %v", errs)
@@ -67,5 +143,68 @@ func TestEmitter_Emit_appliesPathRewriteReplaceFullPath(t *testing.T) {
 	}
 	if f.URLRewrite.Path.ReplaceFullPath == nil || *f.URLRewrite.Path.ReplaceFullPath != "/foo" {
 		t.Fatalf("expected ReplaceFullPath /foo, got: %#v", f.URLRewrite.Path.ReplaceFullPath)
+	}
+}
+
+func TestEmitCORSFiltering(t *testing.T) {
+	testCases := []struct {
+		name                 string
+		allowExperimental    bool
+		initialFilters       []gatewayv1.HTTPRouteFilter
+		corsInSidecar        *gatewayv1.HTTPCORSFilter
+		expectedFiltersCount int
+	}{
+		{
+			name:                 "experimental allowed + cors in sidecar -> cors added",
+			allowExperimental:    true,
+			corsInSidecar:        &gatewayv1.HTTPCORSFilter{},
+			expectedFiltersCount: 1,
+		},
+		{
+			name:                 "experimental denied + cors in sidecar -> cors NOT added",
+			allowExperimental:    false,
+			corsInSidecar:        &gatewayv1.HTTPCORSFilter{},
+			expectedFiltersCount: 0,
+		},
+		{
+			name:              "other filters preserved regardless of flag",
+			allowExperimental: false,
+			initialFilters: []gatewayv1.HTTPRouteFilter{
+				{Type: gatewayv1.HTTPRouteFilterRequestHeaderModifier},
+			},
+			corsInSidecar:        &gatewayv1.HTTPCORSFilter{},
+			expectedFiltersCount: 1, // only header modifier
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := NewEmitter(&EmitterConf{
+				AllowExperimentalGatewayAPI: tc.allowExperimental,
+			})
+
+			ir := emitterir.EmitterIR{
+				HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{
+					{Name: "test"}: {
+						HTTPRoute: gatewayv1.HTTPRoute{
+							Spec: gatewayv1.HTTPRouteSpec{
+								Rules: []gatewayv1.HTTPRouteRule{
+									{Filters: tc.initialFilters},
+								},
+							},
+						},
+						CorsPolicyByRuleIdx: map[int]*gatewayv1.HTTPCORSFilter{
+							0: tc.corsInSidecar,
+						},
+					},
+				},
+			}
+
+			result, _ := e.Emit(ir)
+			filters := result.HTTPRoutes[types.NamespacedName{Name: "test"}].HTTPRoute.Spec.Rules[0].Filters
+			if len(filters) != tc.expectedFiltersCount {
+				t.Errorf("Expected %d filters, got %d", tc.expectedFiltersCount, len(filters))
+			}
+		})
 	}
 }

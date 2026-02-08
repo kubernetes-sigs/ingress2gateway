@@ -44,6 +44,62 @@ func TestGroupIngressPathsByMatchKey(t *testing.T) {
 			},
 		},
 		{
+			name: "rule with nil http",
+			rules: []ingressRule{
+				{
+					rule: networkingv1.IngressRule{},
+				},
+				{
+					rule: networkingv1.IngressRule{
+						IngressRuleValue: networkingv1.IngressRuleValue{
+							HTTP: &networkingv1.HTTPIngressRuleValue{
+								Paths: []networkingv1.HTTPIngressPath{
+									{
+										Path:     "/test",
+										PathType: PtrTo(networkingv1.PathTypePrefix),
+										Backend: networkingv1.IngressBackend{
+											Service: &networkingv1.IngressServiceBackend{
+												Name: "test",
+												Port: networkingv1.ServiceBackendPort{
+													Number: 80,
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: orderedIngressPathsByMatchKey{
+				keys: []pathMatchKey{
+					"Prefix//test",
+				},
+				data: map[pathMatchKey][]ingressPath{
+					"Prefix//test": {
+						{
+							ruleIdx:  1,
+							pathIdx:  0,
+							ruleType: "http",
+							path: networkingv1.HTTPIngressPath{
+								Path:     "/test",
+								PathType: &iPrefix,
+								Backend: networkingv1.IngressBackend{
+									Service: &networkingv1.IngressServiceBackend{
+										Name: "test",
+										Port: networkingv1.ServiceBackendPort{
+											Number: 80,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
 			name: "1 rule with 1 match",
 			rules: []ingressRule{
 				{
@@ -915,7 +971,7 @@ func TestCreateBackendTLSPolicy(t *testing.T) {
 
 			require.Len(t, policy.Spec.TargetRefs, 1)
 			require.Equal(t, gatewayv1.ObjectName(tc.serviceName), policy.Spec.TargetRefs[0].Name)
-			require.Equal(t, "", string(policy.Spec.TargetRefs[0].Group)) // Core group
+			require.Empty(t, string(policy.Spec.TargetRefs[0].Group)) // Core group
 			require.Equal(t, "Service", string(policy.Spec.TargetRefs[0].Kind))
 		})
 	}

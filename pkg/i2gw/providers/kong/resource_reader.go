@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -122,7 +123,7 @@ func (r *resourceReader) readTCPIngressesFromCluster(ctx context.Context) ([]kon
 }
 
 func (r *resourceReader) readTCPIngressesFromFile(filename string) ([]kongv1beta1.TCPIngress, error) {
-	stream, err := os.ReadFile(filename)
+	stream, err := os.ReadFile(filepath.Clean(filename))
 	if err != nil {
 		return nil, err
 	}

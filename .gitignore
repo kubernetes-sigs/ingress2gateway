@@ -29,3 +29,6 @@ go.work
 
 # VSCode files for debugging
 .vscode/
+
+kind-kubeconfig
+bin

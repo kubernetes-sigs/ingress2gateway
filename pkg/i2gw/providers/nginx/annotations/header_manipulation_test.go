@@ -528,10 +528,13 @@ func TestHeaderManipulationFeature(t *testing.T) {
 
 			for i := range rule.Filters {
 				filter := &rule.Filters[i]
-				if filter.Type == gatewayv1.HTTPRouteFilterResponseHeaderModifier {
+				//nolint:exhaustive
+				switch filter.Type {
+				case gatewayv1.HTTPRouteFilterResponseHeaderModifier:
 					responseHeaderFilter = filter
-				} else if filter.Type == gatewayv1.HTTPRouteFilterRequestHeaderModifier {
+				case gatewayv1.HTTPRouteFilterRequestHeaderModifier:
 					requestHeaderFilter = filter
+				default:
 				}
 			}
 

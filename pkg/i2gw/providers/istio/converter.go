@@ -283,7 +283,7 @@ func (c *resourcesToIRConverter) convertGateway(gw *istioclientv1beta1.Gateway, 
 			if namespace == "." {
 				gwListenerName = strings.ToLower(fmt.Sprintf("%v-protocol-dot-ns-%v", protocol, dnsName))
 			}
-			gwListenerName = strings.Replace(gwListenerName, "*", "wildcard", -1)
+			gwListenerName = strings.ReplaceAll(gwListenerName, "*", "wildcard")
 
 			// listener name should match RFC 1123 subdomain requirement: lowercase alphanumeric characters, '-' or '.', and must start and end with a lowercase alphanumeric character
 			gwListener.Name = gatewayv1.SectionName(gwListenerName)

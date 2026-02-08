@@ -95,7 +95,7 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 			// This is done in place.
 			var canaryBackend *gatewayv1.HTTPBackendRef
 			var nonCanaryBackend *gatewayv1.HTTPBackendRef
-			var canaryConfig canaryConfig
+			var canaryConf canaryConfig
 			var canarySourceIngress *networkingv1.Ingress
 
 			// Find the canary and non-canary backends
@@ -127,7 +127,7 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 					}
 
 					canaryBackend = backendRef
-					canaryConfig = config
+					canaryConf = config
 					canarySourceIngress = source.Ingress
 				} else {
 					if nonCanaryBackend != nil {
@@ -153,14 +153,14 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 					continue
 				}
 
-				canaryWeight := canaryConfig.weight
+				canaryWeight := canaryConf.weight
 
 				canaryBackend.Weight = &canaryWeight
-				nonCanaryWeight := canaryConfig.weightTotal - canaryWeight
+				nonCanaryWeight := canaryConf.weightTotal - canaryWeight
 				nonCanaryBackend.Weight = &nonCanaryWeight
 
 				notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set weights (canary: %d, non-canary: %d, total: %d)",
-					canarySourceIngress.Namespace, canarySourceIngress.Name, canaryWeight, nonCanaryWeight, canaryConfig.weightTotal), &httpRouteContext.HTTPRoute)
+					canarySourceIngress.Namespace, canarySourceIngress.Name, canaryWeight, nonCanaryWeight, canaryConf.weightTotal), &httpRouteContext.HTTPRoute)
 			}
 		}
 	}

@@ -17,6 +17,7 @@ limitations under the License.
 package cmd
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -41,7 +42,10 @@ func newRootCmd() *cobra.Command {
 
 func getKubeconfig() {
 	if kubeconfig != "" {
-		os.Setenv("KUBECONFIG", kubeconfig)
+		if err := os.Setenv("KUBECONFIG", kubeconfig); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to set KUBECONFIG: %v\n", err)
+			os.Exit(1)
+		}
 	}
 }
 

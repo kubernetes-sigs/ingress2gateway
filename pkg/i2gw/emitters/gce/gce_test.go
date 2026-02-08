@@ -579,7 +579,8 @@ func getTestHealthCheckPolicyUnstrctured(serviceNamespace, serviceName, protocol
 			},
 		},
 	}
-	if protocol == protocolHTTP {
+	switch protocol {
+	case protocolHTTP:
 		hcPolicy.Spec.Default.Config = &gkegatewayv1.HealthCheck{
 			Type: gkegatewayv1.HTTP,
 			HTTP: &gkegatewayv1.HTTPHealthCheck{
@@ -587,7 +588,7 @@ func getTestHealthCheckPolicyUnstrctured(serviceNamespace, serviceName, protocol
 				CommonHTTPHealthCheck: commonHTTPHc,
 			},
 		}
-	} else if protocol == protocolHTTPS {
+	case protocolHTTPS:
 		hcPolicy.Spec.Default.Config = &gkegatewayv1.HealthCheck{
 			Type: gkegatewayv1.HTTPS,
 			HTTPS: &gkegatewayv1.HTTPSHealthCheck{
@@ -595,7 +596,7 @@ func getTestHealthCheckPolicyUnstrctured(serviceNamespace, serviceName, protocol
 				CommonHTTPHealthCheck: commonHTTPHc,
 			},
 		}
-	} else if protocol == protocolHTTP2 {
+	case protocolHTTP2:
 		hcPolicy.Spec.Default.Config = &gkegatewayv1.HealthCheck{
 			Type: gkegatewayv1.HTTP2,
 			HTTP2: &gkegatewayv1.HTTP2HealthCheck{
@@ -603,7 +604,7 @@ func getTestHealthCheckPolicyUnstrctured(serviceNamespace, serviceName, protocol
 				CommonHTTPHealthCheck: commonHTTPHc,
 			},
 		}
-	} else {
+	default:
 		return unstructured.Unstructured{}
 	}
 	hcPolicyUnstructured, err := i2gw.CastToUnstructured(&hcPolicy)

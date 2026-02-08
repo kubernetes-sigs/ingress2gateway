@@ -154,7 +154,7 @@ func TestFileConvertion(t *testing.T) {
 func readGatewayResourcesFromFile(t *testing.T, filename string) (*emitterir.EmitterIR, error) {
 	t.Helper()
 
-	stream, err := os.ReadFile(filename)
+	stream, err := os.ReadFile(filepath.Clean(filename))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file %v: %w", filename, err)
 	}
