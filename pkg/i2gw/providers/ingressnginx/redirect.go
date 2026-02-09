@@ -19,6 +19,7 @@ package ingressnginx
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
@@ -146,25 +147,32 @@ func addWWWRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR) field.
 
 		for _, hostname := range httpRouteContext.HTTPRoute.Spec.Hostnames {
 			h := string(hostname)
+			var srcHost, dstHost string
 			if len(h) >= 4 && h[:4] == "www." {
-				continue
+				srcHost = h[4:]
+				dstHost = h
+			} else {
+				srcHost = "www." + h
+				dstHost = h
 			}
 
+			// Generate a valid route name based on the source host
+			routeNameSuffix := strings.ReplaceAll(srcHost, ".", "-")
 			redirectRoute := gatewayv1.HTTPRoute{
 				TypeMeta: httpRouteContext.HTTPRoute.TypeMeta,
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      fmt.Sprintf("%s-www-redirect", httpRouteContext.HTTPRoute.Name),
+					Name:      fmt.Sprintf("%s-%s-www-redirect", httpRouteContext.HTTPRoute.Name, routeNameSuffix),
 					Namespace: httpRouteContext.HTTPRoute.Namespace,
 				},
 				Spec: gatewayv1.HTTPRouteSpec{
-					Hostnames: []gatewayv1.Hostname{hostname},
+					Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(srcHost)},
 					Rules: []gatewayv1.HTTPRouteRule{
 						{
 							Filters: []gatewayv1.HTTPRouteFilter{
 								{
 									Type: gatewayv1.HTTPRouteFilterRequestRedirect,
 									RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
-										Hostname:   ptr.To(gatewayv1.PreciseHostname("www." + h)),
+										Hostname:   ptr.To(gatewayv1.PreciseHostname(dstHost)),
 										StatusCode: ptr.To(308),
 									},
 								},
@@ -180,6 +188,37 @@ func addWWWRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR) field.
 				Name:      redirectRoute.Name,
 			}] = emitterir.HTTPRouteContext{
 				HTTPRoute: redirectRoute,
+			}
+
+			// Inject the Gateway listener
+			for _, parentRef := range redirectRoute.Spec.ParentRefs {
+				gwKey := types.NamespacedName{
+					Namespace: redirectRoute.Namespace,
+					Name:      string(parentRef.Name),
+				}
+				if parentRef.Namespace != nil {
+					gwKey.Namespace = string(*parentRef.Namespace)
+				}
+
+				if gwCtx, ok := eir.Gateways[gwKey]; ok {
+					listenerExists := false
+					for _, l := range gwCtx.Gateway.Spec.Listeners {
+						if l.Hostname != nil && string(*l.Hostname) == srcHost {
+							listenerExists = true
+							break
+						}
+					}
+					if !listenerExists {
+						listenerName := fmt.Sprintf("%s-http", strings.ReplaceAll(srcHost, ".", "-"))
+						gwCtx.Gateway.Spec.Listeners = append(gwCtx.Gateway.Spec.Listeners, gatewayv1.Listener{
+							Name:     gatewayv1.SectionName(listenerName),
+							Hostname: ptr.To(gatewayv1.Hostname(srcHost)),
+							Port:     80,
+							Protocol: gatewayv1.HTTPProtocolType,
+						})
+						eir.Gateways[gwKey] = gwCtx
+					}
+				}
 			}
 		}
 	}

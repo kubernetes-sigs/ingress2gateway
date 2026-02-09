@@ -1019,6 +1019,123 @@ func Test_ToIR(t *testing.T) {
 			},
 			expectedErrors: field.ErrorList{},
 		},
+
+		{
+			name: "from-to-www-redirect",
+			ingresses: OrderedIngressMap{
+				ingressNames: []types.NamespacedName{{Namespace: "default", Name: "example-ingress"}},
+				ingressObjects: map[types.NamespacedName]*networkingv1.Ingress{
+					{Namespace: "default", Name: "example-ingress"}: {
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "example-ingress",
+							Namespace: "default",
+							Annotations: map[string]string{
+								"nginx.ingress.kubernetes.io/from-to-www-redirect": "true",
+							},
+						},
+						Spec: networkingv1.IngressSpec{
+							IngressClassName: ptrTo("nginx"),
+							Rules: []networkingv1.IngressRule{{
+								Host: "example.com",
+								IngressRuleValue: networkingv1.IngressRuleValue{
+									HTTP: &networkingv1.HTTPIngressRuleValue{
+										Paths: []networkingv1.HTTPIngressPath{{
+											Path:     "/",
+											PathType: &iPrefix,
+											Backend: networkingv1.IngressBackend{
+												Service: &networkingv1.IngressServiceBackend{
+													Name: "httpbin",
+													Port: networkingv1.ServiceBackendPort{
+														Number: 8000,
+													},
+												},
+											},
+										}},
+									},
+								},
+							}},
+						},
+					},
+				},
+			},
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
+					{Namespace: "default", Name: "nginx"}: {
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: "nginx", Namespace: "default"},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: "nginx",
+								Listeners: []gatewayv1.Listener{
+									{
+										Name:     "example-com-http",
+										Port:     80,
+										Protocol: gatewayv1.HTTPProtocolType,
+										Hostname: ptrTo(gatewayv1.Hostname("example.com")),
+									},
+									{
+										Name:     "www-example-com-http",
+										Port:     80,
+										Protocol: gatewayv1.HTTPProtocolType,
+										Hostname: ptrTo(gatewayv1.Hostname("www.example.com")),
+									},
+								},
+							},
+						},
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
+					{Namespace: "default", Name: "example-ingress-example-com"}: {
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: "example-ingress-example-com", Namespace: "default"},
+							Spec: gatewayv1.HTTPRouteSpec{
+								Hostnames: []gatewayv1.Hostname{"example.com"},
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{Name: "nginx"}},
+								},
+								Rules: []gatewayv1.HTTPRouteRule{{
+									Name: ptrTo(gatewayv1.SectionName("rule-0")),
+									Matches: []gatewayv1.HTTPRouteMatch{{
+										Path: &gatewayv1.HTTPPathMatch{
+											Type:  &gPathPrefix,
+											Value: ptrTo("/"),
+										},
+									}},
+									BackendRefs: []gatewayv1.HTTPBackendRef{{
+										BackendRef: gatewayv1.BackendRef{
+											BackendObjectReference: gatewayv1.BackendObjectReference{
+												Name: "httpbin",
+												Port: ptrTo(gatewayv1.PortNumber(8000)),
+											},
+										},
+									}},
+								}},
+							},
+						},
+					},
+					{Namespace: "default", Name: "example-ingress-example-com-www-example-com-www-redirect"}: {
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: "example-ingress-example-com-www-example-com-www-redirect", Namespace: "default"},
+							Spec: gatewayv1.HTTPRouteSpec{
+								Hostnames: []gatewayv1.Hostname{"www.example.com"},
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{Name: "nginx"}},
+								},
+								Rules: []gatewayv1.HTTPRouteRule{{
+									Filters: []gatewayv1.HTTPRouteFilter{{
+										Type: gatewayv1.HTTPRouteFilterRequestRedirect,
+										RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
+											Hostname:   ptrTo(gatewayv1.PreciseHostname("example.com")),
+											StatusCode: ptrTo(308),
+										},
+									}},
+								}},
+							},
+						},
+					},
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
 	}
 
 	for _, tc := range testCases {

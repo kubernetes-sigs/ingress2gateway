@@ -24,6 +24,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -233,15 +234,39 @@ func TestAddWWWRedirect_enabled(t *testing.T) {
 		}},
 	}
 
-	eIR := emitterir.EmitterIR{HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{}}
+	gwKey := types.NamespacedName{Namespace: "default", Name: "gw"}
+	eIR := emitterir.EmitterIR{
+		HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{},
+		Gateways: map[types.NamespacedName]emitterir.GatewayContext{
+			gwKey: {
+				Gateway: gatewayv1.Gateway{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "gw"},
+					Spec: gatewayv1.GatewaySpec{
+						Listeners: []gatewayv1.Listener{
+							{
+								Name:     "example-com-http",
+								Hostname: ptr.To(gatewayv1.Hostname("example.com")),
+								Port:     80,
+								Protocol: gatewayv1.HTTPProtocolType,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 	eIR.HTTPRoutes[key] = emitterir.HTTPRouteContext{HTTPRoute: route}
 
 	addWWWRedirect(&pIR, &eIR)
 
-	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-www-redirect"}
+	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-www-example-com-www-redirect"}
 	redirectCtx, ok := eIR.HTTPRoutes[redirectKey]
 	if !ok {
 		t.Fatalf("expected redirect route %v to be added", redirectKey)
+	}
+
+	if len(redirectCtx.Spec.Hostnames) != 1 || redirectCtx.Spec.Hostnames[0] != "www.example.com" {
+		t.Fatalf("expected Hostname to be www.example.com, got %#v", redirectCtx.Spec.Hostnames)
 	}
 
 	if len(redirectCtx.Spec.Rules) != 1 || len(redirectCtx.Spec.Rules[0].Filters) != 1 {
@@ -252,10 +277,18 @@ func TestAddWWWRedirect_enabled(t *testing.T) {
 	if f.Type != gatewayv1.HTTPRouteFilterRequestRedirect || f.RequestRedirect == nil {
 		t.Fatalf("expected RequestRedirect filter, got %#v", f)
 	}
-	if f.RequestRedirect.Hostname == nil || *f.RequestRedirect.Hostname != "www.example.com" {
-		t.Fatalf("expected hostname www.example.com, got %#v", f.RequestRedirect.Hostname)
+	if f.RequestRedirect.Hostname == nil || *f.RequestRedirect.Hostname != "example.com" {
+		t.Fatalf("expected hostname example.com, got %#v", f.RequestRedirect.Hostname)
 	}
 	if f.RequestRedirect.StatusCode == nil || *f.RequestRedirect.StatusCode != 308 {
 		t.Fatalf("expected status code 308, got %#v", f.RequestRedirect.StatusCode)
+	}
+
+	gw := eIR.Gateways[gwKey]
+	if len(gw.Gateway.Spec.Listeners) != 2 {
+		t.Fatalf("expected 2 listeners on Gateway, got %d", len(gw.Gateway.Spec.Listeners))
+	}
+	if *gw.Gateway.Spec.Listeners[1].Hostname != "www.example.com" {
+		t.Fatalf("expected second listener to be for www.example.com, got %v", *gw.Gateway.Spec.Listeners[1].Hostname)
 	}
 }
