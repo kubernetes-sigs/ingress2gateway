@@ -908,7 +908,7 @@ func Test_convertToIR(t *testing.T) {
 			providerConf: &i2gw.ProviderConf{
 				ProviderSpecificFlags: map[string]map[string]string{
 					"gce": {
-						GatewayClassNameFlag: "test-gce-gateway-class",
+						GatewayClassNameFlag: "gke-l7-regional-external-managed",
 					},
 				},
 			},
@@ -919,7 +919,7 @@ func Test_convertToIR(t *testing.T) {
 						Gateway: gatewayv1.Gateway{
 							ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
 							Spec: gatewayv1.GatewaySpec{
-								GatewayClassName: "test-gce-gateway-class",
+								GatewayClassName: "gke-l7-regional-external-managed",
 								Listeners: []gatewayv1.Listener{{
 									Name:     "test-mydomain-com-http",
 									Port:     80,
