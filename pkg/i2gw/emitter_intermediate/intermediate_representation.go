@@ -54,6 +54,9 @@ type GatewayContext struct {
 
 type HTTPRouteContext struct {
 	gatewayv1.HTTPRoute
+	// TCPTimeoutsByRuleIdx holds provider TCP-level timeouts by HTTPRoute rule index.
+	TCPTimeoutsByRuleIdx map[int]*TCPTimeouts
+
 	// PathRewriteByRuleIdx maps HTTPRoute rule indices to path rewrite intent.
 	// This is provider-neutral and applied by the common emitter.
 	PathRewriteByRuleIdx map[int]*PathRewrite
@@ -67,6 +70,13 @@ type HTTPRouteContext struct {
 	// applied by the CommonEmitter. This separation allows the CORS logic to be provider-neutral
 	// and consistently applied across different providers, subject to feature gating.
 	CorsPolicyByRuleIdx map[int]*gatewayv1.HTTPCORSFilter
+}
+
+// TCPTimeouts holds TCP-level timeout configuration for a single HTTPRoute rule.
+type TCPTimeouts struct {
+	Connect *gatewayv1.Duration
+	Read    *gatewayv1.Duration
+	Write   *gatewayv1.Duration
 }
 
 // PathRewrite represents provider-neutral path rewrite intent.
