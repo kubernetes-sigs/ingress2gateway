@@ -1014,6 +1014,48 @@ func TestIngressNGINXRedirect(t *testing.T) {
 		})
 	})
 
+	t.Run("from-to-www-redirect", func(t *testing.T) {
+		runTestCase(t, &framework.TestCase{
+			GatewayImplementation: implementation.IstioName,
+			Providers:             []string{ingressnginx.Name},
+			ProviderFlags: map[string]map[string]string{
+				ingressnginx.Name: {
+					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
+				},
+			},
+			Ingresses: []*networkingv1.Ingress{
+				framework.BasicIngress().
+					WithName("from-to-www-redirect").
+					WithIngressClass(ingressnginx.NginxIngressClass).
+					WithHost("example.com").
+					WithAnnotation("nginx.ingress.kubernetes.io/from-to-www-redirect", "true").
+					Build(),
+			},
+			Verifiers: map[string][]framework.Verifier{
+				"from-to-www-redirect": {
+					&framework.HTTPRequestVerifier{
+						Host: "example.com",
+						Path: "/",
+						AllowedCodes: []int{http.StatusOK},
+					},
+					&framework.HTTPRequestVerifier{
+						Host: "www.example.com",
+						Path: "/",
+						AllowedCodes: []int{http.StatusMovedPermanently, http.StatusPermanentRedirect}, // 301, 308
+						HeaderMatches: []framework.HeaderMatch{
+							{
+								Name: "Location",
+								Patterns: []*framework.MaybeNegativePattern{
+									{Pattern: regexp.MustCompile(`^https?://example\.com/?$`)},
+								},
+							},
+						},
+					},
+				},
+			},
+		})
+	})
+
 	t.Run("temporal redirect", func(t *testing.T) {
 		suffix, err := framework.RandString()
 		require.NoError(t, err)

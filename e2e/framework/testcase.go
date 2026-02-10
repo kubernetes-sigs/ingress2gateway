@@ -702,6 +702,7 @@ func (b *IngressBuilder) WithHost(host string) *IngressBuilder {
 	}
 	return b
 }
+}
 
 // WithPath sets the path for all rules in the ingress.
 func (b *IngressBuilder) WithPath(path string) *IngressBuilder {

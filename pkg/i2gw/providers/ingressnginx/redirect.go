@@ -535,7 +535,7 @@ func (p *Provider) addWWWRedirect(pir *providerir.ProviderIR, eir *emitterir.Emi
 									Type: gatewayv1.HTTPRouteFilterRequestRedirect,
 									RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
 										Hostname:   ptr.To(gatewayv1.PreciseHostname(dstHost)),
-										StatusCode: ptr.To(308),
+										StatusCode: ptr.To(301),
 									},
 								},
 							},
