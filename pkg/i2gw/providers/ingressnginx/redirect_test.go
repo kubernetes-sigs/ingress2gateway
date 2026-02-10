@@ -94,8 +94,8 @@ func TestAddDefaultSSLRedirect_enabled(t *testing.T) {
 	if f.RequestRedirect.Scheme == nil || *f.RequestRedirect.Scheme != "https" {
 		t.Fatalf("expected scheme https, got %#v", f.RequestRedirect.Scheme)
 	}
-	if f.RequestRedirect.StatusCode == nil || *f.RequestRedirect.StatusCode != 308 {
-		t.Fatalf("expected status code 308, got %#v", f.RequestRedirect.StatusCode)
+	if f.RequestRedirect.StatusCode == nil || *f.RequestRedirect.StatusCode != 301 {
+		t.Fatalf("expected status code 301, got %#v", f.RequestRedirect.StatusCode)
 	}
 }
 
@@ -280,8 +280,8 @@ func TestAddWWWRedirect_enabled(t *testing.T) {
 	if f.RequestRedirect.Hostname == nil || *f.RequestRedirect.Hostname != "example.com" {
 		t.Fatalf("expected hostname example.com, got %#v", f.RequestRedirect.Hostname)
 	}
-	if f.RequestRedirect.StatusCode == nil || *f.RequestRedirect.StatusCode != 308 {
-		t.Fatalf("expected status code 308, got %#v", f.RequestRedirect.StatusCode)
+	if f.RequestRedirect.StatusCode == nil || *f.RequestRedirect.StatusCode != 301 {
+		t.Fatalf("expected status code 301, got %#v", f.RequestRedirect.StatusCode)
 	}
 
 	gw := eIR.Gateways[gwKey]
