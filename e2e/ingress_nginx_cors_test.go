@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package ingressnginx
+package e2e
 
 import (
 	"fmt"
@@ -22,7 +22,6 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/kubernetes-sigs/ingress2gateway/e2e"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
 	"github.com/stretchr/testify/require"
