@@ -33,7 +33,7 @@ func TestCORS(t *testing.T) {
 	t.Run("to Istio", func(t *testing.T) {
 		t.Parallel()
 		t.Run("typical cors annotations", func(t *testing.T) {
-			suffix, err := e2e.RandString(6)
+			suffix, err := randString(6)
 			require.NoError(t, err)
 			host := fmt.Sprintf("cors-%s.com", suffix)
 			origin := "https://cors.example.com"
@@ -42,17 +42,17 @@ func TestCORS(t *testing.T) {
 			exposeHeaders := "X-Expose-1, X-Expose-2"
 			maxAge := "600"
 
-			e2e.RunTestCase(t, &e2e.TestCase{
-				GatewayImplementation:  istio.ProviderName,
-				AllowExperimentalGWAPI: true,
-				Providers:              []string{ingressnginx.Name},
-				ProviderFlags: map[string]map[string]string{
+			runTestCase(t, &testCase{
+				gatewayImplementation:  istio.ProviderName,
+				allowExperimentalGWAPI: true,
+				providers:              []string{ingressnginx.Name},
+				providerFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				Ingresses: []*networkingv1.Ingress{
-					e2e.BasicIngress().
+				ingresses: []*networkingv1.Ingress{
+					basicIngress().
 						WithName("cors").
 						WithHost(host).
 						WithIngressClass(ingressnginx.NginxIngressClass).
@@ -65,70 +65,70 @@ func TestCORS(t *testing.T) {
 						WithAnnotation("nginx.ingress.kubernetes.io/cors-expose-headers", exposeHeaders).
 						Build(),
 				},
-				Verifiers: map[string][]e2e.Verifier{
+				verifiers: map[string][]verifier{
 					"cors": {
-						&e2e.HttpGetVerifier{
-							Host:   host,
-							Path:   "/",
-							Method: http.MethodOptions,
-							AllowedCodes: []int{
+						&httpGetVerifier{
+							host:   host,
+							path:   "/",
+							method: http.MethodOptions,
+							allowedCodes: []int{
 								http.StatusOK,
 								http.StatusNoContent,
 							},
-							RequestHeaders: map[string]string{
+							requestHeaders: map[string]string{
 								"Origin":                         origin,
 								"Access-Control-Request-Method":  "POST",
 								"Access-Control-Request-Headers": allowHeaders,
 							},
-							HeaderMatches: []e2e.HeaderMatch{
+							headerMatches: []headerMatch{
 								{
-									Name:     "Access-Control-Allow-Origin",
-									Patterns: []*regexp.Regexp{regexp.MustCompile("^" + regexp.QuoteMeta(origin) + "$")},
+									name:     "Access-Control-Allow-Origin",
+									patterns: []*regexp.Regexp{regexp.MustCompile("^" + regexp.QuoteMeta(origin) + "$")},
 								},
 								{
-									Name: "Access-Control-Allow-Methods",
-									Patterns: []*regexp.Regexp{
+									name: "Access-Control-Allow-Methods",
+									patterns: []*regexp.Regexp{
 										regexp.MustCompile(`(?i).*GET.*`),
 										regexp.MustCompile(`(?i).*POST.*`),
 										regexp.MustCompile(`(?i).*OPTIONS.*`),
 									},
 								},
 								{
-									Name: "Access-Control-Allow-Headers",
-									Patterns: []*regexp.Regexp{
+									name: "Access-Control-Allow-Headers",
+									patterns: []*regexp.Regexp{
 										regexp.MustCompile(`(?i).*X-Requested-With.*`),
 										regexp.MustCompile(`(?i).*Content-Type.*`),
 									},
 								},
 								{
-									Name:     "Access-Control-Allow-Credentials",
-									Patterns: []*regexp.Regexp{regexp.MustCompile(`(?i)^true$`)},
+									name:     "Access-Control-Allow-Credentials",
+									patterns: []*regexp.Regexp{regexp.MustCompile(`(?i)^true$`)},
 								},
 								{
-									Name:     "Access-Control-Max-Age",
-									Patterns: []*regexp.Regexp{regexp.MustCompile("^" + maxAge + "$")},
+									name:     "Access-Control-Max-Age",
+									patterns: []*regexp.Regexp{regexp.MustCompile("^" + maxAge + "$")},
 								},
 							},
 						},
-						&e2e.HttpGetVerifier{
-							Host:   host,
-							Path:   "/",
-							Method: http.MethodGet,
-							RequestHeaders: map[string]string{
+						&httpGetVerifier{
+							host:   host,
+							path:   "/",
+							method: http.MethodGet,
+							requestHeaders: map[string]string{
 								"Origin": origin,
 							},
-							HeaderMatches: []e2e.HeaderMatch{
+							headerMatches: []headerMatch{
 								{
-									Name:     "Access-Control-Allow-Origin",
-									Patterns: []*regexp.Regexp{regexp.MustCompile("^" + regexp.QuoteMeta(origin) + "$")},
+									name:     "Access-Control-Allow-Origin",
+									patterns: []*regexp.Regexp{regexp.MustCompile("^" + regexp.QuoteMeta(origin) + "$")},
 								},
 								{
-									Name:     "Access-Control-Allow-Credentials",
-									Patterns: []*regexp.Regexp{regexp.MustCompile(`(?i)^true$`)},
+									name:     "Access-Control-Allow-Credentials",
+									patterns: []*regexp.Regexp{regexp.MustCompile(`(?i)^true$`)},
 								},
 								{
-									Name: "Access-Control-Expose-Headers",
-									Patterns: []*regexp.Regexp{
+									name: "Access-Control-Expose-Headers",
+									patterns: []*regexp.Regexp{
 										regexp.MustCompile(`(?i).*X-Expose-1.*`),
 										regexp.MustCompile(`(?i).*X-Expose-2.*`),
 									},
@@ -140,52 +140,52 @@ func TestCORS(t *testing.T) {
 			})
 		})
 		t.Run("cors defaults", func(t *testing.T) {
-			suffix, err := e2e.RandString(6)
+			suffix, err := randString(6)
 			require.NoError(t, err)
 			host := fmt.Sprintf("cors-defaults-%s.com", suffix)
 			origin := "https://cors-defaults.example.com"
 			maxAge := "1728000"
 
-			e2e.RunTestCase(t, &e2e.TestCase{
-				GatewayImplementation:  istio.ProviderName,
-				AllowExperimentalGWAPI: true,
-				Providers:              []string{ingressnginx.Name},
-				ProviderFlags: map[string]map[string]string{
+			runTestCase(t, &testCase{
+				gatewayImplementation:  istio.ProviderName,
+				allowExperimentalGWAPI: true,
+				providers:              []string{ingressnginx.Name},
+				providerFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				Ingresses: []*networkingv1.Ingress{
-					e2e.BasicIngress().
+				ingresses: []*networkingv1.Ingress{
+					basicIngress().
 						WithName("cors-defaults").
 						WithHost(host).
 						WithIngressClass(ingressnginx.NginxIngressClass).
 						WithAnnotation("nginx.ingress.kubernetes.io/enable-cors", "true").
 						Build(),
 				},
-				Verifiers: map[string][]e2e.Verifier{
+				verifiers: map[string][]verifier{
 					"cors-defaults": {
-						&e2e.HttpGetVerifier{
-							Host:   host,
-							Path:   "/",
-							Method: http.MethodOptions,
-							AllowedCodes: []int{
+						&httpGetVerifier{
+							host:   host,
+							path:   "/",
+							method: http.MethodOptions,
+							allowedCodes: []int{
 								http.StatusOK,
 								http.StatusNoContent,
 							},
-							RequestHeaders: map[string]string{
+							requestHeaders: map[string]string{
 								"Origin":                         origin,
 								"Access-Control-Request-Method":  "POST",
 								"Access-Control-Request-Headers": "X-Requested-With",
 							},
-							HeaderMatches: []e2e.HeaderMatch{
+							headerMatches: []headerMatch{
 								{
-									Name:     "Access-Control-Allow-Origin",
-									Patterns: []*regexp.Regexp{regexp.MustCompile(`^\*$|^` + regexp.QuoteMeta(origin) + `$`)},
+									name:     "Access-Control-Allow-Origin",
+									patterns: []*regexp.Regexp{regexp.MustCompile(`^\*$|^` + regexp.QuoteMeta(origin) + `$`)},
 								},
 								{
-									Name: "Access-Control-Allow-Methods",
-									Patterns: []*regexp.Regexp{
+									name: "Access-Control-Allow-Methods",
+									patterns: []*regexp.Regexp{
 										regexp.MustCompile(`(?i).*GET.*`),
 										regexp.MustCompile(`(?i).*PUT.*`),
 										regexp.MustCompile(`(?i).*POST.*`),
@@ -195,8 +195,8 @@ func TestCORS(t *testing.T) {
 									},
 								},
 								{
-									Name: "Access-Control-Allow-Headers",
-									Patterns: []*regexp.Regexp{
+									name: "Access-Control-Allow-Headers",
+									patterns: []*regexp.Regexp{
 										regexp.MustCompile(`(?i).*DNT.*`),
 										regexp.MustCompile(`(?i).*Keep-Alive.*`),
 										regexp.MustCompile(`(?i).*User-Agent.*`),
@@ -209,30 +209,30 @@ func TestCORS(t *testing.T) {
 									},
 								},
 								{
-									Name:     "Access-Control-Allow-Credentials",
-									Patterns: []*regexp.Regexp{regexp.MustCompile(`(?i)^true$`)},
+									name:     "Access-Control-Allow-Credentials",
+									patterns: []*regexp.Regexp{regexp.MustCompile(`(?i)^true$`)},
 								},
 								{
-									Name:     "Access-Control-Max-Age",
-									Patterns: []*regexp.Regexp{regexp.MustCompile("^" + maxAge + "$")},
+									name:     "Access-Control-Max-Age",
+									patterns: []*regexp.Regexp{regexp.MustCompile("^" + maxAge + "$")},
 								},
 							},
 						},
-						&e2e.HttpGetVerifier{
-							Host:   host,
-							Path:   "/",
-							Method: http.MethodGet,
-							RequestHeaders: map[string]string{
+						&httpGetVerifier{
+							host:   host,
+							path:   "/",
+							method: http.MethodGet,
+							requestHeaders: map[string]string{
 								"Origin": origin,
 							},
-							HeaderMatches: []e2e.HeaderMatch{
+							headerMatches: []headerMatch{
 								{
-									Name:     "Access-Control-Allow-Origin",
-									Patterns: []*regexp.Regexp{regexp.MustCompile(`^\*$|^` + regexp.QuoteMeta(origin) + `$`)},
+									name:     "Access-Control-Allow-Origin",
+									patterns: []*regexp.Regexp{regexp.MustCompile(`^\*$|^` + regexp.QuoteMeta(origin) + `$`)},
 								},
 								{
-									Name:     "Access-Control-Allow-Credentials",
-									Patterns: []*regexp.Regexp{regexp.MustCompile(`(?i)^true$`)},
+									name:     "Access-Control-Allow-Credentials",
+									patterns: []*regexp.Regexp{regexp.MustCompile(`(?i)^true$`)},
 								},
 							},
 						},
@@ -241,23 +241,23 @@ func TestCORS(t *testing.T) {
 			})
 		})
 		t.Run("cors denied origin", func(t *testing.T) {
-			suffix, err := e2e.RandString(6)
+			suffix, err := randString(6)
 			require.NoError(t, err)
 			host := fmt.Sprintf("cors-denied-%s.com", suffix)
 			allowedOrigin := "https://cors-allowed.example.com"
 			deniedOrigin := "https://cors-denied.example.com"
 
-			e2e.RunTestCase(t, &e2e.TestCase{
-				GatewayImplementation:  istio.ProviderName,
-				AllowExperimentalGWAPI: true,
-				Providers:              []string{ingressnginx.Name},
-				ProviderFlags: map[string]map[string]string{
+			runTestCase(t, &testCase{
+				gatewayImplementation:  istio.ProviderName,
+				allowExperimentalGWAPI: true,
+				providers:              []string{ingressnginx.Name},
+				providerFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				Ingresses: []*networkingv1.Ingress{
-					e2e.BasicIngress().
+				ingresses: []*networkingv1.Ingress{
+					basicIngress().
 						WithName("cors-denied").
 						WithHost(host).
 						WithIngressClass(ingressnginx.NginxIngressClass).
@@ -265,38 +265,38 @@ func TestCORS(t *testing.T) {
 						WithAnnotation("nginx.ingress.kubernetes.io/cors-allow-origin", allowedOrigin).
 						Build(),
 				},
-				Verifiers: map[string][]e2e.Verifier{
+				verifiers: map[string][]verifier{
 					"cors-denied": {
-						&e2e.HttpGetVerifier{
-							Host:   host,
-							Path:   "/",
-							Method: http.MethodOptions,
-							AllowedCodes: []int{
+						&httpGetVerifier{
+							host:   host,
+							path:   "/",
+							method: http.MethodOptions,
+							allowedCodes: []int{
 								http.StatusOK,
 								http.StatusNoContent,
 							},
-							RequestHeaders: map[string]string{
+							requestHeaders: map[string]string{
 								"Origin":                         deniedOrigin,
 								"Access-Control-Request-Method":  "POST",
 								"Access-Control-Request-Headers": "X-Requested-With",
 							},
-							HeaderAbsent: []string{"Access-Control-Allow-Origin"},
+							headerAbsent: []string{"Access-Control-Allow-Origin"},
 						},
-						&e2e.HttpGetVerifier{
-							Host:   host,
-							Path:   "/",
-							Method: http.MethodGet,
-							RequestHeaders: map[string]string{
+						&httpGetVerifier{
+							host:   host,
+							path:   "/",
+							method: http.MethodGet,
+							requestHeaders: map[string]string{
 								"Origin": deniedOrigin,
 							},
-							HeaderAbsent: []string{"Access-Control-Allow-Origin"},
+							headerAbsent: []string{"Access-Control-Allow-Origin"},
 						},
 					},
 				},
 			})
 		})
 		t.Run("cors denied method and header", func(t *testing.T) {
-			suffix, err := e2e.RandString(6)
+			suffix, err := randString(6)
 			require.NoError(t, err)
 			host := fmt.Sprintf("cors-denied-method-%s.com", suffix)
 			origin := "https://cors-method.example.com"
@@ -305,17 +305,17 @@ func TestCORS(t *testing.T) {
 			deniedMethod := "DELETE"
 			deniedHeader := "X-Not-Allowed"
 
-			e2e.RunTestCase(t, &e2e.TestCase{
-				GatewayImplementation:  istio.ProviderName,
-				AllowExperimentalGWAPI: true,
-				Providers:              []string{ingressnginx.Name},
-				ProviderFlags: map[string]map[string]string{
+			runTestCase(t, &testCase{
+				gatewayImplementation:  istio.ProviderName,
+				allowExperimentalGWAPI: true,
+				providers:              []string{ingressnginx.Name},
+				providerFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				Ingresses: []*networkingv1.Ingress{
-					e2e.BasicIngress().
+				ingresses: []*networkingv1.Ingress{
+					basicIngress().
 						WithName("cors-denied-method").
 						WithHost(host).
 						WithIngressClass(ingressnginx.NginxIngressClass).
@@ -325,48 +325,48 @@ func TestCORS(t *testing.T) {
 						WithAnnotation("nginx.ingress.kubernetes.io/cors-allow-headers", allowedHeaders).
 						Build(),
 				},
-				Verifiers: map[string][]e2e.Verifier{
+				verifiers: map[string][]verifier{
 					"cors-denied-method": {
-						&e2e.HttpGetVerifier{
-							Host:   host,
-							Path:   "/",
-							Method: http.MethodOptions,
-							AllowedCodes: []int{
+						&httpGetVerifier{
+							host:   host,
+							path:   "/",
+							method: http.MethodOptions,
+							allowedCodes: []int{
 								http.StatusOK,
 								http.StatusNoContent,
 							},
-							RequestHeaders: map[string]string{
+							requestHeaders: map[string]string{
 								"Origin":                         origin,
 								"Access-Control-Request-Method":  deniedMethod,
 								"Access-Control-Request-Headers": deniedHeader,
 							},
-							HeaderMatches: []e2e.HeaderMatch{
+							headerMatches: []headerMatch{
 								{
-									Name:     "Access-Control-Allow-Origin",
-									Patterns: []*regexp.Regexp{regexp.MustCompile("^" + regexp.QuoteMeta(origin) + "$")},
+									name:     "Access-Control-Allow-Origin",
+									patterns: []*regexp.Regexp{regexp.MustCompile("^" + regexp.QuoteMeta(origin) + "$")},
 								},
 								{
-									Name: "Access-Control-Allow-Methods",
-									Patterns: []*regexp.Regexp{
+									name: "Access-Control-Allow-Methods",
+									patterns: []*regexp.Regexp{
 										regexp.MustCompile(`(?i).*GET.*`),
 										regexp.MustCompile(`(?i).*POST.*`),
 									},
 								},
 								{
-									Name: "Access-Control-Allow-Headers",
-									Patterns: []*regexp.Regexp{
+									name: "Access-Control-Allow-Headers",
+									patterns: []*regexp.Regexp{
 										regexp.MustCompile(`(?i).*` + regexp.QuoteMeta(allowedHeaders) + `.*`),
 									},
 								},
 							},
-							HeaderExcludes: []e2e.HeaderExclude{
+							headerExcludes: []headerExclude{
 								{
-									Name:     "Access-Control-Allow-Methods",
-									Patterns: []*regexp.Regexp{regexp.MustCompile(`(?i)` + deniedMethod)},
+									name:     "Access-Control-Allow-Methods",
+									patterns: []*regexp.Regexp{regexp.MustCompile(`(?i)` + deniedMethod)},
 								},
 								{
-									Name:     "Access-Control-Allow-Headers",
-									Patterns: []*regexp.Regexp{regexp.MustCompile(`(?i)` + regexp.QuoteMeta(deniedHeader))},
+									name:     "Access-Control-Allow-Headers",
+									patterns: []*regexp.Regexp{regexp.MustCompile(`(?i)` + regexp.QuoteMeta(deniedHeader))},
 								},
 							},
 						},

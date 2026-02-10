@@ -30,16 +30,16 @@ func TestPathRewrite(t *testing.T) {
 	t.Run("to Istio", func(t *testing.T) {
 		t.Parallel()
 		t.Run("basic conversion", func(t *testing.T) {
-			e2e.RunTestCase(t, &e2e.TestCase{
-				GatewayImplementation: istio.ProviderName,
-				Providers:             []string{ingressnginx.Name},
-				ProviderFlags: map[string]map[string]string{
+			runTestCase(t, &testCase{
+				gatewayImplementation: istio.ProviderName,
+				providers:             []string{ingressnginx.Name},
+				providerFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				Ingresses: []*networkingv1.Ingress{
-					e2e.BasicIngress().
+				ingresses: []*networkingv1.Ingress{
+					basicIngress().
 						WithName("foo1").
 						WithIngressClass(ingressnginx.NginxIngressClass).
 						WithPath("/abc").
@@ -47,9 +47,9 @@ func TestPathRewrite(t *testing.T) {
 						WithAnnotation("nginx.ingress.kubernetes.io/x-forwarded-prefix", "/abc").
 						Build(),
 				},
-				Verifiers: map[string][]e2e.Verifier{
+				verifiers: map[string][]verifier{
 					"foo1": {
-						&e2e.HttpGetVerifier{Path: "/abc", BodyRegex: regexp.MustCompile(`"X-Forwarded-Prefix":\["/abc"\]`)},
+						&httpGetVerifier{path: "/abc", bodyRegex: regexp.MustCompile(`"X-Forwarded-Prefix":\["/abc"\]`)},
 					},
 				},
 			})

@@ -30,65 +30,65 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
-type Verifier interface {
-	Verify(ctx context.Context, log logger, addr Addresses, ingress *networkingv1.Ingress) error
+type verifier interface {
+	verify(ctx context.Context, log logger, addr addresses, ingress *networkingv1.Ingress) error
 }
 
-type Addresses struct {
-	HTTP  string
-	HTTPS string
+type addresses struct {
+	http  string
+	https string
 }
 
-type CanaryVerifier struct {
-	Verifier     Verifier
-	MinSuccesses float64
-	MaxSuccesses float64
-	Runs         int
+type canaryVerifier struct {
+	verifier     verifier
+	minSuccesses float64
+	maxSuccesses float64
+	runs         int
 }
 
-func (v *CanaryVerifier) Verify(ctx context.Context, log logger, addr Addresses, ingress *networkingv1.Ingress) error {
+func (v *canaryVerifier) verify(ctx context.Context, log logger, addr addresses, ingress *networkingv1.Ingress) error {
 	successes := 0
-	for i := 0; i < v.Runs; i++ {
-		err := v.Verifier.Verify(ctx, log, addr, ingress)
+	for i := 0; i < v.runs; i++ {
+		err := v.verifier.verify(ctx, log, addr, ingress)
 		if err != nil {
-			log.Logf("Canary verifier run %d/%d succeeded", i+1, v.Runs)
+			log.Logf("Canary verifier run %d/%d succeeded", i+1, v.runs)
 			successes++
 		}
 	}
 
-	successRate := float64(successes) / float64(v.Runs)
-	if successRate <= v.MinSuccesses || successRate >= v.MaxSuccesses {
-		return fmt.Errorf("canary verifier failed: success rate %.2f not in range [%.2f, %.2f]", successRate, v.MinSuccesses, v.MaxSuccesses)
+	successRate := float64(successes) / float64(v.runs)
+	if successRate <= v.minSuccesses || successRate >= v.maxSuccesses {
+		return fmt.Errorf("canary verifier failed: success rate %.2f not in range [%.2f, %.2f]", successRate, v.minSuccesses, v.maxSuccesses)
 	}
 	return nil
 }
 
-type HttpGetVerifier struct {
-	Host           string
-	Path           string
-	Method         string
-	RequestHeaders map[string]string
-	AllowedCodes   []int
-	HeaderMatches  []HeaderMatch
-	HeaderExcludes []HeaderExclude
-	HeaderAbsent   []string
-	UseTLS         bool
-	CACertPEM      []byte
-	BodyRegex      *regexp.Regexp
+type httpGetVerifier struct {
+	host           string
+	path           string
+	method         string
+	requestHeaders map[string]string
+	allowedCodes   []int
+	headerMatches  []headerMatch
+	headerExcludes []headerExclude
+	headerAbsent   []string
+	useTLS         bool
+	caCertPEM      []byte
+	bodyRegex      *regexp.Regexp
 }
 
-type HeaderMatch struct {
-	Name     string
-	Patterns []*regexp.Regexp
+type headerMatch struct {
+	name     string
+	patterns []*regexp.Regexp
 }
 
-type HeaderExclude struct {
-	Name     string
-	Patterns []*regexp.Regexp
+type headerExclude struct {
+	name     string
+	patterns []*regexp.Regexp
 }
 
-func (v *HttpGetVerifier) Verify(ctx context.Context, log logger, addr Addresses, ingress *networkingv1.Ingress) error {
-	host := v.Host
+func (v *httpGetVerifier) verify(ctx context.Context, log logger, addr addresses, ingress *networkingv1.Ingress) error {
+	host := v.host
 	if host == "" && len(ingress.Spec.Rules) > 0 && ingress.Spec.Rules[0].Host != "" {
 		host = ingress.Spec.Rules[0].Host
 	}
@@ -97,35 +97,35 @@ func (v *HttpGetVerifier) Verify(ctx context.Context, log logger, addr Addresses
 	}
 
 	scheme := "http"
-	targetAddr := addr.HTTP
-	if v.UseTLS {
+	targetAddr := addr.http
+	if v.useTLS {
 		scheme = "https"
-		targetAddr = addr.HTTPS
+		targetAddr = addr.https
 	}
 	if targetAddr == "" {
 		return fmt.Errorf("no %s address available for verifier", scheme)
 	}
-	method := v.Method
+	method := v.method
 	if method == "" {
 		method = http.MethodGet
 	}
-	req, err := http.NewRequestWithContext(ctx, method, fmt.Sprintf("%s://%s%s", scheme, targetAddr, v.Path), nil)
+	req, err := http.NewRequestWithContext(ctx, method, fmt.Sprintf("%s://%s%s", scheme, targetAddr, v.path), nil)
 	if err != nil {
 		return fmt.Errorf("constructing HTTP request: %w", err)
 	}
 
-	for name, value := range v.RequestHeaders {
+	for name, value := range v.requestHeaders {
 		req.Header.Set(name, value)
 	}
 	req.Host = host
 
 	transport := http.DefaultTransport.(*http.Transport).Clone()
-	if v.UseTLS {
-		if len(v.CACertPEM) == 0 {
+	if v.useTLS {
+		if len(v.caCertPEM) == 0 {
 			return fmt.Errorf("no CA cert provided for TLS verification")
 		}
 		certPool := x509.NewCertPool()
-		if ok := certPool.AppendCertsFromPEM(v.CACertPEM); !ok {
+		if ok := certPool.AppendCertsFromPEM(v.caCertPEM); !ok {
 			return fmt.Errorf("failed to parse CA cert PEM")
 		}
 		transport.TLSClientConfig = &tls.Config{
@@ -146,7 +146,7 @@ func (v *HttpGetVerifier) Verify(ctx context.Context, log logger, addr Addresses
 	}
 	defer func() { _ = res.Body.Close() }()
 
-	allowedCodes := v.AllowedCodes
+	allowedCodes := v.allowedCodes
 	if len(allowedCodes) == 0 {
 		allowedCodes = []int{http.StatusOK}
 	}
@@ -161,18 +161,18 @@ func (v *HttpGetVerifier) Verify(ctx context.Context, log logger, addr Addresses
 		return fmt.Errorf("unexpected HTTP status code: got %d, want one of %v", res.StatusCode, allowedCodes)
 	}
 
-	for _, headerMatch := range v.HeaderMatches {
-		if headerMatch.Name == "" {
+	for _, headerMatch := range v.headerMatches {
+		if headerMatch.name == "" {
 			return fmt.Errorf("header match name cannot be empty")
 		}
-		if len(headerMatch.Patterns) == 0 {
-			return fmt.Errorf("header match patterns cannot be empty for %q", headerMatch.Name)
+		if len(headerMatch.patterns) == 0 {
+			return fmt.Errorf("header match patterns cannot be empty for %q", headerMatch.name)
 		}
-		values := res.Header.Values(headerMatch.Name)
+		values := res.Header.Values(headerMatch.name)
 		if len(values) == 0 {
-			return fmt.Errorf("missing header %q on response", headerMatch.Name)
+			return fmt.Errorf("missing header %q on response", headerMatch.name)
 		}
-		for _, pattern := range headerMatch.Patterns {
+		for _, pattern := range headerMatch.patterns {
 			matched := false
 			for _, value := range values {
 				if pattern.MatchString(value) {
@@ -181,32 +181,32 @@ func (v *HttpGetVerifier) Verify(ctx context.Context, log logger, addr Addresses
 				}
 			}
 			if !matched {
-				return fmt.Errorf("header %q did not match %q (got %q)", headerMatch.Name, pattern, strings.Join(values, ", "))
+				return fmt.Errorf("header %q did not match %q (got %q)", headerMatch.name, pattern, strings.Join(values, ", "))
 			}
 		}
 	}
 
-	for _, headerExclude := range v.HeaderExcludes {
-		if headerExclude.Name == "" {
+	for _, headerExclude := range v.headerExcludes {
+		if headerExclude.name == "" {
 			return fmt.Errorf("header exclude name cannot be empty")
 		}
-		if len(headerExclude.Patterns) == 0 {
-			return fmt.Errorf("header exclude patterns cannot be empty for %q", headerExclude.Name)
+		if len(headerExclude.patterns) == 0 {
+			return fmt.Errorf("header exclude patterns cannot be empty for %q", headerExclude.name)
 		}
-		values := res.Header.Values(headerExclude.Name)
+		values := res.Header.Values(headerExclude.name)
 		if len(values) == 0 {
 			continue
 		}
-		for _, pattern := range headerExclude.Patterns {
+		for _, pattern := range headerExclude.patterns {
 			for _, value := range values {
 				if pattern.MatchString(value) {
-					return fmt.Errorf("header %q matched excluded pattern %q (got %q)", headerExclude.Name, pattern, strings.Join(values, ", "))
+					return fmt.Errorf("header %q matched excluded pattern %q (got %q)", headerExclude.name, pattern, strings.Join(values, ", "))
 				}
 			}
 		}
 	}
 
-	for _, headerName := range v.HeaderAbsent {
+	for _, headerName := range v.headerAbsent {
 		if headerName == "" {
 			return fmt.Errorf("header absent name cannot be empty")
 		}
@@ -221,8 +221,8 @@ func (v *HttpGetVerifier) Verify(ctx context.Context, log logger, addr Addresses
 	}
 	log.Logf("Got a healthy response: %s", body)
 
-	if v.BodyRegex != nil && !v.BodyRegex.MatchString(string(body)) {
-		return fmt.Errorf("unexpected HTTP body: does not match %v", v.BodyRegex)
+	if v.bodyRegex != nil && !v.bodyRegex.MatchString(string(body)) {
+		return fmt.Errorf("unexpected HTTP body: does not match %v", v.bodyRegex)
 	}
 
 	return nil

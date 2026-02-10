@@ -32,39 +32,39 @@ func TestCanary(t *testing.T) {
 	t.Run("to Istio", func(t *testing.T) {
 		t.Parallel()
 		t.Run("base canary", func(t *testing.T) {
-			suffix, err := e2e.RandString(6)
+			suffix, err := randString(6)
 			require.NoError(t, err)
 			host := fmt.Sprintf("canary-%s.com", suffix)
-			e2e.RunTestCase(t, &e2e.TestCase{
-				GatewayImplementation: istio.ProviderName,
-				Providers:             []string{ingressnginx.Name},
-				ProviderFlags: map[string]map[string]string{
+			runTestCase(t, &testCase{
+				gatewayImplementation: istio.ProviderName,
+				providers:             []string{ingressnginx.Name},
+				providerFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				Ingresses: []*networkingv1.Ingress{
-					e2e.BasicIngress().
+				ingresses: []*networkingv1.Ingress{
+					basicIngress().
 						WithName("foo1").
 						WithHost(host).
 						WithIngressClass(ingressnginx.NginxIngressClass).
 						Build(),
-					e2e.BasicIngress().
+					basicIngress().
 						WithName("foo2").
 						WithHost(host).
 						WithIngressClass(ingressnginx.NginxIngressClass).
 						WithAnnotation("nginx.ingress.kubernetes.io/canary", "true").
 						WithAnnotation("nginx.ingress.kubernetes.io/canary-weight", "20").
-						WithBackend(e2e.DummyAppName2).
+						WithBackend(DummyAppName2).
 						Build(),
 				},
-				Verifiers: map[string][]e2e.Verifier{
+				verifiers: map[string][]verifier{
 					"foo1": {
-						&e2e.CanaryVerifier{
-							Verifier:     &e2e.HttpGetVerifier{Host: host, Path: "/hostname", BodyRegex: regexp.MustCompile("^dummy-app2")},
-							Runs:         200,
-							MinSuccesses: 0.7,
-							MaxSuccesses: 0.9,
+						&canaryVerifier{
+							verifier:     &httpGetVerifier{host: host, path: "/hostname", bodyRegex: regexp.MustCompile("^dummy-app2")},
+							runs:         200,
+							minSuccesses: 0.7,
+							maxSuccesses: 0.9,
 						},
 					},
 				},

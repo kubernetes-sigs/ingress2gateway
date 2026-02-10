@@ -31,49 +31,49 @@ func TestTLS(t *testing.T) {
 	t.Run("to Istio", func(t *testing.T) {
 		t.Parallel()
 		t.Run("tls ingress and gateway", func(t *testing.T) {
-			suffix, err := e2e.RandString(6)
+			suffix, err := randString(6)
 			if err != nil {
 				t.Fatalf("creating host suffix: %v", err)
 			}
 			host := "tls-" + suffix + ".example.com"
-			tlsSecret, err := e2e.GenerateTLSTestSecret("tls-cert-"+suffix, host)
+			tlsSecret, err := GenerateTLSTestSecret("tls-cert-"+suffix, host)
 			if err != nil {
 				t.Fatalf("creating TLS secret: %v", err)
 			}
-			e2e.RunTestCase(t, &e2e.TestCase{
-				GatewayImplementation: istio.ProviderName,
-				Providers:             []string{ingressnginx.Name},
-				ProviderFlags: map[string]map[string]string{
+			runTestCase(t, &testCase{
+				gatewayImplementation: istio.ProviderName,
+				providers:             []string{ingressnginx.Name},
+				providerFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				Secrets: []*corev1.Secret{tlsSecret.Secret},
-				Ingresses: []*networkingv1.Ingress{
-					e2e.BasicIngress().
+				secrets: []*corev1.Secret{tlsSecret.Secret},
+				ingresses: []*networkingv1.Ingress{
+					basicIngress().
 						WithName("foo").
 						WithHost(host).
 						WithIngressClass(ingressnginx.NginxIngressClass).
 						WithTLSSecret(tlsSecret.Secret.Name, host).
 						Build(),
 				},
-				Verifiers: map[string][]e2e.Verifier{
+				verifiers: map[string][]verifier{
 					"foo": {
-						&e2e.HttpGetVerifier{
-							Host:      host,
-							Path:      "/",
-							UseTLS:    true,
-							CACertPEM: tlsSecret.CACert,
+						&httpGetVerifier{
+							host:      host,
+							path:      "/",
+							useTLS:    true,
+							caCertPEM: tlsSecret.CACert,
 						},
-						&e2e.HttpGetVerifier{
-							Host:         host,
-							Path:         "/",
-							AllowedCodes: []int{308},
-							UseTLS:       false,
-							HeaderMatches: []e2e.HeaderMatch{
+						&httpGetVerifier{
+							host:         host,
+							path:         "/",
+							allowedCodes: []int{308},
+							useTLS:       false,
+							headerMatches: []headerMatch{
 								{
-									Name:     "Location",
-									Patterns: []*regexp.Regexp{regexp.MustCompile("^https://" + host + "/?$")},
+									name:     "Location",
+									patterns: []*regexp.Regexp{regexp.MustCompile("^https://" + host + "/?$")},
 								},
 							},
 						},
@@ -82,37 +82,37 @@ func TestTLS(t *testing.T) {
 			})
 		})
 		t.Run("ssl-redirect annotation", func(t *testing.T) {
-			suffix, err := e2e.RandString(6)
+			suffix, err := randString(6)
 			if err != nil {
 				t.Fatalf("creating host suffix: %v", err)
 			}
 			redirectHost := "tls-redirect-" + suffix + ".example.com"
 			noRedirectHost := "tls-noredirect-" + suffix + ".example.com"
-			redirectSecret, err := e2e.GenerateTLSTestSecret("tls-redirect-"+suffix, redirectHost)
+			redirectSecret, err := GenerateTLSTestSecret("tls-redirect-"+suffix, redirectHost)
 			if err != nil {
 				t.Fatalf("creating redirect TLS secret: %v", err)
 			}
-			noRedirectSecret, err := e2e.GenerateTLSTestSecret("tls-noredirect-"+suffix, noRedirectHost)
+			noRedirectSecret, err := GenerateTLSTestSecret("tls-noredirect-"+suffix, noRedirectHost)
 			if err != nil {
 				t.Fatalf("creating no-redirect TLS secret: %v", err)
 			}
-			e2e.RunTestCase(t, &e2e.TestCase{
-				GatewayImplementation: istio.ProviderName,
-				Providers:             []string{ingressnginx.Name},
-				ProviderFlags: map[string]map[string]string{
+			runTestCase(t, &testCase{
+				gatewayImplementation: istio.ProviderName,
+				providers:             []string{ingressnginx.Name},
+				providerFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				Secrets: []*corev1.Secret{redirectSecret.Secret, noRedirectSecret.Secret},
-				Ingresses: []*networkingv1.Ingress{
-					e2e.BasicIngress().
+				secrets: []*corev1.Secret{redirectSecret.Secret, noRedirectSecret.Secret},
+				ingresses: []*networkingv1.Ingress{
+					basicIngress().
 						WithName("redirect").
 						WithHost(redirectHost).
 						WithIngressClass(ingressnginx.NginxIngressClass).
 						WithTLSSecret(redirectSecret.Secret.Name, redirectHost).
 						Build(),
-					e2e.BasicIngress().
+					basicIngress().
 						WithName("no-redirect").
 						WithHost(noRedirectHost).
 						WithIngressClass(ingressnginx.NginxIngressClass).
@@ -120,38 +120,38 @@ func TestTLS(t *testing.T) {
 						WithTLSSecret(noRedirectSecret.Secret.Name, noRedirectHost).
 						Build(),
 				},
-				Verifiers: map[string][]e2e.Verifier{
+				verifiers: map[string][]verifier{
 					"redirect": {
-						&e2e.HttpGetVerifier{
-							Host:      redirectHost,
-							Path:      "/",
-							UseTLS:    true,
-							CACertPEM: redirectSecret.CACert,
+						&httpGetVerifier{
+							host:      redirectHost,
+							path:      "/",
+							useTLS:    true,
+							caCertPEM: redirectSecret.CACert,
 						},
-						&e2e.HttpGetVerifier{
-							Host:         redirectHost,
-							Path:         "/",
-							AllowedCodes: []int{308},
-							UseTLS:       false,
-							HeaderMatches: []e2e.HeaderMatch{
+						&httpGetVerifier{
+							host:         redirectHost,
+							path:         "/",
+							allowedCodes: []int{308},
+							useTLS:       false,
+							headerMatches: []headerMatch{
 								{
-									Name:     "Location",
-									Patterns: []*regexp.Regexp{regexp.MustCompile("^https://" + redirectHost + "/?$")},
+									name:     "Location",
+									patterns: []*regexp.Regexp{regexp.MustCompile("^https://" + redirectHost + "/?$")},
 								},
 							},
 						},
 					},
 					"no-redirect": {
-						&e2e.HttpGetVerifier{
-							Host:      noRedirectHost,
-							Path:      "/",
-							UseTLS:    true,
-							CACertPEM: noRedirectSecret.CACert,
+						&httpGetVerifier{
+							host:      noRedirectHost,
+							path:      "/",
+							useTLS:    true,
+							caCertPEM: noRedirectSecret.CACert,
 						},
-						&e2e.HttpGetVerifier{
-							Host:   noRedirectHost,
-							Path:   "/",
-							UseTLS: false,
+						&httpGetVerifier{
+							host:   noRedirectHost,
+							path:   "/",
+							useTLS: false,
 						},
 					},
 				},

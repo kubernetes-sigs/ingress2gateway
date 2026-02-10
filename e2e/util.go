@@ -24,7 +24,7 @@ import (
 
 // Generates a cryptographically random alphanumeric string of length n. Uses crypto/rand to ensure
 // uniqueness even when called from parallel tests.
-func RandString(n int) (string, error) {
+func randString(n int) (string, error) {
 	const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
 	b := make([]byte, n)
 	if _, err := rand.Read(b); err != nil {
