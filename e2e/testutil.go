@@ -667,6 +667,15 @@ func (b *ingressBuilder) withIngressClass(className string) *ingressBuilder {
 
 // Sets the Host field of the first rule in the ingress to the specified string. Does nothing if
 // there are no rules.
+func (b *ingressBuilder) withAnnotation(key, value string) *ingressBuilder {
+	if b.ObjectMeta.Annotations == nil {
+		b.ObjectMeta.Annotations = make(map[string]string)
+	}
+	b.ObjectMeta.Annotations[key] = value
+
+	return b
+}
+
 func (b *ingressBuilder) withHost(host string) *ingressBuilder {
 	if len(b.Spec.Rules) > 0 {
 		b.Spec.Rules[0].Host = host

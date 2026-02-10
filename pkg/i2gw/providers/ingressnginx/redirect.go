@@ -84,7 +84,7 @@ func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR)
 								Type: gatewayv1.HTTPRouteFilterRequestRedirect,
 								RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
 									Scheme:     ptr.To("https"),
-									StatusCode: ptr.To(308),
+									StatusCode: ptr.To(301),
 								},
 							},
 						},
@@ -173,7 +173,7 @@ func addWWWRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR) field.
 									Type: gatewayv1.HTTPRouteFilterRequestRedirect,
 									RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
 										Hostname:   ptr.To(gatewayv1.PreciseHostname(dstHost)),
-										StatusCode: ptr.To(308),
+										StatusCode: ptr.To(301),
 									},
 								},
 							},

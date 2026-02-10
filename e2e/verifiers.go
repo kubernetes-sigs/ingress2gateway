@@ -226,3 +226,65 @@ func (v *httpRequestVerifier) verify(ctx context.Context, log logger, addr addre
 
 	return nil
 }
+
+type httpRedirectVerifier struct {
+	host           string
+	targetHost     string // What we expect in the Location header
+	expectedStatus []int    // Usually 301
+}
+
+func (v *httpRedirectVerifier) verify(ctx context.Context, log logger, addr string, ingress *networkingv1.Ingress) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("http://%s/", addr), nil)
+	if err != nil {
+		return fmt.Errorf("constructing HTTP request: %w", err)
+	}
+
+	if v.host != "" {
+		req.Host = v.host
+	} else if len(ingress.Spec.Rules) > 0 && ingress.Spec.Rules[0].Host != "" {
+		req.Host = ingress.Spec.Rules[0].Host
+	} else {
+		return fmt.Errorf("no host specified: set HTTPRedirectVerifier.Host or ensure ingress has a rule with a host")
+	}
+
+	client := http.Client{
+		Timeout: 5 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// Don't follow redirects, we want to inspect the redirect response
+			return http.ErrUseLastResponse
+		},
+	}
+
+	res, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("doing request: %w", err)
+	}
+	defer func() { _ = res.Body.Close() }()
+
+	statusValOk := false
+	for _, status := range v.expectedStatus {
+		if res.StatusCode == status {
+			statusValOk = true
+			break
+		}
+	}
+	if !statusValOk {
+
+		return fmt.Errorf("unexpected HTTP status code: got %d, want one of %v", res.StatusCode, v.expectedStatus)
+	}
+
+	location := res.Header.Get("Location")
+	if location == "" {
+		return fmt.Errorf("expected Location header, got none")
+	}
+
+	expectedLocation := fmt.Sprintf("http://%s", v.targetHost)
+	expectedLocationTrailing := fmt.Sprintf("http://%s/", v.targetHost)
+	if location != expectedLocation && location != expectedLocationTrailing && location != expectedLocation+":80" && location != expectedLocation+":80/" {
+		return fmt.Errorf("unexpected Location header: got %s, want %s (or with trailing slash)", location, expectedLocation)
+	}
+
+	log.Logf("Got expected redirect to %s", location)
+
+	return nil
+}

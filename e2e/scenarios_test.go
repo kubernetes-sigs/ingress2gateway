@@ -88,6 +88,38 @@ func TestIngressNginx(t *testing.T) {
 				},
 			})
 		})
+		t.Run("from-to-www-redirect", func(t *testing.T) {
+			runTestCase(t, &testCase{
+				gatewayImplementation: istio.ProviderName,
+				providers:             []string{ingressnginx.Name},
+				providerFlags: map[string]map[string]string{
+					ingressnginx.Name: {
+						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
+					},
+				},
+				ingresses: []*networkingv1.Ingress{
+					basicIngress().
+						withName("foo").
+						withIngressClass(ingressnginx.NginxIngressClass).
+						withHost("example.com").
+						withAnnotation("nginx.ingress.kubernetes.io/from-to-www-redirect", "true").
+						build(),
+				},
+				verifiers: map[string][]verifier{
+					"foo": {
+						&httpGetVerifier{
+							host: "example.com",
+							path: "/",
+						},
+						&httpRedirectVerifier{
+							host:           "www.example.com",
+							targetHost:     "example.com",
+							expectedStatus: []int{301, 308},
+						},
+					},
+				},
+			})
+		})
 		t.Run("multiple ingresses", func(t *testing.T) {
 			runTestCase(t, &testCase{
 				gatewayImplementation: istio.ProviderName,

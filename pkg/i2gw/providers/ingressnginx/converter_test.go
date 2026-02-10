@@ -1125,7 +1125,7 @@ func Test_ToIR(t *testing.T) {
 										Type: gatewayv1.HTTPRouteFilterRequestRedirect,
 										RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
 											Hostname:   ptrTo(gatewayv1.PreciseHostname("example.com")),
-											StatusCode: ptrTo(308),
+											StatusCode: ptrTo(301),
 										},
 									}},
 								}},
