@@ -89,10 +89,6 @@ func (c *resourcesToIRConverter) convertToIR(storage *storage) (providerir.Provi
 					errs = append(errs, field.Invalid(field.NewPath("provider-specific-flags"), val, "invalid GCE gateway class name"))
 					return providerir.ProviderIR{}, errs
 				}
-				if !SupportedGKEGatewayClasses[val] {
-					errs = append(errs, field.Invalid(field.NewPath("provider-specific-flags"), val, "invalid GCE gateway class name"))
-					return providerir.ProviderIR{}, errs
-				}
 				gatewayClassName = val
 			}
 		}
