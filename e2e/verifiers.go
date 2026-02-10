@@ -230,7 +230,7 @@ func (v *httpRequestVerifier) verify(ctx context.Context, log logger, addr addre
 type httpRedirectVerifier struct {
 	host           string
 	targetHost     string // What we expect in the Location header
-	expectedStatus []int    // Usually 301
+	expectedStatus []int  // Usually 301
 }
 
 func (v *httpRedirectVerifier) verify(ctx context.Context, log logger, addr string, ingress *networkingv1.Ingress) error {
