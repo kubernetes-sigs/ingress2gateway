@@ -17,6 +17,9 @@ limitations under the License.
 package ingressnginx
 
 import (
+	"strconv"
+	"strings"
+
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 )
@@ -58,8 +61,11 @@ func applyRewriteTargetToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.Emi
 				pathRewriteIR.Headers["X-Forwarded-Prefix"] = val
 			}
 
-			if val, ok := ing.Annotations[UseRegexAnnotation]; ok && val == "true" {
-				pathRewriteIR.Regex = true
+			if val, ok := ing.Annotations[UseRegexAnnotation]; ok {
+				parsedVal, _ := strconv.ParseBool(val)
+				if parsedVal && strings.Contains(rewriteTarget, "\\$") {
+					pathRewriteIR.RegexCaptureGroupReferences = true
+				}
 			}
 
 			eRouteCtx.PathRewriteByRuleIdx[ruleIdx] = &pathRewriteIR

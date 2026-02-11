@@ -85,7 +85,7 @@ type PathRewrite struct {
 	ReplaceFullPath string
 	// Headers to add on path rewrite.
 	Headers map[string]string
-	Regex   bool
+	RegexCaptureGroupReferences   bool
 }
 
 // BodySize represents provider-neutral body size intent.
