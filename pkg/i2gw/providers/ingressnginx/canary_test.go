@@ -45,6 +45,10 @@ func Test_parseCanaryConfig(t *testing.T) {
 				},
 			},
 			expectedConfig: canaryConfig{
+				isHeader:    false,
+				header:      "",
+				headerValue: "",
+				isWeight:    true,
 				weight:      50,
 				weightTotal: 100,
 			},
@@ -61,6 +65,10 @@ func Test_parseCanaryConfig(t *testing.T) {
 				},
 			},
 			expectedConfig: canaryConfig{
+				isHeader:    false,
+				header:      "",
+				headerValue: "",
+				isWeight:    true,
 				weight:      50,
 				weightTotal: 100,
 			},
@@ -77,6 +85,10 @@ func Test_parseCanaryConfig(t *testing.T) {
 				},
 			},
 			expectedConfig: canaryConfig{
+				isHeader:    false,
+				header:      "",
+				headerValue: "",
+				isWeight:    true,
 				weight:      0,
 				weightTotal: 100,
 			},
@@ -93,6 +105,10 @@ func Test_parseCanaryConfig(t *testing.T) {
 				},
 			},
 			expectedConfig: canaryConfig{
+				isHeader:    false,
+				header:      "",
+				headerValue: "",
+				isWeight:    true,
 				weight:      100,
 				weightTotal: 100,
 			},
@@ -110,6 +126,10 @@ func Test_parseCanaryConfig(t *testing.T) {
 				},
 			},
 			expectedConfig: canaryConfig{
+				isHeader:    false,
+				header:      "",
+				headerValue: "",
+				isWeight:    true,
 				weight:      50,
 				weightTotal: 200,
 			},
@@ -125,6 +145,10 @@ func Test_parseCanaryConfig(t *testing.T) {
 				},
 			},
 			expectedConfig: canaryConfig{
+				isHeader:    false,
+				header:      "",
+				headerValue: "",
+				isWeight:    false,
 				weight:      0,
 				weightTotal: 100,
 			},
@@ -247,8 +271,95 @@ func Test_parseCanaryConfig(t *testing.T) {
 				},
 			},
 			expectedConfig: canaryConfig{
+				isHeader:    false,
+				header:      "",
+				headerValue: "",
+				isWeight:    true,
 				weight:      200,
 				weightTotal: 200,
+			},
+			expectError: false,
+		},
+		{
+			name: "parses canary-by-header",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/canary":           "true",
+						"nginx.ingress.kubernetes.io/canary-by-header": "X-Canary",
+					},
+				},
+			},
+			expectedConfig: canaryConfig{
+				isHeader:    true,
+				header:      "X-Canary",
+				headerValue: "",
+				isWeight:    false,
+				weight:      0,
+				weightTotal: 100,
+			},
+			expectError: false,
+		},
+		{
+			name: "parses canary-by-header with header value",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/canary":                 "true",
+						"nginx.ingress.kubernetes.io/canary-by-header":       "X-Canary",
+						"nginx.ingress.kubernetes.io/canary-by-header-value": "canary-deploy",
+					},
+				},
+			},
+			expectedConfig: canaryConfig{
+				isHeader:    true,
+				header:      "X-Canary",
+				headerValue: "canary-deploy",
+				isWeight:    false,
+				weight:      0,
+				weightTotal: 100,
+			},
+			expectError: false,
+		},
+		{
+			name: "parses both weight and header",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/canary":                 "true",
+						"nginx.ingress.kubernetes.io/canary-by-header":       "X-Canary",
+						"nginx.ingress.kubernetes.io/canary-by-header-value": "always",
+						"nginx.ingress.kubernetes.io/canary-weight":          "30",
+					},
+				},
+			},
+			expectedConfig: canaryConfig{
+				isHeader:    true,
+				header:      "X-Canary",
+				headerValue: "always",
+				isWeight:    true,
+				weight:      30,
+				weightTotal: 100,
+			},
+			expectError: false,
+		},
+		{
+			name: "header value without header name is still parsed",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/canary":                 "true",
+						"nginx.ingress.kubernetes.io/canary-by-header-value": "test-value",
+					},
+				},
+			},
+			expectedConfig: canaryConfig{
+				isHeader:    false,
+				header:      "",
+				headerValue: "test-value",
+				isWeight:    false,
+				weight:      0,
+				weightTotal: 100,
 			},
 			expectError: false,
 		},
