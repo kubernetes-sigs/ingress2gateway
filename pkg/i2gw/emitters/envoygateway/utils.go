@@ -17,6 +17,8 @@ limitations under the License.
 package envoygateway_emitter
 
 import (
+	"reflect"
+
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 )
 
@@ -31,21 +33,33 @@ func MergeBodySizeIR(ctx *emitterir.HTTPRouteContext) {
 			first = bs
 			continue
 		}
-		if (first.BufferSize == nil) != (bs.BufferSize == nil) {
-			return
-		}
-		if first.BufferSize != nil && !first.BufferSize.Equal(*bs.BufferSize) {
-			return
-		}
-		if (first.MaxSize == nil) != (bs.MaxSize == nil) {
-			return
-		}
-		if first.MaxSize != nil && !first.MaxSize.Equal(*bs.MaxSize) {
+		if !reflect.DeepEqual(first, bs) {
 			return
 		}
 	}
 
 	ctx.BodySizeByRuleIdx = map[int]*emitterir.BodySize{
+		RouteRuleAllIndex: first,
+	}
+}
+
+func MergeIPRangeControlIR(ctx *emitterir.HTTPRouteContext) {
+	if len(ctx.IPRangeControlByRuleIdx) != len(ctx.Spec.Rules) {
+		return
+	}
+
+	var first *emitterir.IPRangeControl
+	for _, iprc := range ctx.IPRangeControlByRuleIdx {
+		if first == nil {
+			first = iprc
+			continue
+		}
+		if !reflect.DeepEqual(first, iprc) {
+			return
+		}
+	}
+
+	ctx.IPRangeControlByRuleIdx = map[int]*emitterir.IPRangeControl{
 		RouteRuleAllIndex: first,
 	}
 }
