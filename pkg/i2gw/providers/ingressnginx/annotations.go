@@ -21,6 +21,10 @@ const (
 	CanaryAnnotation            = "nginx.ingress.kubernetes.io/canary"
 	CanaryWeightAnnotation      = "nginx.ingress.kubernetes.io/canary-weight"
 	CanaryWeightTotalAnnotation = "nginx.ingress.kubernetes.io/canary-weight-total"
+	CanaryByHeader              = "nginx.ingress.kubernetes.io/canary-by-header"
+	CanaryByHeaderValue         = "nginx.ingress.kubernetes.io/canary-by-header-value"
+	CanaryByHeaderPattern       = "nginx.ingress.kubernetes.io/canary-by-header-pattern"
+	CanaryByCookie              = "nginx.ingress.kubernetes.io/canary-by-cookie"
 
 	// Rewrite annotations
 	RewriteTargetAnnotation = "nginx.ingress.kubernetes.io/rewrite-target"
@@ -40,11 +44,16 @@ const (
 	ConnectionProxyHeaderAnnotation = "nginx.ingress.kubernetes.io/connection-proxy-header"
 	CustomHeadersAnnotation         = "nginx.ingress.kubernetes.io/custom-headers"
 
+	// Timeout annotations
+	ProxyConnectTimeoutAnnotation = "nginx.ingress.kubernetes.io/proxy-connect-timeout"
+	ProxySendTimeoutAnnotation    = "nginx.ingress.kubernetes.io/proxy-send-timeout"
+	ProxyReadTimeoutAnnotation    = "nginx.ingress.kubernetes.io/proxy-read-timeout"
+
 	// Body Size annotations
 	ProxyBodySizeAnnotation        = "nginx.ingress.kubernetes.io/proxy-body-size"
 	ClientBodyBufferSizeAnnotation = "nginx.ingress.kubernetes.io/client-body-buffer-size"
 
-	// R2gex
+	// Regex
 	UseRegexAnnotation = "nginx.ingress.kubernetes.io/use-regex"
 
 	// SSL Redirect annotation
