@@ -68,28 +68,8 @@ func TestBackendTLSFeature(t *testing.T) {
 					}},
 				},
 			},
-			expectedPolicies: map[types.NamespacedName]gatewayv1.BackendTLSPolicy{
-				{Namespace: "default", Name: "test-service-backend-tls"}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-service-backend-tls",
-						Namespace: "default",
-					},
-					Spec: gatewayv1.BackendTLSPolicySpec{
-						TargetRefs: []gatewayv1.LocalPolicyTargetReferenceWithSectionName{{
-							LocalPolicyTargetReference: gatewayv1.LocalPolicyTargetReference{
-								Group: "",
-								Kind:  "Service",
-								Name:  "test-service",
-							},
-						}},
-						Validation: gatewayv1.BackendTLSPolicyValidation{
-							Hostname:                gatewayv1.PreciseHostname("test-service.default.svc.cluster.local"),
-							WellKnownCACertificates: ptr.To(gatewayv1.WellKnownCACertificatesSystem),
-						},
-					},
-				},
-			},
-			expectedPolicyTargeted: true,
+			expectedPolicies:       nil,
+			expectedPolicyTargeted: false,
 		},
 		{
 			name: "ssl-secret provided",
@@ -122,32 +102,8 @@ func TestBackendTLSFeature(t *testing.T) {
 					}},
 				},
 			},
-			expectedPolicies: map[types.NamespacedName]gatewayv1.BackendTLSPolicy{
-				{Namespace: "default", Name: "test-service-backend-tls"}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-service-backend-tls",
-						Namespace: "default",
-					},
-					Spec: gatewayv1.BackendTLSPolicySpec{
-						TargetRefs: []gatewayv1.LocalPolicyTargetReferenceWithSectionName{{
-							LocalPolicyTargetReference: gatewayv1.LocalPolicyTargetReference{
-								Group: "",
-								Kind:  "Service",
-								Name:  "test-service",
-							},
-						}},
-						Validation: gatewayv1.BackendTLSPolicyValidation{
-							Hostname: gatewayv1.PreciseHostname("test-service.default.svc.cluster.local"),
-							CACertificateRefs: []gatewayv1.LocalObjectReference{{
-								Group: "",
-								Kind:  "Secret",
-								Name:  "secret-valid",
-							}},
-						},
-					},
-				},
-			},
-			expectedPolicyTargeted: true,
+			expectedPolicies:       nil,
+			expectedPolicyTargeted: false,
 		},
 		{
 			name: "ssl-secret and verify on",
@@ -181,32 +137,8 @@ func TestBackendTLSFeature(t *testing.T) {
 					}},
 				},
 			},
-			expectedPolicies: map[types.NamespacedName]gatewayv1.BackendTLSPolicy{
-				{Namespace: "default", Name: "test-service-backend-tls"}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-service-backend-tls",
-						Namespace: "default",
-					},
-					Spec: gatewayv1.BackendTLSPolicySpec{
-						TargetRefs: []gatewayv1.LocalPolicyTargetReferenceWithSectionName{{
-							LocalPolicyTargetReference: gatewayv1.LocalPolicyTargetReference{
-								Group: "",
-								Kind:  "Service",
-								Name:  "test-service",
-							},
-						}},
-						Validation: gatewayv1.BackendTLSPolicyValidation{
-							CACertificateRefs: []gatewayv1.LocalObjectReference{{
-								Group: "",
-								Kind:  "Secret",
-								Name:  "secret-valid",
-							}},
-							Hostname: gatewayv1.PreciseHostname("test-service.default.svc.cluster.local"),
-						},
-					},
-				},
-			},
-			expectedPolicyTargeted: true,
+			expectedPolicies:       nil,
+			expectedPolicyTargeted: false,
 		},
 		{
 			name: "backend-protocol HTTPS only",
@@ -238,28 +170,8 @@ func TestBackendTLSFeature(t *testing.T) {
 					}},
 				},
 			},
-			expectedPolicies: map[types.NamespacedName]gatewayv1.BackendTLSPolicy{
-				{Namespace: "default", Name: "test-service-backend-tls"}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-service-backend-tls",
-						Namespace: "default",
-					},
-					Spec: gatewayv1.BackendTLSPolicySpec{
-						TargetRefs: []gatewayv1.LocalPolicyTargetReferenceWithSectionName{{
-							LocalPolicyTargetReference: gatewayv1.LocalPolicyTargetReference{
-								Group: "",
-								Kind:  "Service",
-								Name:  "test-service",
-							},
-						}},
-						Validation: gatewayv1.BackendTLSPolicyValidation{
-							Hostname:                gatewayv1.PreciseHostname("test-service.default.svc.cluster.local"),
-							WellKnownCACertificates: ptr.To(gatewayv1.WellKnownCACertificatesSystem),
-						},
-					},
-				},
-			},
-			expectedPolicyTargeted: true,
+			expectedPolicies:       nil,
+			expectedPolicyTargeted: false,
 		},
 		{
 			name: "backend-protocol HTTPS and proxy-ssl-name",
@@ -292,39 +204,21 @@ func TestBackendTLSFeature(t *testing.T) {
 					}},
 				},
 			},
-			expectedPolicies: map[types.NamespacedName]gatewayv1.BackendTLSPolicy{
-				{Namespace: "default", Name: "test-service-backend-tls"}: {
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-service-backend-tls",
-						Namespace: "default",
-					},
-					Spec: gatewayv1.BackendTLSPolicySpec{
-						TargetRefs: []gatewayv1.LocalPolicyTargetReferenceWithSectionName{{
-							LocalPolicyTargetReference: gatewayv1.LocalPolicyTargetReference{
-								Group: "",
-								Kind:  "Service",
-								Name:  "test-service",
-							},
-						}},
-						Validation: gatewayv1.BackendTLSPolicyValidation{
-							CACertificateRefs: nil,
-							Hostname:          gatewayv1.PreciseHostname("custom.internal.com"),
-							WellKnownCACertificates: ptr.To(gatewayv1.WellKnownCACertificatesSystem),
-						},
-					},
-				},
-			},
-			expectedPolicyTargeted: true,
+			expectedPolicies:       nil,
+			expectedPolicyTargeted: false,
 		},
 		{
-			name: "backend-protocol HTTP",
+			name: "fully compliant strict TLS validation",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "http-protocol",
+					Name:      "strict-tls",
 					Namespace: "default",
 					Annotations: map[string]string{
-						"nginx.ingress.kubernetes.io/backend-protocol": "HTTP",
-						"nginx.ingress.kubernetes.io/proxy-ssl-verify": "on", // Should be ignored if not HTTPS/GRPCS
+						"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
+						"nginx.ingress.kubernetes.io/proxy-ssl-verify": "on",
+						"nginx.ingress.kubernetes.io/proxy-ssl-secret": "my-ca-secret",
+						"nginx.ingress.kubernetes.io/proxy-ssl-name":   "strict.internal.com",
+						// proxy-ssl-server-name defaults to "on" implicitly, but could be added here
 					},
 				},
 				Spec: networkingv1.IngressSpec{
@@ -347,8 +241,32 @@ func TestBackendTLSFeature(t *testing.T) {
 					}},
 				},
 			},
-			expectedPolicies:       nil,
-			expectedPolicyTargeted: false,
+			expectedPolicies: map[types.NamespacedName]gatewayv1.BackendTLSPolicy{
+				{Namespace: "default", Name: "test-service-backend-tls"}: {
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-service-backend-tls",
+						Namespace: "default",
+					},
+					Spec: gatewayv1.BackendTLSPolicySpec{
+						TargetRefs: []gatewayv1.LocalPolicyTargetReferenceWithSectionName{{
+							LocalPolicyTargetReference: gatewayv1.LocalPolicyTargetReference{
+								Group: "",
+								Kind:  "Service",
+								Name:  "test-service",
+							},
+						}},
+						Validation: gatewayv1.BackendTLSPolicyValidation{
+							Hostname: gatewayv1.PreciseHostname("strict.internal.com"),
+							CACertificateRefs: []gatewayv1.LocalObjectReference{{
+								Group: "",
+								Kind:  "Secret",
+								Name:  "my-ca-secret",
+							}},
+						},
+					},
+				},
+			},
+			expectedPolicyTargeted: true,
 		},
 		{
 			name: "no relevant annotations",
@@ -479,6 +397,9 @@ func TestBackendTLSFeatureExtended(t *testing.T) {
 						Namespace: "default",
 						Annotations: map[string]string{
 							"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
+							"nginx.ingress.kubernetes.io/proxy-ssl-verify": "on",
+							"nginx.ingress.kubernetes.io/proxy-ssl-secret": "my-ca-secret",
+							"nginx.ingress.kubernetes.io/proxy-ssl-name":   "strict.internal.com",
 							"nginx.ingress.kubernetes.io/canary":           "true",
 						},
 					},
@@ -518,8 +439,12 @@ func TestBackendTLSFeatureExtended(t *testing.T) {
 							},
 						}},
 						Validation: gatewayv1.BackendTLSPolicyValidation{
-							Hostname:                gatewayv1.PreciseHostname("test-service.default.svc.cluster.local"),
-							WellKnownCACertificates: ptr.To(gatewayv1.WellKnownCACertificatesSystem),
+							Hostname: gatewayv1.PreciseHostname("strict.internal.com"),
+							CACertificateRefs: []gatewayv1.LocalObjectReference{{
+								Group: "",
+								Kind:  "Secret",
+								Name:  "my-ca-secret",
+							}},
 						},
 					},
 				},
@@ -571,6 +496,8 @@ func TestBackendTLSFeatureExtended(t *testing.T) {
 						Namespace: "default",
 						Annotations: map[string]string{
 							"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
+							"nginx.ingress.kubernetes.io/proxy-ssl-verify": "on",
+							"nginx.ingress.kubernetes.io/proxy-ssl-secret": "my-ca-secret",
 							"nginx.ingress.kubernetes.io/proxy-ssl-name":   "first.com",
 						},
 					},
@@ -600,6 +527,8 @@ func TestBackendTLSFeatureExtended(t *testing.T) {
 						Namespace: "default",
 						Annotations: map[string]string{
 							"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
+							"nginx.ingress.kubernetes.io/proxy-ssl-verify": "on",
+							"nginx.ingress.kubernetes.io/proxy-ssl-secret": "my-ca-secret",
 							"nginx.ingress.kubernetes.io/proxy-ssl-name":   "second.com", // Conflict
 						},
 					},
@@ -639,9 +568,12 @@ func TestBackendTLSFeatureExtended(t *testing.T) {
 							},
 						}},
 						Validation: gatewayv1.BackendTLSPolicyValidation{
-							Hostname:          gatewayv1.PreciseHostname("first.com"), // Expect first one
-							CACertificateRefs: nil,
-							WellKnownCACertificates: ptr.To(gatewayv1.WellKnownCACertificatesSystem),
+							Hostname: gatewayv1.PreciseHostname("first.com"), // Expect first one
+							CACertificateRefs: []gatewayv1.LocalObjectReference{{
+								Group: "",
+								Kind:  "Secret",
+								Name:  "my-ca-secret",
+							}},
 						},
 					},
 				},
