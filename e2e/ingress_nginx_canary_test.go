@@ -61,9 +61,9 @@ func TestIngressNGINXCanary(t *testing.T) {
 				verifiers: map[string][]verifier{
 					"foo1": {
 						&canaryVerifier{
-							verifier:     &httpRequestVerifier{
-								host: host,
-								path: "/hostname",
+							verifier: &httpRequestVerifier{
+								host:      host,
+								path:      "/hostname",
 								bodyRegex: regexp.MustCompile("^dummy-app2"),
 							},
 							runs:         200,

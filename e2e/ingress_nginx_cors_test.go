@@ -195,7 +195,7 @@ func TestIngressNGINXCORS(t *testing.T) {
 							},
 							headerMatches: []headerMatch{
 								{
-									name:     "Access-Control-Allow-Origin",
+									name: "Access-Control-Allow-Origin",
 									patterns: []*maybeNegativePattern{
 										{pattern: regexp.MustCompile(`^\*$|^` + regexp.QuoteMeta(origin) + `$`), negate: false},
 									},
@@ -226,13 +226,13 @@ func TestIngressNGINXCORS(t *testing.T) {
 									},
 								},
 								{
-									name:     "Access-Control-Allow-Credentials",
+									name: "Access-Control-Allow-Credentials",
 									patterns: []*maybeNegativePattern{
 										{pattern: regexp.MustCompile(`(?i)^true$`), negate: false},
 									},
 								},
 								{
-									name:     "Access-Control-Max-Age",
+									name: "Access-Control-Max-Age",
 									patterns: []*maybeNegativePattern{
 										{pattern: regexp.MustCompile("^" + maxAge + "$"), negate: false},
 									},
@@ -248,13 +248,13 @@ func TestIngressNGINXCORS(t *testing.T) {
 							},
 							headerMatches: []headerMatch{
 								{
-									name:     "Access-Control-Allow-Origin",
+									name: "Access-Control-Allow-Origin",
 									patterns: []*maybeNegativePattern{
 										{pattern: regexp.MustCompile(`^\*$|^` + regexp.QuoteMeta(origin) + `$`), negate: false},
 									},
 								},
 								{
-									name:     "Access-Control-Allow-Credentials",
+									name: "Access-Control-Allow-Credentials",
 									patterns: []*maybeNegativePattern{
 										{pattern: regexp.MustCompile(`(?i)^true$`), negate: false},
 									},
@@ -367,7 +367,7 @@ func TestIngressNGINXCORS(t *testing.T) {
 							},
 							headerMatches: []headerMatch{
 								{
-									name:     "Access-Control-Allow-Origin",
+									name: "Access-Control-Allow-Origin",
 									patterns: []*maybeNegativePattern{
 										{pattern: regexp.MustCompile("^" + regexp.QuoteMeta(origin) + "$"), negate: false},
 									},
@@ -386,13 +386,13 @@ func TestIngressNGINXCORS(t *testing.T) {
 									},
 								},
 								{
-									name:     "Access-Control-Allow-Methods",
+									name: "Access-Control-Allow-Methods",
 									patterns: []*maybeNegativePattern{
 										{pattern: regexp.MustCompile(`(?i)` + deniedMethod), negate: true},
 									},
 								},
 								{
-									name:     "Access-Control-Allow-Headers",
+									name: "Access-Control-Allow-Headers",
 									patterns: []*maybeNegativePattern{
 										{
 											pattern: regexp.MustCompile(`(?i)` + regexp.QuoteMeta(deniedHeader)), negate: true,

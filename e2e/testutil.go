@@ -314,19 +314,19 @@ func setUpIngressPortForwarding(
 		}
 
 		svc, err := findIngressControllerService(ctx, k8sClient, ingressNS, p)
-		require.NoError(t, err, fmt.Sprintf("finding %s service", p))
+		require.NoError(t, err, "finding %s service", p)
 
 		t.Logf("Waiting for ingress controller %s service %s/%s to have ready pods", p, svc.Namespace, svc.Name)
 		err = waitForServiceReady(ctx, k8sClient, svc.Namespace, svc.Name)
-		require.NoError(t, err, fmt.Sprintf("waiting for %s service to be ready", p))
+		require.NoError(t, err, "waiting for %s service to be ready", p)
 
 		pf, addr, err := startPortForwardToService(ctx, k8sClient, restConfig, svc.Namespace, svc.Name, 80)
-		require.NoError(t, err, fmt.Sprintf("starting port forward to %s", p))
+		require.NoError(t, err, "starting port forward to %s", p)
 		pfs = append(pfs, pf)
 		pfAddresses[ingressClass] = addresses{http: addr}
 		if useHTTPS {
 			httpsPf, httpsAddr, err := startPortForwardToService(ctx, k8sClient, restConfig, svc.Namespace, svc.Name, 443)
-			require.NoError(t, err, fmt.Sprintf("starting https port forward to %s", p))
+			require.NoError(t, err, "starting https port forward to %s", p)
 			pfs = append(pfs, httpsPf)
 			pfAddresses[ingressClass] = addresses{http: addr, https: httpsAddr}
 		}

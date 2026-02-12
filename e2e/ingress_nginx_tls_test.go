@@ -72,7 +72,7 @@ func TestIngressNGINXTLS(t *testing.T) {
 							useTLS:       false,
 							headerMatches: []headerMatch{
 								{
-									name:     "Location",
+									name: "Location",
 									patterns: []*maybeNegativePattern{
 										{pattern: regexp.MustCompile("^https://" + host + "/?$"), negate: false},
 									},
@@ -137,7 +137,7 @@ func TestIngressNGINXTLS(t *testing.T) {
 							useTLS:       false,
 							headerMatches: []headerMatch{
 								{
-									name:     "Location",
+									name: "Location",
 									patterns: []*maybeNegativePattern{
 										{pattern: regexp.MustCompile("^https://" + redirectHost + "/?$"), negate: false},
 									},
