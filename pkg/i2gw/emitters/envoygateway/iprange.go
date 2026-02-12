@@ -43,7 +43,30 @@ func (e *Emitter) EmitIPRangeControl(ir emitterir.EmitterIR, gwResources *i2gw.G
 			}
 
 			securityPolicy := e.getOrBuildSecurityPolicy(ctx, sectionName, idx)
-			if len(ipCon.AllowList) > 0 {
+
+			if len(ipCon.AllowList) > 0 && len(ipCon.DenyList) > 0 {
+				securityPolicy.Spec.Authorization = &egapiv1a1.Authorization{
+					DefaultAction: ptr.To(egapiv1a1.AuthorizationActionDeny),
+					Rules: []egapiv1a1.AuthorizationRule{
+						{
+							Action: egapiv1a1.AuthorizationActionDeny,
+							Principal: egapiv1a1.Principal{
+								ClientCIDRs: lo.Map(ipCon.DenyList, func(a string, _ int) egapiv1a1.CIDR {
+									return egapiv1a1.CIDR(a)
+								}),
+							},
+						},
+						{
+							Action: egapiv1a1.AuthorizationActionAllow,
+							Principal: egapiv1a1.Principal{
+								ClientCIDRs: lo.Map(ipCon.AllowList, func(a string, _ int) egapiv1a1.CIDR {
+									return egapiv1a1.CIDR(a)
+								}),
+							},
+						},
+					},
+				}
+			} else if len(ipCon.AllowList) > 0 {
 				securityPolicy.Spec.Authorization = &egapiv1a1.Authorization{
 					DefaultAction: ptr.To(egapiv1a1.AuthorizationActionDeny),
 					Rules: []egapiv1a1.AuthorizationRule{
@@ -57,8 +80,7 @@ func (e *Emitter) EmitIPRangeControl(ir emitterir.EmitterIR, gwResources *i2gw.G
 						},
 					},
 				}
-			}
-			if len(ipCon.DenyList) > 0 {
+			} else if len(ipCon.DenyList) > 0 {
 				securityPolicy.Spec.Authorization = &egapiv1a1.Authorization{
 					DefaultAction: ptr.To(egapiv1a1.AuthorizationActionAllow),
 					Rules: []egapiv1a1.AuthorizationRule{
