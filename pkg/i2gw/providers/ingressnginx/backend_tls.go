@@ -47,13 +47,9 @@ func backendTLSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedN
 
 			for backendIdx := range backendSources {
 				
-				// Identify the "main" ingress for this backend occurrence to check annotations.
-				// We care about the annotations on the non-canary ingress (if multiple sources exist for same backend).
 				
-				// We want to use the annotations from the "primary" (non-canary) ingress to determine Policy.
 				primaryIngress := getNonCanaryIngress(backendSources)
 				if primaryIngress == nil {
-					// No valid ingress source found (unlikely if loop ran).
 					continue
 				}
 
@@ -62,7 +58,6 @@ func backendTLSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedN
 				}
 				backendRef := rule.BackendRefs[backendIdx]
 
-				// We can only apply BackendTLSPolicy to Services
 				if backendRef.Kind != nil && *backendRef.Kind != "Service" {
 					continue
 				}
@@ -70,9 +65,6 @@ func backendTLSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedN
 					continue
 				}
 
-				// Check for backend TLS annotations on the primary ingress
-				// "nginx.ingress.kubernetes.io/backend-protocol" is the primary trigger for enabling TLS
-				// Values: uppercase "HTTPS" or "GRPCS".
 				backendProtocol := primaryIngress.Annotations[BackendProtocolAnnotation]
 				proxySSLVerify := primaryIngress.Annotations[ProxySSLVerifyAnnotation]
 				proxySSLSecret := primaryIngress.Annotations[ProxySSLSecretAnnotation]
@@ -81,12 +73,10 @@ func backendTLSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedN
 				proxySSLVerifyDepth := primaryIngress.Annotations[ProxySSLVerifyDepthAnnotation]
 				proxySSLProtocols := primaryIngress.Annotations[ProxySSLProtocolsAnnotation]
 
-				// 1. Must be HTTPS or GRPCS to even consider Backend TLS
 				if !(backendProtocol == "HTTPS" || backendProtocol == "GRPCS") {
 					continue
 				}
 
-				// Warn about unsupported features
 				if proxySSLVerifyDepth != "" {
 					notify(notifications.WarningNotification,
 						fmt.Sprintf("Ingress %s/%s specifies %s. Gateway API v1 BackendTLSPolicy does not support configuring verification depth.",
@@ -190,10 +180,6 @@ func backendTLSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedN
 
 				ir.BackendTLSPolicies[policyKey] = policy
 				
-				// Since we processed the backendRef (which combines all sources), we can break the inner source loop?
-				// Actually, we extracted `primaryIngress` from `backendSources` which IS the collection of sources for this backendRef.
-				// We just need to process this *once* for the BackendRef.
-				// So yes, we should break here to avoid reprocessing the same BackendRef for every minor source (though they should yield same result).
 				break
 			}
 		}
