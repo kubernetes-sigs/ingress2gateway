@@ -7,13 +7,12 @@ require (
 	github.com/envoyproxy/gateway v1.6.2
 	github.com/getkin/kin-openapi v0.124.0
 	github.com/google/go-cmp v0.7.0
-	github.com/kgateway-dev/kgateway/v2 v2.2.0-beta.6
+	github.com/kgateway-dev/kgateway/v2 v2.2.0
 	github.com/kong/kubernetes-ingress-controller/v2 v2.12.3
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/samber/lo v1.39.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
-	go.yaml.in/yaml/v4 v4.0.0-rc.2
 	golang.org/x/sync v0.19.0
 	helm.sh/helm/v4 v4.0.4
 	istio.io/api v1.28.0-alpha.0.0.20251210001900-ce7b5802387c
