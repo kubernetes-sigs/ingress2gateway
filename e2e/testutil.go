@@ -118,7 +118,7 @@ func runTestCase(t *testing.T, tc *testCase) {
 	require.NoError(t, crdResource.wait(), "Gateway API CRDs installation failed")
 
 	providers := deployProviders(ctx, t, k8sClient, kubeconfig, tc.providers, tc.gatewayImplementation, skipCleanup)
-	gwImpl := deploygatewayImplementation(ctx, t, k8sClient, gwClient, kubeconfig, tc.gatewayImplementation, skipCleanup)
+	gwImpl := deployGatewayImplementation(ctx, t, k8sClient, gwClient, kubeconfig, tc.gatewayImplementation, skipCleanup)
 
 	resources := append(providers, gwImpl)
 
@@ -254,7 +254,7 @@ func deployProviders(
 	return resources
 }
 
-func deploygatewayImplementation(
+func deployGatewayImplementation(
 	ctx context.Context,
 	t *testing.T,
 	k8sClient *kubernetes.Clientset,
@@ -297,51 +297,40 @@ func setUpIngressPortForwarding(
 	pfAddresses := make(map[string]addresses)
 
 	for _, p := range providers {
+		var ingressClass string
+		var svc *corev1.Service
+		var ingressNS string
+
 		switch p {
 		case ingressnginx.Name:
-			ingressNS := fmt.Sprintf("%s-ingress-nginx", e2ePrefix)
-			svc, err := findIngressControllerService(ctx, k8sClient, ingressNS, "ingress-nginx")
-			require.NoError(t, err, "finding ingress-nginx service")
-
-			t.Logf("Waiting for ingress controller %s service %s/%s to have ready pods", p, svc.Namespace, svc.Name)
-			err = waitForServiceReady(ctx, k8sClient, svc.Namespace, svc.Name)
-			require.NoError(t, err, "waiting for ingress-nginx service to be ready")
-
-			pf, addr, err := startPortForwardToService(ctx, k8sClient, restConfig, svc.Namespace, svc.Name, 80)
-			require.NoError(t, err, "starting port forward to ingress-nginx")
-			pfs = append(pfs, pf)
-			pfAddresses[ingressnginx.NginxIngressClass] = addresses{http: addr}
-			if useHTTPS {
-				httpsPf, httpsAddr, err := startPortForwardToService(ctx, k8sClient, restConfig, svc.Namespace, svc.Name, 443)
-				require.NoError(t, err, "starting https port forward to ingress-nginx")
-				pfs = append(pfs, httpsPf)
-				pfAddresses[ingressnginx.NginxIngressClass] = addresses{http: addr, https: httpsAddr}
-			}
-			t.Logf("Port forwarding ingress controller %s via %s", p, addr)
+			ingressNS = fmt.Sprintf("%s-ingress-nginx", e2ePrefix)
+			ingressClass = ingressnginx.NginxIngressClass
 		case kong.Name:
 			// Kong uses the same namespace for both ingress and gateway when both are enabled.
-			ingressNS := fmt.Sprintf("%s-kong", e2ePrefix)
-			svc, err := findIngressControllerService(ctx, k8sClient, ingressNS, kong.Name)
-			require.NoError(t, err, "finding kong service")
-
-			t.Logf("Waiting for ingress controller %s service %s/%s to have ready pods", p, svc.Namespace, svc.Name)
-			err = waitForServiceReady(ctx, k8sClient, svc.Namespace, svc.Name)
-			require.NoError(t, err, "waiting for kong service to be ready")
-
-			pf, addr, err := startPortForwardToService(ctx, k8sClient, restConfig, svc.Namespace, svc.Name, 80)
-			require.NoError(t, err, "starting port forward to kong")
-			pfs = append(pfs, pf)
-			pfAddresses[kong.KongIngressClass] = addresses{http: addr}
-			if useHTTPS {
-				httpsPf, httpsAddr, err := startPortForwardToService(ctx, k8sClient, restConfig, svc.Namespace, svc.Name, 443)
-				require.NoError(t, err, "starting https port forward to kong")
-				pfs = append(pfs, httpsPf)
-				pfAddresses[kong.KongIngressClass] = addresses{http: addr, https: httpsAddr}
-			}
-			t.Logf("Port forwarding ingress controller %s via %s", p, addr)
+			ingressNS = fmt.Sprintf("%s-kong", e2ePrefix)
+			ingressClass = kong.KongIngressClass
 		default:
 			t.Fatalf("Unknown ingress provider: %s", p)
 		}
+
+		svc, err := findIngressControllerService(ctx, k8sClient, ingressNS, p)
+		require.NoError(t, err, fmt.Sprintf("finding %s service", p))
+
+		t.Logf("Waiting for ingress controller %s service %s/%s to have ready pods", p, svc.Namespace, svc.Name)
+		err = waitForServiceReady(ctx, k8sClient, svc.Namespace, svc.Name)
+		require.NoError(t, err, fmt.Sprintf("waiting for %s service to be ready", p))
+
+		pf, addr, err := startPortForwardToService(ctx, k8sClient, restConfig, svc.Namespace, svc.Name, 80)
+		require.NoError(t, err, fmt.Sprintf("starting port forward to %s", p))
+		pfs = append(pfs, pf)
+		pfAddresses[ingressClass] = addresses{http: addr}
+		if useHTTPS {
+			httpsPf, httpsAddr, err := startPortForwardToService(ctx, k8sClient, restConfig, svc.Namespace, svc.Name, 443)
+			require.NoError(t, err, fmt.Sprintf("starting https port forward to %s", p))
+			pfs = append(pfs, httpsPf)
+			pfAddresses[ingressClass] = addresses{http: addr, https: httpsAddr}
+		}
+		t.Logf("Port forwarding ingress controller %s via %s", p, addr)
 	}
 
 	return pfs, pfAddresses
@@ -472,7 +461,7 @@ func verifyGatewayResources(ctx context.Context, t *testing.T, tc *testCase, gwA
 func testCaseNeedsHTTPS(tc *testCase) bool {
 	for _, verifiers := range tc.verifiers {
 		for _, v := range verifiers {
-			if hv, ok := v.(*httpGetVerifier); ok && hv.useTLS {
+			if hv, ok := v.(*httpRequestVerifier); ok && hv.useTLS {
 				return true
 			}
 		}
@@ -634,13 +623,13 @@ type ingressBuilder struct {
 	*networkingv1.Ingress
 }
 
-func (b *ingressBuilder) WithName(name string) *ingressBuilder {
+func (b *ingressBuilder) withName(name string) *ingressBuilder {
 	b.ObjectMeta.Name = name
 
 	return b
 }
 
-func (b *ingressBuilder) WithIngressClass(className string) *ingressBuilder {
+func (b *ingressBuilder) withIngressClass(className string) *ingressBuilder {
 	b.Spec.IngressClassName = ptr.To(className)
 
 	return b
@@ -648,7 +637,7 @@ func (b *ingressBuilder) WithIngressClass(className string) *ingressBuilder {
 
 // Sets the Host field of the first rule in the ingress to the specified string. Does nothing if
 // there are no rules.
-func (b *ingressBuilder) WithHost(host string) *ingressBuilder {
+func (b *ingressBuilder) withHost(host string) *ingressBuilder {
 	if len(b.Spec.Rules) > 0 {
 		b.Spec.Rules[0].Host = host
 	}
@@ -656,7 +645,7 @@ func (b *ingressBuilder) WithHost(host string) *ingressBuilder {
 	return b
 }
 
-func (b *ingressBuilder) WithPath(path string) *ingressBuilder {
+func (b *ingressBuilder) withPath(path string) *ingressBuilder {
 	for i := range b.Spec.Rules {
 		rule := b.Spec.Rules[i]
 		for j := range b.Spec.Rules[i].IngressRuleValue.HTTP.Paths {
@@ -669,7 +658,7 @@ func (b *ingressBuilder) WithPath(path string) *ingressBuilder {
 	return b
 }
 
-func (b *ingressBuilder) WithBackend(svc string) *ingressBuilder {
+func (b *ingressBuilder) withBackend(svc string) *ingressBuilder {
 	for i := range b.Spec.Rules {
 		rule := b.Spec.Rules[i]
 		for j := range b.Spec.Rules[i].IngressRuleValue.HTTP.Paths {
@@ -682,7 +671,7 @@ func (b *ingressBuilder) WithBackend(svc string) *ingressBuilder {
 	return b
 }
 
-func (b *ingressBuilder) WithAnnotation(key, value string) *ingressBuilder {
+func (b *ingressBuilder) withAnnotation(key, value string) *ingressBuilder {
 	if b.ObjectMeta.Annotations == nil {
 		b.ObjectMeta.Annotations = make(map[string]string)
 	}
@@ -690,7 +679,7 @@ func (b *ingressBuilder) WithAnnotation(key, value string) *ingressBuilder {
 	return b
 }
 
-func (b *ingressBuilder) WithTLSSecret(secretName string, hosts ...string) *ingressBuilder {
+func (b *ingressBuilder) withTLSSecret(secretName string, hosts ...string) *ingressBuilder {
 	b.Spec.TLS = append(b.Spec.TLS, networkingv1.IngressTLS{
 		SecretName: secretName,
 		Hosts:      hosts,
@@ -698,7 +687,7 @@ func (b *ingressBuilder) WithTLSSecret(secretName string, hosts ...string) *ingr
 	return b
 }
 
-func (b *ingressBuilder) Build() *networkingv1.Ingress {
+func (b *ingressBuilder) build() *networkingv1.Ingress {
 	return b.Ingress
 }
 

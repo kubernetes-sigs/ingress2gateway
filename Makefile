@@ -134,7 +134,7 @@ e2e: build ## Run end-to-end tests.
 	fi; \
 	set -x; \
 	I2GW_BINARY_PATH=$(REPO_ROOT)/ingress2gateway KUBECONFIG=$${kubeconfig} \
-		go test $(I2GW_GO_TEST_ARGS) $(REPO_ROOT)/e2e/...; \
+		go test $(I2GW_GO_TEST_ARGS) $(REPO_ROOT)/e2e; \
 	test_exit_code=$$?; \
 	set +x; \
 	if [ "$${cleanup_kind}" = "true" ] && [ "$${SKIP_CLEANUP}" != "1" ]; then \

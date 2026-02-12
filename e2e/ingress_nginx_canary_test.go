@@ -27,7 +27,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
-func TestCanary(t *testing.T) {
+func TestIngressNGINXCanary(t *testing.T) {
 	t.Parallel()
 	t.Run("to Istio", func(t *testing.T) {
 		t.Parallel()
@@ -45,26 +45,30 @@ func TestCanary(t *testing.T) {
 				},
 				ingresses: []*networkingv1.Ingress{
 					basicIngress().
-						WithName("foo1").
-						WithHost(host).
-						WithIngressClass(ingressnginx.NginxIngressClass).
-						Build(),
+						withName("foo1").
+						withHost(host).
+						withIngressClass(ingressnginx.NginxIngressClass).
+						build(),
 					basicIngress().
-						WithName("foo2").
-						WithHost(host).
-						WithIngressClass(ingressnginx.NginxIngressClass).
-						WithAnnotation("nginx.ingress.kubernetes.io/canary", "true").
-						WithAnnotation("nginx.ingress.kubernetes.io/canary-weight", "20").
-						WithBackend(DummyAppName2).
-						Build(),
+						withName("foo2").
+						withHost(host).
+						withIngressClass(ingressnginx.NginxIngressClass).
+						withAnnotation("nginx.ingress.kubernetes.io/canary", "true").
+						withAnnotation("nginx.ingress.kubernetes.io/canary-weight", "20").
+						withBackend(DummyAppName2).
+						build(),
 				},
 				verifiers: map[string][]verifier{
 					"foo1": {
 						&canaryVerifier{
-							verifier:     &httpGetVerifier{host: host, path: "/hostname", bodyRegex: regexp.MustCompile("^dummy-app2")},
+							verifier:     &httpRequestVerifier{
+								host: host,
+								path: "/hostname",
+								bodyRegex: regexp.MustCompile("^dummy-app2"),
+							},
 							runs:         200,
-							minSuccesses: 0.7,
-							maxSuccesses: 0.9,
+							minSuccesses: 0.1,
+							maxSuccesses: 0.3,
 						},
 					},
 				},

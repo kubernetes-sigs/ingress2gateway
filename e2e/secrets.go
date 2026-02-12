@@ -39,10 +39,6 @@ type TLSTestSecret struct {
 	CACert []byte
 }
 
-func GenerateTLSTestSecret(name, commonName string) (*TLSTestSecret, error) {
-	return generateSelfSignedTLSSecret(name, "", commonName, []string{commonName})
-}
-
 func generateSelfSignedTLSSecret(name, namespace, commonName string, hosts []string) (*TLSTestSecret, error) {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {

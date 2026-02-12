@@ -28,12 +28,12 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
-func TestCORS(t *testing.T) {
+func TestIngressNGINXCORS(t *testing.T) {
 	t.Parallel()
 	t.Run("to Istio", func(t *testing.T) {
 		t.Parallel()
 		t.Run("typical cors annotations", func(t *testing.T) {
-			suffix, err := randString(6)
+			suffix, err := randString(5)
 			require.NoError(t, err)
 			host := fmt.Sprintf("cors-%s.com", suffix)
 			origin := "https://cors.example.com"
@@ -53,21 +53,21 @@ func TestCORS(t *testing.T) {
 				},
 				ingresses: []*networkingv1.Ingress{
 					basicIngress().
-						WithName("cors").
-						WithHost(host).
-						WithIngressClass(ingressnginx.NginxIngressClass).
-						WithAnnotation("nginx.ingress.kubernetes.io/enable-cors", "true").
-						WithAnnotation("nginx.ingress.kubernetes.io/cors-allow-origin", origin).
-						WithAnnotation("nginx.ingress.kubernetes.io/cors-allow-methods", allowMethods).
-						WithAnnotation("nginx.ingress.kubernetes.io/cors-allow-headers", allowHeaders).
-						WithAnnotation("nginx.ingress.kubernetes.io/cors-allow-credentials", "true").
-						WithAnnotation("nginx.ingress.kubernetes.io/cors-max-age", maxAge).
-						WithAnnotation("nginx.ingress.kubernetes.io/cors-expose-headers", exposeHeaders).
-						Build(),
+						withName("cors").
+						withHost(host).
+						withIngressClass(ingressnginx.NginxIngressClass).
+						withAnnotation("nginx.ingress.kubernetes.io/enable-cors", "true").
+						withAnnotation("nginx.ingress.kubernetes.io/cors-allow-origin", origin).
+						withAnnotation("nginx.ingress.kubernetes.io/cors-allow-methods", allowMethods).
+						withAnnotation("nginx.ingress.kubernetes.io/cors-allow-headers", allowHeaders).
+						withAnnotation("nginx.ingress.kubernetes.io/cors-allow-credentials", "true").
+						withAnnotation("nginx.ingress.kubernetes.io/cors-max-age", maxAge).
+						withAnnotation("nginx.ingress.kubernetes.io/cors-expose-headers", exposeHeaders).
+						build(),
 				},
 				verifiers: map[string][]verifier{
 					"cors": {
-						&httpGetVerifier{
+						&httpRequestVerifier{
 							host:   host,
 							path:   "/",
 							method: http.MethodOptions,
@@ -82,35 +82,41 @@ func TestCORS(t *testing.T) {
 							},
 							headerMatches: []headerMatch{
 								{
-									name:     "Access-Control-Allow-Origin",
-									patterns: []*regexp.Regexp{regexp.MustCompile("^" + regexp.QuoteMeta(origin) + "$")},
+									name: "Access-Control-Allow-Origin",
+									patterns: []*maybeNegativePattern{
+										{pattern: regexp.MustCompile("^" + regexp.QuoteMeta(origin) + "$"), negate: false},
+									},
 								},
 								{
 									name: "Access-Control-Allow-Methods",
-									patterns: []*regexp.Regexp{
-										regexp.MustCompile(`(?i).*GET.*`),
-										regexp.MustCompile(`(?i).*POST.*`),
-										regexp.MustCompile(`(?i).*OPTIONS.*`),
+									patterns: []*maybeNegativePattern{
+										{pattern: regexp.MustCompile(`(?i).*GET.*`), negate: false},
+										{pattern: regexp.MustCompile(`(?i).*POST.*`), negate: false},
+										{pattern: regexp.MustCompile(`(?i).*OPTIONS.*`), negate: false},
 									},
 								},
 								{
 									name: "Access-Control-Allow-Headers",
-									patterns: []*regexp.Regexp{
-										regexp.MustCompile(`(?i).*X-Requested-With.*`),
-										regexp.MustCompile(`(?i).*Content-Type.*`),
+									patterns: []*maybeNegativePattern{
+										{pattern: regexp.MustCompile(`(?i).*X-Requested-With.*`), negate: false},
+										{pattern: regexp.MustCompile(`(?i).*Content-Type.*`), negate: false},
 									},
 								},
 								{
-									name:     "Access-Control-Allow-Credentials",
-									patterns: []*regexp.Regexp{regexp.MustCompile(`(?i)^true$`)},
+									name: "Access-Control-Allow-Credentials",
+									patterns: []*maybeNegativePattern{
+										{pattern: regexp.MustCompile(`(?i)^true$`), negate: false},
+									},
 								},
 								{
-									name:     "Access-Control-Max-Age",
-									patterns: []*regexp.Regexp{regexp.MustCompile("^" + maxAge + "$")},
+									name: "Access-Control-Max-Age",
+									patterns: []*maybeNegativePattern{
+										{pattern: regexp.MustCompile("^" + maxAge + "$"), negate: false},
+									},
 								},
 							},
 						},
-						&httpGetVerifier{
+						&httpRequestVerifier{
 							host:   host,
 							path:   "/",
 							method: http.MethodGet,
@@ -119,18 +125,27 @@ func TestCORS(t *testing.T) {
 							},
 							headerMatches: []headerMatch{
 								{
-									name:     "Access-Control-Allow-Origin",
-									patterns: []*regexp.Regexp{regexp.MustCompile("^" + regexp.QuoteMeta(origin) + "$")},
+									name: "Access-Control-Allow-Origin",
+									patterns: []*maybeNegativePattern{
+										{pattern: regexp.MustCompile("^" + regexp.QuoteMeta(origin) + "$"), negate: false},
+									},
 								},
 								{
-									name:     "Access-Control-Allow-Credentials",
-									patterns: []*regexp.Regexp{regexp.MustCompile(`(?i)^true$`)},
+									name: "Access-Control-Allow-Credentials",
+									// patterns: []*regexp.Regexp{regexp.MustCompile(`(?i)^true$`)},
+									patterns: []*maybeNegativePattern{
+										{pattern: regexp.MustCompile(`(?i)^true$`), negate: false},
+									},
 								},
 								{
 									name: "Access-Control-Expose-Headers",
-									patterns: []*regexp.Regexp{
-										regexp.MustCompile(`(?i).*X-Expose-1.*`),
-										regexp.MustCompile(`(?i).*X-Expose-2.*`),
+									// patterns: []*regexp.Regexp{
+									// 	regexp.MustCompile(`(?i).*X-Expose-1.*`),
+									// 	regexp.MustCompile(`(?i).*X-Expose-2.*`),
+									// },
+									patterns: []*maybeNegativePattern{
+										{pattern: regexp.MustCompile(`(?i).*X-Expose-1.*`), negate: false},
+										{pattern: regexp.MustCompile(`(?i).*X-Expose-2.*`), negate: false},
 									},
 								},
 							},
@@ -157,15 +172,15 @@ func TestCORS(t *testing.T) {
 				},
 				ingresses: []*networkingv1.Ingress{
 					basicIngress().
-						WithName("cors-defaults").
-						WithHost(host).
-						WithIngressClass(ingressnginx.NginxIngressClass).
-						WithAnnotation("nginx.ingress.kubernetes.io/enable-cors", "true").
-						Build(),
+						withName("cors-defaults").
+						withHost(host).
+						withIngressClass(ingressnginx.NginxIngressClass).
+						withAnnotation("nginx.ingress.kubernetes.io/enable-cors", "true").
+						build(),
 				},
 				verifiers: map[string][]verifier{
 					"cors-defaults": {
-						&httpGetVerifier{
+						&httpRequestVerifier{
 							host:   host,
 							path:   "/",
 							method: http.MethodOptions,
@@ -181,44 +196,50 @@ func TestCORS(t *testing.T) {
 							headerMatches: []headerMatch{
 								{
 									name:     "Access-Control-Allow-Origin",
-									patterns: []*regexp.Regexp{regexp.MustCompile(`^\*$|^` + regexp.QuoteMeta(origin) + `$`)},
+									patterns: []*maybeNegativePattern{
+										{pattern: regexp.MustCompile(`^\*$|^` + regexp.QuoteMeta(origin) + `$`), negate: false},
+									},
 								},
 								{
 									name: "Access-Control-Allow-Methods",
-									patterns: []*regexp.Regexp{
-										regexp.MustCompile(`(?i).*GET.*`),
-										regexp.MustCompile(`(?i).*PUT.*`),
-										regexp.MustCompile(`(?i).*POST.*`),
-										regexp.MustCompile(`(?i).*DELETE.*`),
-										regexp.MustCompile(`(?i).*PATCH.*`),
-										regexp.MustCompile(`(?i).*OPTIONS.*`),
+									patterns: []*maybeNegativePattern{
+										{pattern: regexp.MustCompile(`(?i).*GET.*`), negate: false},
+										{pattern: regexp.MustCompile(`(?i).*PUT.*`), negate: false},
+										{pattern: regexp.MustCompile(`(?i).*POST.*`), negate: false},
+										{pattern: regexp.MustCompile(`(?i).*DELETE.*`), negate: false},
+										{pattern: regexp.MustCompile(`(?i).*PATCH.*`), negate: false},
+										{pattern: regexp.MustCompile(`(?i).*OPTIONS.*`), negate: false},
 									},
 								},
 								{
 									name: "Access-Control-Allow-Headers",
-									patterns: []*regexp.Regexp{
-										regexp.MustCompile(`(?i).*DNT.*`),
-										regexp.MustCompile(`(?i).*Keep-Alive.*`),
-										regexp.MustCompile(`(?i).*User-Agent.*`),
-										regexp.MustCompile(`(?i).*X-Requested-With.*`),
-										regexp.MustCompile(`(?i).*If-Modified-Since.*`),
-										regexp.MustCompile(`(?i).*Cache-Control.*`),
-										regexp.MustCompile(`(?i).*Content-Type.*`),
-										regexp.MustCompile(`(?i).*Range.*`),
-										regexp.MustCompile(`(?i).*Authorization.*`),
+									patterns: []*maybeNegativePattern{
+										{pattern: regexp.MustCompile(`(?i).*DNT.*`), negate: false},
+										{pattern: regexp.MustCompile(`(?i).*Keep-Alive.*`), negate: false},
+										{pattern: regexp.MustCompile(`(?i).*User-Agent.*`), negate: false},
+										{pattern: regexp.MustCompile(`(?i).*X-Requested-With.*`), negate: false},
+										{pattern: regexp.MustCompile(`(?i).*If-Modified-Since.*`), negate: false},
+										{pattern: regexp.MustCompile(`(?i).*Cache-Control.*`), negate: false},
+										{pattern: regexp.MustCompile(`(?i).*Content-Type.*`), negate: false},
+										{pattern: regexp.MustCompile(`(?i).*Range.*`), negate: false},
+										{pattern: regexp.MustCompile(`(?i).*Authorization.*`), negate: false},
 									},
 								},
 								{
 									name:     "Access-Control-Allow-Credentials",
-									patterns: []*regexp.Regexp{regexp.MustCompile(`(?i)^true$`)},
+									patterns: []*maybeNegativePattern{
+										{pattern: regexp.MustCompile(`(?i)^true$`), negate: false},
+									},
 								},
 								{
 									name:     "Access-Control-Max-Age",
-									patterns: []*regexp.Regexp{regexp.MustCompile("^" + maxAge + "$")},
+									patterns: []*maybeNegativePattern{
+										{pattern: regexp.MustCompile("^" + maxAge + "$"), negate: false},
+									},
 								},
 							},
 						},
-						&httpGetVerifier{
+						&httpRequestVerifier{
 							host:   host,
 							path:   "/",
 							method: http.MethodGet,
@@ -228,11 +249,15 @@ func TestCORS(t *testing.T) {
 							headerMatches: []headerMatch{
 								{
 									name:     "Access-Control-Allow-Origin",
-									patterns: []*regexp.Regexp{regexp.MustCompile(`^\*$|^` + regexp.QuoteMeta(origin) + `$`)},
+									patterns: []*maybeNegativePattern{
+										{pattern: regexp.MustCompile(`^\*$|^` + regexp.QuoteMeta(origin) + `$`), negate: false},
+									},
 								},
 								{
 									name:     "Access-Control-Allow-Credentials",
-									patterns: []*regexp.Regexp{regexp.MustCompile(`(?i)^true$`)},
+									patterns: []*maybeNegativePattern{
+										{pattern: regexp.MustCompile(`(?i)^true$`), negate: false},
+									},
 								},
 							},
 						},
@@ -258,16 +283,16 @@ func TestCORS(t *testing.T) {
 				},
 				ingresses: []*networkingv1.Ingress{
 					basicIngress().
-						WithName("cors-denied").
-						WithHost(host).
-						WithIngressClass(ingressnginx.NginxIngressClass).
-						WithAnnotation("nginx.ingress.kubernetes.io/enable-cors", "true").
-						WithAnnotation("nginx.ingress.kubernetes.io/cors-allow-origin", allowedOrigin).
-						Build(),
+						withName("cors-denied").
+						withHost(host).
+						withIngressClass(ingressnginx.NginxIngressClass).
+						withAnnotation("nginx.ingress.kubernetes.io/enable-cors", "true").
+						withAnnotation("nginx.ingress.kubernetes.io/cors-allow-origin", allowedOrigin).
+						build(),
 				},
 				verifiers: map[string][]verifier{
 					"cors-denied": {
-						&httpGetVerifier{
+						&httpRequestVerifier{
 							host:   host,
 							path:   "/",
 							method: http.MethodOptions,
@@ -282,7 +307,7 @@ func TestCORS(t *testing.T) {
 							},
 							headerAbsent: []string{"Access-Control-Allow-Origin"},
 						},
-						&httpGetVerifier{
+						&httpRequestVerifier{
 							host:   host,
 							path:   "/",
 							method: http.MethodGet,
@@ -316,18 +341,18 @@ func TestCORS(t *testing.T) {
 				},
 				ingresses: []*networkingv1.Ingress{
 					basicIngress().
-						WithName("cors-denied-method").
-						WithHost(host).
-						WithIngressClass(ingressnginx.NginxIngressClass).
-						WithAnnotation("nginx.ingress.kubernetes.io/enable-cors", "true").
-						WithAnnotation("nginx.ingress.kubernetes.io/cors-allow-origin", origin).
-						WithAnnotation("nginx.ingress.kubernetes.io/cors-allow-methods", allowedMethods).
-						WithAnnotation("nginx.ingress.kubernetes.io/cors-allow-headers", allowedHeaders).
-						Build(),
+						withName("cors-denied-method").
+						withHost(host).
+						withIngressClass(ingressnginx.NginxIngressClass).
+						withAnnotation("nginx.ingress.kubernetes.io/enable-cors", "true").
+						withAnnotation("nginx.ingress.kubernetes.io/cors-allow-origin", origin).
+						withAnnotation("nginx.ingress.kubernetes.io/cors-allow-methods", allowedMethods).
+						withAnnotation("nginx.ingress.kubernetes.io/cors-allow-headers", allowedHeaders).
+						build(),
 				},
 				verifiers: map[string][]verifier{
 					"cors-denied-method": {
-						&httpGetVerifier{
+						&httpRequestVerifier{
 							host:   host,
 							path:   "/",
 							method: http.MethodOptions,
@@ -343,30 +368,36 @@ func TestCORS(t *testing.T) {
 							headerMatches: []headerMatch{
 								{
 									name:     "Access-Control-Allow-Origin",
-									patterns: []*regexp.Regexp{regexp.MustCompile("^" + regexp.QuoteMeta(origin) + "$")},
+									patterns: []*maybeNegativePattern{
+										{pattern: regexp.MustCompile("^" + regexp.QuoteMeta(origin) + "$"), negate: false},
+									},
 								},
 								{
 									name: "Access-Control-Allow-Methods",
-									patterns: []*regexp.Regexp{
-										regexp.MustCompile(`(?i).*GET.*`),
-										regexp.MustCompile(`(?i).*POST.*`),
+									patterns: []*maybeNegativePattern{
+										{pattern: regexp.MustCompile(`(?i).*GET.*`), negate: false},
+										{pattern: regexp.MustCompile(`(?i).*POST.*`), negate: false},
 									},
 								},
 								{
 									name: "Access-Control-Allow-Headers",
-									patterns: []*regexp.Regexp{
-										regexp.MustCompile(`(?i).*` + regexp.QuoteMeta(allowedHeaders) + `.*`),
+									patterns: []*maybeNegativePattern{
+										{pattern: regexp.MustCompile(`(?i).*` + regexp.QuoteMeta(allowedHeaders) + `.*`), negate: false},
 									},
 								},
-							},
-							headerExcludes: []headerExclude{
 								{
 									name:     "Access-Control-Allow-Methods",
-									patterns: []*regexp.Regexp{regexp.MustCompile(`(?i)` + deniedMethod)},
+									patterns: []*maybeNegativePattern{
+										{pattern: regexp.MustCompile(`(?i)` + deniedMethod), negate: true},
+									},
 								},
 								{
 									name:     "Access-Control-Allow-Headers",
-									patterns: []*regexp.Regexp{regexp.MustCompile(`(?i)` + regexp.QuoteMeta(deniedHeader))},
+									patterns: []*maybeNegativePattern{
+										{
+											pattern: regexp.MustCompile(`(?i)` + regexp.QuoteMeta(deniedHeader)), negate: true,
+										},
+									},
 								},
 							},
 						},

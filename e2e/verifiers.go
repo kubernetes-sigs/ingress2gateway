@@ -24,12 +24,15 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
+// Validates that a service is accessible and working correctly. The addr parameter is a
+// "host:port" string representing the service endpoint.
 type verifier interface {
 	verify(ctx context.Context, log logger, addr addresses, ingress *networkingv1.Ingress) error
 }
@@ -50,7 +53,7 @@ func (v *canaryVerifier) verify(ctx context.Context, log logger, addr addresses,
 	successes := 0
 	for i := 0; i < v.runs; i++ {
 		err := v.verifier.verify(ctx, log, addr, ingress)
-		if err != nil {
+		if err == nil {
 			log.Logf("Canary verifier run %d/%d succeeded", i+1, v.runs)
 			successes++
 		}
@@ -63,31 +66,53 @@ func (v *canaryVerifier) verify(ctx context.Context, log logger, addr addresses,
 	return nil
 }
 
-type httpGetVerifier struct {
-	host           string
-	path           string
-	method         string
+// httpRequestVerifier makes an HTTP or HTTPS request to the ingress and validates the response based on the provided configuration.
+// The fields that check the response are optional but are ANDed together if set.
+type httpRequestVerifier struct {
+	// host is the Host header/SNI to use in the request. If empty, the verifier will attempt to infer it from the ingress rules.
+	host string
+	// path is the URL path to request (default "/")
+	path string
+	// method is the HTTP method to use (default GET)
+	method string
+	// requestHeaders are additional headers to include in the request
 	requestHeaders map[string]string
-	allowedCodes   []int
-	headerMatches  []headerMatch
-	headerExcludes []headerExclude
-	headerAbsent   []string
-	useTLS         bool
-	caCertPEM      []byte
-	bodyRegex      *regexp.Regexp
+	// allowedCodes are the expected HTTP status codes (default 200)
+	allowedCodes []int
+	// headerMatches specifies headers that must be present and match at all of the provided regex patterns
+	headerMatches []headerMatch
+	// headerAbsent specifies headers that must not be present in the response
+	headerAbsent []string
+	// useTLS indicates whether to use HTTPS instead of HTTP
+	useTLS bool
+	// caCertPEM is the PEM-encoded CA certificate to trust for TLS verification (required if useTLS is true)
+	caCertPEM []byte
+	// bodyRegex is an optional regex pattern that the response body must match
+	bodyRegex *regexp.Regexp
+}
+
+// maybeNegativePattern represents a regex pattern that can be negated. If negate is true, the pattern must NOT match.
+type maybeNegativePattern struct {
+	pattern *regexp.Regexp
+	negate  bool
+}
+
+func (m maybeNegativePattern) matches(s string) bool {
+	match := m.pattern.MatchString(s)
+	if m.negate {
+		return !match
+	}
+	return match
 }
 
 type headerMatch struct {
 	name     string
-	patterns []*regexp.Regexp
+	patterns []*maybeNegativePattern
 }
 
-type headerExclude struct {
-	name     string
-	patterns []*regexp.Regexp
-}
-
-func (v *httpGetVerifier) verify(ctx context.Context, log logger, addr addresses, ingress *networkingv1.Ingress) error {
+func (v *httpRequestVerifier) verify(ctx context.Context, log logger, addr addresses, ingress *networkingv1.Ingress) error {
+	// If the Host field is specified in the test case, use that. Otherwise, default to deriving
+	// the (auto-generated) host from the ingress.
 	host := v.host
 	if host == "" && len(ingress.Spec.Rules) > 0 && ingress.Spec.Rules[0].Host != "" {
 		host = ingress.Spec.Rules[0].Host
@@ -136,6 +161,7 @@ func (v *httpGetVerifier) verify(ctx context.Context, log logger, addr addresses
 	}
 
 	client := http.Client{Timeout: 5 * time.Second, Transport: transport}
+	// Don't follow redirects, as some tests want to verify the redirect response itself (e.g. for TLS redirection)
 	client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error {
 		return http.ErrUseLastResponse
 	}
@@ -150,14 +176,7 @@ func (v *httpGetVerifier) verify(ctx context.Context, log logger, addr addresses
 	if len(allowedCodes) == 0 {
 		allowedCodes = []int{http.StatusOK}
 	}
-	allowed := false
-	for _, code := range allowedCodes {
-		if res.StatusCode == code {
-			allowed = true
-			break
-		}
-	}
-	if !allowed {
+	if !slices.Contains(allowedCodes, res.StatusCode) {
 		return fmt.Errorf("unexpected HTTP status code: got %d, want one of %v", res.StatusCode, allowedCodes)
 	}
 
@@ -175,33 +194,19 @@ func (v *httpGetVerifier) verify(ctx context.Context, log logger, addr addresses
 		for _, pattern := range headerMatch.patterns {
 			matched := false
 			for _, value := range values {
-				if pattern.MatchString(value) {
+				if pattern.matches(value) {
 					matched = true
 					break
 				}
 			}
 			if !matched {
-				return fmt.Errorf("header %q did not match %q (got %q)", headerMatch.name, pattern, strings.Join(values, ", "))
-			}
-		}
-	}
-
-	for _, headerExclude := range v.headerExcludes {
-		if headerExclude.name == "" {
-			return fmt.Errorf("header exclude name cannot be empty")
-		}
-		if len(headerExclude.patterns) == 0 {
-			return fmt.Errorf("header exclude patterns cannot be empty for %q", headerExclude.name)
-		}
-		values := res.Header.Values(headerExclude.name)
-		if len(values) == 0 {
-			continue
-		}
-		for _, pattern := range headerExclude.patterns {
-			for _, value := range values {
-				if pattern.MatchString(value) {
-					return fmt.Errorf("header %q matched excluded pattern %q (got %q)", headerExclude.name, pattern, strings.Join(values, ", "))
-				}
+				return fmt.Errorf(
+					"header %q did not match pattern %q with negation %v: header values were %q",
+					headerMatch.name,
+					pattern.pattern,
+					pattern.negate,
+					strings.Join(values, ", "),
+				)
 			}
 		}
 	}
@@ -219,6 +224,7 @@ func (v *httpGetVerifier) verify(ctx context.Context, log logger, addr addresses
 	if err != nil {
 		return fmt.Errorf("reading HTTP body: %w", err)
 	}
+
 	log.Logf("Got a healthy response: %s", body)
 
 	if v.bodyRegex != nil && !v.bodyRegex.MatchString(string(body)) {

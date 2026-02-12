@@ -26,17 +26,17 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
-func TestTLS(t *testing.T) {
+func TestIngressNGINXTLS(t *testing.T) {
 	t.Parallel()
 	t.Run("to Istio", func(t *testing.T) {
 		t.Parallel()
 		t.Run("tls ingress and gateway", func(t *testing.T) {
-			suffix, err := randString(6)
+			suffix, err := randString(5)
 			if err != nil {
 				t.Fatalf("creating host suffix: %v", err)
 			}
 			host := "tls-" + suffix + ".example.com"
-			tlsSecret, err := GenerateTLSTestSecret("tls-cert-"+suffix, host)
+			tlsSecret, err := generateSelfSignedTLSSecret("tls-cert-"+suffix, "", host, []string{host})
 			if err != nil {
 				t.Fatalf("creating TLS secret: %v", err)
 			}
@@ -51,21 +51,21 @@ func TestTLS(t *testing.T) {
 				secrets: []*corev1.Secret{tlsSecret.Secret},
 				ingresses: []*networkingv1.Ingress{
 					basicIngress().
-						WithName("foo").
-						WithHost(host).
-						WithIngressClass(ingressnginx.NginxIngressClass).
-						WithTLSSecret(tlsSecret.Secret.Name, host).
-						Build(),
+						withName("foo").
+						withHost(host).
+						withIngressClass(ingressnginx.NginxIngressClass).
+						withTLSSecret(tlsSecret.Secret.Name, host).
+						build(),
 				},
 				verifiers: map[string][]verifier{
 					"foo": {
-						&httpGetVerifier{
+						&httpRequestVerifier{
 							host:      host,
 							path:      "/",
 							useTLS:    true,
 							caCertPEM: tlsSecret.CACert,
 						},
-						&httpGetVerifier{
+						&httpRequestVerifier{
 							host:         host,
 							path:         "/",
 							allowedCodes: []int{308},
@@ -73,7 +73,9 @@ func TestTLS(t *testing.T) {
 							headerMatches: []headerMatch{
 								{
 									name:     "Location",
-									patterns: []*regexp.Regexp{regexp.MustCompile("^https://" + host + "/?$")},
+									patterns: []*maybeNegativePattern{
+										{pattern: regexp.MustCompile("^https://" + host + "/?$"), negate: false},
+									},
 								},
 							},
 						},
@@ -88,11 +90,11 @@ func TestTLS(t *testing.T) {
 			}
 			redirectHost := "tls-redirect-" + suffix + ".example.com"
 			noRedirectHost := "tls-noredirect-" + suffix + ".example.com"
-			redirectSecret, err := GenerateTLSTestSecret("tls-redirect-"+suffix, redirectHost)
+			redirectSecret, err := generateSelfSignedTLSSecret("tls-redirect-"+suffix, "", redirectHost, []string{redirectHost})
 			if err != nil {
 				t.Fatalf("creating redirect TLS secret: %v", err)
 			}
-			noRedirectSecret, err := GenerateTLSTestSecret("tls-noredirect-"+suffix, noRedirectHost)
+			noRedirectSecret, err := generateSelfSignedTLSSecret("tls-noredirect-"+suffix, "", noRedirectHost, []string{noRedirectHost})
 			if err != nil {
 				t.Fatalf("creating no-redirect TLS secret: %v", err)
 			}
@@ -107,28 +109,28 @@ func TestTLS(t *testing.T) {
 				secrets: []*corev1.Secret{redirectSecret.Secret, noRedirectSecret.Secret},
 				ingresses: []*networkingv1.Ingress{
 					basicIngress().
-						WithName("redirect").
-						WithHost(redirectHost).
-						WithIngressClass(ingressnginx.NginxIngressClass).
-						WithTLSSecret(redirectSecret.Secret.Name, redirectHost).
-						Build(),
+						withName("redirect").
+						withHost(redirectHost).
+						withIngressClass(ingressnginx.NginxIngressClass).
+						withTLSSecret(redirectSecret.Secret.Name, redirectHost).
+						build(),
 					basicIngress().
-						WithName("no-redirect").
-						WithHost(noRedirectHost).
-						WithIngressClass(ingressnginx.NginxIngressClass).
-						WithAnnotation("nginx.ingress.kubernetes.io/ssl-redirect", "false").
-						WithTLSSecret(noRedirectSecret.Secret.Name, noRedirectHost).
-						Build(),
+						withName("no-redirect").
+						withHost(noRedirectHost).
+						withIngressClass(ingressnginx.NginxIngressClass).
+						withAnnotation("nginx.ingress.kubernetes.io/ssl-redirect", "false").
+						withTLSSecret(noRedirectSecret.Secret.Name, noRedirectHost).
+						build(),
 				},
 				verifiers: map[string][]verifier{
 					"redirect": {
-						&httpGetVerifier{
+						&httpRequestVerifier{
 							host:      redirectHost,
 							path:      "/",
 							useTLS:    true,
 							caCertPEM: redirectSecret.CACert,
 						},
-						&httpGetVerifier{
+						&httpRequestVerifier{
 							host:         redirectHost,
 							path:         "/",
 							allowedCodes: []int{308},
@@ -136,19 +138,21 @@ func TestTLS(t *testing.T) {
 							headerMatches: []headerMatch{
 								{
 									name:     "Location",
-									patterns: []*regexp.Regexp{regexp.MustCompile("^https://" + redirectHost + "/?$")},
+									patterns: []*maybeNegativePattern{
+										{pattern: regexp.MustCompile("^https://" + redirectHost + "/?$"), negate: false},
+									},
 								},
 							},
 						},
 					},
 					"no-redirect": {
-						&httpGetVerifier{
+						&httpRequestVerifier{
 							host:      noRedirectHost,
 							path:      "/",
 							useTLS:    true,
 							caCertPEM: noRedirectSecret.CACert,
 						},
-						&httpGetVerifier{
+						&httpRequestVerifier{
 							host:   noRedirectHost,
 							path:   "/",
 							useTLS: false,

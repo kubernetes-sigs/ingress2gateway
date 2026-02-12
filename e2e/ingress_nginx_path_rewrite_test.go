@@ -25,7 +25,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
-func TestPathRewrite(t *testing.T) {
+func TestIngressNGINXPathRewrite(t *testing.T) {
 	t.Parallel()
 	t.Run("to Istio", func(t *testing.T) {
 		t.Parallel()
@@ -40,16 +40,16 @@ func TestPathRewrite(t *testing.T) {
 				},
 				ingresses: []*networkingv1.Ingress{
 					basicIngress().
-						WithName("foo1").
-						WithIngressClass(ingressnginx.NginxIngressClass).
-						WithPath("/abc").
-						WithAnnotation("nginx.ingress.kubernetes.io/rewrite-target", "/header").
-						WithAnnotation("nginx.ingress.kubernetes.io/x-forwarded-prefix", "/abc").
-						Build(),
+						withName("foo1").
+						withIngressClass(ingressnginx.NginxIngressClass).
+						withPath("/abc").
+						withAnnotation("nginx.ingress.kubernetes.io/rewrite-target", "/header").
+						withAnnotation("nginx.ingress.kubernetes.io/x-forwarded-prefix", "/abc").
+						build(),
 				},
 				verifiers: map[string][]verifier{
 					"foo1": {
-						&httpGetVerifier{path: "/abc", bodyRegex: regexp.MustCompile(`"X-Forwarded-Prefix":\["/abc"\]`)},
+						&httpRequestVerifier{path: "/abc", bodyRegex: regexp.MustCompile(`"X-Forwarded-Prefix":\["/abc"\]`)},
 					},
 				},
 			})
