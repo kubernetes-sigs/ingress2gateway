@@ -84,8 +84,8 @@ type TCPTimeouts struct {
 type PathRewrite struct {
 	ReplaceFullPath string
 	// Headers to add on path rewrite.
-	Headers map[string]string
-	RegexCaptureGroupReferences   bool
+	Headers                     map[string]string
+	RegexCaptureGroupReferences bool
 }
 
 // BodySize represents provider-neutral body size intent.
