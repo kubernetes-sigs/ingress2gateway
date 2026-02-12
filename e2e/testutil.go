@@ -94,7 +94,7 @@ func runTestCase(t *testing.T, tc *testCase) {
 	gwClient, err := newGatewayClientFromKubeconfigPath(kubeconfig)
 	require.NoError(t, err)
 
-	runtimeClient, err := newControllerRuntimeClientFromKubeconfigPath(kubeconfig)
+	crdClient, err := newControllerRuntimeClientFromKubeconfigPath(kubeconfig)
 	require.NoError(t, err)
 
 	apiextensionsClient, err := newAPIExtensionsClientFromKubeconfigPath(kubeconfig)
@@ -205,7 +205,7 @@ func runTestCase(t *testing.T, tc *testCase) {
 		}
 	}
 
-	cleanupGatewayResources, err := createGatewayResources(ctx, t, gwClient, runtimeClient, appNS, res, skipCleanup)
+	cleanupGatewayResources, err := createGatewayResources(ctx, t, gwClient, crdClient, appNS, res, skipCleanup)
 	require.NoError(t, err, "creating gateway resources")
 	t.Cleanup(cleanupGatewayResources)
 
@@ -523,8 +523,8 @@ func runI2GW(
 
 	// Some gateway implementations require implementation-specific extension resources emitted
 	// by ingress2gateway.
-	if gwImpl == kgatewayName {
-		args = append(args, "--emitter", kgatewayName)
+	if gwImpl != "" {
+		args = append(args, "--emitter", gwImpl)
 	}
 
 	// Add provider-specific flags.

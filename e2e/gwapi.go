@@ -38,7 +38,7 @@ func createGatewayResources(
 	ctx context.Context,
 	l logger,
 	client *gwclientset.Clientset,
-	runtimeClient crclient.Client,
+	crdClient crclient.Client,
 	ns string,
 	res []i2gw.GatewayResources,
 	skipCleanup bool,
@@ -99,7 +99,7 @@ func createGatewayResources(
 		}
 		cleanupFuncs = append(cleanupFuncs, cleanup)
 
-		cleanup, err = createGatewayExtensions(ctx, l, runtimeClient, ns, r.GatewayExtensions, skipCleanup)
+		cleanup, err = createGatewayExtensions(ctx, l, crdClient, ns, r.GatewayExtensions, skipCleanup)
 		if err != nil {
 			return nil, fmt.Errorf("creating gateway extensions: %w", err)
 		}
