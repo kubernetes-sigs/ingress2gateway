@@ -185,6 +185,13 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 					httpRouteContext.HTTPRoute.Spec.Rules...,
 				)
 
+				// Prepend the backend sources for the redirect rule (empty since redirects don't route to backends)
+				newRuleBackendSources := []providerir.BackendSource{}
+				httpRouteContext.RuleBackendSources = append(
+					[][]providerir.BackendSource{newRuleBackendSources},
+					httpRouteContext.RuleBackendSources...,
+				)
+
 				ir.HTTPRoutes[routeKey] = httpRouteContext
 
 				notify(notifications.InfoNotification,
