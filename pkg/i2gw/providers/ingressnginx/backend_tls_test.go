@@ -137,8 +137,12 @@ func TestBackendTLSFeature(t *testing.T) {
 							},
 						}},
 						Validation: gatewayv1.BackendTLSPolicyValidation{
-							Hostname:                gatewayv1.PreciseHostname("test-service.default.svc.cluster.local"),
-							WellKnownCACertificates: ptr.To(gatewayv1.WellKnownCACertificatesSystem),
+							Hostname: gatewayv1.PreciseHostname("test-service.default.svc.cluster.local"),
+							CACertificateRefs: []gatewayv1.LocalObjectReference{{
+								Group: "",
+								Kind:  "Secret",
+								Name:  "secret-valid",
+							}},
 						},
 					},
 				},
@@ -499,8 +503,28 @@ func TestBackendTLSFeatureExtended(t *testing.T) {
 					},
 				},
 			},
-			expectedPolicies:       nil,
-			expectedPolicyTargeted: false,
+			expectedPolicies: map[types.NamespacedName]gatewayv1.BackendTLSPolicy{
+				{Namespace: "default", Name: "test-service-backend-tls"}: {
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-service-backend-tls",
+						Namespace: "default",
+					},
+					Spec: gatewayv1.BackendTLSPolicySpec{
+						TargetRefs: []gatewayv1.LocalPolicyTargetReferenceWithSectionName{{
+							LocalPolicyTargetReference: gatewayv1.LocalPolicyTargetReference{
+								Group: "",
+								Kind:  "Service",
+								Name:  "test-service",
+							},
+						}},
+						Validation: gatewayv1.BackendTLSPolicyValidation{
+							Hostname:                gatewayv1.PreciseHostname("test-service.default.svc.cluster.local"),
+							WellKnownCACertificates: ptr.To(gatewayv1.WellKnownCACertificatesSystem),
+						},
+					},
+				},
+			},
+			expectedPolicyTargeted: true,
 		},
 		{
 			name: "cross-namespace secret skipped",
