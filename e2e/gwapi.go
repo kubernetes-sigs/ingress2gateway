@@ -23,9 +23,11 @@ import (
 	"time"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
+	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 	"sigs.k8s.io/gateway-api/apis/v1alpha2"
 	"sigs.k8s.io/gateway-api/apis/v1beta1"
@@ -36,6 +38,7 @@ func createGatewayResources(
 	ctx context.Context,
 	l logger,
 	client *gwclientset.Clientset,
+	runtimeClient crclient.Client,
 	ns string,
 	res []i2gw.GatewayResources,
 	skipCleanup bool,
@@ -95,6 +98,12 @@ func createGatewayResources(
 			return nil, fmt.Errorf("creating reference grants: %w", err)
 		}
 		cleanupFuncs = append(cleanupFuncs, cleanup)
+
+		cleanup, err = createGatewayExtensions(ctx, l, runtimeClient, ns, r.GatewayExtensions, skipCleanup)
+		if err != nil {
+			return nil, fmt.Errorf("creating gateway extensions: %w", err)
+		}
+		cleanupFuncs = append(cleanupFuncs, cleanup)
 	}
 
 	//nolint:contextcheck // Intentional background context in cleanup function
@@ -105,6 +114,55 @@ func createGatewayResources(
 		}
 		for _, f := range cleanupFuncs {
 			f()
+		}
+	}, nil
+}
+
+func createGatewayExtensions(
+	ctx context.Context,
+	l logger,
+	client crclient.Client,
+	ns string,
+	extensions []unstructured.Unstructured,
+	skipCleanup bool,
+) (func(), error) {
+	for i := range extensions {
+		ext := extensions[i]
+		if ext.GetNamespace() == "" {
+			ext.SetNamespace(ns)
+		}
+
+		y, err := toYAML(&ext)
+		if err != nil {
+			return nil, fmt.Errorf("converting gateway extension to YAML: %w", err)
+		}
+
+		l.Logf("Creating GatewayExtension:\n%s", y)
+		if err := client.Create(ctx, &ext); err != nil && !apierrors.IsAlreadyExists(err) {
+			return nil, fmt.Errorf("creating GatewayExtension %s/%s (%s): %w",
+				ext.GetNamespace(), ext.GetName(), ext.GetObjectKind().GroupVersionKind().String(), err)
+		}
+	}
+
+	//nolint:contextcheck // Intentional background context in cleanup function
+	return func() {
+		if skipCleanup {
+			return
+		}
+
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+
+		for i := range extensions {
+			ext := extensions[i]
+			if ext.GetNamespace() == "" {
+				ext.SetNamespace(ns)
+			}
+			log.Printf("Deleting GatewayExtension %s/%s (%s)",
+				ext.GetNamespace(), ext.GetName(), ext.GetObjectKind().GroupVersionKind().String())
+			if err := client.Delete(cleanupCtx, &ext); err != nil && !apierrors.IsNotFound(err) {
+				log.Printf("Deleting GatewayExtension %s/%s: %v", ext.GetNamespace(), ext.GetName(), err)
+			}
 		}
 	}, nil
 }
@@ -170,7 +228,7 @@ func createGatewayClasses(ctx context.Context, l logger, client *gwclientset.Cli
 			&gc,
 			metav1.CreateOptions{},
 		)
-		if errors.IsAlreadyExists(err) {
+		if apierrors.IsAlreadyExists(err) {
 			_, err = client.GatewayV1().GatewayClasses().Update(ctx, &gc, metav1.UpdateOptions{})
 		}
 		if err != nil {

@@ -39,6 +39,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
@@ -91,6 +92,9 @@ func runTestCase(t *testing.T, tc *testCase) {
 	require.NoError(t, err)
 
 	gwClient, err := newGatewayClientFromKubeconfigPath(kubeconfig)
+	require.NoError(t, err)
+
+	runtimeClient, err := newControllerRuntimeClientFromKubeconfigPath(kubeconfig)
 	require.NoError(t, err)
 
 	apiextensionsClient, err := newAPIExtensionsClientFromKubeconfigPath(kubeconfig)
@@ -181,7 +185,16 @@ func runTestCase(t *testing.T, tc *testCase) {
 	verifyIngresses(ctx, t, tc, ingressAddresses)
 
 	// Run the ingress2gateway binary to convert ingresses to Gateway API resources.
-	res := runI2GW(ctx, t, kubeconfig, appNS, tc.providers, tc.providerFlags, tc.allowExperimentalGWAPI)
+	res := runI2GW(
+		ctx,
+		t,
+		kubeconfig,
+		appNS,
+		tc.providers,
+		tc.providerFlags,
+		tc.allowExperimentalGWAPI,
+		tc.gatewayImplementation,
+	)
 
 	// TODO: Hack! Force correct gateway class since i2gw doesn't seem to infer that from the
 	// ingress at the moment.
@@ -192,7 +205,7 @@ func runTestCase(t *testing.T, tc *testCase) {
 		}
 	}
 
-	cleanupGatewayResources, err := createGatewayResources(ctx, t, gwClient, appNS, res, skipCleanup)
+	cleanupGatewayResources, err := createGatewayResources(ctx, t, gwClient, runtimeClient, appNS, res, skipCleanup)
 	require.NoError(t, err, "creating gateway resources")
 	t.Cleanup(cleanupGatewayResources)
 
@@ -275,6 +288,11 @@ func deployGatewayImplementation(
 		ns := fmt.Sprintf("%s-kong", e2ePrefix)
 		r = globalResourceManager.acquire(kong.Name, func() (cleanupFunc, error) {
 			return deployGatewayAPIKong(ctx, t, k8sClient, gwClient, kubeconfig, ns, skipCleanup)
+		})
+	case kgatewayName:
+		ns := fmt.Sprintf("%s-kgateway-system", e2ePrefix)
+		r = globalResourceManager.acquire(kgatewayName, func() (cleanupFunc, error) {
+			return deployGatewayAPIKgateway(ctx, t, k8sClient, kubeconfig, ns, skipCleanup)
 		})
 	default:
 		t.Fatalf("Unknown gateway implementation: %s", gwImpl)
@@ -488,6 +506,7 @@ func runI2GW(
 	providers []string,
 	providerFlags map[string]map[string]string,
 	allowExperimental bool,
+	gwImpl string,
 ) []i2gw.GatewayResources {
 	binaryPath := os.Getenv("I2GW_BINARY_PATH")
 	require.NotEmpty(t, binaryPath, "environment variable I2GW_BINARY_PATH not set")
@@ -500,6 +519,12 @@ func runI2GW(
 	}
 	if allowExperimental {
 		args = append(args, "--allow-experimental-gw-api")
+	}
+
+	// Some gateway implementations require implementation-specific extension resources emitted
+	// by ingress2gateway.
+	if gwImpl == kgatewayName {
+		args = append(args, "--emitter", kgatewayName)
 	}
 
 	// Add provider-specific flags.
@@ -616,6 +641,12 @@ func parseYAMLOutput(t *testing.T, data []byte) []i2gw.GatewayResources {
 			err := json.Unmarshal(objBytes, &rg)
 			require.NoError(t, err, "failed to unmarshal ReferenceGrant")
 			res.ReferenceGrants[nn] = rg
+		default:
+			// Keep implementation-specific resources as extensions.
+			var obj unstructured.Unstructured
+			err := json.Unmarshal(objBytes, &obj.Object)
+			require.NoError(t, err, "failed to unmarshal extension resource")
+			res.GatewayExtensions = append(res.GatewayExtensions, obj)
 		}
 	}
 
