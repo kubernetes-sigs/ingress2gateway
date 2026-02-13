@@ -26,6 +26,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -60,7 +61,7 @@ type testCase struct {
 	secrets                []*corev1.Secret
 	providers              []string
 	providerFlags          map[string]map[string]string
-	gatewayImplementation  string
+	gatewayImplementations []string
 	allowExperimentalGWAPI bool
 	verifiers              map[string][]verifier
 }
@@ -72,8 +73,8 @@ func runTestCase(t *testing.T, tc *testCase) {
 		t.Fatal("At least one provider must be specified")
 	}
 
-	if tc.gatewayImplementation == "" {
-		t.Fatal("gatewayImplementation must be specified")
+	if len(tc.gatewayImplementations) == 0 {
+		t.Fatal("gatewayImplementations must be specified")
 	}
 
 	ctx := t.Context()
@@ -117,10 +118,13 @@ func runTestCase(t *testing.T, tc *testCase) {
 	})
 	require.NoError(t, crdResource.wait(), "Gateway API CRDs installation failed")
 
-	providers := deployProviders(ctx, t, k8sClient, kubeconfig, tc.providers, tc.gatewayImplementation, skipCleanup)
-	gwImpl := deployGatewayImplementation(ctx, t, k8sClient, gwClient, kubeconfig, tc.gatewayImplementation, skipCleanup)
+	resources := deployProviders(ctx, t, k8sClient, kubeconfig, tc.providers, tc.gatewayImplementations, skipCleanup)
 
-	resources := append(providers, gwImpl)
+	for _, g := range tc.gatewayImplementations {
+		in
+		gwImpl := deployGatewayImplementation(ctx, t, k8sClient, gwClient, kubeconfig, g, skipCleanup)
+		resources = append(resources, gwImpl)
+	}
 
 	// Clean up all providers and the GWAPI implementation in parallel.
 	t.Cleanup(func() {
@@ -180,40 +184,44 @@ func runTestCase(t *testing.T, tc *testCase) {
 
 	verifyIngresses(ctx, t, tc, ingressAddresses)
 
-	// Run the ingress2gateway binary to convert ingresses to Gateway API resources.
-	res := runI2GW(ctx, t, kubeconfig, appNS, tc.providers, tc.providerFlags, tc.allowExperimentalGWAPI)
+	for _, g := range tc.gatewayImplementations {
+		// Run the ingress2gateway binary to convert ingresses to Gateway API resources.
+		res := runI2GW(ctx, t, kubeconfig, appNS, tc.providers, tc.providerFlags, tc.allowExperimentalGWAPI)
 
-	// TODO: Hack! Force correct gateway class since i2gw doesn't seem to infer that from the
-	// ingress at the moment.
-	for _, r := range res {
-		for k, v := range r.Gateways {
-			v.Spec.GatewayClassName = gwapiv1.ObjectName(tc.gatewayImplementation)
-			r.Gateways[k] = v
+		// TODO: Hack! Force correct gateway class since i2gw doesn't seem to infer that from the
+		// ingress at the moment.
+		for _, r := range res {
+			for k, v := range r.Gateways {
+				v.Spec.GatewayClassName = gwapiv1.ObjectName(g)
+				r.Gateways[k] = v
+			}
 		}
+
+		cleanupGatewayResources, err := createGatewayResources(ctx, t, gwClient, appNS, res, skipCleanup)
+		require.NoError(t, err, "creating gateway resources")
+		t.Cleanup(cleanupGatewayResources)
+
+		// Set up port forwarding to each gateway for verification.
+		gatewayPortForwarders, gwAddresses := setUpGatewayPortForwarding(
+			ctx,
+			t,
+			k8sClient,
+			restConfig,
+			getGateways(res),
+			appNS,
+			g,
+			testCaseNeedsHTTPS(tc),
+		)
+		t.Cleanup(func() {
+			for _, pf := range gatewayPortForwarders {
+				pf.stop()
+			}
+		})
+
+		t.Run(fmt.Sprintf("to %s", g), func(t *testing.T) {
+			verifyGatewayResources(ctx, t, tc, gwAddresses)
+		})
 	}
-
-	cleanupGatewayResources, err := createGatewayResources(ctx, t, gwClient, appNS, res, skipCleanup)
-	require.NoError(t, err, "creating gateway resources")
-	t.Cleanup(cleanupGatewayResources)
-
-	// Set up port forwarding to each gateway for verification.
-	gatewayPortForwarders, gwAddresses := setUpGatewayPortForwarding(
-		ctx,
-		t,
-		k8sClient,
-		restConfig,
-		getGateways(res),
-		appNS,
-		tc.gatewayImplementation,
-		testCaseNeedsHTTPS(tc),
-	)
-	t.Cleanup(func() {
-		for _, pf := range gatewayPortForwarders {
-			pf.stop()
-		}
-	})
-
-	verifyGatewayResources(ctx, t, tc, gwAddresses)
 }
 
 func deployProviders(
@@ -222,7 +230,7 @@ func deployProviders(
 	k8sClient *kubernetes.Clientset,
 	kubeconfig string,
 	providers []string,
-	gwImpl string,
+	gwImpls []string,
 	skipCleanup bool,
 ) []resource {
 	var resources []resource
@@ -238,7 +246,7 @@ func deployProviders(
 		case kong.Name:
 			// If Kong is also the gateway implementation, skip deploying Kong ingress separately.
 			// The gateway deployment will handle both Ingress and Gateway API.
-			if gwImpl == kong.Name {
+			if slices.Contains(gwImpls, kong.Name) {
 				continue
 			}
 			ns := fmt.Sprintf("%s-kong", e2ePrefix)
