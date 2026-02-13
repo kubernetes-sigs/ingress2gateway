@@ -33,7 +33,7 @@ func TestIngressNGINXCORS(t *testing.T) {
 	t.Run("to Istio", func(t *testing.T) {
 		t.Parallel()
 		t.Run("typical cors annotations", func(t *testing.T) {
-			suffix, err := randString(5)
+			suffix, err := randString()
 			require.NoError(t, err)
 			host := fmt.Sprintf("cors-%s.com", suffix)
 			origin := "https://cors.example.com"
@@ -150,7 +150,7 @@ func TestIngressNGINXCORS(t *testing.T) {
 			})
 		})
 		t.Run("cors defaults", func(t *testing.T) {
-			suffix, err := randString(5)
+			suffix, err := randString()
 			require.NoError(t, err)
 			host := fmt.Sprintf("cors-defaults-%s.com", suffix)
 			origin := "https://cors-defaults.example.com"
@@ -261,7 +261,7 @@ func TestIngressNGINXCORS(t *testing.T) {
 			})
 		})
 		t.Run("cors denied origin", func(t *testing.T) {
-			suffix, err := randString(5)
+			suffix, err := randString()
 			require.NoError(t, err)
 			host := fmt.Sprintf("cors-denied-%s.com", suffix)
 			allowedOrigin := "https://cors-allowed.example.com"
@@ -316,7 +316,7 @@ func TestIngressNGINXCORS(t *testing.T) {
 			})
 		})
 		t.Run("cors denied method and header", func(t *testing.T) {
-			suffix, err := randString(5)
+			suffix, err := randString()
 			require.NoError(t, err)
 			host := fmt.Sprintf("cors-denied-method-%s.com", suffix)
 			origin := "https://cors-method.example.com"

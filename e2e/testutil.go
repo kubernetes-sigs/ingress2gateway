@@ -100,7 +100,7 @@ func runTestCase(t *testing.T, tc *testCase) {
 	require.NoError(t, err)
 
 	// Generate a random prefix to ensure unique namespaces and hostnames for each test case.
-	randPrefix, err := randString(5)
+	randPrefix, err := randString()
 	require.NoError(t, err)
 	nsPrefix := fmt.Sprintf("%s-%s", e2ePrefix, randPrefix)
 

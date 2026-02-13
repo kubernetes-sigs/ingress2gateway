@@ -31,7 +31,7 @@ func TestIngressNGINXTLS(t *testing.T) {
 	t.Run("to Istio", func(t *testing.T) {
 		t.Parallel()
 		t.Run("tls ingress and gateway", func(t *testing.T) {
-			suffix, err := randString(5)
+			suffix, err := randString()
 			if err != nil {
 				t.Fatalf("creating host suffix: %v", err)
 			}
@@ -84,7 +84,7 @@ func TestIngressNGINXTLS(t *testing.T) {
 			})
 		})
 		t.Run("ssl-redirect annotation", func(t *testing.T) {
-			suffix, err := randString(5)
+			suffix, err := randString()
 			if err != nil {
 				t.Fatalf("creating host suffix: %v", err)
 			}
