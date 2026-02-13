@@ -217,6 +217,7 @@ func TestBackendTLSFeature(t *testing.T) {
 						"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
 						"nginx.ingress.kubernetes.io/proxy-ssl-verify": "on",
 						"nginx.ingress.kubernetes.io/proxy-ssl-secret": "my-ca-secret",
+						"nginx.ingress.kubernetes.io/proxy-ssl-server-name": "on",
 						"nginx.ingress.kubernetes.io/proxy-ssl-name":   "strict.internal.com",
 						// proxy-ssl-server-name defaults to "on" implicitly, but could be added here
 					},
@@ -399,6 +400,7 @@ func TestBackendTLSFeatureExtended(t *testing.T) {
 							"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
 							"nginx.ingress.kubernetes.io/proxy-ssl-verify": "on",
 							"nginx.ingress.kubernetes.io/proxy-ssl-secret": "my-ca-secret",
+							"nginx.ingress.kubernetes.io/proxy-ssl-server-name": "on",
 							"nginx.ingress.kubernetes.io/proxy-ssl-name":   "strict.internal.com",
 							"nginx.ingress.kubernetes.io/canary":           "true",
 						},
@@ -498,6 +500,7 @@ func TestBackendTLSFeatureExtended(t *testing.T) {
 							"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
 							"nginx.ingress.kubernetes.io/proxy-ssl-verify": "on",
 							"nginx.ingress.kubernetes.io/proxy-ssl-secret": "my-ca-secret",
+							"nginx.ingress.kubernetes.io/proxy-ssl-server-name": "on",
 							"nginx.ingress.kubernetes.io/proxy-ssl-name":   "first.com",
 						},
 					},
@@ -529,6 +532,7 @@ func TestBackendTLSFeatureExtended(t *testing.T) {
 							"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
 							"nginx.ingress.kubernetes.io/proxy-ssl-verify": "on",
 							"nginx.ingress.kubernetes.io/proxy-ssl-secret": "my-ca-secret",
+							"nginx.ingress.kubernetes.io/proxy-ssl-server-name": "on",
 							"nginx.ingress.kubernetes.io/proxy-ssl-name":   "second.com", // Conflict
 						},
 					},

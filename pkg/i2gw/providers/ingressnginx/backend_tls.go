@@ -101,8 +101,8 @@ func backendTLSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedN
 				if proxySSLSecret == "" {
 					validationErrors = append(validationErrors, fmt.Sprintf("%s must be provided with a trusted CA certificate", ProxySSLSecretAnnotation))
 				}
-				if proxySSLServerName == "off" { // Default is on, so blank is okay, just must not be off
-					validationErrors = append(validationErrors, fmt.Sprintf("%s cannot be 'off' (SNI is required)", ProxySSLServerNameAnnotation))
+				if proxySSLServerName != "on" { // Default is off in nginx, so must be explicitly turned on for Gateway API compatibility
+					validationErrors = append(validationErrors, fmt.Sprintf("%s must be strictly 'on' (SNI is required)", ProxySSLServerNameAnnotation))
 				}
 				if proxySSLName == "" {
 					validationErrors = append(validationErrors, fmt.Sprintf("%s must be explicitly provided (defaulting to upstream_balancer is invalid)", ProxySSLNameAnnotation))
@@ -130,7 +130,7 @@ func backendTLSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedN
 				existingPolicy, exists := ir.BackendTLSPolicies[policyKey]
 				var policy gatewayv1.BackendTLSPolicy
 				if exists {
-					policy = existingPolicy
+					policy = *existingPolicy.DeepCopy()
 				} else {
 					policy = common.CreateBackendTLSPolicy(namespace, policyName, serviceName)
 				}
