@@ -17,14 +17,12 @@ limitations under the License.
 package e2e
 
 import (
-	"fmt"
 	"net/http"
 	"regexp"
 	"testing"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
-	"github.com/stretchr/testify/require"
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
@@ -33,9 +31,6 @@ func TestIngressNGINXCORS(t *testing.T) {
 	t.Run("to Istio", func(t *testing.T) {
 		t.Parallel()
 		t.Run("typical cors annotations", func(t *testing.T) {
-			suffix, err := randString()
-			require.NoError(t, err)
-			host := fmt.Sprintf("cors-%s.com", suffix)
 			origin := "https://cors.example.com"
 			allowHeaders := "X-Requested-With, Content-Type"
 			allowMethods := "GET, POST, OPTIONS"
@@ -54,7 +49,6 @@ func TestIngressNGINXCORS(t *testing.T) {
 				ingresses: []*networkingv1.Ingress{
 					basicIngress().
 						withName("cors").
-						withHost(host).
 						withIngressClass(ingressnginx.NginxIngressClass).
 						withAnnotation("nginx.ingress.kubernetes.io/enable-cors", "true").
 						withAnnotation("nginx.ingress.kubernetes.io/cors-allow-origin", origin).
@@ -68,7 +62,6 @@ func TestIngressNGINXCORS(t *testing.T) {
 				verifiers: map[string][]verifier{
 					"cors": {
 						&httpRequestVerifier{
-							host:   host,
 							path:   "/",
 							method: http.MethodOptions,
 							allowedCodes: []int{
@@ -117,7 +110,6 @@ func TestIngressNGINXCORS(t *testing.T) {
 							},
 						},
 						&httpRequestVerifier{
-							host:   host,
 							path:   "/",
 							method: http.MethodGet,
 							requestHeaders: map[string]string{
@@ -150,9 +142,6 @@ func TestIngressNGINXCORS(t *testing.T) {
 			})
 		})
 		t.Run("cors defaults", func(t *testing.T) {
-			suffix, err := randString()
-			require.NoError(t, err)
-			host := fmt.Sprintf("cors-defaults-%s.com", suffix)
 			origin := "https://cors-defaults.example.com"
 			maxAge := "1728000"
 
@@ -168,7 +157,6 @@ func TestIngressNGINXCORS(t *testing.T) {
 				ingresses: []*networkingv1.Ingress{
 					basicIngress().
 						withName("cors-defaults").
-						withHost(host).
 						withIngressClass(ingressnginx.NginxIngressClass).
 						withAnnotation("nginx.ingress.kubernetes.io/enable-cors", "true").
 						build(),
@@ -176,7 +164,6 @@ func TestIngressNGINXCORS(t *testing.T) {
 				verifiers: map[string][]verifier{
 					"cors-defaults": {
 						&httpRequestVerifier{
-							host:   host,
 							path:   "/",
 							method: http.MethodOptions,
 							allowedCodes: []int{
@@ -235,7 +222,6 @@ func TestIngressNGINXCORS(t *testing.T) {
 							},
 						},
 						&httpRequestVerifier{
-							host:   host,
 							path:   "/",
 							method: http.MethodGet,
 							requestHeaders: map[string]string{
@@ -261,9 +247,6 @@ func TestIngressNGINXCORS(t *testing.T) {
 			})
 		})
 		t.Run("cors denied origin", func(t *testing.T) {
-			suffix, err := randString()
-			require.NoError(t, err)
-			host := fmt.Sprintf("cors-denied-%s.com", suffix)
 			allowedOrigin := "https://cors-allowed.example.com"
 			deniedOrigin := "https://cors-denied.example.com"
 
@@ -279,7 +262,6 @@ func TestIngressNGINXCORS(t *testing.T) {
 				ingresses: []*networkingv1.Ingress{
 					basicIngress().
 						withName("cors-denied").
-						withHost(host).
 						withIngressClass(ingressnginx.NginxIngressClass).
 						withAnnotation("nginx.ingress.kubernetes.io/enable-cors", "true").
 						withAnnotation("nginx.ingress.kubernetes.io/cors-allow-origin", allowedOrigin).
@@ -288,7 +270,6 @@ func TestIngressNGINXCORS(t *testing.T) {
 				verifiers: map[string][]verifier{
 					"cors-denied": {
 						&httpRequestVerifier{
-							host:   host,
 							path:   "/",
 							method: http.MethodOptions,
 							allowedCodes: []int{
@@ -303,7 +284,6 @@ func TestIngressNGINXCORS(t *testing.T) {
 							headerAbsent: []string{"Access-Control-Allow-Origin"},
 						},
 						&httpRequestVerifier{
-							host:   host,
 							path:   "/",
 							method: http.MethodGet,
 							requestHeaders: map[string]string{
@@ -316,9 +296,6 @@ func TestIngressNGINXCORS(t *testing.T) {
 			})
 		})
 		t.Run("cors denied method and header", func(t *testing.T) {
-			suffix, err := randString()
-			require.NoError(t, err)
-			host := fmt.Sprintf("cors-denied-method-%s.com", suffix)
 			origin := "https://cors-method.example.com"
 			allowedMethods := "GET, POST"
 			allowedHeaders := "X-Requested-With"
@@ -337,7 +314,6 @@ func TestIngressNGINXCORS(t *testing.T) {
 				ingresses: []*networkingv1.Ingress{
 					basicIngress().
 						withName("cors-denied-method").
-						withHost(host).
 						withIngressClass(ingressnginx.NginxIngressClass).
 						withAnnotation("nginx.ingress.kubernetes.io/enable-cors", "true").
 						withAnnotation("nginx.ingress.kubernetes.io/cors-allow-origin", origin).
@@ -348,7 +324,6 @@ func TestIngressNGINXCORS(t *testing.T) {
 				verifiers: map[string][]verifier{
 					"cors-denied-method": {
 						&httpRequestVerifier{
-							host:   host,
 							path:   "/",
 							method: http.MethodOptions,
 							allowedCodes: []int{

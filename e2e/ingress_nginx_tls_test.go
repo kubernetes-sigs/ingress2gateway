@@ -22,6 +22,7 @@ import (
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 )
@@ -32,9 +33,7 @@ func TestIngressNGINXTLS(t *testing.T) {
 		t.Parallel()
 		t.Run("tls ingress and gateway", func(t *testing.T) {
 			suffix, err := randString()
-			if err != nil {
-				t.Fatalf("creating host suffix: %v", err)
-			}
+			require.NoError(t, err, "creating host suffix")
 			host := "tls-" + suffix + ".example.com"
 			tlsSecret, err := generateSelfSignedTLSSecret("tls-cert-"+suffix, "", host, []string{host})
 			if err != nil {
@@ -85,9 +84,7 @@ func TestIngressNGINXTLS(t *testing.T) {
 		})
 		t.Run("ssl-redirect annotation", func(t *testing.T) {
 			suffix, err := randString()
-			if err != nil {
-				t.Fatalf("creating host suffix: %v", err)
-			}
+			require.NoError(t, err, "creating host suffix")
 			redirectHost := "tls-redirect-" + suffix + ".example.com"
 			noRedirectHost := "tls-noredirect-" + suffix + ".example.com"
 			redirectSecret, err := generateSelfSignedTLSSecret("tls-redirect-"+suffix, "", redirectHost, []string{redirectHost})
