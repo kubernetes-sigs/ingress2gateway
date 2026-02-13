@@ -119,6 +119,7 @@ func TestIngressNginx(t *testing.T) {
 		t.Run("basic conversion", func(t *testing.T) {
 			runTestCase(t, &testCase{
 				gatewayImplementation: kgatewayName,
+				emitter:               kgatewayName,
 				providers:             []string{ingressnginx.Name},
 				providerFlags: map[string]map[string]string{
 					ingressnginx.Name: {

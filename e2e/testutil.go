@@ -63,6 +63,7 @@ type testCase struct {
 	providerFlags          map[string]map[string]string
 	gatewayImplementation  string
 	allowExperimentalGWAPI bool
+	emitter                string
 	verifiers              map[string][]verifier
 }
 
@@ -194,6 +195,7 @@ func runTestCase(t *testing.T, tc *testCase) {
 		tc.providerFlags,
 		tc.allowExperimentalGWAPI,
 		tc.gatewayImplementation,
+		tc.emitter,
 	)
 
 	// TODO: Hack! Force correct gateway class since i2gw doesn't seem to infer that from the
@@ -507,6 +509,7 @@ func runI2GW(
 	providerFlags map[string]map[string]string,
 	allowExperimental bool,
 	gwImpl string,
+	emitter string,
 ) []i2gw.GatewayResources {
 	binaryPath := os.Getenv("I2GW_BINARY_PATH")
 	require.NotEmpty(t, binaryPath, "environment variable I2GW_BINARY_PATH not set")
@@ -523,8 +526,11 @@ func runI2GW(
 
 	// Some gateway implementations require implementation-specific extension resources emitted
 	// by ingress2gateway.
-	if gwImpl != "" {
-		args = append(args, "--emitter", gwImpl)
+	if emitter == "" && gwImpl == kgatewayName {
+		emitter = kgatewayName
+	}
+	if emitter != "" {
+		args = append(args, "--emitter", emitter)
 	}
 
 	// Add provider-specific flags.
