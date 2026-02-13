@@ -93,7 +93,7 @@ func deployGatewayAPIKong(
 
 	l.Logf("Creating GatewayClass %s", kongGatewayClass)
 	_, err := gwClient.GatewayV1().GatewayClasses().Create(ctx, gc, metav1.CreateOptions{})
-	if !errors.IsAlreadyExists(err) {
+	if errors.IsAlreadyExists(err) { // false if err is nil
 		_, err = gwClient.GatewayV1().GatewayClasses().Update(ctx, gc, metav1.UpdateOptions{})
 	}
 	if err != nil {

@@ -59,7 +59,7 @@ func TestIngressNginx(t *testing.T) {
 				},
 			})
 		})
-		suffix, err := randString(6)
+		suffix, err := randString(5)
 		require.NoError(t, err)
 		host := "foo.example.com" + suffix
 		t.Run("with host field", func(t *testing.T) {

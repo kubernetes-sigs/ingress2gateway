@@ -98,11 +98,7 @@ type maybeNegativePattern struct {
 }
 
 func (m maybeNegativePattern) matches(s string) bool {
-	match := m.pattern.MatchString(s)
-	if m.negate {
-		return !match
-	}
-	return match
+	return m.pattern.MatchString(s) != m.negate
 }
 
 type headerMatch struct {

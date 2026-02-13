@@ -84,34 +84,34 @@ func TestIngressNGINXCORS(t *testing.T) {
 								{
 									name: "Access-Control-Allow-Origin",
 									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile("^" + regexp.QuoteMeta(origin) + "$"), negate: false},
+										{pattern: regexp.MustCompile("^" + regexp.QuoteMeta(origin) + "$")},
 									},
 								},
 								{
 									name: "Access-Control-Allow-Methods",
 									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile(`(?i).*GET.*`), negate: false},
-										{pattern: regexp.MustCompile(`(?i).*POST.*`), negate: false},
-										{pattern: regexp.MustCompile(`(?i).*OPTIONS.*`), negate: false},
+										{pattern: regexp.MustCompile(`(?i).*GET.*`)},
+										{pattern: regexp.MustCompile(`(?i).*POST.*`)},
+										{pattern: regexp.MustCompile(`(?i).*OPTIONS.*`)},
 									},
 								},
 								{
 									name: "Access-Control-Allow-Headers",
 									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile(`(?i).*X-Requested-With.*`), negate: false},
-										{pattern: regexp.MustCompile(`(?i).*Content-Type.*`), negate: false},
+										{pattern: regexp.MustCompile(`(?i).*X-Requested-With.*`)},
+										{pattern: regexp.MustCompile(`(?i).*Content-Type.*`)},
 									},
 								},
 								{
 									name: "Access-Control-Allow-Credentials",
 									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile(`(?i)^true$`), negate: false},
+										{pattern: regexp.MustCompile(`(?i)^true$`)},
 									},
 								},
 								{
 									name: "Access-Control-Max-Age",
 									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile("^" + maxAge + "$"), negate: false},
+										{pattern: regexp.MustCompile("^" + maxAge + "$")},
 									},
 								},
 							},
@@ -127,25 +127,20 @@ func TestIngressNGINXCORS(t *testing.T) {
 								{
 									name: "Access-Control-Allow-Origin",
 									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile("^" + regexp.QuoteMeta(origin) + "$"), negate: false},
+										{pattern: regexp.MustCompile("^" + regexp.QuoteMeta(origin) + "$")},
 									},
 								},
 								{
 									name: "Access-Control-Allow-Credentials",
-									// patterns: []*regexp.Regexp{regexp.MustCompile(`(?i)^true$`)},
 									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile(`(?i)^true$`), negate: false},
+										{pattern: regexp.MustCompile(`(?i)^true$`)},
 									},
 								},
 								{
 									name: "Access-Control-Expose-Headers",
-									// patterns: []*regexp.Regexp{
-									// 	regexp.MustCompile(`(?i).*X-Expose-1.*`),
-									// 	regexp.MustCompile(`(?i).*X-Expose-2.*`),
-									// },
 									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile(`(?i).*X-Expose-1.*`), negate: false},
-										{pattern: regexp.MustCompile(`(?i).*X-Expose-2.*`), negate: false},
+										{pattern: regexp.MustCompile(`(?i).*X-Expose-1.*`)},
+										{pattern: regexp.MustCompile(`(?i).*X-Expose-2.*`)},
 									},
 								},
 							},
@@ -155,7 +150,7 @@ func TestIngressNGINXCORS(t *testing.T) {
 			})
 		})
 		t.Run("cors defaults", func(t *testing.T) {
-			suffix, err := randString(6)
+			suffix, err := randString(5)
 			require.NoError(t, err)
 			host := fmt.Sprintf("cors-defaults-%s.com", suffix)
 			origin := "https://cors-defaults.example.com"
@@ -197,44 +192,44 @@ func TestIngressNGINXCORS(t *testing.T) {
 								{
 									name: "Access-Control-Allow-Origin",
 									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile(`^\*$|^` + regexp.QuoteMeta(origin) + `$`), negate: false},
+										{pattern: regexp.MustCompile(`^\*$|^` + regexp.QuoteMeta(origin) + `$`)},
 									},
 								},
 								{
 									name: "Access-Control-Allow-Methods",
 									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile(`(?i).*GET.*`), negate: false},
-										{pattern: regexp.MustCompile(`(?i).*PUT.*`), negate: false},
-										{pattern: regexp.MustCompile(`(?i).*POST.*`), negate: false},
-										{pattern: regexp.MustCompile(`(?i).*DELETE.*`), negate: false},
-										{pattern: regexp.MustCompile(`(?i).*PATCH.*`), negate: false},
-										{pattern: regexp.MustCompile(`(?i).*OPTIONS.*`), negate: false},
+										{pattern: regexp.MustCompile(`(?i).*GET.*`)},
+										{pattern: regexp.MustCompile(`(?i).*PUT.*`)},
+										{pattern: regexp.MustCompile(`(?i).*POST.*`)},
+										{pattern: regexp.MustCompile(`(?i).*DELETE.*`)},
+										{pattern: regexp.MustCompile(`(?i).*PATCH.*`)},
+										{pattern: regexp.MustCompile(`(?i).*OPTIONS.*`)},
 									},
 								},
 								{
 									name: "Access-Control-Allow-Headers",
 									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile(`(?i).*DNT.*`), negate: false},
-										{pattern: regexp.MustCompile(`(?i).*Keep-Alive.*`), negate: false},
-										{pattern: regexp.MustCompile(`(?i).*User-Agent.*`), negate: false},
-										{pattern: regexp.MustCompile(`(?i).*X-Requested-With.*`), negate: false},
-										{pattern: regexp.MustCompile(`(?i).*If-Modified-Since.*`), negate: false},
-										{pattern: regexp.MustCompile(`(?i).*Cache-Control.*`), negate: false},
-										{pattern: regexp.MustCompile(`(?i).*Content-Type.*`), negate: false},
-										{pattern: regexp.MustCompile(`(?i).*Range.*`), negate: false},
-										{pattern: regexp.MustCompile(`(?i).*Authorization.*`), negate: false},
+										{pattern: regexp.MustCompile(`(?i).*DNT.*`)},
+										{pattern: regexp.MustCompile(`(?i).*Keep-Alive.*`)},
+										{pattern: regexp.MustCompile(`(?i).*User-Agent.*`)},
+										{pattern: regexp.MustCompile(`(?i).*X-Requested-With.*`)},
+										{pattern: regexp.MustCompile(`(?i).*If-Modified-Since.*`)},
+										{pattern: regexp.MustCompile(`(?i).*Cache-Control.*`)},
+										{pattern: regexp.MustCompile(`(?i).*Content-Type.*`)},
+										{pattern: regexp.MustCompile(`(?i).*Range.*`)},
+										{pattern: regexp.MustCompile(`(?i).*Authorization.*`)},
 									},
 								},
 								{
 									name: "Access-Control-Allow-Credentials",
 									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile(`(?i)^true$`), negate: false},
+										{pattern: regexp.MustCompile(`(?i)^true$`)},
 									},
 								},
 								{
 									name: "Access-Control-Max-Age",
 									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile("^" + maxAge + "$"), negate: false},
+										{pattern: regexp.MustCompile("^" + maxAge + "$")},
 									},
 								},
 							},
@@ -250,13 +245,13 @@ func TestIngressNGINXCORS(t *testing.T) {
 								{
 									name: "Access-Control-Allow-Origin",
 									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile(`^\*$|^` + regexp.QuoteMeta(origin) + `$`), negate: false},
+										{pattern: regexp.MustCompile(`^\*$|^` + regexp.QuoteMeta(origin) + `$`)},
 									},
 								},
 								{
 									name: "Access-Control-Allow-Credentials",
 									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile(`(?i)^true$`), negate: false},
+										{pattern: regexp.MustCompile(`(?i)^true$`)},
 									},
 								},
 							},
@@ -266,7 +261,7 @@ func TestIngressNGINXCORS(t *testing.T) {
 			})
 		})
 		t.Run("cors denied origin", func(t *testing.T) {
-			suffix, err := randString(6)
+			suffix, err := randString(5)
 			require.NoError(t, err)
 			host := fmt.Sprintf("cors-denied-%s.com", suffix)
 			allowedOrigin := "https://cors-allowed.example.com"
@@ -321,7 +316,7 @@ func TestIngressNGINXCORS(t *testing.T) {
 			})
 		})
 		t.Run("cors denied method and header", func(t *testing.T) {
-			suffix, err := randString(6)
+			suffix, err := randString(5)
 			require.NoError(t, err)
 			host := fmt.Sprintf("cors-denied-method-%s.com", suffix)
 			origin := "https://cors-method.example.com"
@@ -369,20 +364,20 @@ func TestIngressNGINXCORS(t *testing.T) {
 								{
 									name: "Access-Control-Allow-Origin",
 									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile("^" + regexp.QuoteMeta(origin) + "$"), negate: false},
+										{pattern: regexp.MustCompile("^" + regexp.QuoteMeta(origin) + "$")},
 									},
 								},
 								{
 									name: "Access-Control-Allow-Methods",
 									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile(`(?i).*GET.*`), negate: false},
-										{pattern: regexp.MustCompile(`(?i).*POST.*`), negate: false},
+										{pattern: regexp.MustCompile(`(?i).*GET.*`)},
+										{pattern: regexp.MustCompile(`(?i).*POST.*`)},
 									},
 								},
 								{
 									name: "Access-Control-Allow-Headers",
 									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile(`(?i).*` + regexp.QuoteMeta(allowedHeaders) + `.*`), negate: false},
+										{pattern: regexp.MustCompile(`(?i).*` + regexp.QuoteMeta(allowedHeaders) + `.*`)},
 									},
 								},
 								{

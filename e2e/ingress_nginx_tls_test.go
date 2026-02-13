@@ -74,7 +74,7 @@ func TestIngressNGINXTLS(t *testing.T) {
 								{
 									name: "Location",
 									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile("^https://" + host + "/?$"), negate: false},
+										{pattern: regexp.MustCompile("^https://" + host + "/?$")},
 									},
 								},
 							},
@@ -84,7 +84,7 @@ func TestIngressNGINXTLS(t *testing.T) {
 			})
 		})
 		t.Run("ssl-redirect annotation", func(t *testing.T) {
-			suffix, err := randString(6)
+			suffix, err := randString(5)
 			if err != nil {
 				t.Fatalf("creating host suffix: %v", err)
 			}
@@ -139,7 +139,7 @@ func TestIngressNGINXTLS(t *testing.T) {
 								{
 									name: "Location",
 									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile("^https://" + redirectHost + "/?$"), negate: false},
+										{pattern: regexp.MustCompile("^https://" + redirectHost + "/?$")},
 									},
 								},
 							},

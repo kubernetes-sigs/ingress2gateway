@@ -32,7 +32,7 @@ func TestIngressNGINXCanary(t *testing.T) {
 	t.Run("to Istio", func(t *testing.T) {
 		t.Parallel()
 		t.Run("base canary", func(t *testing.T) {
-			suffix, err := randString(6)
+			suffix, err := randString(5)
 			require.NoError(t, err)
 			host := fmt.Sprintf("canary-%s.com", suffix)
 			runTestCase(t, &testCase{
