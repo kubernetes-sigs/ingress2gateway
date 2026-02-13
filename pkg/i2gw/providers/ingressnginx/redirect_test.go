@@ -100,15 +100,14 @@ func Test_redirectFeature(t *testing.T) {
 								{
 									Type: gatewayv1.HTTPRouteFilterRequestRedirect,
 									RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
+										Scheme:     ptr.To("https"),
+										Hostname:   ptr.To(gatewayv1.PreciseHostname("example.com")),
+										Path:       &gatewayv1.HTTPPathModifier{Type: gatewayv1.FullPathHTTPPathModifier, ReplaceFullPath: ptr.To("/new-path")},
 										StatusCode: ptr.To(301),
 									},
 								},
 							},
-						},
-						{
-							BackendRefs: []gatewayv1.HTTPBackendRef{
-								{BackendRef: gatewayv1.BackendRef{BackendObjectReference: gatewayv1.BackendObjectReference{Name: "foo", Port: ptr.To(gatewayv1.PortNumber(3000))}}},
-							},
+							BackendRefs: nil,
 						},
 					},
 				},
@@ -179,15 +178,14 @@ func Test_redirectFeature(t *testing.T) {
 								{
 									Type: gatewayv1.HTTPRouteFilterRequestRedirect,
 									RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
+										Scheme:     ptr.To("https"),
+										Hostname:   ptr.To(gatewayv1.PreciseHostname("example.com")),
+										Path:       &gatewayv1.HTTPPathModifier{Type: gatewayv1.FullPathHTTPPathModifier, ReplaceFullPath: ptr.To("/temporary")},
 										StatusCode: ptr.To(302),
 									},
 								},
 							},
-						},
-						{
-							BackendRefs: []gatewayv1.HTTPBackendRef{
-								{BackendRef: gatewayv1.BackendRef{BackendObjectReference: gatewayv1.BackendObjectReference{Name: "bar", Port: ptr.To(gatewayv1.PortNumber(8080))}}},
-							},
+							BackendRefs: nil,
 						},
 					},
 				},
@@ -259,15 +257,14 @@ func Test_redirectFeature(t *testing.T) {
 								{
 									Type: gatewayv1.HTTPRouteFilterRequestRedirect,
 									RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
+										Scheme:     ptr.To("https"),
+										Hostname:   ptr.To(gatewayv1.PreciseHostname("example.com")),
+										Path:       &gatewayv1.HTTPPathModifier{Type: gatewayv1.FullPathHTTPPathModifier, ReplaceFullPath: ptr.To("/temporal")},
 										StatusCode: ptr.To(302),
 									},
 								},
 							},
-						},
-						{
-							BackendRefs: []gatewayv1.HTTPBackendRef{
-								{BackendRef: gatewayv1.BackendRef{BackendObjectReference: gatewayv1.BackendObjectReference{Name: "conflict", Port: ptr.To(gatewayv1.PortNumber(8080))}}},
-							},
+							BackendRefs: nil,
 						},
 					},
 				},
@@ -285,6 +282,23 @@ func Test_redirectFeature(t *testing.T) {
 					Rules: []networkingv1.IngressRule{
 						{
 							Host: "normal.com",
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{
+										{
+											Path: "/",
+											Backend: networkingv1.IngressBackend{
+												Service: &networkingv1.IngressServiceBackend{
+													Name: "normal",
+													Port: networkingv1.ServiceBackendPort{
+														Number: 80,
+													},
+												},
+											},
+										},
+									},
+								},
+							},
 						},
 					},
 				},
@@ -332,13 +346,23 @@ func Test_redirectFeature(t *testing.T) {
 				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{},
 			}
 
-			if tt.initialHTTPRoute != nil {
+				if tt.initialHTTPRoute != nil {
 				routeKey := types.NamespacedName{
 					Namespace: tt.initialHTTPRoute.Namespace,
 					Name:      tt.initialHTTPRoute.Name,
 				}
+				// Initialize RuleBackendSources to match the number of rules
+				ruleBackendSources := make([][]providerir.BackendSource, len(tt.initialHTTPRoute.Spec.Rules))
+				for i := range ruleBackendSources {
+					ruleBackendSources[i] = []providerir.BackendSource{
+						{
+							Ingress: &tt.ingress,
+						},
+					}
+				}
 				ir.HTTPRoutes[routeKey] = providerir.HTTPRouteContext{
-					HTTPRoute: *tt.initialHTTPRoute,
+					HTTPRoute:          *tt.initialHTTPRoute,
+					RuleBackendSources: ruleBackendSources,
 				}
 			}
 
@@ -392,14 +416,53 @@ func Test_redirectFeature(t *testing.T) {
 						return
 					}
 
-					if expectedFilter.RequestRedirect != nil && expectedFilter.RequestRedirect.StatusCode != nil {
-						if actualFilter.RequestRedirect.StatusCode == nil {
+					expected := expectedFilter.RequestRedirect
+					actual := actualFilter.RequestRedirect
+
+					if expected.StatusCode != nil {
+						if actual.StatusCode == nil {
 							t.Errorf("Expected status code to be set")
-						} else if *actualFilter.RequestRedirect.StatusCode != *expectedFilter.RequestRedirect.StatusCode {
-							t.Errorf("Expected status code %d, got %d",
-								*expectedFilter.RequestRedirect.StatusCode,
-								*actualFilter.RequestRedirect.StatusCode)
+						} else if *actual.StatusCode != *expected.StatusCode {
+							t.Errorf("Expected status code %d, got %d", *expected.StatusCode, *actual.StatusCode)
 						}
+					}
+
+					if expected.Scheme != nil {
+						if actual.Scheme == nil {
+							t.Errorf("Expected scheme to be set")
+						} else if *actual.Scheme != *expected.Scheme {
+							t.Errorf("Expected scheme %s, got %s", *expected.Scheme, *actual.Scheme)
+						}
+					}
+
+					if expected.Hostname != nil {
+						if actual.Hostname == nil {
+							t.Errorf("Expected hostname to be set")
+						} else if *actual.Hostname != *expected.Hostname {
+							t.Errorf("Expected hostname %s, got %s", *expected.Hostname, *actual.Hostname)
+						}
+					}
+
+					if expected.Path != nil {
+						if actual.Path == nil {
+							t.Errorf("Expected path to be set")
+						} else {
+							if actual.Path.Type != expected.Path.Type {
+								t.Errorf("Expected path type %v, got %v", expected.Path.Type, actual.Path.Type)
+							}
+							if expected.Path.ReplaceFullPath != nil {
+								if actual.Path.ReplaceFullPath == nil {
+									t.Errorf("Expected ReplaceFullPath to be set")
+								} else if *actual.Path.ReplaceFullPath != *expected.Path.ReplaceFullPath {
+									t.Errorf("Expected ReplaceFullPath %s, got %s", *expected.Path.ReplaceFullPath, *actual.Path.ReplaceFullPath)
+								}
+							}
+						}
+					}
+
+					// Verify BackendRefs are cleared when redirect is present
+					if len(actualRoute.Spec.Rules[0].BackendRefs) != 0 {
+						t.Errorf("Expected BackendRefs to be cleared for redirect rule, got %d refs", len(actualRoute.Spec.Rules[0].BackendRefs))
 					}
 				}
 			}
@@ -420,12 +483,29 @@ func Test_redirectFeature_emptyURL(t *testing.T) {
 			Rules: []networkingv1.IngressRule{
 				{
 					Host: "empty.com",
+					IngressRuleValue: networkingv1.IngressRuleValue{
+						HTTP: &networkingv1.HTTPIngressRuleValue{
+							Paths: []networkingv1.HTTPIngressPath{
+								{
+									Path: "/",
+									Backend: networkingv1.IngressBackend{
+										Service: &networkingv1.IngressServiceBackend{
+											Name: "empty",
+											Port: networkingv1.ServiceBackendPort{
+												Number: 80,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},
 	}
 
-	ir := providerir.ProviderIR{
+		ir := providerir.ProviderIR{
 		HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 			{Namespace: "default", Name: common.RouteName("test-ingress", "empty.com")}: {
 				HTTPRoute: gatewayv1.HTTPRoute{
@@ -435,6 +515,11 @@ func Test_redirectFeature_emptyURL(t *testing.T) {
 					},
 					Spec: gatewayv1.HTTPRouteSpec{
 						Rules: []gatewayv1.HTTPRouteRule{{}},
+					},
+				},
+				RuleBackendSources: [][]providerir.BackendSource{
+					{
+						{Ingress: &ingress},
 					},
 				},
 			},
