@@ -22,7 +22,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-// Generates a cryptographically random alphanumeric string of length n. Uses crypto/rand to ensure
+// Generates a cryptographically random alphanumeric string of length 5. Uses crypto/rand to ensure
 // uniqueness even when called from parallel tests.
 func randString() (string, error) {
 	n := 5

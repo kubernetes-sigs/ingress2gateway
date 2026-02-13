@@ -170,7 +170,7 @@ func createGatewayClasses(ctx context.Context, l logger, client *gwclientset.Cli
 			&gc,
 			metav1.CreateOptions{},
 		)
-		if errors.IsAlreadyExists(err) { // False when err is nil
+		if errors.IsAlreadyExists(err) {
 			_, err = client.GatewayV1().GatewayClasses().Update(ctx, &gc, metav1.UpdateOptions{})
 		}
 		if err != nil {
