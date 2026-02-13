@@ -111,4 +111,39 @@ func TestApplyTrailingSlashPathRedirectsToEmitterIR(t *testing.T) {
 	if len(ir2.HTTPRoutes[key].Spec.Rules) != 1 {
 		t.Fatalf("expected no extra redirect rule when exact /foo exists, got %d rules", len(ir2.HTTPRoutes[key].Spec.Rules))
 	}
+
+	// If a prefix /foo rule exists, no redirect rule should be added either.
+	ir3 := emitterir.EmitterIR{
+		HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{
+			key: {
+				HTTPRoute: gatewayv1.HTTPRoute{
+					ObjectMeta: metav1.ObjectMeta{Name: key.Name, Namespace: key.Namespace},
+					Spec: gatewayv1.HTTPRouteSpec{
+						Rules: []gatewayv1.HTTPRouteRule{
+							{
+								Matches: []gatewayv1.HTTPRouteMatch{
+									{
+										Path: &gatewayv1.HTTPPathMatch{
+											Type:  &prefix,
+											Value: ptr.To("/foo"),
+										},
+									},
+									{
+										Path: &gatewayv1.HTTPPathMatch{
+											Type:  &prefix,
+											Value: ptr.To("/foo/"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	applyTrailingSlashPathRedirectsToEmitterIR(&ir3)
+	if len(ir3.HTTPRoutes[key].Spec.Rules) != 1 {
+		t.Fatalf("expected no extra redirect rule when prefix /foo exists, got %d rules", len(ir3.HTTPRoutes[key].Spec.Rules))
+	}
 }

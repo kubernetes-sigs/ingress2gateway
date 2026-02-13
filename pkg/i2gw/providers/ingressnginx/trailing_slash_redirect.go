@@ -27,14 +27,14 @@ import (
 func applyTrailingSlashPathRedirectsToEmitterIR(eir *emitterir.EmitterIR) {
 	for key, routeCtx := range eir.HTTPRoutes {
 		rules := routeCtx.Spec.Rules
-		exactPathRuleExists := make(map[string]struct{})
+		sourcePathAlreadyMatched := make(map[string]struct{})
 		for _, rule := range rules {
 			for _, match := range rule.Matches {
 				if match.Path == nil || match.Path.Type == nil || match.Path.Value == nil {
 					continue
 				}
-				if *match.Path.Type == gatewayv1.PathMatchExact {
-					exactPathRuleExists[*match.Path.Value] = struct{}{}
+				if *match.Path.Type == gatewayv1.PathMatchExact || *match.Path.Type == gatewayv1.PathMatchPathPrefix {
+					sourcePathAlreadyMatched[*match.Path.Value] = struct{}{}
 				}
 			}
 		}
@@ -60,7 +60,7 @@ func applyTrailingSlashPathRedirectsToEmitterIR(eir *emitterir.EmitterIR) {
 				if redirectSource == "" {
 					continue
 				}
-				if _, exists := exactPathRuleExists[redirectSource]; exists {
+				if _, exists := sourcePathAlreadyMatched[redirectSource]; exists {
 					continue
 				}
 				if _, added := redirectAdded[redirectSource]; added {

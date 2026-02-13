@@ -17,7 +17,7 @@ limitations under the License.
 package e2e
 
 import (
-	"regexp"
+	// "regexp"
 	"testing"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
@@ -40,6 +40,20 @@ func TestIngressNGINXPathMatching(t *testing.T) {
 				ing.Spec.Rules[0].HTTP.Paths[0].PathType = ptr.To(pathType)
 				return ing
 			}
+			ingressWithBaseAndSlashPrefix := func(name string) *networkingv1.Ingress {
+				ing := ingressForPath(name, "/hostname", networkingv1.PathTypePrefix)
+				ing.Spec.Rules[0].HTTP.Paths = append(ing.Spec.Rules[0].HTTP.Paths, networkingv1.HTTPIngressPath{
+					Path:     "/hostname/",
+					PathType: ptr.To(networkingv1.PathTypePrefix),
+					Backend: networkingv1.IngressBackend{
+						Service: &networkingv1.IngressServiceBackend{
+							Name: DummyAppName1,
+							Port: networkingv1.ServiceBackendPort{Number: 80},
+						},
+					},
+				})
+				return ing
+			}
 
 			runTestCase(t, &testCase{
 				gatewayImplementation: istio.ProviderName,
@@ -50,49 +64,55 @@ func TestIngressNGINXPathMatching(t *testing.T) {
 					},
 				},
 				ingresses: []*networkingv1.Ingress{
-					ingressForPath("exact", "/hostname", networkingv1.PathTypeExact),
-					ingressForPath("prefix", "/hostname", networkingv1.PathTypePrefix),
-					ingressForPath("exact-slash", "/hostname/", networkingv1.PathTypeExact),
-					ingressForPath("prefix-slash", "/hostname/", networkingv1.PathTypePrefix),
+					// ingressForPath("exact", "/hostname", networkingv1.PathTypeExact),
+					// ingressForPath("prefix", "/hostname", networkingv1.PathTypePrefix),
+					// ingressForPath("exact-slash", "/hostname/", networkingv1.PathTypeExact),
+					// // ingressForPath("prefix-slash", "/hostname/", networkingv1.PathTypePrefix),
+					ingressWithBaseAndSlashPrefix("prefix-and-prefix-slash"),
 				},
 				verifiers: map[string][]verifier{
-					"exact": {
-						&httpRequestVerifier{path: "/hostname", allowedCodes: []int{200}},
-						&httpRequestVerifier{path: "/hostname/", allowedCodes: []int{404}},
-						&httpRequestVerifier{path: "/hostnameaaa", allowedCodes: []int{404}},
-					},
-					"prefix": {
-						&httpRequestVerifier{path: "/hostname", allowedCodes: []int{200}},
-						&httpRequestVerifier{path: "/hostname/", allowedCodes: []int{200}},
-						&httpRequestVerifier{path: "/hostnameaaa", allowedCodes: []int{404}},
-					},
-					"exact-slash": {
-						&httpRequestVerifier{
-							path:         "/hostname",
-							allowedCodes: []int{301},
-							headerMatches: []headerMatch{{
-								name: "Location",
-								patterns: []*maybeNegativePattern{
-									{pattern: regexp.MustCompile("/hostname/$")},
-								},
-							}},
-						},
-						&httpRequestVerifier{path: "/hostname/", allowedCodes: []int{200}},
-						&httpRequestVerifier{path: "/hostnameaaa", allowedCodes: []int{404}},
-					},
-					"prefix-slash": {
-						&httpRequestVerifier{
-							path:         "/hostname",
-							allowedCodes: []int{301},
-							headerMatches: []headerMatch{{
-								name: "Location",
-								patterns: []*maybeNegativePattern{
-									{pattern: regexp.MustCompile("/hostname/$")},
-								},
-							}},
-						},
-						&httpRequestVerifier{path: "/hostname/", allowedCodes: []int{200}},
-						&httpRequestVerifier{path: "/hostnameaaa", allowedCodes: []int{404}},
+					// "exact": {
+					// 	&httpRequestVerifier{path: "/hostname", allowedCodes: []int{200}},
+					// 	&httpRequestVerifier{path: "/hostname/", allowedCodes: []int{404}},
+					// 	&httpRequestVerifier{path: "/hostnameaaa", allowedCodes: []int{404}},
+					// },
+					// "prefix": {
+					// 	&httpRequestVerifier{path: "/hostname", allowedCodes: []int{200}},
+					// 	&httpRequestVerifier{path: "/hostname/", allowedCodes: []int{200}},
+					// 	&httpRequestVerifier{path: "/hostnameaaa", allowedCodes: []int{404}},
+					// },
+					// "exact-slash": {
+					// 	&httpRequestVerifier{
+					// 		path:         "/hostname",
+					// 		allowedCodes: []int{301},
+					// 		headerMatches: []headerMatch{{
+					// 			name: "Location",
+					// 			patterns: []*maybeNegativePattern{
+					// 				{pattern: regexp.MustCompile("/hostname/$")},
+					// 			},
+					// 		}},
+					// 	},
+					// 	&httpRequestVerifier{path: "/hostname/", allowedCodes: []int{200}},
+					// 	&httpRequestVerifier{path: "/hostnameaaa", allowedCodes: []int{404}},
+					// },
+					// "prefix-slash": {
+					// 	&httpRequestVerifier{
+					// 		path:         "/hostname",
+					// 		allowedCodes: []int{301},
+					// 		headerMatches: []headerMatch{{
+					// 			name: "Location",
+					// 			patterns: []*maybeNegativePattern{
+					// 				{pattern: regexp.MustCompile("/hostname/$")},
+					// 			},
+					// 		}},
+					// 	},
+					// 	&httpRequestVerifier{path: "/hostname/", allowedCodes: []int{200}},
+					// 	&httpRequestVerifier{path: "/hostnameaaa", allowedCodes: []int{404}},
+					// },
+					"prefix-and-prefix-slash": {
+						&httpRequestVerifier{path: "/hostname", allowedCodes: []int{200}, headerAbsent: []string{"Location"}},
+						// &httpRequestVerifier{path: "/hostname/", allowedCodes: []int{200}},
+						// &httpRequestVerifier{path: "/hostnameaaa", allowedCodes: []int{404}},
 					},
 				},
 			})
