@@ -42,7 +42,12 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 
 	ruleGroups := common.GetRuleGroups(ingresses)
 	for _, rg := range ruleGroups {
-		for _, rule := range rg.Rules {
+		key := types.NamespacedName{Namespace: rg.Namespace, Name: common.RouteName(rg.Name, rg.Host)}
+		httpRouteContext, ok := ir.HTTPRoutes[key]
+		if !ok {
+			continue
+		}
+		for ruleIndex, rule := range rg.Rules {
 
 			// Warn about unsupported proxy-redirect annotations
 			if rule.Ingress.Annotations[ProxyRedirectFromAnnotation] != "" {
@@ -117,88 +122,68 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 				continue
 			}
 
-			// Apply redirect to all rules in the ingress
-			for _, ingressRule := range rule.Ingress.Spec.Rules {
-				routeName := common.RouteName(rule.Ingress.Name, ingressRule.Host)
-				routeKey := types.NamespacedName{Namespace: rule.Ingress.Namespace, Name: routeName}
-				httpRouteContext, routeExists := ir.HTTPRoutes[routeKey]
-				if !routeExists {
+			// Create the redirect filter
+			redirectFilterConfig := &gatewayv1.HTTPRequestRedirectFilter{
+				StatusCode: ptr.To(statusCode),
+			}
+
+			// Set scheme if present
+			if parsedURL.Scheme != "" {
+				redirectFilterConfig.Scheme = ptr.To(parsedURL.Scheme)
+			}
+
+			// Set hostname if present
+			if parsedURL.Hostname() != "" {
+				hostname := gatewayv1.PreciseHostname(parsedURL.Hostname())
+				redirectFilterConfig.Hostname = &hostname
+			}
+
+			// Set port if present
+			if parsedURL.Port() != "" {
+				port, err := strconv.Atoi(parsedURL.Port())
+				if err == nil {
+					portNumber := gatewayv1.PortNumber(port)
+					redirectFilterConfig.Port = &portNumber
+				} else {
+					errs = append(errs, field.Invalid(
+						field.NewPath("ingress", rule.Ingress.Namespace, rule.Ingress.Name, "metadata", "annotations", annotationUsed),
+						redirectURL,
+						fmt.Sprintf("invalid port in redirect URL: %v", err),
+					))
 					continue
 				}
-
-				// Create the redirect filter
-				redirectFilterConfig := &gatewayv1.HTTPRequestRedirectFilter{
-					StatusCode: ptr.To(statusCode),
-				}
-
-				// Set scheme if present
-				if parsedURL.Scheme != "" {
-					redirectFilterConfig.Scheme = ptr.To(parsedURL.Scheme)
-				}
-
-				// Set hostname if present
-				if parsedURL.Hostname() != "" {
-					hostname := gatewayv1.PreciseHostname(parsedURL.Hostname())
-					redirectFilterConfig.Hostname = &hostname
-				}
-
-				// Set port if present
-				if parsedURL.Port() != "" {
-					port, err := strconv.Atoi(parsedURL.Port())
-					if err == nil {
-						portNumber := gatewayv1.PortNumber(port)
-						redirectFilterConfig.Port = &portNumber
-					} else {
-						errs = append(errs, field.Invalid(
-							field.NewPath("ingress", rule.Ingress.Namespace, rule.Ingress.Name, "metadata", "annotations", annotationUsed),
-							redirectURL,
-							fmt.Sprintf("invalid port in redirect URL: %v", err),
-						))
-						continue
-					}
-				}
-
-				// Set path if present
-				if parsedURL.Path != "" {
-					pathType := gatewayv1.FullPathHTTPPathModifier
-					redirectFilterConfig.Path = &gatewayv1.HTTPPathModifier{
-						Type:            pathType,
-						ReplaceFullPath: ptr.To(parsedURL.Path),
-					}
-				}
-
-				redirectFilter := gatewayv1.HTTPRouteFilter{
-					Type:            gatewayv1.HTTPRouteFilterRequestRedirect,
-					RequestRedirect: redirectFilterConfig,
-				}
-
-				// Add redirect rule at the beginning of all rules
-				redirectRule := gatewayv1.HTTPRouteRule{
-					Filters: []gatewayv1.HTTPRouteFilter{redirectFilter},
-					// Clear backend refs as redirects don't route to backends
-					BackendRefs: nil,
-				}
-
-				// Prepend the redirect rule to existing rules
-				httpRouteContext.HTTPRoute.Spec.Rules = append(
-					[]gatewayv1.HTTPRouteRule{redirectRule},
-					httpRouteContext.HTTPRoute.Spec.Rules...,
-				)
-
-				// Prepend the backend sources for the redirect rule (empty since redirects don't route to backends)
-				newRuleBackendSources := []providerir.BackendSource{}
-				httpRouteContext.RuleBackendSources = append(
-					[][]providerir.BackendSource{newRuleBackendSources},
-					httpRouteContext.RuleBackendSources...,
-				)
-
-				ir.HTTPRoutes[routeKey] = httpRouteContext
-
-				notify(notifications.InfoNotification,
-					fmt.Sprintf("parsed %q annotation of ingress %s/%s with redirect to %q (status code: %d). ",
-						annotationUsed, rule.Ingress.Namespace, rule.Ingress.Name, redirectURL, statusCode),
-					&httpRouteContext.HTTPRoute)
 			}
+
+			// Set path if present
+			if parsedURL.Path != "" {
+				pathType := gatewayv1.FullPathHTTPPathModifier
+				redirectFilterConfig.Path = &gatewayv1.HTTPPathModifier{
+					Type:            pathType,
+					ReplaceFullPath: ptr.To(parsedURL.Path),
+				}
+			}
+
+			redirectFilter := gatewayv1.HTTPRouteFilter{
+				Type:            gatewayv1.HTTPRouteFilterRequestRedirect,
+				RequestRedirect: redirectFilterConfig,
+			}
+
+			// Add redirect filter to the current rule
+			httpRouteContext.HTTPRoute.Spec.Rules[ruleIndex].Filters = append(
+				httpRouteContext.HTTPRoute.Spec.Rules[ruleIndex].Filters,
+				redirectFilter,
+			)
+
+			// Clear backend refs as redirects don't route to backends
+			httpRouteContext.HTTPRoute.Spec.Rules[ruleIndex].BackendRefs = nil
+
+			ir.HTTPRoutes[key] = httpRouteContext
+
+			notify(notifications.InfoNotification,
+				fmt.Sprintf("parsed %q annotation of ingress %s/%s with redirect to %q (status code: %d). ",
+					annotationUsed, rule.Ingress.Namespace, rule.Ingress.Name, redirectURL, statusCode),
+				&httpRouteContext.HTTPRoute)
+
 		}
 	}
 
