@@ -346,7 +346,7 @@ func Test_redirectFeature(t *testing.T) {
 				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{},
 			}
 
-				if tt.initialHTTPRoute != nil {
+			if tt.initialHTTPRoute != nil {
 				routeKey := types.NamespacedName{
 					Namespace: tt.initialHTTPRoute.Namespace,
 					Name:      tt.initialHTTPRoute.Name,
@@ -505,7 +505,7 @@ func Test_redirectFeature_emptyURL(t *testing.T) {
 		},
 	}
 
-		ir := providerir.ProviderIR{
+	ir := providerir.ProviderIR{
 		HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 			{Namespace: "default", Name: common.RouteName("test-ingress", "empty.com")}: {
 				HTTPRoute: gatewayv1.HTTPRoute{
