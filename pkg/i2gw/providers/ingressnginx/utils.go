@@ -31,5 +31,11 @@ func getNonCanaryIngress(sources []providerir.BackendSource) *networkingv1.Ingre
 		}
 	}
 
+	// Fallback: If all sources are somehow canaries (invalid nginx config without a primary),
+	// we still return an Ingress to read annotations from to avoid panics.
+	if len(sources) > 0 {
+		return sources[0].Ingress
+	}
+
 	return nil
 }
