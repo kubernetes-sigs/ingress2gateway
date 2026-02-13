@@ -29,11 +29,13 @@ import (
 
 type BuilderMap struct {
 	BackendTrafficPolicies map[types.NamespacedName]*egapiv1a1.BackendTrafficPolicy
+	SecurityPolicies       map[types.NamespacedName]*egapiv1a1.SecurityPolicy
 }
 
 func NewBuilderMap() *BuilderMap {
 	return &BuilderMap{
 		BackendTrafficPolicies: make(map[types.NamespacedName]*egapiv1a1.BackendTrafficPolicy),
+		SecurityPolicies:       make(map[types.NamespacedName]*egapiv1a1.SecurityPolicy),
 	}
 }
 
@@ -75,4 +77,44 @@ func (e *Emitter) getOrBuildBackendTrafficPolicy(ctx emitterir.HTTPRouteContext,
 
 	e.builderMap.BackendTrafficPolicies[key] = backendTrafficPolicy
 	return backendTrafficPolicy
+}
+
+func (e *Emitter) getOrBuildSecurityPolicy(ctx emitterir.HTTPRouteContext, sectionName *gwapiv1.SectionName, ruleIdx int) *egapiv1a1.SecurityPolicy {
+	name := fmt.Sprintf("%s-%d", ctx.Name, ruleIdx)
+	if ruleIdx == RouteRuleAllIndex {
+		name = ctx.Name
+	}
+	key := types.NamespacedName{
+		Name:      name,
+		Namespace: ctx.Namespace,
+	}
+	policy, exist := e.builderMap.SecurityPolicies[key]
+	if exist {
+		return policy
+	}
+
+	securityPolicy := &egapiv1a1.SecurityPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ctx.Namespace,
+		},
+		Spec: egapiv1a1.SecurityPolicySpec{
+			PolicyTargetReferences: egapiv1a1.PolicyTargetReferences{
+				TargetRefs: []gwapiv1.LocalPolicyTargetReferenceWithSectionName{
+					{
+						LocalPolicyTargetReference: gwapiv1.LocalPolicyTargetReference{
+							Group: gwapiv1.Group(HTTPRouteGVK.Group),
+							Kind:  gwapiv1.Kind(HTTPRouteGVK.Kind),
+							Name:  gwapiv1.ObjectName(ctx.Name),
+						},
+						SectionName: sectionName,
+					},
+				},
+			},
+		},
+	}
+	securityPolicy.SetGroupVersionKind(SecurityPolicyGVK)
+
+	e.builderMap.SecurityPolicies[key] = securityPolicy
+	return securityPolicy
 }

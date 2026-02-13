@@ -70,6 +70,10 @@ type HTTPRouteContext struct {
 	// applied by the CommonEmitter. This separation allows the CORS logic to be provider-neutral
 	// and consistently applied across different providers, subject to feature gating.
 	CorsPolicyByRuleIdx map[int]*gatewayv1.HTTPCORSFilter
+
+	// IPRangeControlByRuleIdx maps HTTPRoute rule indices to IP range control intent.
+	// This is provider-neutral and applied by each custom emitter.
+	IPRangeControlByRuleIdx map[int]*IPRangeControl
 }
 
 // TCPTimeouts holds TCP-level timeout configuration for a single HTTPRoute rule.
@@ -92,6 +96,12 @@ type PathRewrite struct {
 type BodySize struct {
 	BufferSize *resource.Quantity
 	MaxSize    *resource.Quantity
+}
+
+// IPRangeControl represents provider-neutral IP range control intent.
+type IPRangeControl struct {
+	AllowList []string
+	DenyList  []string
 }
 
 type GatewayClassContext struct {

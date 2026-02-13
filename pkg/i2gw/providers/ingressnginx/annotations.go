@@ -59,4 +59,8 @@ const (
 	CorsAllowCredentialsAnnotation = "nginx.ingress.kubernetes.io/cors-allow-credentials"
 	CorsExposeHeadersAnnotation    = "nginx.ingress.kubernetes.io/cors-expose-headers"
 	CorsMaxAgeAnnotation           = "nginx.ingress.kubernetes.io/cors-max-age"
+
+	// IP Range Control annotations
+	WhiteListSourceRangeAnnotation = "nginx.ingress.kubernetes.io/whitelist-source-range"
+	DenyListSourceRangeAnnotation  = "nginx.ingress.kubernetes.io/denylist-source-range"
 )
