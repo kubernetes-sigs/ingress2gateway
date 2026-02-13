@@ -24,7 +24,6 @@ import (
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -40,27 +39,39 @@ import (
 func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 
-	ruleGroups := common.GetRuleGroups(ingresses)
-	for _, rg := range ruleGroups {
-		key := types.NamespacedName{Namespace: rg.Namespace, Name: common.RouteName(rg.Name, rg.Host)}
-		httpRouteContext, ok := ir.HTTPRoutes[key]
-		if !ok {
-			continue
-		}
-		for ruleIndex, rule := range rg.Rules {
+	// Iterate over all HTTPRoutes in the IR
+	for key, httpRouteContext := range ir.HTTPRoutes {
+		// Iterate over each rule in the HTTPRoute
+		for ruleIndex := range httpRouteContext.HTTPRoute.Spec.Rules {
+			// Check if this rule has backend sources
+			if ruleIndex >= len(httpRouteContext.RuleBackendSources) {
+				continue
+			}
+
+			// Get ingress from the first backend source (all backends in a rule should come from the same ingress)
+			if len(httpRouteContext.RuleBackendSources[ruleIndex]) == 0 {
+				continue
+			}
+
+			backendSource := httpRouteContext.RuleBackendSources[ruleIndex][0]
+			if backendSource.Ingress == nil {
+				continue
+			}
+
+			ingress := backendSource.Ingress
 
 			// Warn about unsupported proxy-redirect annotations
-			if rule.Ingress.Annotations[ProxyRedirectFromAnnotation] != "" {
+			if ingress.Annotations[ProxyRedirectFromAnnotation] != "" {
 				notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported annotation %s",
-					rule.Ingress.Namespace, rule.Ingress.Name, ProxyRedirectFromAnnotation), &rule.Ingress)
+					ingress.Namespace, ingress.Name, ProxyRedirectFromAnnotation), ingress)
 			}
-			if rule.Ingress.Annotations[ProxyRedirectToAnnotation] != "" {
+			if ingress.Annotations[ProxyRedirectToAnnotation] != "" {
 				notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported annotation %s",
-					rule.Ingress.Namespace, rule.Ingress.Name, ProxyRedirectToAnnotation), &rule.Ingress)
+					ingress.Namespace, ingress.Name, ProxyRedirectToAnnotation), ingress)
 			}
 
-			permanentRedirectURL, hasPermanent := rule.Ingress.Annotations[PermanentRedirectAnnotation]
-			temporalRedirectURL, hasTemporal := rule.Ingress.Annotations[TemporalRedirectAnnotation]
+			permanentRedirectURL, hasPermanent := ingress.Annotations[PermanentRedirectAnnotation]
+			temporalRedirectURL, hasTemporal := ingress.Annotations[TemporalRedirectAnnotation]
 
 			// Skip if neither annotation is present
 			if !hasPermanent && !hasTemporal {
@@ -81,13 +92,13 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 				// Warn if both annotations are present
 				if hasPermanent {
 					notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s has both %s and %s annotations, using %s",
-						rule.Ingress.Namespace, rule.Ingress.Name, PermanentRedirectAnnotation, TemporalRedirectAnnotation, TemporalRedirectAnnotation), &rule.Ingress)
+						ingress.Namespace, ingress.Name, PermanentRedirectAnnotation, TemporalRedirectAnnotation, TemporalRedirectAnnotation), ingress)
 				}
 
 				// Warn about unsupported custom status code annotation
-				if rule.Ingress.Annotations[TemporalRedirectCodeAnnotation] != "" {
+				if ingress.Annotations[TemporalRedirectCodeAnnotation] != "" {
 					notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported annotation %s",
-						rule.Ingress.Namespace, rule.Ingress.Name, TemporalRedirectCodeAnnotation), &rule.Ingress)
+						ingress.Namespace, ingress.Name, TemporalRedirectCodeAnnotation), ingress)
 				}
 			} else {
 				redirectURL = permanentRedirectURL
@@ -95,16 +106,16 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 				annotationUsed = PermanentRedirectAnnotation
 
 				// Warn about unsupported custom status code annotation
-				if rule.Ingress.Annotations[PermanentRedirectCodeAnnotation] != "" {
+				if ingress.Annotations[PermanentRedirectCodeAnnotation] != "" {
 					notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported annotation %s",
-						rule.Ingress.Namespace, rule.Ingress.Name, PermanentRedirectCodeAnnotation), &rule.Ingress)
+						ingress.Namespace, ingress.Name, PermanentRedirectCodeAnnotation), ingress)
 				}
 			}
 
 			// Validate redirect URL is not empty
 			if redirectURL == "" {
 				errs = append(errs, field.Invalid(
-					field.NewPath("ingress", rule.Ingress.Namespace, rule.Ingress.Name, "metadata", "annotations", annotationUsed),
+					field.NewPath("ingress", ingress.Namespace, ingress.Name, "metadata", "annotations", annotationUsed),
 					redirectURL,
 					"redirect URL cannot be empty",
 				))
@@ -115,7 +126,7 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 			parsedURL, err := url.Parse(redirectURL)
 			if err != nil {
 				errs = append(errs, field.Invalid(
-					field.NewPath("ingress", rule.Ingress.Namespace, rule.Ingress.Name, "metadata", "annotations", annotationUsed),
+					field.NewPath("ingress", ingress.Namespace, ingress.Name, "metadata", "annotations", annotationUsed),
 					redirectURL,
 					fmt.Sprintf("invalid redirect URL: %v", err),
 				))
@@ -146,7 +157,7 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 					redirectFilterConfig.Port = &portNumber
 				} else {
 					errs = append(errs, field.Invalid(
-						field.NewPath("ingress", rule.Ingress.Namespace, rule.Ingress.Name, "metadata", "annotations", annotationUsed),
+						field.NewPath("ingress", ingress.Namespace, ingress.Name, "metadata", "annotations", annotationUsed),
 						redirectURL,
 						fmt.Sprintf("invalid port in redirect URL: %v", err),
 					))
@@ -180,14 +191,14 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 			// Clear backend refs as redirects don't route to backends
 			httpRouteContext.HTTPRoute.Spec.Rules[ruleIndex].BackendRefs = nil
 
-			ir.HTTPRoutes[key] = httpRouteContext
-
 			notify(notifications.InfoNotification,
 				fmt.Sprintf("parsed %q annotation of ingress %s/%s with redirect to %q (status code: %d). ",
-					annotationUsed, rule.Ingress.Namespace, rule.Ingress.Name, redirectURL, statusCode),
+					annotationUsed, ingress.Namespace, ingress.Name, redirectURL, statusCode),
 				&httpRouteContext.HTTPRoute)
-
 		}
+
+		// Save the updated context back to the IR
+		ir.HTTPRoutes[key] = httpRouteContext
 	}
 
 	return errs
