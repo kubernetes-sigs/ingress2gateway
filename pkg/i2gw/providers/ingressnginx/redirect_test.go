@@ -605,8 +605,12 @@ func TestAddDefaultSSLRedirect_enabled(t *testing.T) {
 	if f.RequestRedirect.Scheme == nil || *f.RequestRedirect.Scheme != "https" {
 		t.Fatalf("expected scheme https, got %#v", f.RequestRedirect.Scheme)
 	}
-	if f.RequestRedirect.StatusCode == nil || *f.RequestRedirect.StatusCode != 301 {
-		t.Fatalf("expected status code 301, got %#v", f.RequestRedirect.StatusCode)
+	if f.RequestRedirect.StatusCode == nil || *f.RequestRedirect.StatusCode != 308 {
+		if f.RequestRedirect.StatusCode == nil {
+			t.Fatalf("expected status code 308, got nil")
+		} else {
+			t.Fatalf("expected status code 308, got %d", *f.RequestRedirect.StatusCode)
+		}
 	}
 }
 
@@ -1484,7 +1488,7 @@ func TestBuildTrailingSlashRedirectRules(t *testing.T) {
 			t.Fatalf("expected 1 deduplicated redirect rule, got %d", len(got))
 		}
 	})
-}with #299)
+}
 func TestAddWWWRedirect_enabled(t *testing.T) {
 	key := types.NamespacedName{Namespace: "default", Name: "route"}
 	parentRefs := []gatewayv1.ParentReference{{Name: gatewayv1.ObjectName("gw")}}
@@ -1543,7 +1547,7 @@ func TestAddWWWRedirect_enabled(t *testing.T) {
 
 	(&Provider{}).addWWWRedirect(&pIR, &eIR)
 
-	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-www-example-com-www-redirect"}
+	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: "00-" + key.Name + "-www-example-com-www-redirect"}
 	redirectCtx, ok := eIR.HTTPRoutes[redirectKey]
 	if !ok {
 		t.Fatalf("expected redirect route %v to be added", redirectKey)
@@ -1574,5 +1578,80 @@ func TestAddWWWRedirect_enabled(t *testing.T) {
 	}
 	if *gw.Gateway.Spec.Listeners[1].Hostname != "www.example.com" {
 		t.Fatalf("expected second listener to be for www.example.com, got %v", *gw.Gateway.Spec.Listeners[1].Hostname)
+	}
+}
+
+func TestAddWWWRedirect_https_listener(t *testing.T) {
+	key := types.NamespacedName{Namespace: "default", Name: "route"}
+	parentRefs := []gatewayv1.ParentReference{{Name: gatewayv1.ObjectName("gw")}}
+
+	ing := networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: key.Namespace,
+			Name:      "ing",
+			Annotations: map[string]string{
+				FromToWWWRedirectAnnotation: "true",
+			},
+		},
+		Spec: networkingv1.IngressSpec{},
+	}
+
+	route := gatewayv1.HTTPRoute{
+		ObjectMeta: metav1.ObjectMeta{Namespace: key.Namespace, Name: key.Name},
+		Spec: gatewayv1.HTTPRouteSpec{
+			CommonRouteSpec: gatewayv1.CommonRouteSpec{
+				ParentRefs: append([]gatewayv1.ParentReference(nil), parentRefs...),
+			},
+			Hostnames: []gatewayv1.Hostname{"example.com"},
+		},
+	}
+
+	pIR := providerir.ProviderIR{HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{}}
+	pIR.HTTPRoutes[key] = providerir.HTTPRouteContext{
+		HTTPRoute: route,
+		RuleBackendSources: [][]providerir.BackendSource{{
+			{Ingress: &ing},
+		}},
+	}
+
+	gwKey := types.NamespacedName{Namespace: "default", Name: "gw"}
+	eIR := emitterir.EmitterIR{
+		HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{},
+		Gateways: map[types.NamespacedName]emitterir.GatewayContext{
+			gwKey: {
+				Gateway: gatewayv1.Gateway{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "gw"},
+					Spec: gatewayv1.GatewaySpec{
+						Listeners: []gatewayv1.Listener{
+							{
+								Name:     "example-com-http",
+								Hostname: ptr.To(gatewayv1.Hostname("example.com")),
+								Port:     80,
+								Protocol: gatewayv1.HTTPProtocolType,
+							},
+							{
+								Name:     "example-com-https",
+								Hostname: ptr.To(gatewayv1.Hostname("example.com")),
+								Port:     443,
+								Protocol: gatewayv1.HTTPSProtocolType,
+								TLS: &gatewayv1.ListenerTLSConfig{
+									CertificateRefs: []gatewayv1.SecretObjectReference{{Name: "test-cert"}},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	eIR.HTTPRoutes[key] = emitterir.HTTPRouteContext{HTTPRoute: route}
+
+	(&Provider{}).addWWWRedirect(&pIR, &eIR)
+	gw := eIR.Gateways[gwKey]
+	if len(gw.Gateway.Spec.Listeners) != 4 {
+		t.Fatalf("expected 4 listeners on Gateway, got %d", len(gw.Gateway.Spec.Listeners))
+	}
+	if *gw.Gateway.Spec.Listeners[3].Hostname != "www.example.com" || gw.Gateway.Spec.Listeners[3].Protocol != gatewayv1.HTTPSProtocolType {
+		t.Fatalf("expected fourth listener to be HTTPS for www.example.com")
 	}
 }
