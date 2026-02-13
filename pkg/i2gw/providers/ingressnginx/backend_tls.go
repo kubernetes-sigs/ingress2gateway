@@ -179,8 +179,6 @@ func backendTLSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedN
 				}
 
 				ir.BackendTLSPolicies[policyKey] = policy
-				
-				break
 			}
 		}
 	}
