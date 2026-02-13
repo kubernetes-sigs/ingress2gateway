@@ -1112,13 +1112,24 @@ func Test_ToIR(t *testing.T) {
 							},
 						},
 					},
-					{Namespace: "default", Name: "example-ingress-example-com-www-example-com-www-redirect"}: {
+					{Namespace: "default", Name: "00-example-ingress-example-com-www-example-com-www-redirect"}: {
 						HTTPRoute: gatewayv1.HTTPRoute{
-							ObjectMeta: metav1.ObjectMeta{Name: "example-ingress-example-com-www-example-com-www-redirect", Namespace: "default"},
+							ObjectMeta: metav1.ObjectMeta{Name: "00-example-ingress-example-com-www-example-com-www-redirect", Namespace: "default"},
 							Spec: gatewayv1.HTTPRouteSpec{
 								Hostnames: []gatewayv1.Hostname{"www.example.com"},
 								CommonRouteSpec: gatewayv1.CommonRouteSpec{
-									ParentRefs: []gatewayv1.ParentReference{{Name: "nginx"}},
+									ParentRefs: []gatewayv1.ParentReference{
+										{
+											Name:        "nginx",
+											Port:        ptrTo(gatewayv1.PortNumber(80)),
+											SectionName: ptrTo(gatewayv1.SectionName("www-example-com-http")),
+										},
+										{
+											Name:        "nginx",
+											Port:        ptrTo(gatewayv1.PortNumber(443)),
+											SectionName: ptrTo(gatewayv1.SectionName("www-example-com-https")),
+										},
+									},
 								},
 								Rules: []gatewayv1.HTTPRouteRule{{
 									Filters: []gatewayv1.HTTPRouteFilter{{
