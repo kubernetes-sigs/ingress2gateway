@@ -133,7 +133,7 @@ func TestIngressNginx(t *testing.T) {
 						build(),
 				},
 				verifiers: map[string][]verifier{
-					"foo": {&httpGetVerifier{path: "/"}},
+					"foo": {&httpRequestVerifier{path: "/"}},
 				},
 			})
 		})
