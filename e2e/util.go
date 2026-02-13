@@ -22,9 +22,10 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-// Generates a cryptographically random alphanumeric string of length n. Uses crypto/rand to ensure
+// Generates a cryptographically random alphanumeric string of length 5. Uses crypto/rand to ensure
 // uniqueness even when called from parallel tests.
-func randString(n int) (string, error) {
+func randString() (string, error) {
+	n := 5
 	const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
 	b := make([]byte, n)
 	if _, err := rand.Read(b); err != nil {

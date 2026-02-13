@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -138,7 +138,7 @@ func createGatewayExtensions(
 		}
 
 		l.Logf("Creating GatewayExtension:\n%s", y)
-		if err := client.Create(ctx, &ext); err != nil && !apierrors.IsAlreadyExists(err) {
+		if err := client.Create(ctx, &ext); err != nil && !errors.IsAlreadyExists(err) {
 			return nil, fmt.Errorf("creating GatewayExtension %s/%s (%s): %w",
 				ext.GetNamespace(), ext.GetName(), ext.GetObjectKind().GroupVersionKind().String(), err)
 		}
@@ -160,7 +160,7 @@ func createGatewayExtensions(
 			}
 			log.Printf("Deleting GatewayExtension %s/%s (%s)",
 				ext.GetNamespace(), ext.GetName(), ext.GetObjectKind().GroupVersionKind().String())
-			if err := client.Delete(cleanupCtx, &ext); err != nil && !apierrors.IsNotFound(err) {
+			if err := client.Delete(cleanupCtx, &ext); err != nil && !errors.IsNotFound(err) {
 				log.Printf("Deleting GatewayExtension %s/%s: %v", ext.GetNamespace(), ext.GetName(), err)
 			}
 		}
@@ -228,6 +228,9 @@ func createGatewayClasses(ctx context.Context, l logger, client *gwclientset.Cli
 			&gc,
 			metav1.CreateOptions{},
 		)
+		if errors.IsAlreadyExists(err) {
+			_, err = client.GatewayV1().GatewayClasses().Update(ctx, &gc, metav1.UpdateOptions{})
+		}
 		if err != nil {
 			return nil, fmt.Errorf("creating GatewayClass %s: %w", name.String(), err)
 		}
