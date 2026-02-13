@@ -59,6 +59,7 @@ type testCase struct {
 	providers             []string
 	providerFlags         map[string]map[string]string
 	gatewayImplementation string
+	emitter               string
 	verifiers             map[string][]verifier
 }
 
@@ -171,7 +172,7 @@ func runTestCase(t *testing.T, tc *testCase) {
 	verifyIngresses(ctx, t, tc, ingressAddresses)
 
 	// Run the ingress2gateway binary to convert ingresses to Gateway API resources.
-	res := runI2GW(ctx, t, kubeconfig, appNS, tc.providers, tc.providerFlags, tc.gatewayImplementation)
+	res := runI2GW(ctx, t, kubeconfig, appNS, tc.providers, tc.providerFlags, tc.emitter)
 
 	// TODO: Hack! Force correct gateway class since i2gw doesn't seem to infer that from the
 	// ingress at the moment.
@@ -443,7 +444,7 @@ func runI2GW(
 	namespace string,
 	providers []string,
 	providerFlags map[string]map[string]string,
-	gwImpl string,
+	emitter string,
 ) []i2gw.GatewayResources {
 	binaryPath := os.Getenv("I2GW_BINARY_PATH")
 	require.NotEmpty(t, binaryPath, "environment variable I2GW_BINARY_PATH not set")
@@ -457,8 +458,8 @@ func runI2GW(
 
 	// Some gateway implementations require implementation-specific extension resources emitted
 	// by ingress2gateway.
-	if gwImpl != "" {
-		args = append(args, "--emitter", gwImpl)
+	if emitter != "" {
+		args = append(args, "--emitter", emitter)
 	}
 
 	// Add provider-specific flags.
