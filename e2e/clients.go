@@ -19,8 +19,10 @@ package e2e
 import (
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	gwclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 )
 
@@ -48,6 +50,16 @@ func newGatewayClientFromKubeconfigPath(path string) (*gwclientset.Clientset, er
 	}
 
 	return gwclientset.NewForConfig(cc)
+}
+
+// Accepts a path to a kubeconfig file and returns a controller-runtime client.
+func newControllerRuntimeClientFromKubeconfigPath(path string) (crclient.Client, error) {
+	cc, err := configFromKubeconfigPath(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return crclient.New(cc, crclient.Options{Scheme: scheme.Scheme})
 }
 
 // Accepts a path to a kubeconfig file and returns an API extensions client set.

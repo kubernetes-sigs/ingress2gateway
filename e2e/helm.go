@@ -19,6 +19,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"time"
 
@@ -26,6 +27,7 @@ import (
 	"helm.sh/helm/v4/pkg/chart/loader"
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/kube"
+	"helm.sh/helm/v4/pkg/registry"
 )
 
 func installChart(
@@ -60,6 +62,14 @@ func installChart(
 	install.Timeout = 5 * time.Minute
 	install.RepoURL = repoURL
 	install.Version = version
+
+	if registry.IsOCI(chartName) {
+		registryClient, err := newRegistryClient(settings)
+		if err != nil {
+			return fmt.Errorf("creating registry client for OCI chart: %w", err)
+		}
+		install.SetRegistryClient(registryClient)
+	}
 
 	cp, err := locateChart(ctx, log, install, chartName, settings)
 	if err != nil {
@@ -127,4 +137,14 @@ func locateChart(
 			return install.ChartPathOptions.LocateChart(chartName, settings)
 		},
 	)
+}
+
+func newRegistryClient(settings *cli.EnvSettings) (*registry.Client, error) {
+	opts := []registry.ClientOption{
+		registry.ClientOptDebug(settings.Debug),
+		registry.ClientOptEnableCache(true),
+		registry.ClientOptWriter(io.Discard),
+		registry.ClientOptCredentialsFile(settings.RegistryConfig),
+	}
+	return registry.NewClient(opts...)
 }
