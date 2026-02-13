@@ -38,7 +38,7 @@ func TestIngressNGINXCORS(t *testing.T) {
 			maxAge := "600"
 
 			runTestCase(t, &testCase{
-				gatewayImplementation:  istio.ProviderName,
+				gatewayImplementations:  []string{istio.ProviderName},
 				allowExperimentalGWAPI: true,
 				providers:              []string{ingressnginx.Name},
 				providerFlags: map[string]map[string]string{
@@ -146,7 +146,7 @@ func TestIngressNGINXCORS(t *testing.T) {
 			maxAge := "1728000"
 
 			runTestCase(t, &testCase{
-				gatewayImplementation:  istio.ProviderName,
+				gatewayImplementations:  []string{istio.ProviderName},
 				allowExperimentalGWAPI: true,
 				providers:              []string{ingressnginx.Name},
 				providerFlags: map[string]map[string]string{
@@ -251,7 +251,7 @@ func TestIngressNGINXCORS(t *testing.T) {
 			deniedOrigin := "https://cors-denied.example.com"
 
 			runTestCase(t, &testCase{
-				gatewayImplementation:  istio.ProviderName,
+				gatewayImplementations:  []string{istio.ProviderName},
 				allowExperimentalGWAPI: true,
 				providers:              []string{ingressnginx.Name},
 				providerFlags: map[string]map[string]string{
@@ -303,7 +303,7 @@ func TestIngressNGINXCORS(t *testing.T) {
 			deniedHeader := "X-Not-Allowed"
 
 			runTestCase(t, &testCase{
-				gatewayImplementation:  istio.ProviderName,
+				gatewayImplementations:  []string{istio.ProviderName},
 				allowExperimentalGWAPI: true,
 				providers:              []string{ingressnginx.Name},
 				providerFlags: map[string]map[string]string{

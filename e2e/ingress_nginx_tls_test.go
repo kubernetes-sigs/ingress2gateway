@@ -40,7 +40,7 @@ func TestIngressNGINXTLS(t *testing.T) {
 				t.Fatalf("creating TLS secret: %v", err)
 			}
 			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
+				gatewayImplementations: []string{istio.ProviderName},
 				providers:             []string{ingressnginx.Name},
 				providerFlags: map[string]map[string]string{
 					ingressnginx.Name: {
@@ -96,7 +96,7 @@ func TestIngressNGINXTLS(t *testing.T) {
 				t.Fatalf("creating no-redirect TLS secret: %v", err)
 			}
 			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
+				gatewayImplementations: []string{istio.ProviderName},
 				providers:             []string{ingressnginx.Name},
 				providerFlags: map[string]map[string]string{
 					ingressnginx.Name: {
