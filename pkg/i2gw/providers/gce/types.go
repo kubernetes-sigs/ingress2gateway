@@ -29,6 +29,17 @@ const (
 	frontendConfigKey                      = "networking.gke.io/v1beta1.FrontendConfig"
 )
 
+// SupportedGKEGatewayClasses mapped to true for quick validation check
+var SupportedGKEGatewayClasses = map[string]bool{
+	"gke-l7-global-external-managed":      true,
+	"gke-l7-global-external-managed-mc":   true,
+	"gke-l7-regional-external-managed":    true,
+	"gke-l7-regional-external-managed-mc": true,
+	"gke-l7-rilb":                         true,
+	"gke-l7-rilb-mc":                      true,
+	"gke-l7-gxlb":                         true,
+}
+
 var (
 	GCPBackendPolicyGVK = schema.GroupVersionKind{
 		Group:   "networking.gke.io",

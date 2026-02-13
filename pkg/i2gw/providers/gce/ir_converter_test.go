@@ -72,6 +72,7 @@ func Test_convertToIR(t *testing.T) {
 	testCases := []struct {
 		name string
 
+		providerConf   *i2gw.ProviderConf
 		modify         func(storage *storage)
 		expectedIR     providerir.ProviderIR
 		expectedErrors field.ErrorList
@@ -902,11 +903,87 @@ func Test_convertToIR(t *testing.T) {
 			},
 			expectedErrors: field.ErrorList{},
 		},
+		{
+			name: "gce ingress with gateway-class-name flag",
+			providerConf: &i2gw.ProviderConf{
+				ProviderSpecificFlags: map[string]map[string]string{
+					"gce": {
+						GatewayClassNameFlag: "gke-l7-regional-external-managed",
+					},
+				},
+			},
+			modify: func(_ *storage) {},
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
+					{Namespace: testNamespace, Name: gceIngressClass}: {
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: "gke-l7-regional-external-managed",
+								Listeners: []gatewayv1.Listener{{
+									Name:     "test-mydomain-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: common.PtrTo(gatewayv1.Hostname(testHost)),
+								}},
+							}},
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
+					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName)}: {
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName), Namespace: testNamespace},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: gceIngressClass,
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
+								Rules: []gatewayv1.HTTPRouteRule{
+									{
+										Name: common.PtrTo(gatewayv1.SectionName("rule-0")),
+										Matches: []gatewayv1.HTTPRouteMatch{
+											{
+												Path: &gatewayv1.HTTPPathMatch{
+													Type:  common.PtrTo(gPathPrefix),
+													Value: common.PtrTo("/"),
+												},
+											},
+										},
+										BackendRefs: []gatewayv1.HTTPBackendRef{
+											{
+												BackendRef: gatewayv1.BackendRef{
+													BackendObjectReference: gatewayv1.BackendObjectReference{
+														Name: gatewayv1.ObjectName(testServiceName),
+														Port: common.PtrTo(gatewayv1.PortNumber(80)),
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+							Status: gatewayv1.HTTPRouteStatus{
+								RouteStatus: gatewayv1.RouteStatus{
+									Parents: []gatewayv1.RouteParentStatus{},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			provider := NewProvider(&i2gw.ProviderConf{})
+			conf := tc.providerConf
+			if conf == nil {
+				conf = &i2gw.ProviderConf{}
+			}
+			provider := NewProvider(conf)
 			gceProvider := provider.(*Provider)
 			gceProvider.storage = newResourcesStorage()
 			gceProvider.storage.Ingresses = map[types.NamespacedName]*networkingv1.Ingress{
