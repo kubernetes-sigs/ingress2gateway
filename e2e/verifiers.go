@@ -18,6 +18,7 @@ package e2e
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net/http"
@@ -29,7 +30,7 @@ import (
 // Validates that a service is accessible and working correctly. The addr parameter is a
 // "host:port" string representing the service endpoint.
 type verifier interface {
-	verify(ctx context.Context, log logger, addr string, ingress *networkingv1.Ingress) error
+	verify(ctx context.Context, log logger, addrs map[int]string, ingress *networkingv1.Ingress) error
 }
 
 type httpGetVerifier struct {
@@ -37,7 +38,12 @@ type httpGetVerifier struct {
 	path string
 }
 
-func (v *httpGetVerifier) verify(ctx context.Context, log logger, addr string, ingress *networkingv1.Ingress) error {
+func (v *httpGetVerifier) verify(ctx context.Context, log logger, addrs map[int]string, ingress *networkingv1.Ingress) error {
+	addr, ok := addrs[80]
+	if !ok {
+		return fmt.Errorf("port 80 not forwarded")
+	}
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("http://%s%s", addr, v.path), nil)
 	if err != nil {
 		return fmt.Errorf("constructing HTTP request: %w", err)
@@ -72,5 +78,142 @@ func (v *httpGetVerifier) verify(ctx context.Context, log logger, addr string, i
 
 	log.Logf("Got a healthy response: %s", body)
 
+	return nil
+}
+
+type httpRedirectVerifier struct {
+	host           string
+	targetHost     string // What we expect in the Location header
+	expectedStatus []int  // Usually 301
+}
+
+func (v *httpRedirectVerifier) verify(ctx context.Context, log logger, addrs map[int]string, ingress *networkingv1.Ingress) error {
+	addr, ok := addrs[80]
+	if !ok {
+		return fmt.Errorf("port 80 not forwarded")
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("http://%s/", addr), nil)
+	if err != nil {
+		return fmt.Errorf("constructing HTTP request: %w", err)
+	}
+
+	if v.host != "" {
+		req.Host = v.host
+	} else if len(ingress.Spec.Rules) > 0 && ingress.Spec.Rules[0].Host != "" {
+		req.Host = ingress.Spec.Rules[0].Host
+	} else {
+		return fmt.Errorf("no host specified: set HTTPRedirectVerifier.Host or ensure ingress has a rule with a host")
+	}
+
+	client := http.Client{
+		Timeout: 5 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// Don't follow redirects, we want to inspect the redirect response
+			return http.ErrUseLastResponse
+		},
+	}
+
+	res, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("doing request: %w", err)
+	}
+	defer func() { _ = res.Body.Close() }()
+
+	statusValOk := false
+	for _, status := range v.expectedStatus {
+		if res.StatusCode == status {
+			statusValOk = true
+			break
+		}
+	}
+	if !statusValOk {
+
+		return fmt.Errorf("unexpected HTTP status code: got %d, want one of %v", res.StatusCode, v.expectedStatus)
+	}
+
+	location := res.Header.Get("Location")
+	if location == "" {
+		return fmt.Errorf("expected Location header, got none")
+	}
+
+	expectedLocation := fmt.Sprintf("http://%s", v.targetHost)
+	expectedLocationTrailing := fmt.Sprintf("http://%s/", v.targetHost)
+	if location != expectedLocation && location != expectedLocationTrailing && location != expectedLocation+":80" && location != expectedLocation+":80/" {
+		return fmt.Errorf("unexpected Location header: got %s, want %s (or with trailing slash)", location, expectedLocation)
+	}
+
+	log.Logf("Got expected redirect to %s", location)
+
+	return nil
+}
+
+type httpsRedirectVerifier struct {
+	host           string
+	targetHost     string // What we expect in the Location header
+	expectedStatus []int  // Usually 301
+}
+
+func (v *httpsRedirectVerifier) verify(ctx context.Context, log logger, addrs map[int]string, ingress *networkingv1.Ingress) error {
+	addr, ok := addrs[443]
+	if !ok {
+		return fmt.Errorf("port 443 not forwarded")
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("https://%s/", addr), nil)
+	if err != nil {
+		return fmt.Errorf("constructing HTTPS request: %w", err)
+	}
+
+	hostName := v.host
+	if hostName == "" {
+		if len(ingress.Spec.Rules) > 0 && ingress.Spec.Rules[0].Host != "" {
+			hostName = ingress.Spec.Rules[0].Host
+		} else {
+			return fmt.Errorf("no host specified: set httpsRedirectVerifier.Host or ensure ingress has a rule with a host")
+		}
+	}
+	req.Host = hostName
+
+	client := http.Client{
+		Timeout: 5 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true, /* #nosec G402 */ // We purposefully skip verification because test-certs are self-signed.
+				ServerName:         hostName,
+			},
+		},
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// Don't follow redirects, we want to inspect the redirect response
+			return http.ErrUseLastResponse
+		},
+	}
+
+	res, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("doing request: %w", err)
+	}
+	defer func() { _ = res.Body.Close() }()
+
+	statusValOk := false
+	for _, status := range v.expectedStatus {
+		if res.StatusCode == status {
+			statusValOk = true
+			break
+		}
+	}
+	if !statusValOk {
+		return fmt.Errorf("unexpected HTTP status code: got %d, want one of %v", res.StatusCode, v.expectedStatus)
+	}
+
+	location := res.Header.Get("Location")
+	expectedLocation := fmt.Sprintf("https://%s", v.targetHost)
+	expectedLocationTrailing := fmt.Sprintf("https://%s/", v.targetHost)
+
+	if location != expectedLocation && location != expectedLocationTrailing && location != expectedLocation+":443" && location != expectedLocation+":443/" {
+		return fmt.Errorf("unexpected Location header: got %s, want %s (or with trailing slash/port)", location, expectedLocation)
+	}
+
+	log.Logf("Got expected HTTPS redirect to %s", expectedLocationTrailing)
 	return nil
 }

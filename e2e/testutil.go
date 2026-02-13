@@ -20,10 +20,16 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"os"
 	"os/exec"
 	"strings"
@@ -268,9 +274,9 @@ func setUpIngressPortForwarding(
 	k8sClient *kubernetes.Clientset,
 	restConfig *rest.Config,
 	providers []string,
-) ([]*portForwarder, map[string]string) {
+) ([]*portForwarder, map[string]map[int]string) {
 	var pfs []*portForwarder
-	addresses := make(map[string]string)
+	addresses := make(map[string]map[int]string)
 
 	for _, p := range providers {
 		switch p {
@@ -286,7 +292,12 @@ func setUpIngressPortForwarding(
 			pf, addr, err := startPortForwardToService(ctx, k8sClient, restConfig, svc.Namespace, svc.Name, 80)
 			require.NoError(t, err, "starting port forward to ingress-nginx")
 			pfs = append(pfs, pf)
-			addresses[ingressnginx.NginxIngressClass] = addr
+			addresses[ingressnginx.NginxIngressClass] = map[int]string{80: addr}
+			if pf443, addr443, err := startPortForwardToService(ctx, k8sClient, restConfig, svc.Namespace, svc.Name, 443); err == nil {
+				addresses[ingressnginx.NginxIngressClass][443] = addr443
+				pfs = append(pfs, pf443)
+				t.Logf("Port forwarding ingress controller %s port 443 via %s", p, addr443)
+			}
 			t.Logf("Port forwarding ingress controller %s via %s", p, addr)
 		case kong.Name:
 			// Kong uses the same namespace for both ingress and gateway when both are enabled.
@@ -301,7 +312,12 @@ func setUpIngressPortForwarding(
 			pf, addr, err := startPortForwardToService(ctx, k8sClient, restConfig, svc.Namespace, svc.Name, 80)
 			require.NoError(t, err, "starting port forward to kong")
 			pfs = append(pfs, pf)
-			addresses[kong.KongIngressClass] = addr
+			addresses[kong.KongIngressClass] = map[int]string{80: addr}
+			if pf443, addr443, err := startPortForwardToService(ctx, k8sClient, restConfig, svc.Namespace, svc.Name, 443); err == nil {
+				addresses[kong.KongIngressClass][443] = addr443
+				pfs = append(pfs, pf443)
+				t.Logf("Port forwarding ingress controller %s port 443 via %s", p, addr443)
+			}
 			t.Logf("Port forwarding ingress controller %s via %s", p, addr)
 		default:
 			t.Fatalf("Unknown ingress provider: %s", p)
@@ -319,9 +335,9 @@ func setUpGatewayPortForwarding(
 	gateways map[types.NamespacedName]gwapiv1.Gateway,
 	appNS string,
 	gwImpl string,
-) ([]*portForwarder, map[string]string) {
+) ([]*portForwarder, map[string]map[int]string) {
 	var pfs []*portForwarder
-	addresses := make(map[string]string)
+	addresses := make(map[string]map[int]string)
 
 	for gwName, gw := range gateways {
 		ns := gw.Namespace
@@ -352,14 +368,19 @@ func setUpGatewayPortForwarding(
 		require.NoError(t, err, "starting port forward for gateway %s", gwName)
 
 		pfs = append(pfs, pf)
-		addresses[gwName.Name] = addr
+		addresses[gwName.Name] = map[int]string{80: addr}
+		if pf443, addr443, err := startPortForwardToService(ctx, k8sClient, restConfig, svc.Namespace, svc.Name, 443); err == nil {
+			addresses[gwName.Name][443] = addr443
+			pfs = append(pfs, pf443)
+			t.Logf("Port forwarding gateway %s port 443 via %s", gwName, addr443)
+		}
 		t.Logf("Port forwarding gateway %s via %s", gwName, addr)
 	}
 
 	return pfs, addresses
 }
 
-func verifyIngresses(ctx context.Context, t *testing.T, tc *testCase, ingressAddresses map[string]string) {
+func verifyIngresses(ctx context.Context, t *testing.T, tc *testCase, ingressAddresses map[string]map[int]string) {
 	ingressByName := make(map[string]*networkingv1.Ingress, len(tc.ingresses))
 	for _, ing := range tc.ingresses {
 		ingressByName[ing.Name] = ing
@@ -372,7 +393,7 @@ func verifyIngresses(ctx context.Context, t *testing.T, tc *testCase, ingressAdd
 		ingressClass := common.GetIngressClass(*ingress)
 		require.NotEmpty(t, ingressClass, "ingress %s has no ingress class", ingressName)
 
-		addr, ok := ingressAddresses[ingressClass]
+		addrs, ok := ingressAddresses[ingressClass]
 		require.True(t, ok, "no address found for ingress class %s", ingressClass)
 
 		for _, v := range verifiers {
@@ -381,7 +402,7 @@ func verifyIngresses(ctx context.Context, t *testing.T, tc *testCase, ingressAdd
 					return fmt.Sprintf("Verifying ingress %s (attempt %d/%d): %v", ingressName, attempt, maxAttempts, err)
 				},
 				func() error {
-					return v.verify(ctx, t, addr, ingress)
+					return v.verify(ctx, t, addrs, ingress)
 				},
 			)
 			require.NoError(t, err, "ingress verification failed")
@@ -389,7 +410,7 @@ func verifyIngresses(ctx context.Context, t *testing.T, tc *testCase, ingressAdd
 	}
 }
 
-func verifyGatewayResources(ctx context.Context, t *testing.T, tc *testCase, gwAddresses map[string]string) {
+func verifyGatewayResources(ctx context.Context, t *testing.T, tc *testCase, gwAddresses map[string]map[int]string) {
 	for ingressName, verifiers := range tc.verifiers {
 		// Find the ingress to determine the expected gateway name.
 		var ingress *networkingv1.Ingress
@@ -409,7 +430,7 @@ func verifyGatewayResources(ctx context.Context, t *testing.T, tc *testCase, gwA
 			t.Fatalf("Ingress %s has no ingress class", ingressName)
 		}
 
-		addr, ok := gwAddresses[gwName]
+		addrs, ok := gwAddresses[gwName]
 		require.True(t, ok, "gateway %s not found in addresses", gwName)
 
 		for _, v := range verifiers {
@@ -418,7 +439,7 @@ func verifyGatewayResources(ctx context.Context, t *testing.T, tc *testCase, gwA
 					return fmt.Sprintf("Verifying gateway %s (attempt %d/%d): %v", gwName, attempt, maxAttempts, err)
 				},
 				func() error {
-					return v.verify(ctx, t, addr, ingress)
+					return v.verify(ctx, t, addrs, ingress)
 				},
 			)
 			require.NoError(t, err, "gateway verification failed")
@@ -583,6 +604,15 @@ func (b *ingressBuilder) withIngressClass(className string) *ingressBuilder {
 
 // Sets the Host field of the first rule in the ingress to the specified string. Does nothing if
 // there are no rules.
+func (b *ingressBuilder) withAnnotation(key, value string) *ingressBuilder {
+	if b.ObjectMeta.Annotations == nil {
+		b.ObjectMeta.Annotations = make(map[string]string)
+	}
+	b.ObjectMeta.Annotations[key] = value
+
+	return b
+}
+
 func (b *ingressBuilder) withHost(host string) *ingressBuilder {
 	if len(b.Spec.Rules) > 0 {
 		b.Spec.Rules[0].Host = host
@@ -625,4 +655,54 @@ func basicIngress() *ingressBuilder {
 			},
 		},
 	}
+}
+
+func (b *ingressBuilder) withTLS(hosts []string, secretName string) *ingressBuilder {
+	b.Ingress.Spec.TLS = append(b.Ingress.Spec.TLS, networkingv1.IngressTLS{
+		Hosts:      hosts,
+		SecretName: secretName,
+	})
+	return b
+}
+
+func createTLSSecret(ctx context.Context, k8sClient *kubernetes.Clientset, namespace, name, host string) error {
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return err
+	}
+
+	template := x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject: pkix.Name{
+			Organization: []string{"Acme Co"},
+		},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().Add(time.Hour * 24 * 180),
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+		DNSNames:              []string{host},
+	}
+
+	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
+	if err != nil {
+		return err
+	}
+
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv)})
+
+	sec := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Type: corev1.SecretTypeTLS,
+		Data: map[string][]byte{
+			corev1.TLSCertKey:       certPEM,
+			corev1.TLSPrivateKeyKey: keyPEM,
+		},
+	}
+	_, err = k8sClient.CoreV1().Secrets(namespace).Create(ctx, sec, metav1.CreateOptions{})
+	return err
 }
