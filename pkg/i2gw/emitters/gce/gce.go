@@ -17,12 +17,14 @@ limitations under the License.
 package gce_emitter
 
 import (
+	"log/slog"
+
 	gkegatewayv1 "github.com/GoogleCloudPlatform/gke-gateway-api/apis/networking/v1"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/utils"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -30,6 +32,8 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
+
+const emitterName = "gce"
 
 var (
 	GCPBackendPolicyGVK = schema.GroupVersionKind{
@@ -52,7 +56,7 @@ var (
 )
 
 func init() {
-	i2gw.EmitterConstructorByName["gce"] = NewEmitter
+	i2gw.EmitterConstructorByName[emitterName] = NewEmitter
 }
 
 type Emitter struct{}
@@ -62,16 +66,18 @@ func NewEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
 }
 
 func (c *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.ErrorList) {
+	log := logging.WithEmitter(emitterName)
 	gatewayResources, errs := utils.ToGatewayResources(ir)
 	if len(errs) != 0 {
 		return i2gw.GatewayResources{}, errs
 	}
-	buildGceGatewayExtensions(ir, &gatewayResources)
-	buildGceServiceExtensions(ir, &gatewayResources)
+	buildGceGatewayExtensions(log, ir, &gatewayResources)
+	buildGceServiceExtensions(log, ir, &gatewayResources)
+
 	return gatewayResources, nil
 }
 
-func buildGceGatewayExtensions(ir emitterir.EmitterIR, gatewayResources *i2gw.GatewayResources) {
+func buildGceGatewayExtensions(log *slog.Logger, ir emitterir.EmitterIR, gatewayResources *i2gw.GatewayResources) {
 	for gwyKey, gatewayContext := range ir.Gateways {
 		gwyPolicy := addGatewayPolicyIfConfigured(gwyKey, &gatewayContext)
 		if gwyPolicy == nil {
@@ -79,7 +85,7 @@ func buildGceGatewayExtensions(ir emitterir.EmitterIR, gatewayResources *i2gw.Ga
 		}
 		obj, err := i2gw.CastToUnstructured(gwyPolicy)
 		if err != nil {
-			notify(notifications.ErrorNotification, "Failed to cast GCPGatewayPolicy to unstructured", gwyPolicy)
+			log.Error("Failed to cast GCPGatewayPolicy to unstructured", logging.ObjectRef(gwyPolicy))
 			continue
 		}
 		gatewayResources.GatewayExtensions = append(gatewayResources.GatewayExtensions, *obj)
@@ -115,13 +121,13 @@ func addGatewayPolicyIfConfigured(gatewayNamespacedName types.NamespacedName, ga
 	return &gcpGatewayPolicy
 }
 
-func buildGceServiceExtensions(ir emitterir.EmitterIR, gatewayResources *i2gw.GatewayResources) {
+func buildGceServiceExtensions(log *slog.Logger, ir emitterir.EmitterIR, gatewayResources *i2gw.GatewayResources) {
 	for svcKey, gceServiceIR := range ir.GceServices {
 		bePolicy := addGCPBackendPolicyIfConfigured(svcKey, gceServiceIR)
 		if bePolicy != nil {
 			obj, err := i2gw.CastToUnstructured(bePolicy)
 			if err != nil {
-				notify(notifications.ErrorNotification, "Failed to cast GCPBackendPolicy to unstructured", bePolicy)
+				log.Error("Failed to cast GCPBackendPolicy to unstructured", logging.ObjectRef(bePolicy))
 				continue
 			}
 			gatewayResources.GatewayExtensions = append(gatewayResources.GatewayExtensions, *obj)
@@ -131,7 +137,7 @@ func buildGceServiceExtensions(ir emitterir.EmitterIR, gatewayResources *i2gw.Ga
 		if hcPolicy != nil {
 			obj, err := i2gw.CastToUnstructured(hcPolicy)
 			if err != nil {
-				notify(notifications.ErrorNotification, "Failed to cast HealthCheckPolicy to unstructured", hcPolicy)
+				log.Error("Failed to cast HealthCheckPolicy to unstructured", logging.ObjectRef(hcPolicy))
 				continue
 			}
 			gatewayResources.GatewayExtensions = append(gatewayResources.GatewayExtensions, *obj)

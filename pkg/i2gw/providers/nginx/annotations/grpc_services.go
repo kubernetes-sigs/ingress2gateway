@@ -17,26 +17,27 @@ limitations under the License.
 package annotations
 
 import (
+	"log/slog"
+
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
 // GRPCServicesFeature processes nginx.org/grpc-services annotation
-func GRPCServicesFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func GRPCServicesFeature(log *slog.Logger, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 
 	ruleGroups := common.GetRuleGroups(ingresses)
 	for _, rg := range ruleGroups {
 		for _, rule := range rg.Rules {
 			if grpcServices, exists := rule.Ingress.Annotations[nginxGRPCServicesAnnotation]; exists && grpcServices != "" {
-				errs = append(errs, processGRPCServicesAnnotation(rule.Ingress, grpcServices, ir)...)
+				errs = append(errs, processGRPCServicesAnnotation(log, rule.Ingress, grpcServices, ir)...)
 			}
 		}
 	}
@@ -47,7 +48,7 @@ func GRPCServicesFeature(ingresses []networkingv1.Ingress, _ map[types.Namespace
 // processGRPCServicesAnnotation handles gRPC backend services
 //
 //nolint:unparam // ErrorList return type maintained for consistency
-func processGRPCServicesAnnotation(ingress networkingv1.Ingress, grpcServices string, ir *providerir.ProviderIR) field.ErrorList {
+func processGRPCServicesAnnotation(log *slog.Logger, ingress networkingv1.Ingress, grpcServices string, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList //nolint:unparam // ErrorList return type maintained for consistency
 
 	// Parse comma-separated service names that should use gRPC
@@ -125,7 +126,7 @@ func processGRPCServicesAnnotation(ingress networkingv1.Ingress, grpcServices st
 				var grpcFilters []gatewayv1.GRPCRouteFilter
 				if httpRouteExists {
 					// Find the corresponding HTTP rule for this path to copy its filters
-					grpcFilters = findAndConvertFiltersForGRPCPath(httpRouteContext.HTTPRoute.Spec.Rules, path.Path)
+					grpcFilters = findAndConvertFiltersForGRPCPath(log, httpRouteContext.HTTPRoute.Spec.Rules, path.Path)
 				}
 
 				grpcRule := gatewayv1.GRPCRouteRule{
@@ -194,7 +195,7 @@ func processGRPCServicesAnnotation(ingress networkingv1.Ingress, grpcServices st
 }
 
 // findAndConvertFiltersForGRPCPath finds the HTTP rule that matches the given path and converts its filters to gRPC filters
-func findAndConvertFiltersForGRPCPath(httpRules []gatewayv1.HTTPRouteRule, grpcPath string) []gatewayv1.GRPCRouteFilter {
+func findAndConvertFiltersForGRPCPath(log *slog.Logger, httpRules []gatewayv1.HTTPRouteRule, grpcPath string) []gatewayv1.GRPCRouteFilter {
 	// Find the HTTP rule that contains this path
 	for _, httpRule := range httpRules {
 		for _, match := range httpRule.Matches {
@@ -202,29 +203,29 @@ func findAndConvertFiltersForGRPCPath(httpRules []gatewayv1.HTTPRouteRule, grpcP
 				// Found the matching rule, convert its filters
 				conversionResult := common.ConvertHTTPFiltersToGRPCFilters(httpRule.Filters)
 
-				// Handle notifications for unsupported filters
+				// Handle logs for unsupported filters
 				for _, unsupportedType := range conversionResult.UnsupportedTypes {
 					switch unsupportedType {
 					case gatewayv1.HTTPRouteFilterRequestHeaderModifier:
 						// This should never happen as it's a supported filter, but added for exhaustiveness
-						notify(notifications.WarningNotification, "RequestHeaderModifier should be supported for gRPC")
+						log.Warn("RequestHeaderModifier should be supported for gRPC")
 					case gatewayv1.HTTPRouteFilterResponseHeaderModifier:
 						// This should never happen as it's a supported filter, but added for exhaustiveness
-						notify(notifications.WarningNotification, "ResponseHeaderModifier should be supported for gRPC")
+						log.Warn("ResponseHeaderModifier should be supported for gRPC")
 					case gatewayv1.HTTPRouteFilterRequestRedirect:
-						notify(notifications.WarningNotification, "RequestRedirect is not applicable to gRPC")
+						log.Warn("RequestRedirect is not applicable to gRPC")
 					case gatewayv1.HTTPRouteFilterURLRewrite:
-						notify(notifications.WarningNotification, "URLRewrite is not applicable to gRPC")
+						log.Warn("URLRewrite is not applicable to gRPC")
 					case gatewayv1.HTTPRouteFilterRequestMirror:
-						notify(notifications.WarningNotification, "RequestMirror is not applicable to gRPC")
+						log.Warn("RequestMirror is not applicable to gRPC")
 					case gatewayv1.HTTPRouteFilterExtensionRef:
-						notify(notifications.WarningNotification, "ExtensionRef filters are not converted to gRPC equivalents")
+						log.Warn("ExtensionRef filters are not converted to gRPC equivalents")
 					case gatewayv1.HTTPRouteFilterCORS:
-						notify(notifications.WarningNotification, "CORS is not applicable to gRPC")
+						log.Warn("CORS is not applicable to gRPC")
 					case gatewayv1.HTTPRouteFilterExternalAuth:
-						notify(notifications.WarningNotification, "ExternalAuth is not applicable to gRPC")
+						log.Warn("ExternalAuth is not applicable to gRPC")
 					default:
-						notify(notifications.WarningNotification, "Unknown HTTPRouteFilter type: "+string(unsupportedType))
+						log.Warn("Unknown HTTPRouteFilter type: " + string(unsupportedType))
 					}
 				}
 				return conversionResult.GRPCFilters

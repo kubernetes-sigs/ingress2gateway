@@ -18,12 +18,13 @@ package ingressnginx
 
 import (
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -51,7 +52,7 @@ func parseIngressNginxTimeout(val string) (time.Duration, error) {
 
 // applyTimeoutsToEmitterIR is a temporary bridge until timeout parsing is integrated
 // into the generic feature parsing flow.
-func applyTimeoutsToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) field.ErrorList {
+func applyTimeoutsToEmitterIR(log *slog.Logger, pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) field.ErrorList {
 	var errList field.ErrorList
 
 	for key, httpRouteContext := range pIR.HTTPRoutes {
@@ -86,12 +87,25 @@ func applyTimeoutsToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterI
 				Write:   write,
 			}
 
-			notify(notifications.InfoNotification, fmt.Sprintf("parsed ingress-nginx proxy timeouts (x%d) from %s/%s for HTTPRoute %s/%s rule %d (timeouts.request): %s",
-				timeoutMultiplier, ingress.Namespace, ingress.Name, key.Namespace, key.Name, ruleIdx, formatTCPTimeouts(connect, read, write)), &httpRouteContext.HTTPRoute)
-			notify(
-				notifications.WarningNotification,
-				"ingress-nginx only supports TCP-level timeouts; i2gw has made a best-effort translation to Gateway API timeouts.request."+
-					" Please verify that this meets your needs. See documentation: https://gateway-api.sigs.k8s.io/guides/http-timeouts/",
+			log.Info(
+				fmt.Sprintf(
+					"parsed ingress-nginx proxy timeouts (x%d) from %s/%s for HTTPRoute %s/%s rule %d (timeouts.request): %s",
+					timeoutMultiplier,
+					ingress.Namespace,
+					ingress.Name,
+					key.Namespace,
+					key.Name,
+					ruleIdx,
+					formatTCPTimeouts(connect, read, write),
+				),
+				logging.ObjectRef(&httpRouteContext.HTTPRoute),
+			)
+			log.Warn(
+				"ingress-nginx only supports TCP-level timeouts; "+
+					"i2gw has made a best-effort translation to Gateway API timeouts.request. "+
+					"Please verify that this meets your needs. "+
+					"See documentation: https://gateway-api.sigs.k8s.io/guides/http-timeouts/",
+				logging.ObjectRef(&httpRouteContext.HTTPRoute),
 			)
 		}
 

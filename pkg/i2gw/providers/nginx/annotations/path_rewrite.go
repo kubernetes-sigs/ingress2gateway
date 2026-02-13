@@ -17,6 +17,7 @@ limitations under the License.
 package annotations
 
 import (
+	"log/slog"
 	"strings"
 
 	networkingv1 "k8s.io/api/networking/v1"
@@ -30,7 +31,7 @@ import (
 )
 
 // RewriteTargetFeature converts nginx.org/rewrites annotation to URLRewrite filter
-func RewriteTargetFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func RewriteTargetFeature(_ *slog.Logger, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 
 	ruleGroups := common.GetRuleGroups(ingresses)
