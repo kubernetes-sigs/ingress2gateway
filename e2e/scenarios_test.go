@@ -102,18 +102,21 @@ func TestIngressNginx(t *testing.T) {
 						withName("foo").
 						withIngressClass(ingressnginx.NginxIngressClass).
 						withHost("example.com").
+						withHost("www.example.com").
 						withAnnotation("nginx.ingress.kubernetes.io/from-to-www-redirect", "true").
+						withTLS([]string{"example.com", "www.example.com"}, "test-cert").
 						build(),
 				},
 				verifiers: map[string][]verifier{
 					"foo": {
-						&httpGetVerifier{
-							host: "example.com",
-							path: "/",
-						},
 						&httpRedirectVerifier{
-							host:           "www.example.com",
-							targetHost:     "example.com",
+							host:           "example.com",
+							targetHost:     "www.example.com",
+							expectedStatus: []int{301, 308},
+						},
+						&httpsRedirectVerifier{
+							host:           "example.com",
+							targetHost:     "www.example.com",
 							expectedStatus: []int{301, 308},
 						},
 					},

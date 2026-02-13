@@ -161,7 +161,7 @@ func addWWWRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR) field.
 			redirectRoute := gatewayv1.HTTPRoute{
 				TypeMeta: httpRouteContext.HTTPRoute.TypeMeta,
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      fmt.Sprintf("%s-%s-www-redirect", httpRouteContext.HTTPRoute.Name, routeNameSuffix),
+					Name:      fmt.Sprintf("00-%s-%s-www-redirect", httpRouteContext.HTTPRoute.Name, routeNameSuffix),
 					Namespace: httpRouteContext.HTTPRoute.Namespace,
 				},
 				Spec: gatewayv1.HTTPRouteSpec{
@@ -183,6 +183,23 @@ func addWWWRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR) field.
 			}
 			redirectRoute.Spec.ParentRefs = httpRouteContext.HTTPRoute.Spec.DeepCopy().ParentRefs
 
+			// We need to ensure the redirect route is attached to both HTTP and HTTPS listeners if present.
+			// Currently it copies the ParentRefs from the original route, which might only be bound to 443
+			// if ssl-redirect is enabled. Let's create two ParentRefs for each Gateway, one for 80, one for 443.
+			var allParentRefs []gatewayv1.ParentReference
+			for _, pr := range redirectRoute.Spec.ParentRefs {
+				pr80 := pr
+				pr80.Port = ptr.To[gatewayv1.PortNumber](80)
+				pr80.SectionName = ptr.To(gatewayv1.SectionName(fmt.Sprintf("%s-http", strings.ReplaceAll(srcHost, ".", "-"))))
+				allParentRefs = append(allParentRefs, pr80)
+
+				pr443 := pr
+				pr443.Port = ptr.To[gatewayv1.PortNumber](443)
+				pr443.SectionName = ptr.To(gatewayv1.SectionName(fmt.Sprintf("%s-https", strings.ReplaceAll(srcHost, ".", "-"))))
+				allParentRefs = append(allParentRefs, pr443)
+			}
+			redirectRoute.Spec.ParentRefs = allParentRefs
+
 			eir.HTTPRoutes[types.NamespacedName{
 				Namespace: redirectRoute.Namespace,
 				Name:      redirectRoute.Name,
@@ -201,14 +218,26 @@ func addWWWRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR) field.
 				}
 
 				if gwCtx, ok := eir.Gateways[gwKey]; ok {
-					listenerExists := false
+					httpListenerExists := false
+					httpsListenerExists := false
+					var tlsConfig *gatewayv1.ListenerTLSConfig
+
 					for _, l := range gwCtx.Gateway.Spec.Listeners {
+						if l.Hostname != nil && string(*l.Hostname) == dstHost {
+							if l.Protocol == gatewayv1.HTTPSProtocolType {
+								tlsConfig = l.TLS
+							}
+						}
 						if l.Hostname != nil && string(*l.Hostname) == srcHost {
-							listenerExists = true
-							break
+							if l.Protocol == gatewayv1.HTTPProtocolType {
+								httpListenerExists = true
+							}
+							if l.Protocol == gatewayv1.HTTPSProtocolType {
+								httpsListenerExists = true
+							}
 						}
 					}
-					if !listenerExists {
+					if !httpListenerExists {
 						listenerName := fmt.Sprintf("%s-http", strings.ReplaceAll(srcHost, ".", "-"))
 						gwCtx.Gateway.Spec.Listeners = append(gwCtx.Gateway.Spec.Listeners, gatewayv1.Listener{
 							Name:     gatewayv1.SectionName(listenerName),
@@ -216,8 +245,18 @@ func addWWWRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR) field.
 							Port:     80,
 							Protocol: gatewayv1.HTTPProtocolType,
 						})
-						eir.Gateways[gwKey] = gwCtx
 					}
+					if !httpsListenerExists && tlsConfig != nil {
+						listenerName := fmt.Sprintf("%s-https", strings.ReplaceAll(srcHost, ".", "-"))
+						gwCtx.Gateway.Spec.Listeners = append(gwCtx.Gateway.Spec.Listeners, gatewayv1.Listener{
+							Name:     gatewayv1.SectionName(listenerName),
+							Hostname: ptr.To(gatewayv1.Hostname(srcHost)),
+							Port:     443,
+							Protocol: gatewayv1.HTTPSProtocolType,
+							TLS:      tlsConfig,
+						})
+					}
+					eir.Gateways[gwKey] = gwCtx
 				}
 			}
 		}

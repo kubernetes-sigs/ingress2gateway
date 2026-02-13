@@ -20,10 +20,16 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"os"
 	"os/exec"
 	"strings"
@@ -38,6 +44,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -487,10 +494,22 @@ func verifyGatewayResources(ctx context.Context, t *testing.T, tc *testCase, gwA
 func testCaseNeedsHTTPS(tc *testCase) bool {
 	for _, verifiers := range tc.verifiers {
 		for _, v := range verifiers {
-			if hv, ok := v.(*httpRequestVerifier); ok && hv.useTLS {
+			if verifierNeedsHTTPS(v) {
 				return true
 			}
 		}
+	}
+	return false
+}
+
+func verifierNeedsHTTPS(v verifier) bool {
+	switch t := v.(type) {
+	case *httpRequestVerifier:
+		return t.useTLS
+	case *httpsRedirectVerifier:
+		return true
+	case *canaryVerifier:
+		return verifierNeedsHTTPS(t.verifier)
 	}
 	return false
 }
@@ -710,14 +729,6 @@ func (b *ingressBuilder) withBackend(svc string) *ingressBuilder {
 	return b
 }
 
-func (b *ingressBuilder) withAnnotation(key, value string) *ingressBuilder {
-	if b.ObjectMeta.Annotations == nil {
-		b.ObjectMeta.Annotations = make(map[string]string)
-	}
-	b.ObjectMeta.Annotations[key] = value
-	return b
-}
-
 func (b *ingressBuilder) withTLSSecret(secretName string, hosts ...string) *ingressBuilder {
 	b.Spec.TLS = append(b.Spec.TLS, networkingv1.IngressTLS{
 		SecretName: secretName,
@@ -760,4 +771,57 @@ func basicIngress() *ingressBuilder {
 			},
 		},
 	}
+}
+
+func (b *ingressBuilder) withTLS(hosts []string, secretName string) *ingressBuilder {
+	b.Spec.TLS = append(b.Spec.TLS, networkingv1.IngressTLS{
+		Hosts:      hosts,
+		SecretName: secretName,
+	})
+	return b
+}
+
+func createTLSSecret(ctx context.Context, k8sClient *kubernetes.Clientset, namespace, name, host string) error {
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return err
+	}
+
+	template := x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject: pkix.Name{
+			Organization: []string{"Acme Co"},
+		},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().Add(time.Hour * 24 * 180),
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+		DNSNames:              []string{host},
+	}
+
+	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
+	if err != nil {
+		return err
+	}
+
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv)})
+
+	sec := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Type: corev1.SecretTypeTLS,
+		Data: map[string][]byte{
+			corev1.TLSCertKey:       certPEM,
+			corev1.TLSPrivateKeyKey: keyPEM,
+		},
+	}
+	_, err = k8sClient.CoreV1().Secrets(namespace).Create(ctx, sec, metav1.CreateOptions{})
+	if k8serrors.IsAlreadyExists(err) {
+		return nil
+	}
+	return err
 }

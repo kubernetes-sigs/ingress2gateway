@@ -29,6 +29,16 @@ import (
 
 func createIngresses(ctx context.Context, l logger, client *kubernetes.Clientset, ns string, ingresses []*networkingv1.Ingress, skipCleanup bool) (func(), error) {
 	for _, ingress := range ingresses {
+		for _, tlsDef := range ingress.Spec.TLS {
+			if len(tlsDef.Hosts) > 0 && tlsDef.SecretName != "" {
+				l.Logf("Creating TLS secret %s for host %s in namespace %s", tlsDef.SecretName, tlsDef.Hosts[0], ns)
+				err := createTLSSecret(ctx, client, ns, tlsDef.SecretName, tlsDef.Hosts[0])
+				if err != nil {
+					return nil, fmt.Errorf("failed to create dummy TLS secret: %w", err)
+				}
+			}
+		}
+
 		// Add ingress class label for admission webhook selectors. This allows ingress controllers
 		// to configure their admission webhooks to only validate ingresses with matching labels,
 		// avoiding cross-controller interference in parallel test scenarios.
