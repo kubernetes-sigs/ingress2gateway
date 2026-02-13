@@ -154,13 +154,16 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 				}
 			}
 
-			// Set path if present
-			if parsedURL.Path != "" {
-				pathType := gatewayv1.FullPathHTTPPathModifier
-				redirectFilterConfig.Path = &gatewayv1.HTTPPathModifier{
-					Type:            pathType,
-					ReplaceFullPath: ptr.To(parsedURL.Path),
-				}
+			// Set path - default to root path if not specified in redirect URL
+			// This matches ingress-nginx behavior where redirects override the request path
+			path := parsedURL.Path
+			if path == "" {
+				path = "/"
+			}
+			pathType := gatewayv1.FullPathHTTPPathModifier
+			redirectFilterConfig.Path = &gatewayv1.HTTPPathModifier{
+				Type:            pathType,
+				ReplaceFullPath: ptr.To(path),
 			}
 
 			redirectFilter := gatewayv1.HTTPRouteFilter{
