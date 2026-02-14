@@ -19,6 +19,7 @@ package gce
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
@@ -70,8 +71,8 @@ func (p *Provider) ReadResourcesFromCluster(ctx context.Context) error {
 	return nil
 }
 
-func (p *Provider) ReadResourcesFromFile(_ context.Context, filename string) error {
-	storage, err := p.reader.readResourcesFromFile(filename)
+func (p *Provider) ReadResourcesFromFile(_ context.Context, reader io.Reader) error {
+	storage, err := p.reader.readResourcesFromFile(reader)
 	if err != nil {
 		return fmt.Errorf("failed to read gce resources from file: %w", err)
 	}

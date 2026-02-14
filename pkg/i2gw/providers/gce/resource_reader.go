@@ -17,11 +17,9 @@ limitations under the License.
 package gce
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
+	"io"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
@@ -87,13 +85,9 @@ func (r *reader) readResourcesFromCluster(ctx context.Context) (*storage, error)
 	return storage, nil
 }
 
-func (r *reader) readResourcesFromFile(filename string) (*storage, error) {
-	stream, err := os.ReadFile(filepath.Clean(filename))
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file %v: %w", filename, err)
-	}
+func (r *reader) readResourcesFromFile(reader io.Reader) (*storage, error) {
 
-	unstructuredObjects, err := common.ExtractObjectsFromReader(bytes.NewReader(stream), r.conf.Namespace)
+	unstructuredObjects, err := common.ExtractObjectsFromReader(reader, r.conf.Namespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract objects: %w", err)
 	}
