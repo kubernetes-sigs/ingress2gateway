@@ -22,6 +22,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
+	"github.com/stretchr/testify/require"
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
@@ -54,10 +55,13 @@ func TestIngressNginx(t *testing.T) {
 						build(),
 				},
 				verifiers: map[string][]verifier{
-					"foo": {&httpGetVerifier{path: "/"}},
+					"foo": {&httpRequestVerifier{path: "/"}},
 				},
 			})
 		})
+		suffix, err := randString()
+		require.NoError(t, err)
+		host := "foo.example.com" + suffix
 		t.Run("with host field", func(t *testing.T) {
 			runTestCase(t, &testCase{
 				gatewayImplementation: istio.ProviderName,
@@ -71,13 +75,13 @@ func TestIngressNginx(t *testing.T) {
 					basicIngress().
 						withName("foo").
 						withIngressClass(ingressnginx.NginxIngressClass).
-						withHost("foo.example.com").
+						withHost(host).
 						build(),
 				},
 				verifiers: map[string][]verifier{
 					"foo": {
-						&httpGetVerifier{
-							host: "foo.example.com",
+						&httpRequestVerifier{
+							host: host,
 							path: "/",
 						},
 					},
@@ -104,8 +108,8 @@ func TestIngressNginx(t *testing.T) {
 						build(),
 				},
 				verifiers: map[string][]verifier{
-					"foo": {&httpGetVerifier{path: "/"}},
-					"bar": {&httpGetVerifier{path: "/"}},
+					"foo": {&httpRequestVerifier{path: "/"}},
+					"bar": {&httpRequestVerifier{path: "/"}},
 				},
 			})
 		})
@@ -138,7 +142,7 @@ func TestKongIngress(t *testing.T) {
 						build(),
 				},
 				verifiers: map[string][]verifier{
-					"foo": {&httpGetVerifier{path: "/"}},
+					"foo": {&httpRequestVerifier{path: "/"}},
 				},
 			})
 		})
@@ -157,8 +161,8 @@ func TestKongIngress(t *testing.T) {
 						build(),
 				},
 				verifiers: map[string][]verifier{
-					"foo": {&httpGetVerifier{path: "/"}},
-					"bar": {&httpGetVerifier{path: "/"}},
+					"foo": {&httpRequestVerifier{path: "/"}},
+					"bar": {&httpRequestVerifier{path: "/"}},
 				},
 			})
 		})
@@ -176,7 +180,7 @@ func TestKongIngress(t *testing.T) {
 						build(),
 				},
 				verifiers: map[string][]verifier{
-					"foo": {&httpGetVerifier{path: "/"}},
+					"foo": {&httpRequestVerifier{path: "/"}},
 				},
 			})
 		})
@@ -195,8 +199,8 @@ func TestKongIngress(t *testing.T) {
 						build(),
 				},
 				verifiers: map[string][]verifier{
-					"foo": {&httpGetVerifier{path: "/"}},
-					"bar": {&httpGetVerifier{path: "/"}},
+					"foo": {&httpRequestVerifier{path: "/"}},
+					"bar": {&httpRequestVerifier{path: "/"}},
 				},
 			})
 		})
@@ -227,8 +231,8 @@ func TestMultipleProviders(t *testing.T) {
 						build(),
 				},
 				verifiers: map[string][]verifier{
-					"foo": {&httpGetVerifier{path: "/"}},
-					"bar": {&httpGetVerifier{path: "/"}},
+					"foo": {&httpRequestVerifier{path: "/"}},
+					"bar": {&httpRequestVerifier{path: "/"}},
 				},
 			})
 		})

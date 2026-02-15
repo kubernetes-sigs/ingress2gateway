@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"helm.sh/helm/v4/pkg/cli"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -92,6 +93,9 @@ func deployGatewayAPIKong(
 
 	l.Logf("Creating GatewayClass %s", kongGatewayClass)
 	_, err := gwClient.GatewayV1().GatewayClasses().Create(ctx, gc, metav1.CreateOptions{})
+	if errors.IsAlreadyExists(err) {
+		_, err = gwClient.GatewayV1().GatewayClasses().Update(ctx, gc, metav1.UpdateOptions{})
+	}
 	if err != nil {
 		return nil, fmt.Errorf("creating GatewayClass: %w", err)
 	}
