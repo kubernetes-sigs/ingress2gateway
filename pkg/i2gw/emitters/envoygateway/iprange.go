@@ -28,6 +28,17 @@ import (
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
+func buildAuthRule(action egapiv1a1.AuthorizationAction, cidrs []string) egapiv1a1.AuthorizationRule {
+	return egapiv1a1.AuthorizationRule{
+		Action: action,
+		Principal: egapiv1a1.Principal{
+			ClientCIDRs: lo.Map(cidrs, func(a string, _ int) egapiv1a1.CIDR {
+				return egapiv1a1.CIDR(a)
+			}),
+		},
+	}
+}
+
 func (e *Emitter) EmitIPRangeControl(ir emitterir.EmitterIR, gwResources *i2gw.GatewayResources) {
 	for nn, ctx := range ir.HTTPRoutes {
 		if ctx.IPRangeControlByRuleIdx == nil {
@@ -44,56 +55,20 @@ func (e *Emitter) EmitIPRangeControl(ir emitterir.EmitterIR, gwResources *i2gw.G
 
 			securityPolicy := e.getOrBuildSecurityPolicy(ctx, sectionName, idx)
 
-			if len(ipCon.AllowList) > 0 && len(ipCon.DenyList) > 0 {
-				securityPolicy.Spec.Authorization = &egapiv1a1.Authorization{
-					DefaultAction: ptr.To(egapiv1a1.AuthorizationActionDeny),
-					Rules: []egapiv1a1.AuthorizationRule{
-						{
-							Action: egapiv1a1.AuthorizationActionDeny,
-							Principal: egapiv1a1.Principal{
-								ClientCIDRs: lo.Map(ipCon.DenyList, func(a string, _ int) egapiv1a1.CIDR {
-									return egapiv1a1.CIDR(a)
-								}),
-							},
-						},
-						{
-							Action: egapiv1a1.AuthorizationActionAllow,
-							Principal: egapiv1a1.Principal{
-								ClientCIDRs: lo.Map(ipCon.AllowList, func(a string, _ int) egapiv1a1.CIDR {
-									return egapiv1a1.CIDR(a)
-								}),
-							},
-						},
-					},
-				}
-			} else if len(ipCon.AllowList) > 0 {
-				securityPolicy.Spec.Authorization = &egapiv1a1.Authorization{
-					DefaultAction: ptr.To(egapiv1a1.AuthorizationActionDeny),
-					Rules: []egapiv1a1.AuthorizationRule{
-						{
-							Action: egapiv1a1.AuthorizationActionAllow,
-							Principal: egapiv1a1.Principal{
-								ClientCIDRs: lo.Map(ipCon.AllowList, func(a string, _ int) egapiv1a1.CIDR {
-									return egapiv1a1.CIDR(a)
-								}),
-							},
-						},
-					},
-				}
-			} else if len(ipCon.DenyList) > 0 {
-				securityPolicy.Spec.Authorization = &egapiv1a1.Authorization{
-					DefaultAction: ptr.To(egapiv1a1.AuthorizationActionAllow),
-					Rules: []egapiv1a1.AuthorizationRule{
-						{
-							Action: egapiv1a1.AuthorizationActionDeny,
-							Principal: egapiv1a1.Principal{
-								ClientCIDRs: lo.Map(ipCon.DenyList, func(a string, _ int) egapiv1a1.CIDR {
-									return egapiv1a1.CIDR(a)
-								}),
-							},
-						},
-					},
-				}
+			var rules []egapiv1a1.AuthorizationRule
+			defaultAction := egapiv1a1.AuthorizationActionAllow
+			if len(ipCon.AllowList) > 0 {
+				defaultAction = egapiv1a1.AuthorizationActionDeny
+			}
+			if len(ipCon.DenyList) > 0 {
+				rules = append(rules, buildAuthRule(egapiv1a1.AuthorizationActionDeny, ipCon.DenyList))
+			}
+			if len(ipCon.AllowList) > 0 {
+				rules = append(rules, buildAuthRule(egapiv1a1.AuthorizationActionAllow, ipCon.AllowList))
+			}
+			securityPolicy.Spec.Authorization = &egapiv1a1.Authorization{
+				DefaultAction: ptr.To(defaultAction),
+				Rules:         rules,
 			}
 
 			ruleInfo := ""
