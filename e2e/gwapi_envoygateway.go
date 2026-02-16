@@ -22,6 +22,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/kubernetes-sigs/ingress2gateway/e2e/framework"
 	"helm.sh/helm/v4/pkg/cli"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -42,7 +43,7 @@ const (
 
 func deployGatewayAPIEnvoyGateway(
 	ctx context.Context,
-	l logger,
+	l framework.Logger,
 	client *kubernetes.Clientset,
 	apiextClient *apiextensionsclientset.Clientset,
 	gwClient *gwclientset.Clientset,
@@ -56,7 +57,7 @@ func deployGatewayAPIEnvoyGateway(
 	// helm install cannot be used here due to a known Helm limitation where large CRDs
 	// in the templates/ directory cause the release Secret to exceed the 1MB size limit.
 	// See: https://gateway.envoyproxy.io/v1.7/install/install-helm/#installing-crds-separately
-	cleanupCRDs, err := deployCRDs(ctx, l, apiextClient, envoyGatewayCRDInstallURL, skipCleanup)
+	cleanupCRDs, err := framework.DeployCRDs(ctx, l, apiextClient, envoyGatewayCRDInstallURL, skipCleanup)
 	if err != nil {
 		return nil, fmt.Errorf("installing Envoy Gateway CRDs: %w", err)
 	}
@@ -79,7 +80,7 @@ func deployGatewayAPIEnvoyGateway(
 		},
 	}
 
-	if err = installChart(
+	if err = framework.InstallChart(
 		ctx,
 		l,
 		settings,
@@ -134,13 +135,13 @@ func deployGatewayAPIEnvoyGateway(
 			log.Printf("Deleting GatewayClass: %v", err)
 		}
 
-		if err := uninstallChart(cleanupCtx, settings, envoyGatewayReleaseName, namespace); err != nil {
+		if err := framework.UninstallChart(cleanupCtx, settings, envoyGatewayReleaseName, namespace); err != nil {
 			log.Printf("Uninstalling Envoy Gateway chart: %v", err)
 		}
 
 		cleanupCRDs()
 
-		if err := deleteNamespaceAndWait(cleanupCtx, client, namespace); err != nil {
+		if err := framework.DeleteNamespaceAndWait(cleanupCtx, client, namespace); err != nil {
 			log.Printf("Deleting namespace: %v", err)
 		}
 	}, nil

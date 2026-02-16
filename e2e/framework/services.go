@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package framework
 
 import (
 	"context"
@@ -26,8 +26,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-// Waits until at least one of the pods backing the service is ready.
-func waitForServiceReady(
+// WaitForServiceReady waits until at least one of the pods backing the service is ready.
+func WaitForServiceReady(
 	ctx context.Context,
 	client *kubernetes.Clientset,
 	namespace string,

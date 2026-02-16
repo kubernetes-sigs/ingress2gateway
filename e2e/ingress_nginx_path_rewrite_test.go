@@ -20,6 +20,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/kubernetes-sigs/ingress2gateway/e2e/framework"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -30,26 +31,26 @@ func TestIngressNGINXPathRewrite(t *testing.T) {
 	t.Run("to Istio", func(t *testing.T) {
 		t.Parallel()
 		t.Run("basic conversion", func(t *testing.T) {
-			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
-				providers:             []string{ingressnginx.Name},
-				providerFlags: map[string]map[string]string{
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{ingressnginx.Name},
+				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				ingresses: []*networkingv1.Ingress{
-					basicIngress().
-						withName("foo1").
-						withIngressClass(ingressnginx.NginxIngressClass).
-						withPath("/abc").
-						withAnnotation("nginx.ingress.kubernetes.io/rewrite-target", "/header").
-						withAnnotation("nginx.ingress.kubernetes.io/x-forwarded-prefix", "/abc").
-						build(),
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("foo1").
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						WithPath("/abc").
+						WithAnnotation("nginx.ingress.kubernetes.io/rewrite-target", "/header").
+						WithAnnotation("nginx.ingress.kubernetes.io/x-forwarded-prefix", "/abc").
+						Build(),
 				},
-				verifiers: map[string][]verifier{
+				Verifiers: map[string][]framework.Verifier{
 					"foo1": {
-						&httpRequestVerifier{path: "/abc", bodyRegex: regexp.MustCompile(`"X-Forwarded-Prefix":\["/abc"\]`)},
+						&framework.HTTPRequestVerifier{Path: "/abc", BodyRegex: regexp.MustCompile(`"X-Forwarded-Prefix":\["/abc"\]`)},
 					},
 				},
 			})

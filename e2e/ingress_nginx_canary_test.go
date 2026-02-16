@@ -21,6 +21,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/kubernetes-sigs/ingress2gateway/e2e/framework"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
 	"github.com/stretchr/testify/require"
@@ -32,43 +33,43 @@ func TestIngressNGINXCanary(t *testing.T) {
 	t.Run("to Istio", func(t *testing.T) {
 		t.Parallel()
 		t.Run("base canary", func(t *testing.T) {
-			suffix, err := randString()
+			suffix, err := framework.RandString()
 			require.NoError(t, err)
 			host := fmt.Sprintf("canary-%s.com", suffix)
-			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
-				providers:             []string{ingressnginx.Name},
-				providerFlags: map[string]map[string]string{
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{ingressnginx.Name},
+				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				ingresses: []*networkingv1.Ingress{
-					basicIngress().
-						withName("foo1").
-						withHost(host).
-						withIngressClass(ingressnginx.NginxIngressClass).
-						build(),
-					basicIngress().
-						withName("foo2").
-						withHost(host).
-						withIngressClass(ingressnginx.NginxIngressClass).
-						withAnnotation("nginx.ingress.kubernetes.io/canary", "true").
-						withAnnotation("nginx.ingress.kubernetes.io/canary-weight", "20").
-						withBackend(DummyAppName2).
-						build(),
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("foo1").
+						WithHost(host).
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						Build(),
+					framework.BasicIngress().
+						WithName("foo2").
+						WithHost(host).
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						WithAnnotation("nginx.ingress.kubernetes.io/canary", "true").
+						WithAnnotation("nginx.ingress.kubernetes.io/canary-weight", "20").
+						WithBackend(framework.DummyAppName2).
+						Build(),
 				},
-				verifiers: map[string][]verifier{
+				Verifiers: map[string][]framework.Verifier{
 					"foo1": {
-						&canaryVerifier{
-							verifier: &httpRequestVerifier{
-								host:      host,
-								path:      "/hostname",
-								bodyRegex: regexp.MustCompile("^dummy-app2"),
+						&framework.CanaryVerifier{
+							Verifier: &framework.HTTPRequestVerifier{
+								Host:      host,
+								Path:      "/hostname",
+								BodyRegex: regexp.MustCompile("^dummy-app2"),
 							},
-							runs:         200,
-							minSuccesses: 0.1,
-							maxSuccesses: 0.3,
+							Runs:         200,
+							MinSuccesses: 0.1,
+							MaxSuccesses: 0.3,
 						},
 					},
 				},
@@ -76,52 +77,52 @@ func TestIngressNGINXCanary(t *testing.T) {
 		})
 
 		t.Run("canary by header at path", func(t *testing.T) {
-			suffix, err := randString()
+			suffix, err := framework.RandString()
 			require.NoError(t, err)
 			host := fmt.Sprintf("canary-header-path-%s.com", suffix)
-			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
-				providers:             []string{ingressnginx.Name},
-				providerFlags: map[string]map[string]string{
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{ingressnginx.Name},
+				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				ingresses: []*networkingv1.Ingress{
-					basicIngress().
-						withName("main").
-						withHost(host).
-						withPath("/hostname").
-						withIngressClass(ingressnginx.NginxIngressClass).
-						withBackend(DummyAppName1).
-						build(),
-					basicIngress().
-						withName("canary-header").
-						withHost(host).
-						withPath("/hostname").
-						withIngressClass(ingressnginx.NginxIngressClass).
-						withAnnotation("nginx.ingress.kubernetes.io/canary", "true").
-						withAnnotation("nginx.ingress.kubernetes.io/canary-by-header", "X-Canary").
-						withBackend(DummyAppName2).
-						build(),
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("main").
+						WithHost(host).
+						WithPath("/hostname").
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						WithBackend(framework.DummyAppName1).
+						Build(),
+					framework.BasicIngress().
+						WithName("canary-header").
+						WithHost(host).
+						WithPath("/hostname").
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						WithAnnotation("nginx.ingress.kubernetes.io/canary", "true").
+						WithAnnotation("nginx.ingress.kubernetes.io/canary-by-header", "X-Canary").
+						WithBackend(framework.DummyAppName2).
+						Build(),
 				},
-				verifiers: map[string][]verifier{
+				Verifiers: map[string][]framework.Verifier{
 					"main": {
 						// With the canary header set to "always", all requests at the
 						// canary path should go to the canary backend.
-						&httpRequestVerifier{
-							host: host,
-							path: "/hostname",
-							requestHeaders: map[string]string{
+						&framework.HTTPRequestVerifier{
+							Host: host,
+							Path: "/hostname",
+							RequestHeaders: map[string]string{
 								"X-Canary": "always",
 							},
-							bodyRegex: regexp.MustCompile("^dummy-app2"),
+							BodyRegex: regexp.MustCompile("^dummy-app2"),
 						},
 						// Without the header, requests should go to the main backend.
-						&httpRequestVerifier{
-							host:      host,
-							path:      "/hostname",
-							bodyRegex: regexp.MustCompile("^dummy-app1"),
+						&framework.HTTPRequestVerifier{
+							Host:      host,
+							Path:      "/hostname",
+							BodyRegex: regexp.MustCompile("^dummy-app1"),
 						},
 					},
 				},
@@ -129,66 +130,66 @@ func TestIngressNGINXCanary(t *testing.T) {
 		})
 
 		t.Run("canary weight and header combined", func(t *testing.T) {
-			suffix, err := randString()
+			suffix, err := framework.RandString()
 			require.NoError(t, err)
 			host := fmt.Sprintf("canary-combined-%s.com", suffix)
-			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
-				providers:             []string{ingressnginx.Name},
-				providerFlags: map[string]map[string]string{
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{ingressnginx.Name},
+				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				ingresses: []*networkingv1.Ingress{
-					basicIngress().
-						withName("prod").
-						withHost(host).
-						withIngressClass(ingressnginx.NginxIngressClass).
-						withBackend(DummyAppName1).
-						build(),
-					basicIngress().
-						withName("canary-combined").
-						withHost(host).
-						withIngressClass(ingressnginx.NginxIngressClass).
-						withAnnotation("nginx.ingress.kubernetes.io/canary", "true").
-						withAnnotation("nginx.ingress.kubernetes.io/canary-weight", "20").
-						withAnnotation("nginx.ingress.kubernetes.io/canary-by-header", "X-Canary").
-						withBackend(DummyAppName2).
-						build(),
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("prod").
+						WithHost(host).
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						WithBackend(framework.DummyAppName1).
+						Build(),
+					framework.BasicIngress().
+						WithName("canary-combined").
+						WithHost(host).
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						WithAnnotation("nginx.ingress.kubernetes.io/canary", "true").
+						WithAnnotation("nginx.ingress.kubernetes.io/canary-weight", "20").
+						WithAnnotation("nginx.ingress.kubernetes.io/canary-by-header", "X-Canary").
+						WithBackend(framework.DummyAppName2).
+						Build(),
 				},
-				verifiers: map[string][]verifier{
+				Verifiers: map[string][]framework.Verifier{
 					"prod": {
 						// With the canary header set to "always", 100% of requests
 						// should go to the canary backend regardless of weight.
-						&httpRequestVerifier{
-							host: host,
-							path: "/hostname",
-							requestHeaders: map[string]string{
+						&framework.HTTPRequestVerifier{
+							Host: host,
+							Path: "/hostname",
+							RequestHeaders: map[string]string{
 								"X-Canary": "always",
 							},
-							bodyRegex: regexp.MustCompile("^dummy-app2"),
+							BodyRegex: regexp.MustCompile("^dummy-app2"),
 						},
 						// With the canary header set to "never", 0% of requests
 						// should go to the canary backend regardless of weight.
-						&httpRequestVerifier{
-							host: host,
-							path: "/hostname",
-							requestHeaders: map[string]string{
+						&framework.HTTPRequestVerifier{
+							Host: host,
+							Path: "/hostname",
+							RequestHeaders: map[string]string{
 								"X-Canary": "never",
 							},
-							bodyRegex: regexp.MustCompile("^dummy-app1"),
+							BodyRegex: regexp.MustCompile("^dummy-app1"),
 						},
 						// Without any header, the canary-weight (20%) applies.
-						&canaryVerifier{
-							verifier: &httpRequestVerifier{
-								host:      host,
-								path:      "/hostname",
-								bodyRegex: regexp.MustCompile("^dummy-app2"),
+						&framework.CanaryVerifier{
+							Verifier: &framework.HTTPRequestVerifier{
+								Host:      host,
+								Path:      "/hostname",
+								BodyRegex: regexp.MustCompile("^dummy-app2"),
 							},
-							runs:         200,
-							minSuccesses: 0.1,
-							maxSuccesses: 0.3,
+							Runs:         200,
+							MinSuccesses: 0.1,
+							MaxSuccesses: 0.3,
 						},
 					},
 				},
