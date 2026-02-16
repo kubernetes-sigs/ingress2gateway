@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package framework
 
 import (
 	"context"
@@ -29,7 +29,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func createNamespace(ctx context.Context, l logger, client *kubernetes.Clientset, ns string, skipCleanup bool) (func(), error) {
+// CreateNamespace creates a Kubernetes namespace and returns a cleanup function.
+func CreateNamespace(ctx context.Context, l Logger, client *kubernetes.Clientset, ns string, skipCleanup bool) (func(), error) {
 	// Check if namespace already exists. This should be very rare since we use a random suffix,
 	// but we check just in case to avoid flaky tests due to conflicts.
 	_, err := client.CoreV1().Namespaces().Get(ctx, ns, metav1.GetOptions{})
@@ -58,13 +59,14 @@ func createNamespace(ctx context.Context, l logger, client *kubernetes.Clientset
 		defer cancel()
 
 		log.Printf("Cleaning up namespace %s", ns)
-		if err := deleteNamespaceAndWait(cleanupCtx, client, ns); err != nil {
+		if err := DeleteNamespaceAndWait(cleanupCtx, client, ns); err != nil {
 			log.Printf("Deleting namespace %s: %v", ns, err)
 		}
 	}, nil
 }
 
-func deleteNamespaceAndWait(ctx context.Context, client *kubernetes.Clientset, ns string) error {
+// DeleteNamespaceAndWait deletes a namespace and waits for it to be fully removed.
+func DeleteNamespaceAndWait(ctx context.Context, client *kubernetes.Clientset, ns string) error {
 	if err := client.CoreV1().Namespaces().Delete(ctx, ns, metav1.DeleteOptions{}); err != nil {
 		return fmt.Errorf("deleting namespace %s: %w", ns, err)
 	}

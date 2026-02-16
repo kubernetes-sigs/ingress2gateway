@@ -19,6 +19,7 @@ package e2e
 import (
 	"testing"
 
+	"github.com/kubernetes-sigs/ingress2gateway/e2e/framework"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
@@ -40,76 +41,76 @@ func TestIngressNginx(t *testing.T) {
 	t.Run("to Istio", func(t *testing.T) {
 		t.Parallel()
 		t.Run("basic conversion", func(t *testing.T) {
-			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
-				providers:             []string{ingressnginx.Name},
-				providerFlags: map[string]map[string]string{
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{ingressnginx.Name},
+				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				ingresses: []*networkingv1.Ingress{
-					basicIngress().
-						withName("foo").
-						withIngressClass(ingressnginx.NginxIngressClass).
-						build(),
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("foo").
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						Build(),
 				},
-				verifiers: map[string][]verifier{
-					"foo": {&httpRequestVerifier{path: "/"}},
+				Verifiers: map[string][]framework.Verifier{
+					"foo": {&framework.HTTPRequestVerifier{Path: "/"}},
 				},
 			})
 		})
-		prefix, err := randString()
+		prefix, err := framework.RandString()
 		require.NoError(t, err)
 		host := prefix + ".foo.example.com"
 		t.Run("with host field", func(t *testing.T) {
-			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
-				providers:             []string{ingressnginx.Name},
-				providerFlags: map[string]map[string]string{
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{ingressnginx.Name},
+				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				ingresses: []*networkingv1.Ingress{
-					basicIngress().
-						withName("foo").
-						withIngressClass(ingressnginx.NginxIngressClass).
-						withHost(host).
-						build(),
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("foo").
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						WithHost(host).
+						Build(),
 				},
-				verifiers: map[string][]verifier{
+				Verifiers: map[string][]framework.Verifier{
 					"foo": {
-						&httpRequestVerifier{
-							host: host,
-							path: "/",
+						&framework.HTTPRequestVerifier{
+							Host: host,
+							Path: "/",
 						},
 					},
 				},
 			})
 		})
 		t.Run("multiple ingresses", func(t *testing.T) {
-			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
-				providers:             []string{ingressnginx.Name},
-				providerFlags: map[string]map[string]string{
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{ingressnginx.Name},
+				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				ingresses: []*networkingv1.Ingress{
-					basicIngress().
-						withName("foo").
-						withIngressClass(ingressnginx.NginxIngressClass).
-						build(),
-					basicIngress().
-						withName("bar").
-						withIngressClass(ingressnginx.NginxIngressClass).
-						build(),
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("foo").
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						Build(),
+					framework.BasicIngress().
+						WithName("bar").
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						Build(),
 				},
-				verifiers: map[string][]verifier{
-					"foo": {&httpRequestVerifier{path: "/"}},
-					"bar": {&httpRequestVerifier{path: "/"}},
+				Verifiers: map[string][]framework.Verifier{
+					"foo": {&framework.HTTPRequestVerifier{Path: "/"}},
+					"bar": {&framework.HTTPRequestVerifier{Path: "/"}},
 				},
 			})
 		})
@@ -117,23 +118,23 @@ func TestIngressNginx(t *testing.T) {
 	t.Run("to kgateway", func(t *testing.T) {
 		t.Parallel()
 		t.Run("basic conversion", func(t *testing.T) {
-			runTestCase(t, &testCase{
-				gatewayImplementation: kgatewayName,
-				emitter:               kgatewayName,
-				providers:             []string{ingressnginx.Name},
-				providerFlags: map[string]map[string]string{
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: kgatewayName,
+				Emitter:               kgatewayName,
+				Providers:             []string{ingressnginx.Name},
+				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				ingresses: []*networkingv1.Ingress{
-					basicIngress().
-						withName("foo").
-						withIngressClass(ingressnginx.NginxIngressClass).
-						build(),
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("foo").
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						Build(),
 				},
-				verifiers: map[string][]verifier{
-					"foo": {&httpRequestVerifier{path: "/"}},
+				Verifiers: map[string][]framework.Verifier{
+					"foo": {&framework.HTTPRequestVerifier{Path: "/"}},
 				},
 			})
 		})
@@ -144,8 +145,8 @@ func TestIngressNginx(t *testing.T) {
 	// t.Run("to Cilium", func(t *testing.T) {
 	//  t.Parallel()
 	// 	t.Run("basic conversion", func(t *testing.T) {
-	// 		runTestCase(t, &testCase{
-	// 			gatewayImplementation: cilium.Name,
+	// 		runTestCase(t, &framework.TestCase{
+	// 			GatewayImplementation: cilium.Name,
 	// 			...
 	// 		})
 	// 	})
@@ -157,37 +158,37 @@ func TestKongIngress(t *testing.T) {
 	t.Run("to Kong Gateway", func(t *testing.T) {
 		t.Parallel()
 		t.Run("basic conversion", func(t *testing.T) {
-			runTestCase(t, &testCase{
-				gatewayImplementation: kong.Name,
-				providers:             []string{kong.Name},
-				ingresses: []*networkingv1.Ingress{
-					basicIngress().
-						withName("foo").
-						withIngressClass(kong.KongIngressClass).
-						build(),
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: kong.Name,
+				Providers:             []string{kong.Name},
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("foo").
+						WithIngressClass(kong.KongIngressClass).
+						Build(),
 				},
-				verifiers: map[string][]verifier{
-					"foo": {&httpRequestVerifier{path: "/"}},
+				Verifiers: map[string][]framework.Verifier{
+					"foo": {&framework.HTTPRequestVerifier{Path: "/"}},
 				},
 			})
 		})
 		t.Run("multiple ingresses", func(t *testing.T) {
-			runTestCase(t, &testCase{
-				gatewayImplementation: kong.Name,
-				providers:             []string{kong.Name},
-				ingresses: []*networkingv1.Ingress{
-					basicIngress().
-						withName("foo").
-						withIngressClass(kong.KongIngressClass).
-						build(),
-					basicIngress().
-						withName("bar").
-						withIngressClass(kong.KongIngressClass).
-						build(),
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: kong.Name,
+				Providers:             []string{kong.Name},
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("foo").
+						WithIngressClass(kong.KongIngressClass).
+						Build(),
+					framework.BasicIngress().
+						WithName("bar").
+						WithIngressClass(kong.KongIngressClass).
+						Build(),
 				},
-				verifiers: map[string][]verifier{
-					"foo": {&httpRequestVerifier{path: "/"}},
-					"bar": {&httpRequestVerifier{path: "/"}},
+				Verifiers: map[string][]framework.Verifier{
+					"foo": {&framework.HTTPRequestVerifier{Path: "/"}},
+					"bar": {&framework.HTTPRequestVerifier{Path: "/"}},
 				},
 			})
 		})
@@ -195,37 +196,37 @@ func TestKongIngress(t *testing.T) {
 	t.Run("to Istio", func(t *testing.T) {
 		t.Parallel()
 		t.Run("basic conversion", func(t *testing.T) {
-			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
-				providers:             []string{kong.Name},
-				ingresses: []*networkingv1.Ingress{
-					basicIngress().
-						withName("foo").
-						withIngressClass(kong.KongIngressClass).
-						build(),
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{kong.Name},
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("foo").
+						WithIngressClass(kong.KongIngressClass).
+						Build(),
 				},
-				verifiers: map[string][]verifier{
-					"foo": {&httpRequestVerifier{path: "/"}},
+				Verifiers: map[string][]framework.Verifier{
+					"foo": {&framework.HTTPRequestVerifier{Path: "/"}},
 				},
 			})
 		})
 		t.Run("multiple ingresses", func(t *testing.T) {
-			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
-				providers:             []string{kong.Name},
-				ingresses: []*networkingv1.Ingress{
-					basicIngress().
-						withName("foo").
-						withIngressClass(kong.KongIngressClass).
-						build(),
-					basicIngress().
-						withName("bar").
-						withIngressClass(kong.KongIngressClass).
-						build(),
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{kong.Name},
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("foo").
+						WithIngressClass(kong.KongIngressClass).
+						Build(),
+					framework.BasicIngress().
+						WithName("bar").
+						WithIngressClass(kong.KongIngressClass).
+						Build(),
 				},
-				verifiers: map[string][]verifier{
-					"foo": {&httpRequestVerifier{path: "/"}},
-					"bar": {&httpRequestVerifier{path: "/"}},
+				Verifiers: map[string][]framework.Verifier{
+					"foo": {&framework.HTTPRequestVerifier{Path: "/"}},
+					"bar": {&framework.HTTPRequestVerifier{Path: "/"}},
 				},
 			})
 		})
@@ -237,27 +238,27 @@ func TestMultipleProviders(t *testing.T) {
 	t.Run("ingress-nginx + kong", func(t *testing.T) {
 		t.Parallel()
 		t.Run("to Istio", func(t *testing.T) {
-			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
-				providers:             []string{ingressnginx.Name, kong.Name},
-				providerFlags: map[string]map[string]string{
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{ingressnginx.Name, kong.Name},
+				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				ingresses: []*networkingv1.Ingress{
-					basicIngress().
-						withName("foo").
-						withIngressClass(ingressnginx.NginxIngressClass).
-						build(),
-					basicIngress().
-						withName("bar").
-						withIngressClass(kong.KongIngressClass).
-						build(),
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("foo").
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						Build(),
+					framework.BasicIngress().
+						WithName("bar").
+						WithIngressClass(kong.KongIngressClass).
+						Build(),
 				},
-				verifiers: map[string][]verifier{
-					"foo": {&httpRequestVerifier{path: "/"}},
-					"bar": {&httpRequestVerifier{path: "/"}},
+				Verifiers: map[string][]framework.Verifier{
+					"foo": {&framework.HTTPRequestVerifier{Path: "/"}},
+					"bar": {&framework.HTTPRequestVerifier{Path: "/"}},
 				},
 			})
 		})

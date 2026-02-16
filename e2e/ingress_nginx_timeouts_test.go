@@ -21,6 +21,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/kubernetes-sigs/ingress2gateway/e2e/framework"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -34,58 +35,58 @@ func TestIngressNGINXTimeouts(t *testing.T) {
 	t.Run("to Istio", func(t *testing.T) {
 		t.Parallel()
 		t.Run("slow response allowed", func(t *testing.T) {
-			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
-				providers:             []string{ingressnginx.Name},
-				providerFlags: map[string]map[string]string{
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{ingressnginx.Name},
+				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				ingresses: []*networkingv1.Ingress{
-					basicIngress().
-						withName("slow-allowed").
-						withIngressClass(ingressnginx.NginxIngressClass).
-						withPath("/shell").
-						withAnnotation(ingressnginx.ProxyConnectTimeoutAnnotation, "5").
-						withAnnotation(ingressnginx.ProxyReadTimeoutAnnotation, "5").
-						withAnnotation(ingressnginx.ProxySendTimeoutAnnotation, "5").
-						build(),
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("slow-allowed").
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						WithPath("/shell").
+						WithAnnotation(ingressnginx.ProxyConnectTimeoutAnnotation, "5").
+						WithAnnotation(ingressnginx.ProxyReadTimeoutAnnotation, "5").
+						WithAnnotation(ingressnginx.ProxySendTimeoutAnnotation, "5").
+						Build(),
 				},
-				verifiers: map[string][]verifier{
+				Verifiers: map[string][]framework.Verifier{
 					"slow-allowed": {
-						&httpRequestVerifier{
-							path:      slowShellPath,
-							bodyRegex: regexp.MustCompile("done"),
+						&framework.HTTPRequestVerifier{
+							Path:      slowShellPath,
+							BodyRegex: regexp.MustCompile("done"),
 						},
 					},
 				},
 			})
 		})
 		t.Run("short timeout", func(t *testing.T) {
-			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
-				providers:             []string{ingressnginx.Name},
-				providerFlags: map[string]map[string]string{
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{ingressnginx.Name},
+				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				ingresses: []*networkingv1.Ingress{
-					basicIngress().
-						withName("short-timeout").
-						withIngressClass(ingressnginx.NginxIngressClass).
-						withPath("/shell").
-						withAnnotation(ingressnginx.ProxyConnectTimeoutAnnotation, "1").
-						withAnnotation(ingressnginx.ProxyReadTimeoutAnnotation, "1").
-						withAnnotation(ingressnginx.ProxySendTimeoutAnnotation, "1").
-						build(),
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("short-timeout").
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						WithPath("/shell").
+						WithAnnotation(ingressnginx.ProxyConnectTimeoutAnnotation, "1").
+						WithAnnotation(ingressnginx.ProxyReadTimeoutAnnotation, "1").
+						WithAnnotation(ingressnginx.ProxySendTimeoutAnnotation, "1").
+						Build(),
 				},
-				verifiers: map[string][]verifier{
+				Verifiers: map[string][]framework.Verifier{
 					"short-timeout": {
-						&httpRequestVerifier{
-							path:         verySlowShellPath,
-							allowedCodes: []int{http.StatusGatewayTimeout, http.StatusInternalServerError},
+						&framework.HTTPRequestVerifier{
+							Path:         verySlowShellPath,
+							AllowedCodes: []int{http.StatusGatewayTimeout, http.StatusInternalServerError},
 						},
 					},
 				},

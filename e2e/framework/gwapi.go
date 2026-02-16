@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package framework
 
 import (
 	"context"
@@ -32,9 +32,10 @@ import (
 	gwclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 )
 
+// Creates all Gateway API resources and returns a cleanup function.
 func createGatewayResources(
 	ctx context.Context,
-	l logger,
+	l Logger,
 	client *gwclientset.Clientset,
 	ns string,
 	res []i2gw.GatewayResources,
@@ -109,7 +110,7 @@ func createGatewayResources(
 	}, nil
 }
 
-func createGateways(ctx context.Context, l logger, client *gwclientset.Clientset, ns string, gws map[types.NamespacedName]gwapiv1.Gateway, skipCleanup bool) (func(), error) {
+func createGateways(ctx context.Context, l Logger, client *gwclientset.Clientset, ns string, gws map[types.NamespacedName]gwapiv1.Gateway, skipCleanup bool) (func(), error) {
 	for name, gw := range gws {
 		// Ensure the namespace is set correctly.
 		if gw.Namespace == "" {
@@ -156,7 +157,7 @@ func createGateways(ctx context.Context, l logger, client *gwclientset.Clientset
 	}, nil
 }
 
-func createGatewayClasses(ctx context.Context, l logger, client *gwclientset.Clientset, gcs map[types.NamespacedName]gwapiv1.GatewayClass, skipCleanup bool) (func(), error) {
+func createGatewayClasses(ctx context.Context, l Logger, client *gwclientset.Clientset, gcs map[types.NamespacedName]gwapiv1.GatewayClass, skipCleanup bool) (func(), error) {
 	for name, gc := range gcs {
 		y, err := toYAML(&gc)
 		if err != nil {
@@ -197,9 +198,8 @@ func createGatewayClasses(ctx context.Context, l logger, client *gwclientset.Cli
 	}, nil
 }
 
-func createHTTPRoutes(ctx context.Context, l logger, client *gwclientset.Clientset, ns string, routes map[types.NamespacedName]gwapiv1.HTTPRoute, skipCleanup bool) (func(), error) {
+func createHTTPRoutes(ctx context.Context, l Logger, client *gwclientset.Clientset, ns string, routes map[types.NamespacedName]gwapiv1.HTTPRoute, skipCleanup bool) (func(), error) {
 	for name, route := range routes {
-		// Ensure the namespace is set correctly.
 		if route.Namespace == "" {
 			route.Namespace = ns
 		}
@@ -244,9 +244,8 @@ func createHTTPRoutes(ctx context.Context, l logger, client *gwclientset.Clients
 	}, nil
 }
 
-func createGRPCRoutes(ctx context.Context, l logger, client *gwclientset.Clientset, ns string, routes map[types.NamespacedName]gwapiv1.GRPCRoute, skipCleanup bool) (func(), error) {
+func createGRPCRoutes(ctx context.Context, l Logger, client *gwclientset.Clientset, ns string, routes map[types.NamespacedName]gwapiv1.GRPCRoute, skipCleanup bool) (func(), error) {
 	for name, route := range routes {
-		// Ensure the namespace is set correctly.
 		if route.Namespace == "" {
 			route.Namespace = ns
 		}
@@ -291,9 +290,8 @@ func createGRPCRoutes(ctx context.Context, l logger, client *gwclientset.Clients
 	}, nil
 }
 
-func createTLSRoutes(ctx context.Context, l logger, client *gwclientset.Clientset, ns string, routes map[types.NamespacedName]v1alpha2.TLSRoute, skipCleanup bool) (func(), error) {
+func createTLSRoutes(ctx context.Context, l Logger, client *gwclientset.Clientset, ns string, routes map[types.NamespacedName]v1alpha2.TLSRoute, skipCleanup bool) (func(), error) {
 	for name, route := range routes {
-		// Ensure the namespace is set correctly.
 		if route.Namespace == "" {
 			route.Namespace = ns
 		}
@@ -338,9 +336,8 @@ func createTLSRoutes(ctx context.Context, l logger, client *gwclientset.Clientse
 	}, nil
 }
 
-func createTCPRoutes(ctx context.Context, l logger, client *gwclientset.Clientset, ns string, routes map[types.NamespacedName]v1alpha2.TCPRoute, skipCleanup bool) (func(), error) {
+func createTCPRoutes(ctx context.Context, l Logger, client *gwclientset.Clientset, ns string, routes map[types.NamespacedName]v1alpha2.TCPRoute, skipCleanup bool) (func(), error) {
 	for name, route := range routes {
-		// Ensure the namespace is set correctly.
 		if route.Namespace == "" {
 			route.Namespace = ns
 		}
@@ -385,9 +382,8 @@ func createTCPRoutes(ctx context.Context, l logger, client *gwclientset.Clientse
 	}, nil
 }
 
-func createUDPRoutes(ctx context.Context, l logger, client *gwclientset.Clientset, ns string, routes map[types.NamespacedName]v1alpha2.UDPRoute, skipCleanup bool) (func(), error) {
+func createUDPRoutes(ctx context.Context, l Logger, client *gwclientset.Clientset, ns string, routes map[types.NamespacedName]v1alpha2.UDPRoute, skipCleanup bool) (func(), error) {
 	for name, route := range routes {
-		// Ensure the namespace is set correctly.
 		if route.Namespace == "" {
 			route.Namespace = ns
 		}
@@ -432,9 +428,8 @@ func createUDPRoutes(ctx context.Context, l logger, client *gwclientset.Clientse
 	}, nil
 }
 
-func createBackendTLSPolicies(ctx context.Context, l logger, client *gwclientset.Clientset, ns string, policies map[types.NamespacedName]gwapiv1.BackendTLSPolicy, skipCleanup bool) (func(), error) {
+func createBackendTLSPolicies(ctx context.Context, l Logger, client *gwclientset.Clientset, ns string, policies map[types.NamespacedName]gwapiv1.BackendTLSPolicy, skipCleanup bool) (func(), error) {
 	for name, policy := range policies {
-		// Ensure the namespace is set correctly.
 		if policy.Namespace == "" {
 			policy.Namespace = ns
 		}
@@ -479,9 +474,8 @@ func createBackendTLSPolicies(ctx context.Context, l logger, client *gwclientset
 	}, nil
 }
 
-func createReferenceGrants(ctx context.Context, l logger, client *gwclientset.Clientset, ns string, grants map[types.NamespacedName]v1beta1.ReferenceGrant, skipCleanup bool) (func(), error) {
+func createReferenceGrants(ctx context.Context, l Logger, client *gwclientset.Clientset, ns string, grants map[types.NamespacedName]v1beta1.ReferenceGrant, skipCleanup bool) (func(), error) {
 	for name, grant := range grants {
-		// Ensure the namespace is set correctly.
 		if grant.Namespace == "" {
 			grant.Namespace = ns
 		}

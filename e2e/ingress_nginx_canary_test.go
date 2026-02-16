@@ -21,6 +21,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/kubernetes-sigs/ingress2gateway/e2e/framework"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
 	"github.com/stretchr/testify/require"
@@ -32,43 +33,43 @@ func TestIngressNGINXCanary(t *testing.T) {
 	t.Run("to Istio", func(t *testing.T) {
 		t.Parallel()
 		t.Run("base canary", func(t *testing.T) {
-			suffix, err := randString()
+			suffix, err := framework.RandString()
 			require.NoError(t, err)
 			host := fmt.Sprintf("canary-%s.com", suffix)
-			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
-				providers:             []string{ingressnginx.Name},
-				providerFlags: map[string]map[string]string{
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{ingressnginx.Name},
+				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				ingresses: []*networkingv1.Ingress{
-					basicIngress().
-						withName("foo1").
-						withHost(host).
-						withIngressClass(ingressnginx.NginxIngressClass).
-						build(),
-					basicIngress().
-						withName("foo2").
-						withHost(host).
-						withIngressClass(ingressnginx.NginxIngressClass).
-						withAnnotation("nginx.ingress.kubernetes.io/canary", "true").
-						withAnnotation("nginx.ingress.kubernetes.io/canary-weight", "20").
-						withBackend(DummyAppName2).
-						build(),
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("foo1").
+						WithHost(host).
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						Build(),
+					framework.BasicIngress().
+						WithName("foo2").
+						WithHost(host).
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						WithAnnotation("nginx.ingress.kubernetes.io/canary", "true").
+						WithAnnotation("nginx.ingress.kubernetes.io/canary-weight", "20").
+						WithBackend(framework.DummyAppName2).
+						Build(),
 				},
-				verifiers: map[string][]verifier{
+				Verifiers: map[string][]framework.Verifier{
 					"foo1": {
-						&canaryVerifier{
-							verifier: &httpRequestVerifier{
-								host:      host,
-								path:      "/hostname",
-								bodyRegex: regexp.MustCompile("^dummy-app2"),
+						&framework.CanaryVerifier{
+							Verifier: &framework.HTTPRequestVerifier{
+								Host:      host,
+								Path:      "/hostname",
+								BodyRegex: regexp.MustCompile("^dummy-app2"),
 							},
-							runs:         200,
-							minSuccesses: 0.1,
-							maxSuccesses: 0.3,
+							Runs:         200,
+							MinSuccesses: 0.1,
+							MaxSuccesses: 0.3,
 						},
 					},
 				},
