@@ -54,7 +54,7 @@ func (v *canaryVerifier) verify(ctx context.Context, log logger, addr addresses,
 	for i := 0; i < v.runs; i++ {
 		err := v.verifier.verify(ctx, log, addr, ingress)
 		if err == nil {
-			log.Logf("Canary verifier run %d/%d succeeded", i+1, v.runs)
+			log.Logf("Canary verifier run %d/%d for ingress %q succeeded", i+1, v.runs, ingress.Name)
 			successes++
 		}
 	}
@@ -221,7 +221,7 @@ func (v *httpRequestVerifier) verify(ctx context.Context, log logger, addr addre
 		return fmt.Errorf("reading HTTP body: %w", err)
 	}
 
-	log.Logf("Got a healthy response: %s", body)
+	log.Logf("Got a healthy response for ingress %q: %s", ingress.Name, body)
 
 	if v.bodyRegex != nil && !v.bodyRegex.MatchString(string(body)) {
 		return fmt.Errorf("unexpected HTTP body: does not match %v", v.bodyRegex)
