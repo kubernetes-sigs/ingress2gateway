@@ -407,13 +407,18 @@ func verifyIngresses(ctx context.Context, t *testing.T, tc *testCase, ingressAdd
 		addr, ok := ingressAddresses[ingressClass]
 		require.True(t, ok, "no address found for ingress class %s", ingressClass)
 
+		var defaultHost string
+		if len(ingress.Spec.Rules) > 0 {
+			defaultHost = ingress.Spec.Rules[0].Host
+		}
+
 		for _, v := range verifiers {
 			err := retry(ctx, t, retryConfig{maxAttempts: 60, delay: 1 * time.Second},
 				func(attempt int, maxAttempts int, err error) string {
 					return fmt.Sprintf("Verifying ingress %s (attempt %d/%d): %v", ingressName, attempt, maxAttempts, err)
 				},
 				func() error {
-					return v.verify(ctx, t, addr, ingress)
+					return v.verify(ctx, t, addr, defaultHost)
 				},
 			)
 			require.NoError(t, err, "ingress verification failed")
@@ -444,13 +449,18 @@ func verifyGatewayResources(ctx context.Context, t *testing.T, tc *testCase, gwA
 		addr, ok := gwAddresses[gwName]
 		require.True(t, ok, "gateway %s not found in addresses", gwName)
 
+		var defaultHost string
+		if len(ingress.Spec.Rules) > 0 {
+			defaultHost = ingress.Spec.Rules[0].Host
+		}
+
 		for _, v := range verifiers {
 			err := retry(ctx, t, retryConfig{maxAttempts: 60, delay: 1 * time.Second},
 				func(attempt int, maxAttempts int, err error) string {
 					return fmt.Sprintf("Verifying gateway %s (attempt %d/%d): %v", gwName, attempt, maxAttempts, err)
 				},
 				func() error {
-					return v.verify(ctx, t, addr, ingress)
+					return v.verify(ctx, t, addr, defaultHost)
 				},
 			)
 			require.NoError(t, err, "gateway verification failed")

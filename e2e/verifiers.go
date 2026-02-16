@@ -27,14 +27,13 @@ import (
 	"slices"
 	"strings"
 	"time"
-
-	networkingv1 "k8s.io/api/networking/v1"
 )
 
 // Validates that a service is accessible and working correctly. The addr parameter is a
-// "host:port" string representing the service endpoint.
+// "host:port" string representing the service endpoint. The defaultHost parameter is the host to
+// use if the verifier does not have a host configured.
 type verifier interface {
-	verify(ctx context.Context, log logger, addr addresses, ingress *networkingv1.Ingress) error
+	verify(ctx context.Context, log logger, addr addresses, defaultHost string) error
 }
 
 type addresses struct {
@@ -49,12 +48,12 @@ type canaryVerifier struct {
 	runs         int
 }
 
-func (v *canaryVerifier) verify(ctx context.Context, log logger, addr addresses, ingress *networkingv1.Ingress) error {
+func (v *canaryVerifier) verify(ctx context.Context, log logger, addr addresses, defaultHost string) error {
 	successes := 0
 	for i := 0; i < v.runs; i++ {
-		err := v.verifier.verify(ctx, log, addr, ingress)
+		err := v.verifier.verify(ctx, log, addr, defaultHost)
 		if err == nil {
-			log.Logf("Canary verifier run %d/%d for ingress %q succeeded", i+1, v.runs, ingress.Name)
+			log.Logf("Canary verifier run %d/%d for host %q succeeded", i+1, v.runs, defaultHost)
 			successes++
 		}
 	}
@@ -106,15 +105,13 @@ type headerMatch struct {
 	patterns []*maybeNegativePattern
 }
 
-func (v *httpRequestVerifier) verify(ctx context.Context, log logger, addr addresses, ingress *networkingv1.Ingress) error {
-	// If the Host field is specified in the test case, use that. Otherwise, default to deriving
-	// the (auto-generated) host from the ingress.
+func (v *httpRequestVerifier) verify(ctx context.Context, log logger, addr addresses, defaultHost string) error {
 	host := v.host
-	if host == "" && len(ingress.Spec.Rules) > 0 && ingress.Spec.Rules[0].Host != "" {
-		host = ingress.Spec.Rules[0].Host
+	if host == "" {
+		host = defaultHost
 	}
 	if host == "" {
-		return fmt.Errorf("no host specified: set HTTPGetVerifier.Host or ensure ingress has a rule with a host")
+		return fmt.Errorf("no host specified: set httpRequestVerifier.host or provide a defaultHost")
 	}
 
 	scheme := "http"
@@ -221,7 +218,7 @@ func (v *httpRequestVerifier) verify(ctx context.Context, log logger, addr addre
 		return fmt.Errorf("reading HTTP body: %w", err)
 	}
 
-	log.Logf("Got a healthy response for ingress %q: %s", ingress.Name, body)
+	log.Logf("Got a healthy response for host %q: %s", host, body)
 
 	if v.bodyRegex != nil && !v.bodyRegex.MatchString(string(body)) {
 		return fmt.Errorf("unexpected HTTP body: does not match %v", v.bodyRegex)
