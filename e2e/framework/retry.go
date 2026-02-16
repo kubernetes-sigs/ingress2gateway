@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package framework
 
 import (
 	"context"
@@ -42,7 +42,7 @@ func defaultRetryConfig() retryConfig {
 // attemptMsg function is called for each failed attempt to generate a log message.
 func retry(
 	ctx context.Context,
-	log logger,
+	log Logger,
 	cfg retryConfig,
 	attemptMsg func(attempt, maxAttempts int, err error) string,
 	fn func() error,
@@ -74,7 +74,7 @@ func retry(
 // Same as retry but returns generic data on success.
 func retryWithData[T any](
 	ctx context.Context,
-	log logger,
+	log Logger,
 	cfg retryConfig,
 	attemptMsg func(attempt, maxAttempts int, err error) string,
 	fn func() (T, error),

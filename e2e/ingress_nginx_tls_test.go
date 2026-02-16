@@ -20,6 +20,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/kubernetes-sigs/ingress2gateway/e2e/framework"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
 	"github.com/stretchr/testify/require"
@@ -32,48 +33,48 @@ func TestIngressNGINXTLS(t *testing.T) {
 	t.Run("to Istio", func(t *testing.T) {
 		t.Parallel()
 		t.Run("tls ingress and gateway", func(t *testing.T) {
-			suffix, err := randString()
+			suffix, err := framework.RandString()
 			require.NoError(t, err, "creating host suffix")
 			host := "tls-" + suffix + ".example.com"
-			tlsSecret, err := generateSelfSignedTLSSecret("tls-cert-"+suffix, "", host, []string{host})
+			tlsSecret, err := framework.GenerateSelfSignedTLSSecret("tls-cert-"+suffix, "", host, []string{host})
 			if err != nil {
 				t.Fatalf("creating TLS secret: %v", err)
 			}
-			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
-				providers:             []string{ingressnginx.Name},
-				providerFlags: map[string]map[string]string{
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{ingressnginx.Name},
+				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				secrets: []*corev1.Secret{tlsSecret.Secret},
-				ingresses: []*networkingv1.Ingress{
-					basicIngress().
-						withName("foo").
-						withHost(host).
-						withIngressClass(ingressnginx.NginxIngressClass).
-						withTLSSecret(tlsSecret.Secret.Name, host).
-						build(),
+				Secrets: []*corev1.Secret{tlsSecret.Secret},
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("foo").
+						WithHost(host).
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						WithTLSSecret(tlsSecret.Secret.Name, host).
+						Build(),
 				},
-				verifiers: map[string][]verifier{
+				Verifiers: map[string][]framework.Verifier{
 					"foo": {
-						&httpRequestVerifier{
-							host:      host,
-							path:      "/",
-							useTLS:    true,
-							caCertPEM: tlsSecret.CACert,
+						&framework.HTTPRequestVerifier{
+							Host:      host,
+							Path:      "/",
+							UseTLS:    true,
+							CACertPEM: tlsSecret.CACert,
 						},
-						&httpRequestVerifier{
-							host:         host,
-							path:         "/",
-							allowedCodes: []int{308},
-							useTLS:       false,
-							headerMatches: []headerMatch{
+						&framework.HTTPRequestVerifier{
+							Host:         host,
+							Path:         "/",
+							AllowedCodes: []int{308},
+							UseTLS:       false,
+							HeaderMatches: []framework.HeaderMatch{
 								{
-									name: "Location",
-									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile("^https://" + host + "/?$")},
+									Name: "Location",
+									Patterns: []*framework.MaybeNegativePattern{
+										{Pattern: regexp.MustCompile("^https://" + host + "/?$")},
 									},
 								},
 							},
@@ -83,76 +84,76 @@ func TestIngressNGINXTLS(t *testing.T) {
 			})
 		})
 		t.Run("ssl-redirect annotation", func(t *testing.T) {
-			suffix, err := randString()
+			suffix, err := framework.RandString()
 			require.NoError(t, err, "creating host suffix")
 			redirectHost := "tls-redirect-" + suffix + ".example.com"
 			noRedirectHost := "tls-noredirect-" + suffix + ".example.com"
-			redirectSecret, err := generateSelfSignedTLSSecret("tls-redirect-"+suffix, "", redirectHost, []string{redirectHost})
+			redirectSecret, err := framework.GenerateSelfSignedTLSSecret("tls-redirect-"+suffix, "", redirectHost, []string{redirectHost})
 			if err != nil {
 				t.Fatalf("creating redirect TLS secret: %v", err)
 			}
-			noRedirectSecret, err := generateSelfSignedTLSSecret("tls-noredirect-"+suffix, "", noRedirectHost, []string{noRedirectHost})
+			noRedirectSecret, err := framework.GenerateSelfSignedTLSSecret("tls-noredirect-"+suffix, "", noRedirectHost, []string{noRedirectHost})
 			if err != nil {
 				t.Fatalf("creating no-redirect TLS secret: %v", err)
 			}
-			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
-				providers:             []string{ingressnginx.Name},
-				providerFlags: map[string]map[string]string{
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{ingressnginx.Name},
+				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				secrets: []*corev1.Secret{redirectSecret.Secret, noRedirectSecret.Secret},
-				ingresses: []*networkingv1.Ingress{
-					basicIngress().
-						withName("redirect").
-						withHost(redirectHost).
-						withIngressClass(ingressnginx.NginxIngressClass).
-						withTLSSecret(redirectSecret.Secret.Name, redirectHost).
-						build(),
-					basicIngress().
-						withName("no-redirect").
-						withHost(noRedirectHost).
-						withIngressClass(ingressnginx.NginxIngressClass).
-						withAnnotation("nginx.ingress.kubernetes.io/ssl-redirect", "false").
-						withTLSSecret(noRedirectSecret.Secret.Name, noRedirectHost).
-						build(),
+				Secrets: []*corev1.Secret{redirectSecret.Secret, noRedirectSecret.Secret},
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("redirect").
+						WithHost(redirectHost).
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						WithTLSSecret(redirectSecret.Secret.Name, redirectHost).
+						Build(),
+					framework.BasicIngress().
+						WithName("no-redirect").
+						WithHost(noRedirectHost).
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						WithAnnotation("nginx.ingress.kubernetes.io/ssl-redirect", "false").
+						WithTLSSecret(noRedirectSecret.Secret.Name, noRedirectHost).
+						Build(),
 				},
-				verifiers: map[string][]verifier{
+				Verifiers: map[string][]framework.Verifier{
 					"redirect": {
-						&httpRequestVerifier{
-							host:      redirectHost,
-							path:      "/",
-							useTLS:    true,
-							caCertPEM: redirectSecret.CACert,
+						&framework.HTTPRequestVerifier{
+							Host:      redirectHost,
+							Path:      "/",
+							UseTLS:    true,
+							CACertPEM: redirectSecret.CACert,
 						},
-						&httpRequestVerifier{
-							host:         redirectHost,
-							path:         "/",
-							allowedCodes: []int{308},
-							useTLS:       false,
-							headerMatches: []headerMatch{
+						&framework.HTTPRequestVerifier{
+							Host:         redirectHost,
+							Path:         "/",
+							AllowedCodes: []int{308},
+							UseTLS:       false,
+							HeaderMatches: []framework.HeaderMatch{
 								{
-									name: "Location",
-									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile("^https://" + redirectHost + "/?$")},
+									Name: "Location",
+									Patterns: []*framework.MaybeNegativePattern{
+										{Pattern: regexp.MustCompile("^https://" + redirectHost + "/?$")},
 									},
 								},
 							},
 						},
 					},
 					"no-redirect": {
-						&httpRequestVerifier{
-							host:      noRedirectHost,
-							path:      "/",
-							useTLS:    true,
-							caCertPEM: noRedirectSecret.CACert,
+						&framework.HTTPRequestVerifier{
+							Host:      noRedirectHost,
+							Path:      "/",
+							UseTLS:    true,
+							CACertPEM: noRedirectSecret.CACert,
 						},
-						&httpRequestVerifier{
-							host:   noRedirectHost,
-							path:   "/",
-							useTLS: false,
+						&framework.HTTPRequestVerifier{
+							Host:   noRedirectHost,
+							Path:   "/",
+							UseTLS: false,
 						},
 					},
 				},

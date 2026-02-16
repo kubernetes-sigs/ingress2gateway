@@ -14,19 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package framework
 
 import (
 	"sync"
 )
 
-var globalResourceManager = &resourceManager{
+// GlobalResourceManager is the package-level ref-counted singleton for shared test resources.
+var GlobalResourceManager = &ResourceManager{
 	resources: make(map[string]*resourceState),
 }
 
-// Manages shared resources used by tests. It allows safe reuse of resources which have expensive
-// setup and/or teardown by multiple concurrent tests.
-type resourceManager struct {
+// ResourceManager manages shared resources used by tests. It allows safe reuse of resources which
+// have expensive setup and/or teardown by multiple concurrent tests.
+type ResourceManager struct {
 	// The methods on this type are designed to return immediately: Any long-running operation
 	// should run asynchronously. The mutex is used only for thread-safe access to the internal
 	// state and is NOT designed to remain locked while a long-running resource operation is
@@ -35,15 +36,15 @@ type resourceManager struct {
 	resources map[string]*resourceState
 }
 
-// Returns a shared resource identified by key.
+// Acquire returns a shared resource identified by key.
 //
 // If the resource does not exist, install is called asynchronously to create it. The returned
 // Resource allows callers to wait for installation to complete and to trigger cleanup. Subsequent
 // calls with the same key return immediately without calling install again.
 //
-// Each caller MUST call the cleanup() method on the returned Resource to ensure resource release
+// Each caller MUST call the Cleanup() method on the returned Resource to ensure resource release
 // takes place.
-func (rm *resourceManager) acquire(key string, install installFunc) resource {
+func (rm *ResourceManager) Acquire(key string, install InstallFunc) Resource {
 	for {
 		rm.mu.Lock()
 		state, exists := rm.resources[key]
@@ -79,9 +80,9 @@ func (rm *resourceManager) acquire(key string, install installFunc) resource {
 		done := make(chan struct{})
 		var once sync.Once // Protect against multiple cleanups by same caller
 
-		return resource{
-			name: key,
-			cleanup: func() <-chan struct{} {
+		return Resource{
+			Name: key,
+			Cleanup: func() <-chan struct{} {
 				once.Do(func() {
 					go func() {
 						<-rm.release(key)
@@ -90,7 +91,7 @@ func (rm *resourceManager) acquire(key string, install installFunc) resource {
 				})
 				return done
 			},
-			wait: func() error {
+			Wait: func() error {
 				<-state.ready
 				return state.err
 			},
@@ -100,7 +101,7 @@ func (rm *resourceManager) acquire(key string, install installFunc) resource {
 
 // Decrements the reference count for a resource and triggers cleanup when the count reaches zero.
 // Returns a channel that is closed when cleanup completes.
-func (rm *resourceManager) release(key string) <-chan struct{} {
+func (rm *ResourceManager) release(key string) <-chan struct{} {
 	done := make(chan struct{})
 
 	go func() {
@@ -139,27 +140,27 @@ func (rm *resourceManager) release(key string) <-chan struct{} {
 	return done
 }
 
-// Represents a resource managed by the resourceManager.
-type resource struct {
+// Resource represents a resource managed by the ResourceManager.
+type Resource struct {
 	// A name for this resource. Useful for error messages.
-	name string
+	Name string
 	// Releases the resource's underlying resources.
-	cleanup func() <-chan struct{}
+	Cleanup func() <-chan struct{}
 	// Blocks until the resource is installed and ready for use. If there was an error during the
 	// installation, the error is returned.
-	wait func() error
+	Wait func() error
 }
 
-// A synchronous install function which returns a synchronous cleanup function or an installation
-// error.
-type installFunc func() (cleanupFunc, error)
+// InstallFunc is a synchronous install function which returns a synchronous cleanup function or an
+// installation error.
+type InstallFunc func() (CleanupFunc, error)
 
-// A function which contains logic for cleaning up a resource.
-type cleanupFunc func()
+// CleanupFunc is a function which contains logic for cleaning up a resource.
+type CleanupFunc func()
 
 // Tracks a shared resource's state.
 type resourceState struct {
-	cleanup    cleanupFunc
+	cleanup    CleanupFunc
 	ready      chan struct{} // Closed when installation completes
 	cleaningUp chan struct{} // Closed when cleanup completes
 	err        error         // An installation error

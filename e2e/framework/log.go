@@ -14,9 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package framework
 
-// An interface used by e2e test helpers. The testing.T type implements it.
-type logger interface {
+// Logger is an interface used by e2e test helpers. The testing.T type implements it.
+type Logger interface {
 	Logf(format string, args ...interface{})
 }

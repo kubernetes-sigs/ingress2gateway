@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package framework
 
 import (
 	"context"
@@ -35,7 +35,8 @@ const (
 	version = "2.39"
 )
 
-func deployDummyApp(ctx context.Context, l logger, client *kubernetes.Clientset, name, namespace string, skipCleanup bool) (func(), error) {
+// Creates a dummy backend application for testing and returns a cleanup function.
+func deployDummyApp(ctx context.Context, l Logger, client *kubernetes.Clientset, name, namespace string, skipCleanup bool) (func(), error) {
 	if err := createDummyAppDeployment(ctx, l, client, name, namespace); err != nil {
 		return nil, fmt.Errorf("creating deployment: %w", err)
 	}
@@ -71,7 +72,7 @@ func deployDummyApp(ctx context.Context, l logger, client *kubernetes.Clientset,
 	}, nil
 }
 
-func createDummyAppDeployment(ctx context.Context, l logger, client *kubernetes.Clientset, name, namespace string) error {
+func createDummyAppDeployment(ctx context.Context, l Logger, client *kubernetes.Clientset, name, namespace string) error {
 	labels := map[string]string{"app": name}
 
 	l.Logf("Creating dummy app %s", name)
@@ -140,7 +141,7 @@ func createDummyAppService(ctx context.Context, client *kubernetes.Clientset, na
 	return nil
 }
 
-func waitForDummyApp(ctx context.Context, l logger, client *kubernetes.Clientset, name, namespace string) error {
+func waitForDummyApp(ctx context.Context, l Logger, client *kubernetes.Clientset, name, namespace string) error {
 	l.Logf("Waiting for dummy app to be ready")
 	err := wait.PollUntilContextTimeout(ctx, 1*time.Second, 5*time.Minute, true, func(ctx context.Context) (bool, error) {
 		dep, err := client.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
