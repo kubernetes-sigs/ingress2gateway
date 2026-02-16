@@ -22,6 +22,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/kubernetes-sigs/ingress2gateway/e2e/framework"
 	"helm.sh/helm/v4/pkg/cli"
 	"k8s.io/client-go/kubernetes"
 )
@@ -37,7 +38,7 @@ const (
 
 func deployGatewayAPIKgateway(
 	ctx context.Context,
-	l logger,
+	l framework.Logger,
 	client *kubernetes.Clientset,
 	kubeconfigPath string,
 	namespace string,
@@ -49,7 +50,7 @@ func deployGatewayAPIKgateway(
 	settings.KubeConfig = kubeconfigPath
 
 	// Install CRDs first to avoid races creating extension resources.
-	if err := installChart(
+	if err := framework.InstallChart(
 		ctx,
 		l,
 		settings,
@@ -64,7 +65,7 @@ func deployGatewayAPIKgateway(
 		return nil, fmt.Errorf("installing kgateway CRDs chart: %w", err)
 	}
 
-	if err := installChart(
+	if err := framework.InstallChart(
 		ctx,
 		l,
 		settings,
@@ -90,14 +91,14 @@ func deployGatewayAPIKgateway(
 		defer cancel()
 
 		log.Printf("Cleaning up kgateway")
-		if err := uninstallChart(cleanupCtx, settings, kgatewayReleaseName, namespace); err != nil {
+		if err := framework.UninstallChart(cleanupCtx, settings, kgatewayReleaseName, namespace); err != nil {
 			log.Printf("Uninstalling kgateway chart: %v", err)
 		}
-		if err := uninstallChart(cleanupCtx, settings, kgatewayCRDsRelease, namespace); err != nil {
+		if err := framework.UninstallChart(cleanupCtx, settings, kgatewayCRDsRelease, namespace); err != nil {
 			log.Printf("Uninstalling kgateway CRDs chart: %v", err)
 		}
 
-		if err := deleteNamespaceAndWait(cleanupCtx, client, namespace); err != nil {
+		if err := framework.DeleteNamespaceAndWait(cleanupCtx, client, namespace); err != nil {
 			log.Printf("Deleting namespace: %v", err)
 		}
 	}, nil
