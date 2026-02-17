@@ -63,8 +63,6 @@ type testCase struct {
 	gatewayImplementation  string
 	allowExperimentalGWAPI bool
 	verifiers              map[string][]verifier
-	ingressVerifiers       map[string][]verifier
-	gatewayVerifiers       map[string][]verifier
 }
 
 func runTestCase(t *testing.T, tc *testCase) {
@@ -394,13 +392,12 @@ func setUpGatewayPortForwarding(
 }
 
 func verifyIngresses(ctx context.Context, t *testing.T, tc *testCase, ingressAddresses map[string]addresses) {
-	verifiersByIngress := getIngressVerifiers(tc)
 	ingressByName := make(map[string]*networkingv1.Ingress, len(tc.ingresses))
 	for _, ing := range tc.ingresses {
 		ingressByName[ing.Name] = ing
 	}
 
-	for ingressName, verifiers := range verifiersByIngress {
+	for ingressName, verifiers := range tc.verifiers {
 		ingress, ok := ingressByName[ingressName]
 		require.True(t, ok, "ingress %s not found in test case", ingressName)
 
@@ -425,8 +422,7 @@ func verifyIngresses(ctx context.Context, t *testing.T, tc *testCase, ingressAdd
 }
 
 func verifyGatewayResources(ctx context.Context, t *testing.T, tc *testCase, gwAddresses map[string]addresses) {
-	verifiersByIngress := getGatewayVerifiers(tc)
-	for ingressName, verifiers := range verifiersByIngress {
+	for ingressName, verifiers := range tc.verifiers {
 		// Find the ingress to determine the expected gateway name.
 		var ingress *networkingv1.Ingress
 		for _, ing := range tc.ingresses {
@@ -463,34 +459,14 @@ func verifyGatewayResources(ctx context.Context, t *testing.T, tc *testCase, gwA
 }
 
 func testCaseNeedsHTTPS(tc *testCase) bool {
-	verifierSets := []map[string][]verifier{
-		getIngressVerifiers(tc),
-		getGatewayVerifiers(tc),
-	}
-	for _, verifierSet := range verifierSets {
-		for _, verifiers := range verifierSet {
-			for _, v := range verifiers {
-				if hv, ok := v.(*httpRequestVerifier); ok && hv.useTLS {
-					return true
-				}
+	for _, verifiers := range tc.verifiers {
+		for _, v := range verifiers {
+			if hv, ok := v.(*httpRequestVerifier); ok && hv.useTLS {
+				return true
 			}
 		}
 	}
 	return false
-}
-
-func getIngressVerifiers(tc *testCase) map[string][]verifier {
-	if tc.ingressVerifiers != nil {
-		return tc.ingressVerifiers
-	}
-	return tc.verifiers
-}
-
-func getGatewayVerifiers(tc *testCase) map[string][]verifier {
-	if tc.gatewayVerifiers != nil {
-		return tc.gatewayVerifiers
-	}
-	return tc.verifiers
 }
 
 // Executes the ingress2gateway binary and returns the parsed Gateway API resources.

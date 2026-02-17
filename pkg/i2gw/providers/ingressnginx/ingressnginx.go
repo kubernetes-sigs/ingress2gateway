@@ -65,7 +65,6 @@ func (p *Provider) ToIR() (emitterir.EmitterIR, field.ErrorList) {
 	errs = append(errs, applyTimeoutsToEmitterIR(pIR, &eIR)...)
 	errs = append(errs, applyCorsToEmitterIR(pIR, &eIR)...)
 	errs = append(errs, addDefaultSSLRedirect(&pIR, &eIR)...)
-	applyTrailingSlashPathRedirectsToEmitterIR(&eIR)
 	errs = append(errs, applyBodySizeToEmitterIR(pIR, &eIR)...)
 	return eIR, errs
 }

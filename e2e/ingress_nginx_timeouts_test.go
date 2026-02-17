@@ -27,6 +27,7 @@ import (
 )
 
 const slowShellPath = "/shell?cmd=sleep%204%3B%20echo%20done"
+const verySlowShellPath = "/shell?cmd=sleep%2015%3B%20echo%20done"
 
 func TestIngressNGINXTimeouts(t *testing.T) {
 	t.Parallel()
@@ -46,9 +47,9 @@ func TestIngressNGINXTimeouts(t *testing.T) {
 						withName("slow-allowed").
 						withIngressClass(ingressnginx.NginxIngressClass).
 						withPath("/shell").
-						withAnnotation(ingressnginx.ProxyConnectTimeoutAnnotation, "6").
-						withAnnotation(ingressnginx.ProxyReadTimeoutAnnotation, "6").
-						withAnnotation(ingressnginx.ProxySendTimeoutAnnotation, "6").
+						withAnnotation(ingressnginx.ProxyConnectTimeoutAnnotation, "5").
+						withAnnotation(ingressnginx.ProxyReadTimeoutAnnotation, "5").
+						withAnnotation(ingressnginx.ProxySendTimeoutAnnotation, "5").
 						build(),
 				},
 				verifiers: map[string][]verifier{
@@ -80,19 +81,11 @@ func TestIngressNGINXTimeouts(t *testing.T) {
 						withAnnotation(ingressnginx.ProxySendTimeoutAnnotation, "1").
 						build(),
 				},
-				ingressVerifiers: map[string][]verifier{
+				verifiers: map[string][]verifier{
 					"short-timeout": {
 						&httpRequestVerifier{
-							path:         slowShellPath,
+							path:         verySlowShellPath,
 							allowedCodes: []int{http.StatusGatewayTimeout, http.StatusInternalServerError},
-						},
-					},
-				},
-				gatewayVerifiers: map[string][]verifier{
-					"short-timeout": {
-						&httpRequestVerifier{
-							path:      slowShellPath,
-							bodyRegex: regexp.MustCompile("done"),
 						},
 					},
 				},

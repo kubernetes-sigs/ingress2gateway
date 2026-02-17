@@ -156,7 +156,7 @@ func (v *httpRequestVerifier) verify(ctx context.Context, log logger, addr addre
 		}
 	}
 
-	client := http.Client{Timeout: 6 * time.Second, Transport: transport}
+	client := http.Client{Timeout: 20 * time.Second, Transport: transport}
 	// Don't follow redirects, as some tests want to verify the redirect response itself (e.g. for TLS redirection)
 	client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error {
 		return http.ErrUseLastResponse
