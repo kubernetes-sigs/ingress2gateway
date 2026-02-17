@@ -53,11 +53,21 @@ func (e *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.Err
 
 func (e *Emitter) ToEnvoyGatewayResources(ir emitterir.EmitterIR, gwResources *i2gw.GatewayResources) {
 	e.EmitBuffer(ir, gwResources)
+	e.EmitIPRangeControl(ir, gwResources)
 
 	for _, backendTrafficPolicy := range e.builderMap.BackendTrafficPolicies {
 		obj, err := i2gw.CastToUnstructured(backendTrafficPolicy)
 		if err != nil {
 			notify(notifications.ErrorNotification, "Failed to cast BackendTrafficPolicy to unstructured", backendTrafficPolicy)
+			continue
+		}
+		gwResources.GatewayExtensions = append(gwResources.GatewayExtensions, *obj)
+	}
+
+	for _, securityPolicy := range e.builderMap.SecurityPolicies {
+		obj, err := i2gw.CastToUnstructured(securityPolicy)
+		if err != nil {
+			notify(notifications.ErrorNotification, "Failed to cast SecurityPolicy to unstructured", securityPolicy)
 			continue
 		}
 		gwResources.GatewayExtensions = append(gwResources.GatewayExtensions, *obj)

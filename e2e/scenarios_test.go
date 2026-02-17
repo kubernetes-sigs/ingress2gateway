@@ -59,9 +59,9 @@ func TestIngressNginx(t *testing.T) {
 				},
 			})
 		})
-		suffix, err := randString()
+		prefix, err := randString()
 		require.NoError(t, err)
-		host := "foo.example.com" + suffix
+		host := prefix + ".foo.example.com"
 		t.Run("with host field", func(t *testing.T) {
 			runTestCase(t, &testCase{
 				gatewayImplementation: istio.ProviderName,
