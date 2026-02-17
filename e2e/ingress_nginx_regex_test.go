@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/kubernetes-sigs/ingress2gateway/e2e/framework"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
 	"github.com/stretchr/testify/require"
@@ -32,143 +33,143 @@ func TestIngressNGINXRegex(t *testing.T) {
 	t.Run("to Istio", func(t *testing.T) {
 		t.Parallel()
 		t.Run("host-level matching", func(t *testing.T) {
-			suffix, err := randString()
+			suffix, err := framework.RandString()
 			require.NoError(t, err)
 			regexHost := fmt.Sprintf("regex-host-%s.example.com", suffix)
 			implementationSpecific := networkingv1.PathTypeImplementationSpecific
 			exactPathType := networkingv1.PathTypeExact
 
-			plain := basicIngress().
-				withName("plain").
-				withIngressClass(ingressnginx.NginxIngressClass).
-				withHost(regexHost).
-				withPath("/hoSTn"). // Check for case-insensitivity of regex matching
-				build()
+			plain := framework.BasicIngress().
+				WithName("plain").
+				WithIngressClass(ingressnginx.NginxIngressClass).
+				WithHost(regexHost).
+				WithPath("/hoSTn"). // Check for case-insensitivity of regex matching
+				Build()
 			// Exact becomes regex which are prefix
 			plain.Spec.Rules[0].HTTP.Paths[0].PathType = &exactPathType
 
-			regex := basicIngress().
-				withName("regex").
-				withIngressClass(ingressnginx.NginxIngressClass).
-				withHost(regexHost).
-				withPath("/cliEnt.+"). // Check for case-insensitivity of regex matching
-				withAnnotation(ingressnginx.UseRegexAnnotation, "true").
-				build()
+			regex := framework.BasicIngress().
+				WithName("regex").
+				WithIngressClass(ingressnginx.NginxIngressClass).
+				WithHost(regexHost).
+				WithPath("/cliEnt.+"). // Check for case-insensitivity of regex matching
+				WithAnnotation(ingressnginx.UseRegexAnnotation, "true").
+				Build()
 			regex.Spec.Rules[0].HTTP.Paths[0].PathType = &implementationSpecific
 
-			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
-				providers:             []string{ingressnginx.Name},
-				providerFlags: map[string]map[string]string{
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{ingressnginx.Name},
+				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				ingresses: []*networkingv1.Ingress{plain, regex},
-				verifiers: map[string][]verifier{
+				Ingresses: []*networkingv1.Ingress{plain, regex},
+				Verifiers: map[string][]framework.Verifier{
 					"plain": {
-						&httpRequestVerifier{
-							host: regexHost,
-							path: "/hostname",
+						&framework.HTTPRequestVerifier{
+							Host: regexHost,
+							Path: "/hostname",
 						},
 					},
 					"regex": {
-						&httpRequestVerifier{
-							host: regexHost,
-							path: "/clientip",
+						&framework.HTTPRequestVerifier{
+							Host: regexHost,
+							Path: "/clientip",
 						},
 					},
 				},
 			})
 		})
 		t.Run("rewrite-target implies host-level matching", func(t *testing.T) {
-			suffix, err := randString()
+			suffix, err := framework.RandString()
 			require.NoError(t, err)
 			regexHost := fmt.Sprintf("rewrite-regex-host-%s.example.com", suffix)
 			implementationSpecific := networkingv1.PathTypeImplementationSpecific
 			exactPathType := networkingv1.PathTypeExact
 
-			plain := basicIngress().
-				withName("plain").
-				withIngressClass(ingressnginx.NginxIngressClass).
-				withHost(regexHost).
-				withPath("/hostn").
-				build()
+			plain := framework.BasicIngress().
+				WithName("plain").
+				WithIngressClass(ingressnginx.NginxIngressClass).
+				WithHost(regexHost).
+				WithPath("/hostn").
+				Build()
 			plain.Spec.Rules[0].HTTP.Paths[0].PathType = &exactPathType
 
-			rewriteRegex := basicIngress().
-				withName("rewrite-regex").
-				withIngressClass(ingressnginx.NginxIngressClass).
-				withHost(regexHost).
-				withPath("/client.+").
-				withAnnotation(ingressnginx.RewriteTargetAnnotation, "/").
-				build()
+			rewriteRegex := framework.BasicIngress().
+				WithName("rewrite-regex").
+				WithIngressClass(ingressnginx.NginxIngressClass).
+				WithHost(regexHost).
+				WithPath("/client.+").
+				WithAnnotation(ingressnginx.RewriteTargetAnnotation, "/").
+				Build()
 			rewriteRegex.Spec.Rules[0].HTTP.Paths[0].PathType = &implementationSpecific
 
-			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
-				providers:             []string{ingressnginx.Name},
-				providerFlags: map[string]map[string]string{
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{ingressnginx.Name},
+				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				ingresses: []*networkingv1.Ingress{plain, rewriteRegex},
-				verifiers: map[string][]verifier{
+				Ingresses: []*networkingv1.Ingress{plain, rewriteRegex},
+				Verifiers: map[string][]framework.Verifier{
 					"plain": {
-						&httpRequestVerifier{
-							host: regexHost,
-							path: "/hostname",
+						&framework.HTTPRequestVerifier{
+							Host: regexHost,
+							Path: "/hostname",
 						},
 					},
 					"rewrite-regex": {
-						&httpRequestVerifier{
-							host: regexHost,
-							path: "/clientip",
+						&framework.HTTPRequestVerifier{
+							Host: regexHost,
+							Path: "/clientip",
 						},
 					},
 				},
 			})
 		})
 		t.Run("regex ending with dollar matches only exact path", func(t *testing.T) {
-			suffix, err := randString()
+			suffix, err := framework.RandString()
 			require.NoError(t, err)
 			host := fmt.Sprintf("regex-dollar-%s.example.com", suffix)
 			implementationSpecific := networkingv1.PathTypeImplementationSpecific
 
-			ing := basicIngress().
-				withName("dollar").
-				withIngressClass(ingressnginx.NginxIngressClass).
-				withHost(host).
-				withPath("/$").
-				withAnnotation(ingressnginx.UseRegexAnnotation, "true").
-				build()
+			ing := framework.BasicIngress().
+				WithName("dollar").
+				WithIngressClass(ingressnginx.NginxIngressClass).
+				WithHost(host).
+				WithPath("/$").
+				WithAnnotation(ingressnginx.UseRegexAnnotation, "true").
+				Build()
 			ing.Spec.Rules[0].HTTP.Paths[0].PathType = &implementationSpecific
 
-			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
-				providers:             []string{ingressnginx.Name},
-				providerFlags: map[string]map[string]string{
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{ingressnginx.Name},
+				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				ingresses: []*networkingv1.Ingress{ing},
-				verifiers: map[string][]verifier{
+				Ingresses: []*networkingv1.Ingress{ing},
+				Verifiers: map[string][]framework.Verifier{
 					"dollar": {
-						&httpRequestVerifier{
-							host: host,
-							path: "/",
+						&framework.HTTPRequestVerifier{
+							Host: host,
+							Path: "/",
 						},
-						&httpRequestVerifier{
-							host:         host,
-							path:         "/hostname",
-							allowedCodes: []int{404},
+						&framework.HTTPRequestVerifier{
+							Host:         host,
+							Path:         "/hostname",
+							AllowedCodes: []int{404},
 						},
-						&httpRequestVerifier{
-							host:         host,
-							path:         "/hostname/",
-							allowedCodes: []int{404},
+						&framework.HTTPRequestVerifier{
+							Host:         host,
+							Path:         "/hostname/",
+							AllowedCodes: []int{404},
 						},
 					},
 				},

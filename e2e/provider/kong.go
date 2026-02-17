@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package provider
 
 import (
 	"context"
@@ -27,7 +27,13 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func deployKongIngress(
+const (
+	kongChartVersion = "2.42.0"
+	kongChartRepo    = "https://charts.konghq.com"
+)
+
+// DeployKongIngress deploys the Kong Ingress Controller via Helm and returns a cleanup function.
+func DeployKongIngress(
 	ctx context.Context,
 	l framework.Logger,
 	client *kubernetes.Clientset,

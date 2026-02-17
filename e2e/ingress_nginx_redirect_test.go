@@ -22,6 +22,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/kubernetes-sigs/ingress2gateway/e2e/framework"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
 	"github.com/stretchr/testify/require"
@@ -33,37 +34,37 @@ func TestIngressNGINXRedirect(t *testing.T) {
 	t.Run("to Istio", func(t *testing.T) {
 		t.Parallel()
 		t.Run("permanent redirect", func(t *testing.T) {
-			suffix, err := randString()
+			suffix, err := framework.RandString()
 			require.NoError(t, err)
 			redirectURL := fmt.Sprintf("https://new-site-%s.example.com/new-path/", suffix)
 
-			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
-				providers:             []string{ingressnginx.Name},
-				providerFlags: map[string]map[string]string{
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{ingressnginx.Name},
+				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				ingresses: []*networkingv1.Ingress{
-					basicIngress().
-						withName("permanent-redirect").
-						withIngressClass(ingressnginx.NginxIngressClass).
-						withAnnotation("nginx.ingress.kubernetes.io/permanent-redirect", redirectURL).
-						build(),
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("permanent-redirect").
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						WithAnnotation("nginx.ingress.kubernetes.io/permanent-redirect", redirectURL).
+						Build(),
 				},
-				verifiers: map[string][]verifier{
+				Verifiers: map[string][]framework.Verifier{
 					"permanent-redirect": {
-						&httpRequestVerifier{
-							path: "/",
-							allowedCodes: []int{
+						&framework.HTTPRequestVerifier{
+							Path: "/",
+							AllowedCodes: []int{
 								http.StatusMovedPermanently, // 301
 							},
-							headerMatches: []headerMatch{
+							HeaderMatches: []framework.HeaderMatch{
 								{
-									name: "Location",
-									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile("^" + regexp.QuoteMeta(redirectURL) + "$")},
+									Name: "Location",
+									Patterns: []*framework.MaybeNegativePattern{
+										{Pattern: regexp.MustCompile("^" + regexp.QuoteMeta(redirectURL) + "$")},
 									},
 								},
 							},
@@ -74,37 +75,37 @@ func TestIngressNGINXRedirect(t *testing.T) {
 		})
 
 		t.Run("temporal redirect", func(t *testing.T) {
-			suffix, err := randString()
+			suffix, err := framework.RandString()
 			require.NoError(t, err)
 			redirectURL := fmt.Sprintf("https://temp-site-%s.example.com/temp-path/", suffix)
 
-			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
-				providers:             []string{ingressnginx.Name},
-				providerFlags: map[string]map[string]string{
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{ingressnginx.Name},
+				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				ingresses: []*networkingv1.Ingress{
-					basicIngress().
-						withName("temporal-redirect").
-						withIngressClass(ingressnginx.NginxIngressClass).
-						withAnnotation("nginx.ingress.kubernetes.io/temporal-redirect", redirectURL).
-						build(),
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("temporal-redirect").
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						WithAnnotation("nginx.ingress.kubernetes.io/temporal-redirect", redirectURL).
+						Build(),
 				},
-				verifiers: map[string][]verifier{
+				Verifiers: map[string][]framework.Verifier{
 					"temporal-redirect": {
-						&httpRequestVerifier{
-							path: "/",
-							allowedCodes: []int{
+						&framework.HTTPRequestVerifier{
+							Path: "/",
+							AllowedCodes: []int{
 								http.StatusFound, // 302
 							},
-							headerMatches: []headerMatch{
+							HeaderMatches: []framework.HeaderMatch{
 								{
-									name: "Location",
-									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile("^" + regexp.QuoteMeta(redirectURL) + "$")},
+									Name: "Location",
+									Patterns: []*framework.MaybeNegativePattern{
+										{Pattern: regexp.MustCompile("^" + regexp.QuoteMeta(redirectURL) + "$")},
 									},
 								},
 							},
@@ -115,38 +116,38 @@ func TestIngressNGINXRedirect(t *testing.T) {
 		})
 
 		t.Run("permanent redirect with supported custom code", func(t *testing.T) {
-			suffix, err := randString()
+			suffix, err := framework.RandString()
 			require.NoError(t, err)
 			redirectURL := fmt.Sprintf("https://custom-code-%s.example.com/path/", suffix)
 
-			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
-				providers:             []string{ingressnginx.Name},
-				providerFlags: map[string]map[string]string{
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{ingressnginx.Name},
+				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				ingresses: []*networkingv1.Ingress{
-					basicIngress().
-						withName("permanent-redirect-301").
-						withIngressClass(ingressnginx.NginxIngressClass).
-						withAnnotation("nginx.ingress.kubernetes.io/permanent-redirect", redirectURL).
-						withAnnotation("nginx.ingress.kubernetes.io/permanent-redirect-code", "301").
-						build(),
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("permanent-redirect-301").
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						WithAnnotation("nginx.ingress.kubernetes.io/permanent-redirect", redirectURL).
+						WithAnnotation("nginx.ingress.kubernetes.io/permanent-redirect-code", "301").
+						Build(),
 				},
-				verifiers: map[string][]verifier{
+				Verifiers: map[string][]framework.Verifier{
 					"permanent-redirect-301": {
-						&httpRequestVerifier{
-							path: "/",
-							allowedCodes: []int{
+						&framework.HTTPRequestVerifier{
+							Path: "/",
+							AllowedCodes: []int{
 								http.StatusMovedPermanently, // 301
 							},
-							headerMatches: []headerMatch{
+							HeaderMatches: []framework.HeaderMatch{
 								{
-									name: "Location",
-									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile("^" + regexp.QuoteMeta(redirectURL) + "$")},
+									Name: "Location",
+									Patterns: []*framework.MaybeNegativePattern{
+										{Pattern: regexp.MustCompile("^" + regexp.QuoteMeta(redirectURL) + "$")},
 									},
 								},
 							},
@@ -157,38 +158,38 @@ func TestIngressNGINXRedirect(t *testing.T) {
 		})
 
 		t.Run("temporal redirect with supported custom code", func(t *testing.T) {
-			suffix, err := randString()
+			suffix, err := framework.RandString()
 			require.NoError(t, err)
 			redirectURL := fmt.Sprintf("https://custom-temp-%s.example.com/path/", suffix)
 
-			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
-				providers:             []string{ingressnginx.Name},
-				providerFlags: map[string]map[string]string{
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{ingressnginx.Name},
+				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				ingresses: []*networkingv1.Ingress{
-					basicIngress().
-						withName("temporal-redirect-302").
-						withIngressClass(ingressnginx.NginxIngressClass).
-						withAnnotation("nginx.ingress.kubernetes.io/temporal-redirect", redirectURL).
-						withAnnotation("nginx.ingress.kubernetes.io/temporal-redirect-code", "302").
-						build(),
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("temporal-redirect-302").
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						WithAnnotation("nginx.ingress.kubernetes.io/temporal-redirect", redirectURL).
+						WithAnnotation("nginx.ingress.kubernetes.io/temporal-redirect-code", "302").
+						Build(),
 				},
-				verifiers: map[string][]verifier{
+				Verifiers: map[string][]framework.Verifier{
 					"temporal-redirect-302": {
-						&httpRequestVerifier{
-							path: "/",
-							allowedCodes: []int{
+						&framework.HTTPRequestVerifier{
+							Path: "/",
+							AllowedCodes: []int{
 								http.StatusFound, // 302
 							},
-							headerMatches: []headerMatch{
+							HeaderMatches: []framework.HeaderMatch{
 								{
-									name: "Location",
-									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile("^" + regexp.QuoteMeta(redirectURL) + "$")},
+									Name: "Location",
+									Patterns: []*framework.MaybeNegativePattern{
+										{Pattern: regexp.MustCompile("^" + regexp.QuoteMeta(redirectURL) + "$")},
 									},
 								},
 							},
@@ -201,33 +202,33 @@ func TestIngressNGINXRedirect(t *testing.T) {
 		t.Run("redirect with scheme and hostname only", func(t *testing.T) {
 			redirectURL := "https://another-domain.example.com/"
 
-			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
-				providers:             []string{ingressnginx.Name},
-				providerFlags: map[string]map[string]string{
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{ingressnginx.Name},
+				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				ingresses: []*networkingv1.Ingress{
-					basicIngress().
-						withName("redirect-hostname-only").
-						withIngressClass(ingressnginx.NginxIngressClass).
-						withAnnotation("nginx.ingress.kubernetes.io/permanent-redirect", redirectURL).
-						build(),
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("redirect-hostname-only").
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						WithAnnotation("nginx.ingress.kubernetes.io/permanent-redirect", redirectURL).
+						Build(),
 				},
-				verifiers: map[string][]verifier{
+				Verifiers: map[string][]framework.Verifier{
 					"redirect-hostname-only": {
-						&httpRequestVerifier{
-							path: "/some/path",
-							allowedCodes: []int{
+						&framework.HTTPRequestVerifier{
+							Path: "/some/path",
+							AllowedCodes: []int{
 								http.StatusMovedPermanently, // 301
 							},
-							headerMatches: []headerMatch{
+							HeaderMatches: []framework.HeaderMatch{
 								{
-									name: "Location",
-									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile("^" + regexp.QuoteMeta(redirectURL) + "$")},
+									Name: "Location",
+									Patterns: []*framework.MaybeNegativePattern{
+										{Pattern: regexp.MustCompile("^" + regexp.QuoteMeta(redirectURL) + "$")},
 									},
 								},
 							},
@@ -238,37 +239,37 @@ func TestIngressNGINXRedirect(t *testing.T) {
 		})
 
 		t.Run("redirect with port", func(t *testing.T) {
-			suffix, err := randString()
+			suffix, err := framework.RandString()
 			require.NoError(t, err)
 			redirectURL := fmt.Sprintf("https://custom-port-%s.example.com:8443/secure/", suffix)
 
-			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
-				providers:             []string{ingressnginx.Name},
-				providerFlags: map[string]map[string]string{
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{ingressnginx.Name},
+				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				ingresses: []*networkingv1.Ingress{
-					basicIngress().
-						withName("redirect-with-port").
-						withIngressClass(ingressnginx.NginxIngressClass).
-						withAnnotation("nginx.ingress.kubernetes.io/temporal-redirect", redirectURL).
-						build(),
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("redirect-with-port").
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						WithAnnotation("nginx.ingress.kubernetes.io/temporal-redirect", redirectURL).
+						Build(),
 				},
-				verifiers: map[string][]verifier{
+				Verifiers: map[string][]framework.Verifier{
 					"redirect-with-port": {
-						&httpRequestVerifier{
-							path: "/",
-							allowedCodes: []int{
+						&framework.HTTPRequestVerifier{
+							Path: "/",
+							AllowedCodes: []int{
 								http.StatusFound, // 302
 							},
-							headerMatches: []headerMatch{
+							HeaderMatches: []framework.HeaderMatch{
 								{
-									name: "Location",
-									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile("^" + regexp.QuoteMeta(redirectURL) + "$")},
+									Name: "Location",
+									Patterns: []*framework.MaybeNegativePattern{
+										{Pattern: regexp.MustCompile("^" + regexp.QuoteMeta(redirectURL) + "$")},
 									},
 								},
 							},
@@ -279,39 +280,39 @@ func TestIngressNGINXRedirect(t *testing.T) {
 		})
 
 		t.Run("both redirect annotations - temporal takes priority", func(t *testing.T) {
-			suffix, err := randString()
+			suffix, err := framework.RandString()
 			require.NoError(t, err)
 			permanentURL := fmt.Sprintf("https://permanent-%s.example.com/path/", suffix)
 			temporalURL := fmt.Sprintf("https://temporal-%s.example.com/path/", suffix)
 
-			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
-				providers:             []string{ingressnginx.Name},
-				providerFlags: map[string]map[string]string{
+			runTestCase(t, &framework.TestCase{
+				GatewayImplementation: istio.ProviderName,
+				Providers:             []string{ingressnginx.Name},
+				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				ingresses: []*networkingv1.Ingress{
-					basicIngress().
-						withName("both-redirects").
-						withIngressClass(ingressnginx.NginxIngressClass).
-						withAnnotation("nginx.ingress.kubernetes.io/permanent-redirect", permanentURL).
-						withAnnotation("nginx.ingress.kubernetes.io/temporal-redirect", temporalURL).
-						build(),
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("both-redirects").
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						WithAnnotation("nginx.ingress.kubernetes.io/permanent-redirect", permanentURL).
+						WithAnnotation("nginx.ingress.kubernetes.io/temporal-redirect", temporalURL).
+						Build(),
 				},
-				verifiers: map[string][]verifier{
+				Verifiers: map[string][]framework.Verifier{
 					"both-redirects": {
-						&httpRequestVerifier{
-							path: "/",
-							allowedCodes: []int{
+						&framework.HTTPRequestVerifier{
+							Path: "/",
+							AllowedCodes: []int{
 								http.StatusFound, // 302 - temporal takes priority
 							},
-							headerMatches: []headerMatch{
+							HeaderMatches: []framework.HeaderMatch{
 								{
-									name: "Location",
-									patterns: []*maybeNegativePattern{
-										{pattern: regexp.MustCompile("^" + regexp.QuoteMeta(temporalURL) + "$")},
+									Name: "Location",
+									Patterns: []*framework.MaybeNegativePattern{
+										{Pattern: regexp.MustCompile("^" + regexp.QuoteMeta(temporalURL) + "$")},
 									},
 								},
 							},
