@@ -35,14 +35,14 @@ type Emitter struct {
 	builderMap *BuilderMap
 }
 
-// NewEmitter returns a new instance of KgatewayEmitter.
+// NewEmitter returns a new instance of KgatewayEmitter
 func NewEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
 	return &Emitter{
 		builderMap: NewBuilderMap(),
 	}
 }
 
-// Emit converts EmitterIR to Gateway API resources plus kgateway-specific extensions.
+// Emit converts EmitterIR to Gateway API resources plus kgateway-specific extensions
 func (e *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.ErrorList) {
 	gatewayResources, errs := utils.ToGatewayResources(ir)
 	if len(errs) != 0 {
@@ -61,7 +61,7 @@ func (e *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.Err
 	return gatewayResources, nil
 }
 
-// ToKgatewayResources processes emitterIR and adds kgateway-specific extensions to gatewayResources.
+// ToKgatewayResources processes emitterIR and adds kgateway-specific extensions to gatewayResources
 func (e *Emitter) ToKgatewayResources(ir emitterir.EmitterIR, gwResources *i2gw.GatewayResources) {
 	e.EmitBuffer(ir)
 
@@ -71,7 +71,7 @@ func (e *Emitter) ToKgatewayResources(ir emitterir.EmitterIR, gwResources *i2gw.
 		kgatewayObjs = append(kgatewayObjs, trafficPolicy)
 	}
 
-	// Sort by Kind, then Namespace, then Name to make output deterministic for testing.
+	// Sort by Kind, then Namespace, then Name to make output deterministic for testing
 	sort.SliceStable(kgatewayObjs, func(i, j int) bool {
 		oi, oj := kgatewayObjs[i], kgatewayObjs[j]
 
