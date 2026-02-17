@@ -76,7 +76,7 @@ func TestRegexFeature(t *testing.T) {
 				{
 					Path: &gatewayv1.HTTPPathMatch{
 						Type:  &regexType,
-						Value: ptr.To("/users/.*/profile"),
+						Value: ptr.To("/users/.*/profile.*"),
 					},
 				},
 			},
@@ -153,6 +153,7 @@ func TestRegexFeature(t *testing.T) {
 					Name:      key.Name,
 				},
 				Spec: gatewayv1.HTTPRouteSpec{
+					Hostnames: []gatewayv1.Hostname{"example.com"},
 					Rules: []gatewayv1.HTTPRouteRule{
 						{
 							Matches: []gatewayv1.HTTPRouteMatch{
