@@ -22,6 +22,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
+	"github.com/stretchr/testify/require"
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
@@ -54,10 +55,13 @@ func TestIngressNginx(t *testing.T) {
 						build(),
 				},
 				verifiers: map[string][]verifier{
-					"foo": {&httpGetVerifier{path: "/"}},
+					"foo": {&httpRequestVerifier{path: "/"}},
 				},
 			})
 		})
+		suffix, err := randString()
+		require.NoError(t, err)
+		host := "foo.example.com" + suffix
 		t.Run("with host field", func(t *testing.T) {
 			runTestCase(t, &testCase{
 				gatewayImplementation: istio.ProviderName,
@@ -71,13 +75,13 @@ func TestIngressNginx(t *testing.T) {
 					basicIngress().
 						withName("foo").
 						withIngressClass(ingressnginx.NginxIngressClass).
-						withHost("foo.example.com").
+						withHost(host).
 						build(),
 				},
 				verifiers: map[string][]verifier{
 					"foo": {
-						&httpGetVerifier{
-							host: "foo.example.com",
+						&httpRequestVerifier{
+							host: host,
 							path: "/",
 						},
 					},
@@ -104,12 +108,37 @@ func TestIngressNginx(t *testing.T) {
 						build(),
 				},
 				verifiers: map[string][]verifier{
-					"foo": {&httpGetVerifier{path: "/"}},
-					"bar": {&httpGetVerifier{path: "/"}},
+					"foo": {&httpRequestVerifier{path: "/"}},
+					"bar": {&httpRequestVerifier{path: "/"}},
 				},
 			})
 		})
 	})
+	t.Run("to kgateway", func(t *testing.T) {
+		t.Parallel()
+		t.Run("basic conversion", func(t *testing.T) {
+			runTestCase(t, &testCase{
+				gatewayImplementation: kgatewayName,
+				emitter:               kgatewayName,
+				providers:             []string{ingressnginx.Name},
+				providerFlags: map[string]map[string]string{
+					ingressnginx.Name: {
+						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
+					},
+				},
+				ingresses: []*networkingv1.Ingress{
+					basicIngress().
+						withName("foo").
+						withIngressClass(ingressnginx.NginxIngressClass).
+						build(),
+				},
+				verifiers: map[string][]verifier{
+					"foo": {&httpRequestVerifier{path: "/"}},
+				},
+			})
+		})
+	})
+
 	// TODO: The Cilium implementation requires Cilium to be the cluster CNI. To run Cilium tests,
 	// create a kind cluster with disableDefaultCNI: true.
 	// t.Run("to Cilium", func(t *testing.T) {
@@ -138,7 +167,7 @@ func TestKongIngress(t *testing.T) {
 						build(),
 				},
 				verifiers: map[string][]verifier{
-					"foo": {&httpGetVerifier{path: "/"}},
+					"foo": {&httpRequestVerifier{path: "/"}},
 				},
 			})
 		})
@@ -157,8 +186,8 @@ func TestKongIngress(t *testing.T) {
 						build(),
 				},
 				verifiers: map[string][]verifier{
-					"foo": {&httpGetVerifier{path: "/"}},
-					"bar": {&httpGetVerifier{path: "/"}},
+					"foo": {&httpRequestVerifier{path: "/"}},
+					"bar": {&httpRequestVerifier{path: "/"}},
 				},
 			})
 		})
@@ -176,7 +205,7 @@ func TestKongIngress(t *testing.T) {
 						build(),
 				},
 				verifiers: map[string][]verifier{
-					"foo": {&httpGetVerifier{path: "/"}},
+					"foo": {&httpRequestVerifier{path: "/"}},
 				},
 			})
 		})
@@ -195,8 +224,8 @@ func TestKongIngress(t *testing.T) {
 						build(),
 				},
 				verifiers: map[string][]verifier{
-					"foo": {&httpGetVerifier{path: "/"}},
-					"bar": {&httpGetVerifier{path: "/"}},
+					"foo": {&httpRequestVerifier{path: "/"}},
+					"bar": {&httpRequestVerifier{path: "/"}},
 				},
 			})
 		})
@@ -227,8 +256,8 @@ func TestMultipleProviders(t *testing.T) {
 						build(),
 				},
 				verifiers: map[string][]verifier{
-					"foo": {&httpGetVerifier{path: "/"}},
-					"bar": {&httpGetVerifier{path: "/"}},
+					"foo": {&httpRequestVerifier{path: "/"}},
+					"bar": {&httpRequestVerifier{path: "/"}},
 				},
 			})
 		})
