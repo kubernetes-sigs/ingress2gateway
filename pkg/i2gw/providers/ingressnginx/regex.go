@@ -29,7 +29,7 @@ import (
 
 func regexHosts(ingresses []networkingv1.Ingress) map[string]struct{} {
 	hostsWithRegex := make(map[string]struct{})
-	
+
 	for _, ingress := range ingresses {
 		// TODO if there is a rewrite-target annotation, the path is treated as a regex even if use-regex is not set to true. We should also check that.
 		val, ok := ingress.Annotations[UseRegexAnnotation]
@@ -55,8 +55,6 @@ func regexHosts(ingresses []networkingv1.Ingress) map[string]struct{} {
 	return hostsWithRegex
 }
 
-
-
 // regexFeature converts the "nginx.ingress.kubernetes.io/use-regex" annotation
 // to Gateway API HTTPRoute RegularExpression path match.
 func regexFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
@@ -78,7 +76,7 @@ func regexFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]m
 
 		for i, rule := range httpRouteCtx.Spec.Rules {
 			for j, path := range rule.Matches {
-				if path.Path != nil  {
+				if path.Path != nil {
 					// Ingress nginx regex path matches are prefix matches by default
 					httpRouteCtx.Spec.Rules[i].Matches[j].Path.Type = ptr.To[gatewayv1.PathMatchType](gatewayv1.PathMatchRegularExpression)
 					httpRouteCtx.Spec.Rules[i].Matches[j].Path.Value = ptr.To(*httpRouteCtx.Spec.Rules[i].Matches[j].Path.Value + ".*")

@@ -41,11 +41,21 @@ func TestApplyRewriteTargetToEmitterIR_SetsRewriteHeadersAndRegex(t *testing.T) 
 				UseRegexAnnotation:         "true",
 			},
 		},
+		Spec: networkingv1.IngressSpec{
+			Rules: []networkingv1.IngressRule{{
+				Host: "example.com",
+			}},
+		},
 	}
 
 	pIR := providerir.ProviderIR{
 		HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 			key: {
+				HTTPRoute: gatewayv1.HTTPRoute{
+					Spec: gatewayv1.HTTPRouteSpec{
+						Hostnames: []gatewayv1.Hostname{"example.com"},
+					},
+				},
 				RuleBackendSources: [][]providerir.BackendSource{{{Ingress: &ing}}},
 			},
 		},
@@ -59,7 +69,7 @@ func TestApplyRewriteTargetToEmitterIR_SetsRewriteHeadersAndRegex(t *testing.T) 
 		},
 	}
 
-	applyRewriteTargetToEmitterIR(pIR, &eIR)
+	applyRewriteTargetToEmitterIR([]networkingv1.Ingress{ing}, pIR, &eIR)
 
 	got := eIR.HTTPRoutes[key].PathRewriteByRuleIdx[0]
 	if got == nil {
@@ -120,7 +130,7 @@ func TestApplyRewriteTargetToEmitterIR_PrefersNonCanaryIngressSource(t *testing.
 		},
 	}
 
-	applyRewriteTargetToEmitterIR(pIR, &eIR)
+	applyRewriteTargetToEmitterIR([]networkingv1.Ingress{canary, main}, pIR, &eIR)
 
 	got := eIR.HTTPRoutes[key].PathRewriteByRuleIdx[0]
 	if got == nil {

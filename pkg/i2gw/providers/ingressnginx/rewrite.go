@@ -17,7 +17,6 @@ limitations under the License.
 package ingressnginx
 
 import (
-	"strconv"
 	"strings"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
@@ -74,8 +73,7 @@ func applyRewriteTargetToEmitterIR(ingresses []networkingv1.Ingress,
 			}
 
 			if hasRegex && strings.Contains(rewriteTarget, "\\$") {
-					pathRewriteIR.RegexCaptureGroupReferences = true
-				}
+				pathRewriteIR.RegexCaptureGroupReferences = true
 			}
 
 			eRouteCtx.PathRewriteByRuleIdx[ruleIdx] = &pathRewriteIR
