@@ -31,7 +31,7 @@ import (
 )
 
 const (
-	kongChartVersion   = "2.42.0"
+	kongChartVersion   = "3.0.2"
 	kongChartRepo      = "https://charts.konghq.com"
 	kongGatewayClass   = "kong"
 	kongControllerName = "konghq.com/kic-gateway-controller"
