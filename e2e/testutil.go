@@ -95,9 +95,6 @@ func runTestCase(t *testing.T, tc *testCase) {
 	gwClient, err := newGatewayClientFromKubeconfigPath(kubeconfig)
 	require.NoError(t, err)
 
-	crdClient, err := newControllerRuntimeClientFromKubeconfigPath(kubeconfig)
-	require.NoError(t, err)
-
 	apiextensionsClient, err := newAPIExtensionsClientFromKubeconfigPath(kubeconfig)
 	require.NoError(t, err)
 
@@ -207,7 +204,7 @@ func runTestCase(t *testing.T, tc *testCase) {
 		}
 	}
 
-	cleanupGatewayResources, err := createGatewayResources(ctx, t, gwClient, crdClient, appNS, res, skipCleanup)
+	cleanupGatewayResources, err := createGatewayResources(ctx, t, gwClient, appNS, res, skipCleanup)
 	require.NoError(t, err, "creating gateway resources")
 	t.Cleanup(cleanupGatewayResources)
 
