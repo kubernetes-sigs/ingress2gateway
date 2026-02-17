@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package provider
 
 import (
 	"context"
@@ -34,7 +34,9 @@ const (
 	ingressNginxChartRepo    = "https://kubernetes.github.io/ingress-nginx"
 )
 
-func deployIngressNginx(
+// DeployIngressNginx deploys the ingress-nginx ingress controller via Helm and returns a cleanup
+// function.
+func DeployIngressNginx(
 	ctx context.Context,
 	l framework.Logger,
 	client *kubernetes.Clientset,
@@ -113,7 +115,7 @@ func deployIngressNginx(
 	}, nil
 }
 
-// Wits until the ingress-nginx ValidatingWebhookConfiguration has a CA bundle configured. The
+// Waits until the ingress-nginx ValidatingWebhookConfiguration has a CA bundle configured. The
 // webhook service being ready doesn't guarantee the CA bundle has been propagated, which causes
 // X.509 certificate verification errors.
 func waitForAdmissionWebhookReady(ctx context.Context, client *kubernetes.Clientset) error {

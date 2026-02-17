@@ -22,6 +22,8 @@ import (
 	"testing"
 
 	"github.com/kubernetes-sigs/ingress2gateway/e2e/framework"
+	"github.com/kubernetes-sigs/ingress2gateway/e2e/implementation"
+	"github.com/kubernetes-sigs/ingress2gateway/e2e/provider"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
@@ -52,7 +54,7 @@ func deployProviders(
 		case ingressnginx.Name:
 			ns := fmt.Sprintf("%s-ingress-nginx", framework.E2EPrefix)
 			r = framework.GlobalResourceManager.Acquire(ingressnginx.Name, func() (framework.CleanupFunc, error) {
-				return deployIngressNginx(ctx, t, k8sClient, kubeconfig, ns, skipCleanup)
+				return provider.DeployIngressNginx(ctx, t, k8sClient, kubeconfig, ns, skipCleanup)
 			})
 		case kong.Name:
 			// If Kong is both the provider and the gateway implementation, skip deploying the Kong
@@ -62,7 +64,7 @@ func deployProviders(
 			}
 			ns := fmt.Sprintf("%s-kong", framework.E2EPrefix)
 			r = framework.GlobalResourceManager.Acquire(kong.Name, func() (framework.CleanupFunc, error) {
-				return deployKongIngress(ctx, t, k8sClient, kubeconfig, ns, skipCleanup)
+				return provider.DeployKongIngress(ctx, t, k8sClient, kubeconfig, ns, skipCleanup)
 			})
 		default:
 			t.Fatalf("Unknown ingress provider: %s", p)
@@ -88,17 +90,17 @@ func deployGatewayImplementation(
 	case istio.ProviderName:
 		ns := fmt.Sprintf("%s-istio-system", framework.E2EPrefix)
 		r = framework.GlobalResourceManager.Acquire(istio.ProviderName, func() (framework.CleanupFunc, error) {
-			return deployGatewayAPIIstio(ctx, t, k8sClient, kubeconfig, ns, skipCleanup)
+			return implementation.DeployGatewayAPIIstio(ctx, t, k8sClient, kubeconfig, ns, skipCleanup)
 		})
 	case kong.Name:
 		ns := fmt.Sprintf("%s-kong", framework.E2EPrefix)
 		r = framework.GlobalResourceManager.Acquire(kong.Name, func() (framework.CleanupFunc, error) {
-			return deployGatewayAPIKong(ctx, t, k8sClient, gwClient, kubeconfig, ns, skipCleanup)
+			return implementation.DeployGatewayAPIKong(ctx, t, k8sClient, gwClient, kubeconfig, ns, skipCleanup)
 		})
-	case kgatewayName:
+	case implementation.KgatewayName:
 		ns := fmt.Sprintf("%s-kgateway-system", framework.E2EPrefix)
-		r = framework.GlobalResourceManager.Acquire(kgatewayName, func() (framework.CleanupFunc, error) {
-			return deployGatewayAPIKgateway(ctx, t, k8sClient, kubeconfig, ns, skipCleanup)
+		r = framework.GlobalResourceManager.Acquire(implementation.KgatewayName, func() (framework.CleanupFunc, error) {
+			return implementation.DeployGatewayAPIKgateway(ctx, t, k8sClient, kubeconfig, ns, skipCleanup)
 		})
 	default:
 		t.Fatalf("Unknown gateway implementation: %s", gwImpl)

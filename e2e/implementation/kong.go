@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package implementation
 
 import (
 	"context"
@@ -32,13 +32,17 @@ import (
 )
 
 const (
+	// KongName is the name used to identify the Kong implementation.
+	KongName           = "kong"
 	kongChartVersion   = "3.0.2"
 	kongChartRepo      = "https://charts.konghq.com"
 	kongGatewayClass   = "kong"
 	kongControllerName = "konghq.com/kic-gateway-controller"
 )
 
-func deployGatewayAPIKong(
+// DeployGatewayAPIKong deploys Kong as a Gateway API implementation via Helm and returns a cleanup
+// function.
+func DeployGatewayAPIKong(
 	ctx context.Context,
 	l framework.Logger,
 	client *kubernetes.Clientset,

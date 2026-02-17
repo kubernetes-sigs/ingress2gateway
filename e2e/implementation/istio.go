@@ -1,5 +1,5 @@
 /*
-Copyright 2026 The Kubernetes Authors.
+Copyright 2025 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package implementation
 
 import (
 	"context"
@@ -28,74 +28,84 @@ import (
 )
 
 const (
-	kgatewayName        = "kgateway"
-	kgatewayVersion     = "v2.2.0"
-	kgatewayChart       = "oci://ghcr.io/kgateway-dev/charts/kgateway"
-	kgatewayCRDsChart   = "oci://ghcr.io/kgateway-dev/charts/kgateway-crds"
-	kgatewayReleaseName = "kgateway"
-	kgatewayCRDsRelease = "kgateway-crds"
+	// IstioName is the name used to identify the Istio implementation.
+	IstioName      = "istio"
+	istioVersion   = "1.28.2"
+	istioChartRepo = "https://istio-release.storage.googleapis.com/charts"
 )
 
-func deployGatewayAPIKgateway(
-	ctx context.Context,
+// DeployGatewayAPIIstio installs Istio with Gateway API support using Helm. Returns a cleanup
+// function that uninstalls Istio and deletes the namespace.
+func DeployGatewayAPIIstio(ctx context.Context,
 	l framework.Logger,
 	client *kubernetes.Clientset,
 	kubeconfigPath string,
 	namespace string,
 	skipCleanup bool,
 ) (func(), error) {
-	l.Logf("Deploying kgateway %s", kgatewayVersion)
+	l.Logf("Deploying Istio %s", istioVersion)
 
 	settings := cli.New()
 	settings.KubeConfig = kubeconfigPath
 
-	// Install CRDs first to avoid races creating extension resources.
-	if err := framework.InstallChart(
-		ctx,
-		l,
-		settings,
-		"",
-		kgatewayCRDsRelease,
-		kgatewayCRDsChart,
-		kgatewayVersion,
-		namespace,
-		true,
-		nil,
-	); err != nil {
-		return nil, fmt.Errorf("installing kgateway CRDs chart: %w", err)
+	values := map[string]interface{}{
+		"global": map[string]interface{}{
+			"istioNamespace": namespace,
+		},
 	}
 
 	if err := framework.InstallChart(
 		ctx,
 		l,
 		settings,
-		"",
-		kgatewayReleaseName,
-		kgatewayChart,
-		kgatewayVersion,
+		istioChartRepo,
+		"istio-base",
+		"base",
+		istioVersion,
+		namespace,
+		true,
+		values,
+	); err != nil {
+		return nil, fmt.Errorf("installing chart %s: %w", "istio-base", err)
+	}
+
+	values = map[string]interface{}{
+		"global": map[string]interface{}{
+			"istioNamespace": namespace,
+		},
+	}
+
+	if err := framework.InstallChart(
+		ctx,
+		l,
+		settings,
+		istioChartRepo,
+		"istiod",
+		"istiod",
+		istioVersion,
 		namespace,
 		false,
-		nil,
+		values,
 	); err != nil {
-		return nil, fmt.Errorf("installing kgateway chart: %w", err)
+		return nil, fmt.Errorf("installing chart %s: %w", "istiod", err)
 	}
 
 	//nolint:contextcheck // Intentional background context in cleanup function
 	return func() {
 		if skipCleanup {
-			log.Printf("Skipping cleanup of kgateway")
+			log.Printf("Skipping cleanup of Istio")
 			return
 		}
 
 		cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
 
-		log.Printf("Cleaning up kgateway")
-		if err := framework.UninstallChart(cleanupCtx, settings, kgatewayReleaseName, namespace); err != nil {
-			log.Printf("Uninstalling kgateway chart: %v", err)
+		log.Printf("Cleaning up Istio")
+		if err := framework.UninstallChart(cleanupCtx, settings, "istiod", namespace); err != nil {
+			log.Printf("Uninstalling chart %s: %v", "istiod", err)
 		}
-		if err := framework.UninstallChart(cleanupCtx, settings, kgatewayCRDsRelease, namespace); err != nil {
-			log.Printf("Uninstalling kgateway CRDs chart: %v", err)
+		if err := framework.UninstallChart(cleanupCtx, settings, "istio-base", namespace); err != nil {
+			log.Printf("Uninstalling chart %s: %v", "istio-base", err)
 		}
 
 		if err := framework.DeleteNamespaceAndWait(cleanupCtx, client, namespace); err != nil {
