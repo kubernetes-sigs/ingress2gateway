@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package implementation
 
 import (
 	"context"
@@ -33,7 +33,8 @@ import (
 )
 
 const (
-	envoyGatewayName          = "envoy-gateway"
+	// EnvoyGatewayName is the name used to identify the Envoy Gateway implementation.
+	EnvoyGatewayName          = "envoy-gateway"
 	envoyGatewayVersion       = "v1.7.0"
 	envoyGatewayCRDInstallURL = "https://github.com/envoyproxy/gateway/releases/download/" + envoyGatewayVersion + "/envoy-gateway-crds.yaml"
 	envoyGatewayChart         = "oci://docker.io/envoyproxy/gateway-helm"
@@ -41,7 +42,9 @@ const (
 	envoyGatewayContrllerName = "gateway.envoyproxy.io/gatewayclass-controller"
 )
 
-func deployGatewayAPIEnvoyGateway(
+// DeployEnvoyGateway deploys Envoy Gateway as a Gateway API implementation via Helm and returns a
+// cleanup function.
+func DeployEnvoyGateway(
 	ctx context.Context,
 	l framework.Logger,
 	client *kubernetes.Clientset,
@@ -100,14 +103,14 @@ func deployGatewayAPIEnvoyGateway(
 	// Create the GatewayClass for Envoy Gateway.
 	gc := &gwapiv1.GatewayClass{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: envoyGatewayName,
+			Name: EnvoyGatewayName,
 		},
 		Spec: gwapiv1.GatewayClassSpec{
 			ControllerName: gwapiv1.GatewayController(envoyGatewayContrllerName),
 		},
 	}
 
-	l.Logf("Creating GatewayClass %s", envoyGatewayName)
+	l.Logf("Creating GatewayClass %s", EnvoyGatewayName)
 	_, err = gwClient.GatewayV1().GatewayClasses().Create(ctx, gc, metav1.CreateOptions{})
 	if errors.IsAlreadyExists(err) {
 		_, err = gwClient.GatewayV1().GatewayClasses().Update(ctx, gc, metav1.UpdateOptions{})
@@ -130,8 +133,8 @@ func deployGatewayAPIEnvoyGateway(
 		log.Printf("Cleaning up Envoy Gateway")
 
 		// Delete the GatewayClass.
-		log.Printf("Deleting GatewayClass %s", envoyGatewayName)
-		if err := gwClient.GatewayV1().GatewayClasses().Delete(cleanupCtx, envoyGatewayName, metav1.DeleteOptions{}); err != nil {
+		log.Printf("Deleting GatewayClass %s", EnvoyGatewayName)
+		if err := gwClient.GatewayV1().GatewayClasses().Delete(cleanupCtx, EnvoyGatewayName, metav1.DeleteOptions{}); err != nil {
 			log.Printf("Deleting GatewayClass: %v", err)
 		}
 

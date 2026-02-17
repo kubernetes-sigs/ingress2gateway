@@ -1,5 +1,5 @@
 /*
-Copyright The Kubernetes Authors.
+Copyright 2025 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package provider
 
 import (
 	"context"
@@ -28,15 +28,12 @@ import (
 )
 
 const (
-	kgatewayName        = "kgateway"
-	kgatewayVersion     = "v2.2.0"
-	kgatewayChart       = "oci://ghcr.io/kgateway-dev/charts/kgateway"
-	kgatewayCRDsChart   = "oci://ghcr.io/kgateway-dev/charts/kgateway-crds"
-	kgatewayReleaseName = "kgateway"
-	kgatewayCRDsRelease = "kgateway-crds"
+	kongChartVersion = "2.42.0"
+	kongChartRepo    = "https://charts.konghq.com"
 )
 
-func deployGatewayAPIKgateway(
+// DeployKongIngress deploys the Kong Ingress Controller via Helm and returns a cleanup function.
+func DeployKongIngress(
 	ctx context.Context,
 	l framework.Logger,
 	client *kubernetes.Clientset,
@@ -44,60 +41,40 @@ func deployGatewayAPIKgateway(
 	namespace string,
 	skipCleanup bool,
 ) (func(), error) {
-	l.Logf("Deploying kgateway %s", kgatewayVersion)
+	l.Logf("Deploying Kong Ingress Controller %s", kongChartVersion)
 
 	settings := cli.New()
 	settings.KubeConfig = kubeconfigPath
 
-	// Install CRDs first to avoid races creating extension resources.
 	if err := framework.InstallChart(
 		ctx,
 		l,
 		settings,
-		"",
-		kgatewayCRDsRelease,
-		kgatewayCRDsChart,
-		kgatewayVersion,
+		kongChartRepo,
+		"kong",
+		"kong",
+		kongChartVersion,
 		namespace,
 		true,
 		false,
 		nil,
 	); err != nil {
-		return nil, fmt.Errorf("installing kgateway CRDs chart: %w", err)
-	}
-
-	if err := framework.InstallChart(
-		ctx,
-		l,
-		settings,
-		"",
-		kgatewayReleaseName,
-		kgatewayChart,
-		kgatewayVersion,
-		namespace,
-		false,
-		false,
-		nil,
-	); err != nil {
-		return nil, fmt.Errorf("installing kgateway chart: %w", err)
+		return nil, fmt.Errorf("installing Kong Ingress chart: %w", err)
 	}
 
 	//nolint:contextcheck // Intentional background context in cleanup function
 	return func() {
 		if skipCleanup {
-			log.Printf("Skipping cleanup of kgateway")
+			log.Printf("Skipping cleanup of Kong Ingress Controller")
 			return
 		}
 
 		cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
 
-		log.Printf("Cleaning up kgateway")
-		if err := framework.UninstallChart(cleanupCtx, settings, kgatewayReleaseName, namespace); err != nil {
-			log.Printf("Uninstalling kgateway chart: %v", err)
-		}
-		if err := framework.UninstallChart(cleanupCtx, settings, kgatewayCRDsRelease, namespace); err != nil {
-			log.Printf("Uninstalling kgateway CRDs chart: %v", err)
+		log.Printf("Cleaning up Kong Ingress Controller")
+		if err := framework.UninstallChart(cleanupCtx, settings, "kong", namespace); err != nil {
+			log.Printf("Uninstalling Kong Ingress chart: %v", err)
 		}
 
 		if err := framework.DeleteNamespaceAndWait(cleanupCtx, client, namespace); err != nil {

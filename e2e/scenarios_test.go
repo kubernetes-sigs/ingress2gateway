@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/kubernetes-sigs/ingress2gateway/e2e/framework"
+	"github.com/kubernetes-sigs/ingress2gateway/e2e/implementation"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
@@ -119,8 +120,8 @@ func TestIngressNginx(t *testing.T) {
 		t.Parallel()
 		t.Run("basic conversion", func(t *testing.T) {
 			runTestCase(t, &framework.TestCase{
-				GatewayImplementation: kgatewayName,
-				Emitter:               kgatewayName,
+				GatewayImplementation: implementation.KgatewayName,
+				Emitter:               implementation.KgatewayName,
 				Providers:             []string{ingressnginx.Name},
 				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
@@ -143,8 +144,8 @@ func TestIngressNginx(t *testing.T) {
 		t.Parallel()
 		t.Run("basic conversion", func(t *testing.T) {
 			runTestCase(t, &framework.TestCase{
-				GatewayImplementation: envoyGatewayName,
-				Emitter:               envoyGatewayName,
+				GatewayImplementation: implementation.EnvoyGatewayName,
+				Emitter:               implementation.EnvoyGatewayName,
 				Providers:             []string{ingressnginx.Name},
 				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
