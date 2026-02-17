@@ -27,13 +27,9 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-// regexFeature converts the "nginx.ingress.kubernetes.io/use-regex" annotation
-// to Gateway API HTTPRoute RegularExpression path match.
-func regexFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
-	var errs field.ErrorList
-
+func regexHosts(ingresses []networkingv1.Ingress) map[string]struct{} {
 	hostsWithRegex := make(map[string]struct{})
-
+	
 	for _, ingress := range ingresses {
 		// TODO if there is a rewrite-target annotation, the path is treated as a regex even if use-regex is not set to true. We should also check that.
 		val, ok := ingress.Annotations[UseRegexAnnotation]
@@ -56,6 +52,17 @@ func regexFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]m
 			}
 		}
 	}
+	return hostsWithRegex
+}
+
+
+
+// regexFeature converts the "nginx.ingress.kubernetes.io/use-regex" annotation
+// to Gateway API HTTPRoute RegularExpression path match.
+func regexFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+	var errs field.ErrorList
+
+	hostsWithRegex := regexHosts(ingresses)
 
 	for _, httpRouteCtx := range ir.HTTPRoutes {
 		hasRegex := false
