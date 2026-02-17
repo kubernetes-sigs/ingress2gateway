@@ -31,7 +31,7 @@ func TestIngressNGINXPathRewrite(t *testing.T) {
 		t.Parallel()
 		t.Run("basic conversion", func(t *testing.T) {
 			runTestCase(t, &testCase{
-				gatewayImplementation: istio.ProviderName,
+				gatewayImplementations: []string{istio.ProviderName},
 				providers:             []string{ingressnginx.Name},
 				providerFlags: map[string]map[string]string{
 					ingressnginx.Name: {
