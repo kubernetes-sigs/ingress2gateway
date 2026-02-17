@@ -114,6 +114,31 @@ func TestIngressNginx(t *testing.T) {
 			})
 		})
 	})
+	t.Run("to kgateway", func(t *testing.T) {
+		t.Parallel()
+		t.Run("basic conversion", func(t *testing.T) {
+			runTestCase(t, &testCase{
+				gatewayImplementation: kgatewayName,
+				emitter:               kgatewayName,
+				providers:             []string{ingressnginx.Name},
+				providerFlags: map[string]map[string]string{
+					ingressnginx.Name: {
+						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
+					},
+				},
+				ingresses: []*networkingv1.Ingress{
+					basicIngress().
+						withName("foo").
+						withIngressClass(ingressnginx.NginxIngressClass).
+						build(),
+				},
+				verifiers: map[string][]verifier{
+					"foo": {&httpRequestVerifier{path: "/"}},
+				},
+			})
+		})
+	})
+
 	// TODO: The Cilium implementation requires Cilium to be the cluster CNI. To run Cilium tests,
 	// create a kind cluster with disableDefaultCNI: true.
 	// t.Run("to Cilium", func(t *testing.T) {
