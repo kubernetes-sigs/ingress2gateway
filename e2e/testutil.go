@@ -191,7 +191,6 @@ func runTestCase(t *testing.T, tc *testCase) {
 		tc.providers,
 		tc.providerFlags,
 		tc.allowExperimentalGWAPI,
-		tc.gatewayImplementation,
 		tc.emitter,
 	)
 
@@ -505,7 +504,6 @@ func runI2GW(
 	providers []string,
 	providerFlags map[string]map[string]string,
 	allowExperimental bool,
-	gwImpl string,
 	emitter string,
 ) []i2gw.GatewayResources {
 	binaryPath := os.Getenv("I2GW_BINARY_PATH")
@@ -521,11 +519,6 @@ func runI2GW(
 		args = append(args, "--allow-experimental-gw-api")
 	}
 
-	// Some gateway implementations require implementation-specific extension resources emitted
-	// by ingress2gateway.
-	if emitter == "" && gwImpl == kgatewayName {
-		emitter = kgatewayName
-	}
 	if emitter != "" {
 		args = append(args, "--emitter", emitter)
 	}
