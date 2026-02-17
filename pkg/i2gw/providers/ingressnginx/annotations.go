@@ -67,7 +67,7 @@ const (
 	// Backend TLS annotations
 	BackendProtocolAnnotation     = "nginx.ingress.kubernetes.io/backend-protocol"
 	ProxySSLVerifyAnnotation      = "nginx.ingress.kubernetes.io/proxy-ssl-verify"
-	ProxySSLSecretAnnotation      = "nginx.ingress.kubernetes.io/proxy-ssl-secret"
+	ProxySSLSecretAnnotation      = "nginx.ingress.kubernetes.io/proxy-ssl-secret" //nolint:gosec // This is an annotation key, not a secret
 	ProxySSLNameAnnotation        = "nginx.ingress.kubernetes.io/proxy-ssl-name"
 	ProxySSLServerNameAnnotation  = "nginx.ingress.kubernetes.io/proxy-ssl-server-name"
 	ProxySSLVerifyDepthAnnotation = "nginx.ingress.kubernetes.io/proxy-ssl-verify-depth"

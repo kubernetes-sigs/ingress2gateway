@@ -214,11 +214,11 @@ func TestBackendTLSFeature(t *testing.T) {
 					Name:      "strict-tls",
 					Namespace: "default",
 					Annotations: map[string]string{
-						"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
-						"nginx.ingress.kubernetes.io/proxy-ssl-verify": "on",
-						"nginx.ingress.kubernetes.io/proxy-ssl-secret": "my-ca-secret",
+						"nginx.ingress.kubernetes.io/backend-protocol":      "HTTPS",
+						"nginx.ingress.kubernetes.io/proxy-ssl-verify":      "on",
+						"nginx.ingress.kubernetes.io/proxy-ssl-secret":      "my-ca-secret",
 						"nginx.ingress.kubernetes.io/proxy-ssl-server-name": "on",
-						"nginx.ingress.kubernetes.io/proxy-ssl-name":   "strict.internal.com",
+						"nginx.ingress.kubernetes.io/proxy-ssl-name":        "strict.internal.com",
 						// proxy-ssl-server-name defaults to "on" implicitly, but could be added here
 					},
 				},
@@ -371,7 +371,7 @@ func TestBackendTLSFeature(t *testing.T) {
 					t.Errorf("Expected BackendTLSPolicy %s not found", key)
 					continue
 				}
-				
+
 				// Manually set GVK for comparison if needed, or rely on deep equal of fields
 				// common.CreateBackendTLSPolicy sets GVK roughly, but let's check deep equal of Spec
 				if !apiequality.Semantic.DeepEqual(gotPolicy.Spec, wantPolicy.Spec) {
@@ -397,12 +397,12 @@ func TestBackendTLSFeatureExtended(t *testing.T) {
 						Name:      "canary-ingress",
 						Namespace: "default",
 						Annotations: map[string]string{
-							"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
-							"nginx.ingress.kubernetes.io/proxy-ssl-verify": "on",
-							"nginx.ingress.kubernetes.io/proxy-ssl-secret": "my-ca-secret",
+							"nginx.ingress.kubernetes.io/backend-protocol":      "HTTPS",
+							"nginx.ingress.kubernetes.io/proxy-ssl-verify":      "on",
+							"nginx.ingress.kubernetes.io/proxy-ssl-secret":      "my-ca-secret",
 							"nginx.ingress.kubernetes.io/proxy-ssl-server-name": "on",
-							"nginx.ingress.kubernetes.io/proxy-ssl-name":   "strict.internal.com",
-							"nginx.ingress.kubernetes.io/canary":           "true",
+							"nginx.ingress.kubernetes.io/proxy-ssl-name":        "strict.internal.com",
+							"nginx.ingress.kubernetes.io/canary":                "true",
 						},
 					},
 					Spec: networkingv1.IngressSpec{
@@ -497,11 +497,11 @@ func TestBackendTLSFeatureExtended(t *testing.T) {
 						Name:      "ingress-1",
 						Namespace: "default",
 						Annotations: map[string]string{
-							"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
-							"nginx.ingress.kubernetes.io/proxy-ssl-verify": "on",
-							"nginx.ingress.kubernetes.io/proxy-ssl-secret": "my-ca-secret",
+							"nginx.ingress.kubernetes.io/backend-protocol":      "HTTPS",
+							"nginx.ingress.kubernetes.io/proxy-ssl-verify":      "on",
+							"nginx.ingress.kubernetes.io/proxy-ssl-secret":      "my-ca-secret",
 							"nginx.ingress.kubernetes.io/proxy-ssl-server-name": "on",
-							"nginx.ingress.kubernetes.io/proxy-ssl-name":   "first.com",
+							"nginx.ingress.kubernetes.io/proxy-ssl-name":        "first.com",
 						},
 					},
 					Spec: networkingv1.IngressSpec{
@@ -529,11 +529,11 @@ func TestBackendTLSFeatureExtended(t *testing.T) {
 						Name:      "ingress-2",
 						Namespace: "default",
 						Annotations: map[string]string{
-							"nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
-							"nginx.ingress.kubernetes.io/proxy-ssl-verify": "on",
-							"nginx.ingress.kubernetes.io/proxy-ssl-secret": "my-ca-secret",
+							"nginx.ingress.kubernetes.io/backend-protocol":      "HTTPS",
+							"nginx.ingress.kubernetes.io/proxy-ssl-verify":      "on",
+							"nginx.ingress.kubernetes.io/proxy-ssl-secret":      "my-ca-secret",
 							"nginx.ingress.kubernetes.io/proxy-ssl-server-name": "on",
-							"nginx.ingress.kubernetes.io/proxy-ssl-name":   "second.com", // Conflict
+							"nginx.ingress.kubernetes.io/proxy-ssl-name":        "second.com", // Conflict
 						},
 					},
 					Spec: networkingv1.IngressSpec{
@@ -597,7 +597,7 @@ func TestBackendTLSFeatureExtended(t *testing.T) {
 			for i := range tc.ingresses {
 				ing := tc.ingresses[i]
 				key := types.NamespacedName{Namespace: ing.Namespace, Name: common.RouteName(ing.Name, "example.com")}
-				
+
 				// Simplified route setup
 				route := gatewayv1.HTTPRoute{
 					ObjectMeta: metav1.ObjectMeta{Namespace: ing.Namespace, Name: key.Name},
@@ -645,7 +645,7 @@ func TestBackendTLSFeatureExtended(t *testing.T) {
 					t.Errorf("Expected BackendTLSPolicy %s not found", key)
 					continue
 				}
-				
+
 				if !apiequality.Semantic.DeepEqual(gotPolicy.Spec, wantPolicy.Spec) {
 					t.Errorf("BackendTLSPolicy Spec mismatch (-want +got):\n%s", cmp.Diff(wantPolicy.Spec, gotPolicy.Spec))
 				}

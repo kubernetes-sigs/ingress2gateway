@@ -46,8 +46,7 @@ func backendTLSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedN
 			rule := httpRouteContext.HTTPRoute.Spec.Rules[ruleIdx]
 
 			for backendIdx := range backendSources {
-				
-				
+
 				primaryIngress := getNonCanaryIngress(backendSources)
 				if primaryIngress == nil {
 					continue
@@ -73,7 +72,7 @@ func backendTLSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedN
 				proxySSLVerifyDepth := primaryIngress.Annotations[ProxySSLVerifyDepthAnnotation]
 				proxySSLProtocols := primaryIngress.Annotations[ProxySSLProtocolsAnnotation]
 
-				if !(backendProtocol == "HTTPS" || backendProtocol == "GRPCS") {
+				if backendProtocol != "HTTPS" && backendProtocol != "GRPCS" {
 					continue
 				}
 
