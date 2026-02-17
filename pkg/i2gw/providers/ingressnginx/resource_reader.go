@@ -18,6 +18,7 @@ package ingressnginx
 
 import (
 	"context"
+	"io"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
@@ -61,16 +62,16 @@ func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage
 	return storage, nil
 }
 
-func (r *resourceReader) readResourcesFromFile(filename string) (*storage, error) {
+func (r *resourceReader) readResourcesFromFile(reader io.Reader) (*storage, error) {
 	storage := newResourcesStorage()
 
-	ingresses, err := common.ReadIngressesFromFile(filename, r.conf.Namespace, sets.New(r.ingressClass))
+	ingresses, err := common.ReadIngressesFromFile(reader, r.conf.Namespace, sets.New(r.ingressClass))
 	if err != nil {
 		return nil, err
 	}
 	storage.Ingresses.FromMap(ingresses)
 
-	services, err := common.ReadServicesFromFile(filename, r.conf.Namespace)
+	services, err := common.ReadServicesFromFile(reader, r.conf.Namespace)
 	if err != nil {
 		return nil, err
 	}

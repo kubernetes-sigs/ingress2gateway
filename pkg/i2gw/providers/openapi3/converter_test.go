@@ -104,7 +104,13 @@ func TestFileConvertion(t *testing.T) {
 
 		provider := NewProvider(providerConf)
 
-		if readFileErr := provider.ReadResourcesFromFile(ctx, path); readFileErr != nil {
+		file, err := os.Open(filepath.Clean(path))
+		if err != nil {
+			t.Fatalf("failed to open test file %v: %v", d.Name(), err)
+		}
+		defer file.Close()
+
+		if readFileErr := provider.ReadResourcesFromFile(ctx, file); readFileErr != nil {
 			if expectedReadFileError == nil {
 				t.Fatalf("unexpected error during reading test file %v: %v", d.Name(), readFileErr.Error())
 			} else if !strings.Contains(readFileErr.Error(), expectedReadFileError.Error()) {
