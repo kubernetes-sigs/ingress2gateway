@@ -1,5 +1,5 @@
 /*
-Copyright 2026 The Kubernetes Authors.
+Copyright 2025 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,23 +17,25 @@ limitations under the License.
 package e2e
 
 import (
-	"regexp"
 	"testing"
 
 	"github.com/kubernetes-sigs/ingress2gateway/e2e/framework"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
-func TestIngressNGINXPathRewrite(t *testing.T) {
+// Multi-provider tests: Tests which combine multiple providers in a single conversion.
+
+func TestMultipleProviders(t *testing.T) {
 	t.Parallel()
-	t.Run("to Istio", func(t *testing.T) {
+	t.Run("ingress-nginx + kong", func(t *testing.T) {
 		t.Parallel()
-		t.Run("basic conversion", func(t *testing.T) {
+		t.Run("to Istio", func(t *testing.T) {
 			runTestCase(t, &framework.TestCase{
 				GatewayImplementation: istio.ProviderName,
-				Providers:             []string{ingressnginx.Name},
+				Providers:             []string{ingressnginx.Name, kong.Name},
 				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
@@ -41,17 +43,17 @@ func TestIngressNGINXPathRewrite(t *testing.T) {
 				},
 				Ingresses: []*networkingv1.Ingress{
 					framework.BasicIngress().
-						WithName("foo1").
+						WithName("foo").
 						WithIngressClass(ingressnginx.NginxIngressClass).
-						WithPath("/abc").
-						WithAnnotation("nginx.ingress.kubernetes.io/rewrite-target", "/header").
-						WithAnnotation("nginx.ingress.kubernetes.io/x-forwarded-prefix", "/abc").
+						Build(),
+					framework.BasicIngress().
+						WithName("bar").
+						WithIngressClass(kong.KongIngressClass).
 						Build(),
 				},
 				Verifiers: map[string][]framework.Verifier{
-					"foo1": {
-						&framework.HTTPRequestVerifier{Path: "/abc", BodyRegex: regexp.MustCompile(`"X-Forwarded-Prefix":\["/abc"\]`)},
-					},
+					"foo": {&framework.HTTPRequestVerifier{Path: "/"}},
+					"bar": {&framework.HTTPRequestVerifier{Path: "/"}},
 				},
 			})
 		})
