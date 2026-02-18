@@ -19,6 +19,7 @@ package openapi3
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -76,8 +77,8 @@ func (p *Provider) ReadResourcesFromCluster(_ context.Context) error {
 }
 
 // ReadResourcesFromFile reads OpenAPI specs from a JSON or YAML file.
-func (p *Provider) ReadResourcesFromFile(ctx context.Context, filename string) error {
-	spec, err := readSpecFromFile(ctx, filename)
+func (p *Provider) ReadResourcesFromFile(ctx context.Context, reader io.Reader) error {
+	spec, err := readSpecFromFile(ctx, reader)
 	if err != nil {
 		return fmt.Errorf("failed to read resources from file: %w", err)
 	}
@@ -95,9 +96,14 @@ func (p *Provider) ToIR() (emitterir.EmitterIR, field.ErrorList) {
 	return p.resourcesToIRConverter.Convert(p.storage)
 }
 
-func readSpecFromFile(ctx context.Context, filename string) (*openapi3.T, error) {
+func readSpecFromFile(ctx context.Context, reader io.Reader) (*openapi3.T, error) {
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read OpenAPI spec: %w", err)
+	}
+
 	loader := openapi3.NewLoader()
-	spec, err := loader.LoadFromFile(filename)
+	spec, err := loader.LoadFromData(data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load OpenAPI spec: %w", err)
 	}
