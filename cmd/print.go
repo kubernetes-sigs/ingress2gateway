@@ -119,38 +119,37 @@ func (pr *PrintRunner) PrintGatewayAPIObjects(cmd *cobra.Command, _ []string) er
 	var gatewayResources []i2gw.GatewayResources
 	var notificationTablesMap map[string]string
 
-	if len(allFiles) == 0 {
-		return fmt.Errorf("no input files specified. Use --input-file to specify at least one file")
-	}
-
-	var readers []io.Reader
 	var inputReader io.Reader
 
-	for i, file := range allFiles {
-		cleanPath := filepath.Clean(file)
+	if len(allFiles) > 0 {
+		var readers []io.Reader
 
-		f, openErr := os.Open(cleanPath)
-		if openErr != nil {
-			return fmt.Errorf("error reading file %s: %w", file, openErr)
-		}
+		for i, file := range allFiles {
+			cleanPath := filepath.Clean(file)
 
-		readers = append(readers, f)
-
-		if i < len(allFiles)-1 {
-			readers = append(readers, strings.NewReader("\n---\n"))
-		}
-
-		defer func(f *os.File, path string) {
-			if closeErr := f.Close(); closeErr != nil {
-				fmt.Fprintf(os.Stderr, "warning: failed to close file %s: %v\n", path, closeErr)
+			f, openErr := os.Open(cleanPath)
+			if openErr != nil {
+				return fmt.Errorf("error reading file %s: %w", file, openErr)
 			}
-		}(f, cleanPath)
-	}
 
-	if len(readers) == 1 {
-		inputReader = readers[0]
-	} else {
-		inputReader = io.MultiReader(readers...)
+			readers = append(readers, f)
+
+			if i < len(allFiles)-1 {
+				readers = append(readers, strings.NewReader("\n---\n"))
+			}
+
+			defer func(f *os.File, path string) {
+				if closeErr := f.Close(); closeErr != nil {
+					fmt.Fprintf(os.Stderr, "warning: failed to close file %s: %v\n", path, closeErr)
+				}
+			}(f, cleanPath)
+		}
+
+		if len(readers) == 1 {
+			inputReader = readers[0]
+		} else {
+			inputReader = io.MultiReader(readers...)
+		}
 	}
 
 	gatewayResources, notificationTablesMap, err = i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, inputReader, pr.providers, pr.emitter, pr.getProviderSpecificFlags(), pr.allowExperimentalGatewayAPI)
