@@ -30,6 +30,10 @@ import (
 
 func (e *Emitter) EmitBuffer(ir emitterir.EmitterIR, gwResources *i2gw.GatewayResources) {
 	for nn, ctx := range ir.HTTPRoutes {
+		if ctx.BodySizeByRuleIdx == nil {
+			continue
+		}
+
 		MergeBodySizeIR(&ctx)
 
 		for idx, bs := range ctx.BodySizeByRuleIdx {
@@ -64,11 +68,10 @@ func (e *Emitter) EmitBuffer(ir emitterir.EmitterIR, gwResources *i2gw.GatewayRe
 				ruleInfo = fmt.Sprintf(" rule %s", *sectionName)
 			}
 			notify(notifications.InfoNotification, fmt.Sprintf("applied Buffer feature for HTTPRoute%s", ruleInfo), &ctx.HTTPRoute)
-
-			// mark Buffer IR as processed
-			ctx.BodySizeByRuleIdx[idx] = nil
 		}
 
+		// mark Buffer IR as processed
+		ctx.BodySizeByRuleIdx = nil
 		ir.HTTPRoutes[nn] = ctx
 	}
 }

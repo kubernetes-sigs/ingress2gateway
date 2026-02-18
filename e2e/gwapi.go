@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -169,6 +170,9 @@ func createGatewayClasses(ctx context.Context, l logger, client *gwclientset.Cli
 			&gc,
 			metav1.CreateOptions{},
 		)
+		if errors.IsAlreadyExists(err) {
+			_, err = client.GatewayV1().GatewayClasses().Update(ctx, &gc, metav1.UpdateOptions{})
+		}
 		if err != nil {
 			return nil, fmt.Errorf("creating GatewayClass %s: %w", name.String(), err)
 		}

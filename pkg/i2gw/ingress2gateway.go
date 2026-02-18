@@ -17,8 +17,10 @@ limitations under the License.
 package i2gw
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"sort"
 
 	common_emitter "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/common_emitter"
@@ -37,10 +39,10 @@ const GeneratorAnnotationKey = "gateway.networking.k8s.io/generator"
 // Examples: "v0.4.0", "v0.4.0-5-gabcdef", "v0.4.0-5-gabcdef-dirty"
 var Version = "dev" // Default value if not built with linker flags
 
-func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile string, providers []string, emitterName string, providerSpecificFlags map[string]map[string]string, allowExperimentalGatewayAPI bool) ([]GatewayResources, map[string]string, error) {
+func ToGatewayAPIResources(ctx context.Context, namespace string, reader io.Reader, providers []string, emitterName string, providerSpecificFlags map[string]map[string]string, allowExperimentalGatewayAPI bool) ([]GatewayResources, map[string]string, error) {
 	var clusterClient client.Client
 
-	if inputFile == "" {
+	if reader == nil {
 		conf, err := config.GetConfig()
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to get client config: %w", err)
@@ -62,8 +64,8 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 		return nil, nil, err
 	}
 
-	if inputFile != "" {
-		if err = readProviderResourcesFromFile(ctx, providerByName, inputFile); err != nil {
+	if reader != nil {
+		if err = readProviderResourcesFromFile(ctx, providerByName, reader); err != nil {
 			return nil, nil, err
 		}
 	} else {
@@ -107,10 +109,15 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, inputFile stri
 	return gatewayResources, notificationTablesMap, nil
 }
 
-func readProviderResourcesFromFile(ctx context.Context, providerByName map[ProviderName]Provider, inputFile string) error {
+func readProviderResourcesFromFile(ctx context.Context, providerByName map[ProviderName]Provider, reader io.Reader) error {
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return fmt.Errorf("failed to read input manifests: %w", err)
+	}
+
 	for name, provider := range providerByName {
-		if err := provider.ReadResourcesFromFile(ctx, inputFile); err != nil {
-			return fmt.Errorf("failed to read %s resources from file: %w", name, err)
+		if err := provider.ReadResourcesFromFile(ctx, bytes.NewReader(data)); err != nil {
+			return fmt.Errorf("failed to read %s resources from input: %w", name, err)
 		}
 	}
 	return nil

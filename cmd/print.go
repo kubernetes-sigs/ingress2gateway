@@ -18,7 +18,9 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -46,6 +48,7 @@ import (
 	// Call init for emitters
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/envoygateway"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/gce"
+	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/kgateway"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/standard"
 )
 
@@ -54,8 +57,8 @@ type PrintRunner struct {
 	// Defaults to YAML.
 	outputFormat string
 
-	// The path to the input yaml config file. Value assigned via --input-file flag
-	inputFile string
+	// inputFile contains the paths to YAML manifest files to process. Value assigned via --input-file flag.
+	inputFile []string
 
 	// The namespace used to query Gateway API objects. Value assigned via
 	// --namespace/-n flag.
@@ -100,7 +103,58 @@ func (pr *PrintRunner) PrintGatewayAPIObjects(cmd *cobra.Command, _ []string) er
 		return fmt.Errorf("failed to initialize namespace filter: %w", err)
 	}
 
-	gatewayResources, notificationTablesMap, err := i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, pr.inputFile, pr.providers, pr.emitter, pr.getProviderSpecificFlags(), pr.allowExperimentalGatewayAPI)
+	allFiles := []string{}
+
+	for _, path := range pr.inputFile {
+		// Check if path is a directory
+		info, statErr := os.Stat(path)
+		if statErr != nil {
+			return fmt.Errorf("input path does not exist: %s", path)
+		}
+		if info.IsDir() {
+			return fmt.Errorf("provided input path %s is a directory", path)
+		}
+		allFiles = append(allFiles, path)
+	}
+	var gatewayResources []i2gw.GatewayResources
+	var notificationTablesMap map[string]string
+
+	if len(allFiles) == 0 {
+		return fmt.Errorf("no input files specified. Use --input-file to specify at least one file")
+	}
+
+	var readers []io.Reader
+	var inputReader io.Reader
+
+	for i, file := range allFiles {
+		cleanPath := filepath.Clean(file)
+
+		f, openErr := os.Open(cleanPath)
+		if openErr != nil {
+			return fmt.Errorf("error reading file %s: %w", file, openErr)
+		}
+
+		readers = append(readers, f)
+
+		if i < len(allFiles)-1 {
+			readers = append(readers, strings.NewReader("\n---\n"))
+		}
+
+		defer func(f *os.File, path string) {
+			if closeErr := f.Close(); closeErr != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to close file %s: %v\n", path, closeErr)
+			}
+		}(f, cleanPath)
+	}
+
+	if len(readers) == 1 {
+		inputReader = readers[0]
+	} else {
+		inputReader = io.MultiReader(readers...)
+	}
+
+	gatewayResources, notificationTablesMap, err = i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, inputReader, pr.providers, pr.emitter, pr.getProviderSpecificFlags(), pr.allowExperimentalGatewayAPI)
+
 	if err != nil {
 		return err
 	}
@@ -293,8 +347,10 @@ func (pr *PrintRunner) initializeResourcePrinter() error {
 // 3. If namespace is specified, it filters resources based on that namespace.
 // 4. If no namespace is specified and reading from the cluster, it attempts to get the namespace from the cluster; if unsuccessful, initialization fails.
 func (pr *PrintRunner) initializeNamespaceFilter() error {
+	hasFileInput := len(pr.inputFile) > 0
+
 	// When we should use all namespaces, empty string is used as the filter.
-	if pr.allNamespaces || (pr.inputFile != "" && pr.namespace == "") {
+	if pr.allNamespaces || (hasFileInput && pr.namespace == "") {
 		pr.namespaceFilter = ""
 		return nil
 	}
@@ -302,7 +358,7 @@ func (pr *PrintRunner) initializeNamespaceFilter() error {
 	// If namespace flag is not specified, try to use the default namespace from the cluster
 	if pr.namespace == "" {
 		ns, err := getNamespaceInCurrentContext()
-		if err != nil && pr.inputFile == "" {
+		if err != nil && !hasFileInput {
 			// When asked to read from the cluster, but getting the current namespace
 			// failed for whatever reason - do not process the request.
 			return err
@@ -350,8 +406,8 @@ func newPrintCommand() *cobra.Command {
 	cmd.Flags().StringVarP(&pr.outputFormat, "output", "o", "yaml",
 		"Output format. One of: (yaml, json, kyaml).")
 
-	cmd.Flags().StringVar(&pr.inputFile, "input-file", "",
-		`Path to the manifest file. When set, the tool will read ingresses from the file instead of reading from the cluster. Supported files are yaml and json.`)
+	cmd.Flags().StringSliceVar(&pr.inputFile, "input-file", []string{},
+		`Path to manifest files. When set, the tool will read ingresses from the files instead of reading from the cluster. Supported files are yaml and json.`)
 
 	cmd.Flags().StringVarP(&pr.namespace, "namespace", "n", "",
 		`If present, the namespace scope for this CLI request.`)
