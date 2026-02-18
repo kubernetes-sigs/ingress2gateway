@@ -95,24 +95,32 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 						ingress.Namespace, ingress.Name, PermanentRedirectAnnotation, TemporalRedirectAnnotation, TemporalRedirectAnnotation), ingress)
 				}
 
-				// Warn about unsupported custom status code annotation
-				if ingress.Annotations[TemporalRedirectCodeAnnotation] != "" {
-					notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported annotation %s",
-						ingress.Namespace, ingress.Name, TemporalRedirectCodeAnnotation), ingress)
+				// Check custom status code annotation
+				if codeStr := ingress.Annotations[TemporalRedirectCodeAnnotation]; codeStr != "" {
+					code, err := strconv.Atoi(codeStr)
+					if err != nil || code != 302 {
+						notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported status code %q in %s annotation, using default 302",
+							ingress.Namespace, ingress.Name, codeStr, TemporalRedirectCodeAnnotation), ingress)
+					}
+					// If code is 302, we allow it (it matches the default, so no change needed)
 				}
 			} else {
 				redirectURL = permanentRedirectURL
 				statusCode = 301
 				annotationUsed = PermanentRedirectAnnotation
 
-				// Warn about unsupported custom status code annotation
-				if ingress.Annotations[PermanentRedirectCodeAnnotation] != "" {
-					notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported annotation %s",
-						ingress.Namespace, ingress.Name, PermanentRedirectCodeAnnotation), ingress)
+				// Check custom status code annotation
+				if codeStr := ingress.Annotations[PermanentRedirectCodeAnnotation]; codeStr != "" {
+					code, err := strconv.Atoi(codeStr)
+					if err != nil || code != 301 {
+						notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported status code %q in %s annotation, using default 301",
+							ingress.Namespace, ingress.Name, codeStr, PermanentRedirectCodeAnnotation), ingress)
+					}
+					// If code is 301, we allow it (it matches the default, so no change needed)
 				}
 			}
 
-			// Validate redirect URL is not empty
+			// Validate that the redirect URL is not empty
 			if redirectURL == "" {
 				errs = append(errs, field.Invalid(
 					field.NewPath("ingress", ingress.Namespace, ingress.Name, "metadata", "annotations", annotationUsed),
