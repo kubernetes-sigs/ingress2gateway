@@ -39,7 +39,7 @@ const GeneratorAnnotationKey = "gateway.networking.k8s.io/generator"
 // Examples: "v0.4.0", "v0.4.0-5-gabcdef", "v0.4.0-5-gabcdef-dirty"
 var Version = "dev" // Default value if not built with linker flags
 
-func ToGatewayAPIResources(ctx context.Context, namespace string, reader io.Reader, providers []string, emitterName string, providerSpecificFlags map[string]map[string]string, allowExperimentalGatewayAPI bool) ([]GatewayResources, map[string]string, error) {
+func ToGatewayAPIResources(ctx context.Context, namespace string, reader io.Reader, providers []string, emitterName string, providerSpecificFlags map[string]map[string]string, allowExperimentalGatewayAPI bool) ([]GatewayResources, *notifications.Report, error) {
 	var clusterClient client.Client
 
 	if reader == nil {
@@ -55,10 +55,13 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, reader io.Read
 		clusterClient = client.NewNamespacedClient(cl, namespace)
 	}
 
+	report := notifications.NewReport()
+
 	providerByName, err := constructProviders(&ProviderConf{
 		Client:                clusterClient,
 		Namespace:             namespace,
 		ProviderSpecificFlags: providerSpecificFlags,
+		Report:                report,
 	}, providers)
 	if err != nil {
 		return nil, nil, err
@@ -76,6 +79,7 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, reader io.Read
 
 	emitterConf := &EmitterConf{
 		AllowExperimentalGatewayAPI: allowExperimentalGatewayAPI,
+		Report:                      report,
 	}
 	newEmitterFunc, ok := EmitterConstructorByName[EmitterName(emitterName)]
 	if !ok {
@@ -84,6 +88,7 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, reader io.Read
 	emitter := newEmitterFunc(emitterConf)
 	commonEmitter := common_emitter.NewEmitter(&common_emitter.EmitterConf{
 		AllowExperimentalGatewayAPI: emitterConf.AllowExperimentalGatewayAPI,
+		Report:                      report,
 	})
 
 	var (
@@ -101,12 +106,11 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, reader io.Read
 		errs = append(errs, conversionErrs...)
 		gatewayResources = append(gatewayResources, providerGatewayResources)
 	}
-	notificationTablesMap := notifications.NotificationAggr.CreateNotificationTables()
 	if len(errs) > 0 {
-		return nil, notificationTablesMap, aggregatedErrs(errs)
+		return nil, report, aggregatedErrs(errs)
 	}
 
-	return gatewayResources, notificationTablesMap, nil
+	return gatewayResources, report, nil
 }
 
 func readProviderResourcesFromFile(ctx context.Context, providerByName map[ProviderName]Provider, reader io.Reader) error {
