@@ -18,6 +18,7 @@ package i2gw
 
 import (
 	"context"
+	"io"
 	"sync"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
@@ -65,7 +66,7 @@ type CustomResourceReader interface {
 
 	// ReadResourcesFromFile reads custom resources associated with
 	// the underlying Provider implementation from the file.
-	ReadResourcesFromFile(ctx context.Context, filename string) error
+	ReadResourcesFromFile(ctx context.Context, reader io.Reader) error
 }
 
 // The ResourcesToIRConverter interface specifies conversion functions from Ingress
