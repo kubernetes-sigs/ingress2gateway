@@ -13,3 +13,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+package envoygateway_emitter
+
+import (
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+)
+
+func notify(mType notifications.MessageType, message string, callingObject ...client.Object) {
+	newNotification := notifications.NewNotification(mType, message, callingObject...)
+	notifications.NotificationAggr.DispatchNotification(newNotification, emitterName)
+}
