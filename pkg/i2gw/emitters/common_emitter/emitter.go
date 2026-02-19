@@ -20,12 +20,14 @@ import (
 	"time"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 type EmitterConf struct {
 	AllowExperimentalGatewayAPI bool
+	Report                      *notifications.Report
 }
 
 const tcpTimeoutMultiplier = 10

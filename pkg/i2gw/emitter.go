@@ -18,6 +18,7 @@ package i2gw
 
 import (
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -62,4 +63,5 @@ type EmitterConstructor func(conf *EmitterConf) Emitter
 type EmitterConf struct {
 	// AllowExperimentalGatewayAPI indicates whether Experimental Gateway API features (like CORS, URLRewrite) should be included in the output.
 	AllowExperimentalGatewayAPI bool
+	Report                      *notifications.Report
 }
