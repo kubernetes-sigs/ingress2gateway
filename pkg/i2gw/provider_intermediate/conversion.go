@@ -64,9 +64,18 @@ func ToEmitterIR(pIR ProviderIR) emitterir.EmitterIR {
 	}
 
 	eIR.GceServices = make(map[types.NamespacedName]gce.ServiceIR)
+	eIR.Services = make(map[types.NamespacedName]emitterir.ServiceContext)
 	for k, v := range pIR.Services {
-		if v.Gce != nil {
-			eIR.GceServices[k] = *v.Gce
+		if v.ProviderSpecificIR.Gce != nil {
+			eIR.GceServices[k] = *v.ProviderSpecificIR.Gce
+		}
+		if v.SessionAffinity != nil {
+			eIR.Services[k] = emitterir.ServiceContext{
+				SessionAffinity: &emitterir.SessionAffinityConfig{
+					AffinityType: v.SessionAffinity.AffinityType,
+					CookieTTLSec: v.SessionAffinity.CookieTTLSec,
+				},
+			}
 		}
 	}
 

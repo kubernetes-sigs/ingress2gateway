@@ -25,13 +25,8 @@ type SslPolicyConfig struct {
 }
 type HTTPRouteIR struct{}
 type ServiceIR struct {
-	SessionAffinity *SessionAffinityConfig
-	SecurityPolicy  *SecurityPolicyConfig
-	HealthCheck     *HealthCheckConfig
-}
-type SessionAffinityConfig struct {
-	AffinityType string
-	CookieTTLSec *int64
+	SecurityPolicy *SecurityPolicyConfig
+	HealthCheck    *HealthCheckConfig
 }
 type SecurityPolicyConfig struct {
 	Name string

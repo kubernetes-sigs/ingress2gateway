@@ -153,7 +153,7 @@ type serviceNames []types.NamespacedName
 
 func buildGceServiceIR(ctx context.Context, storage *storage, ir *providerir.ProviderIR) {
 	if ir.Services == nil {
-		ir.Services = make(map[types.NamespacedName]providerir.ProviderSpecificServiceIR)
+		ir.Services = make(map[types.NamespacedName]providerir.ServiceContext)
 	}
 
 	beConfigToSvcs := getBackendConfigMapping(ctx, storage)
@@ -165,11 +165,19 @@ func buildGceServiceIR(ctx context.Context, storage *storage, ir *providerir.Pro
 			notify(notifications.ErrorNotification, err.Error(), beConfig)
 			continue
 		}
-		gceServiceIR := beConfigToGceServiceIR(beConfig)
+		sa, gceServiceIR := beConfigToGceServiceIR(beConfig)
 		services := beConfigToSvcs[beConfigKey]
 		for _, svcKey := range services {
 			serviceIR := ir.Services[svcKey]
-			serviceIR.Gce = &gceServiceIR
+			if gceServiceIR.SecurityPolicy != nil || gceServiceIR.HealthCheck != nil {
+				serviceIR.ProviderSpecificIR.Gce = &gceServiceIR
+			}
+			if sa != nil {
+				serviceIR.SessionAffinity = &providerir.SessionAffinityConfig{
+					AffinityType: sa.AffinityType,
+					CookieTTLSec: sa.CookieTTLSec,
+				}
+			}
 			ir.Services[svcKey] = serviceIR
 		}
 	}
@@ -259,10 +267,11 @@ func parseBackendConfigName(ctx context.Context, val string) (string, bool) {
 	return configs.Default, true
 }
 
-func beConfigToGceServiceIR(beConfig *backendconfigv1.BackendConfig) gce.ServiceIR {
+func beConfigToGceServiceIR(beConfig *backendconfigv1.BackendConfig) (*providerir.SessionAffinityConfig, gce.ServiceIR) {
 	var gceServiceIR gce.ServiceIR
+	var sa *providerir.SessionAffinityConfig
 	if beConfig.Spec.SessionAffinity != nil {
-		gceServiceIR.SessionAffinity = extensions.BuildIRSessionAffinityConfig(beConfig)
+		sa = extensions.BuildIRSessionAffinityConfig(beConfig)
 	}
 	if beConfig.Spec.SecurityPolicy != nil {
 		gceServiceIR.SecurityPolicy = extensions.BuildIRSecurityPolicyConfig(beConfig)
@@ -271,5 +280,5 @@ func beConfigToGceServiceIR(beConfig *backendconfigv1.BackendConfig) gce.Service
 		gceServiceIR.HealthCheck = extensions.BuildIRHealthCheckConfig(beConfig)
 	}
 
-	return gceServiceIR
+	return sa, gceServiceIR
 }

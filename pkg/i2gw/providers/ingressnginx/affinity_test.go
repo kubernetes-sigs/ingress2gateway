@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -88,7 +87,7 @@ func TestAffinityFeature(t *testing.T) {
 						},
 					},
 				},
-				Services: map[types.NamespacedName]providerir.ProviderSpecificServiceIR{},
+				Services: map[types.NamespacedName]providerir.ServiceContext{},
 			},
 			expected: &providerir.ProviderIR{
 				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
@@ -128,13 +127,11 @@ func TestAffinityFeature(t *testing.T) {
 						},
 					},
 				},
-				Services: map[types.NamespacedName]providerir.ProviderSpecificServiceIR{
+				Services: map[types.NamespacedName]providerir.ServiceContext{
 					{Namespace: "default", Name: "test-svc"}: {
-						Gce: &gce.ServiceIR{
-							SessionAffinity: &gce.SessionAffinityConfig{
-								AffinityType: "GENERATED_COOKIE",
-								CookieTTLSec: ptr.To[int64](172800),
-							},
+						SessionAffinity: &providerir.SessionAffinityConfig{
+							AffinityType: "GENERATED_COOKIE",
+							CookieTTLSec: ptr.To[int64](172800),
 						},
 					},
 				},

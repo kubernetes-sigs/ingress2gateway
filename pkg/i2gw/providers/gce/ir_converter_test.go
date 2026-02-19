@@ -541,12 +541,10 @@ func Test_convertToIR(t *testing.T) {
 						},
 					},
 				},
-				Services: map[types.NamespacedName]providerir.ProviderSpecificServiceIR{
+				Services: map[types.NamespacedName]providerir.ServiceContext{
 					{Namespace: testNamespace, Name: testServiceName}: {
-						Gce: &gce.ServiceIR{
-							SessionAffinity: &gce.SessionAffinityConfig{
-								AffinityType: saTypeClientIP,
-							},
+						SessionAffinity: &providerir.SessionAffinityConfig{
+							AffinityType: saTypeClientIP,
 						},
 					},
 				},
@@ -627,13 +625,11 @@ func Test_convertToIR(t *testing.T) {
 						},
 					},
 				},
-				Services: map[types.NamespacedName]providerir.ProviderSpecificServiceIR{
+				Services: map[types.NamespacedName]providerir.ServiceContext{
 					{Namespace: testNamespace, Name: testServiceName}: {
-						Gce: &gce.ServiceIR{
-							SessionAffinity: &gce.SessionAffinityConfig{
-								AffinityType: saTypeCookie,
-								CookieTTLSec: common.PtrTo(testCookieTTLSec),
-							},
+						SessionAffinity: &providerir.SessionAffinityConfig{
+							AffinityType: saTypeCookie,
+							CookieTTLSec: common.PtrTo(testCookieTTLSec),
 						},
 					},
 				},
@@ -713,11 +709,13 @@ func Test_convertToIR(t *testing.T) {
 						},
 					},
 				},
-				Services: map[types.NamespacedName]providerir.ProviderSpecificServiceIR{
+				Services: map[types.NamespacedName]providerir.ServiceContext{
 					{Namespace: testNamespace, Name: testServiceName}: {
-						Gce: &gce.ServiceIR{
-							SecurityPolicy: &gce.SecurityPolicyConfig{
-								Name: testSecurityPolicy,
+						ProviderSpecificIR: providerir.ProviderSpecificServiceIR{
+							Gce: &gce.ServiceIR{
+								SecurityPolicy: &gce.SecurityPolicyConfig{
+									Name: testSecurityPolicy,
+								},
 							},
 						},
 					},
@@ -804,17 +802,19 @@ func Test_convertToIR(t *testing.T) {
 						},
 					},
 				},
-				Services: map[types.NamespacedName]providerir.ProviderSpecificServiceIR{
+				Services: map[types.NamespacedName]providerir.ServiceContext{
 					{Namespace: testNamespace, Name: testServiceName}: {
-						Gce: &gce.ServiceIR{
-							HealthCheck: &gce.HealthCheckConfig{
-								CheckIntervalSec:   common.PtrTo(testCheckIntervalSec),
-								TimeoutSec:         common.PtrTo(testTimeoutSec),
-								HealthyThreshold:   common.PtrTo(testHealthyThreshold),
-								UnhealthyThreshold: common.PtrTo(testUnhealthyThreshold),
-								Type:               common.PtrTo(protocolHTTP),
-								Port:               common.PtrTo(testPort),
-								RequestPath:        common.PtrTo(testRequestPath),
+						ProviderSpecificIR: providerir.ProviderSpecificServiceIR{
+							Gce: &gce.ServiceIR{
+								HealthCheck: &gce.HealthCheckConfig{
+									CheckIntervalSec:   common.PtrTo(testCheckIntervalSec),
+									TimeoutSec:         common.PtrTo(testTimeoutSec),
+									HealthyThreshold:   common.PtrTo(testHealthyThreshold),
+									UnhealthyThreshold: common.PtrTo(testUnhealthyThreshold),
+									Type:               common.PtrTo(protocolHTTP),
+									Port:               common.PtrTo(testPort),
+									RequestPath:        common.PtrTo(testRequestPath),
+								},
 							},
 						},
 					},

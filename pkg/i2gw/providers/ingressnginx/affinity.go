@@ -19,7 +19,6 @@ package ingressnginx
 import (
 	"strconv"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -88,11 +87,7 @@ func affinityFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[st
 				svcKey := types.NamespacedName{Namespace: svcNamespace, Name: svcName}
 
 				svcCtx := ir.Services[svcKey]
-				if svcCtx.Gce == nil {
-					svcCtx.Gce = &gce.ServiceIR{}
-				}
-
-				svcCtx.Gce.SessionAffinity = &gce.SessionAffinityConfig{
+				svcCtx.SessionAffinity = &providerir.SessionAffinityConfig{
 					AffinityType: "GENERATED_COOKIE",
 					CookieTTLSec: cookieTTLSecPtr,
 				}
