@@ -22,6 +22,7 @@ import (
 	"sync"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -48,6 +49,7 @@ type ProviderConf struct {
 	Client                client.Client
 	Namespace             string
 	ProviderSpecificFlags map[string]map[string]string
+	Report                *notifications.Report
 }
 
 // The Provider interface specifies the required functionality which needs to be
