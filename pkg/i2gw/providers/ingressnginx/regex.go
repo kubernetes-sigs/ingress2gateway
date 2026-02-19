@@ -31,18 +31,14 @@ func regexHosts(ingresses []networkingv1.Ingress) map[string]struct{} {
 	hostsWithRegex := make(map[string]struct{})
 
 	for _, ingress := range ingresses {
-		// TODO if there is a rewrite-target annotation, the path is treated as a regex even if use-regex is not set to true. We should also check that.
-		val, ok := ingress.Annotations[UseRegexAnnotation]
-		if !ok {
-			continue
-		}
-		useRegex, _ := strconv.ParseBool(val)
-		if !useRegex {
-			continue
-		}
-		val = ingress.Annotations[CanaryAnnotation]
+		val := ingress.Annotations[CanaryAnnotation]
 		isCanary, _ := strconv.ParseBool(val)
 		if isCanary {
+			continue
+		}
+		useRegex, _ := strconv.ParseBool(ingress.Annotations[UseRegexAnnotation])
+		hasRewriteTarget := ingress.Annotations[RewriteTargetAnnotation] != ""
+		if !useRegex && !hasRewriteTarget {
 			continue
 		}
 
@@ -55,7 +51,7 @@ func regexHosts(ingresses []networkingv1.Ingress) map[string]struct{} {
 	return hostsWithRegex
 }
 
-// regexFeature converts the "nginx.ingress.kubernetes.io/use-regex" annotation
+// regexFeature converts ingress-nginx regex-driving annotations
 // to Gateway API HTTPRoute RegularExpression path match.
 func regexFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList

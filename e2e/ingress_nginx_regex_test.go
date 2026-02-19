@@ -81,6 +81,55 @@ func TestIngressNGINXRegex(t *testing.T) {
 				},
 			})
 		})
+		t.Run("rewrite-target implies host-level matching", func(t *testing.T) {
+			suffix, err := randString()
+			require.NoError(t, err)
+			regexHost := fmt.Sprintf("rewrite-regex-host-%s.example.com", suffix)
+			implementationSpecific := networkingv1.PathTypeImplementationSpecific
+			exactPathType := networkingv1.PathTypeExact
+
+			plain := basicIngress().
+				withName("plain").
+				withIngressClass(ingressnginx.NginxIngressClass).
+				withHost(regexHost).
+				withPath("/hostn").
+				build()
+			plain.Spec.Rules[0].HTTP.Paths[0].PathType = &exactPathType
+
+			rewriteRegex := basicIngress().
+				withName("rewrite-regex").
+				withIngressClass(ingressnginx.NginxIngressClass).
+				withHost(regexHost).
+				withPath("/client.+").
+				withAnnotation(ingressnginx.RewriteTargetAnnotation, "/").
+				build()
+			rewriteRegex.Spec.Rules[0].HTTP.Paths[0].PathType = &implementationSpecific
+
+			runTestCase(t, &testCase{
+				gatewayImplementation: istio.ProviderName,
+				providers:             []string{ingressnginx.Name},
+				providerFlags: map[string]map[string]string{
+					ingressnginx.Name: {
+						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
+					},
+				},
+				ingresses: []*networkingv1.Ingress{plain, rewriteRegex},
+				verifiers: map[string][]verifier{
+					"plain": {
+						&httpRequestVerifier{
+							host: regexHost,
+							path: "/hostname",
+						},
+					},
+					"rewrite-regex": {
+						&httpRequestVerifier{
+							host: regexHost,
+							path: "/clientip",
+						},
+					},
+				},
+			})
+		})
 		t.Run("regex ending with dollar matches only exact path", func(t *testing.T) {
 			suffix, err := randString()
 			require.NoError(t, err)
