@@ -18,10 +18,11 @@ package ingressnginx
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 )
 
@@ -37,7 +38,7 @@ func parseIPSourceRangeAnnotation(annotations map[string]string, key string) []s
 	return items
 }
 
-func applyIPRangeControlToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) {
+func applyIPRangeControlToEmitterIR(log *slog.Logger, pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) {
 	for key, pRouteCtx := range pIR.HTTPRoutes {
 		eRouteCtx, ok := eIR.HTTPRoutes[key]
 		if !ok {
@@ -73,12 +74,16 @@ func applyIPRangeControlToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.Em
 			}
 
 			if len(allowList) > 0 {
-				notify(notifications.InfoNotification, fmt.Sprintf("parsed whitelist-source-range annotation of ingress %s/%s: allowing CIDRs %s for HTTPRoute rule index %d",
-					ing.Namespace, ing.Name, strings.Join(allowList, ", "), ruleIdx), &eRouteCtx.HTTPRoute)
+				log.Info(fmt.Sprintf("parsed whitelist-source-range annotation of ingress %s/%s: allowing CIDRs %s for HTTPRoute rule index %d",
+					ing.Namespace, ing.Name, strings.Join(allowList, ", "), ruleIdx),
+					logging.ObjectRef(&eRouteCtx.HTTPRoute),
+				)
 			}
 			if len(denyList) > 0 {
-				notify(notifications.InfoNotification, fmt.Sprintf("parsed denylist-source-range annotation of ingress %s/%s: denying CIDRs %s for HTTPRoute rule index %d",
-					ing.Namespace, ing.Name, strings.Join(denyList, ", "), ruleIdx), &eRouteCtx.HTTPRoute)
+				log.Info(fmt.Sprintf("parsed denylist-source-range annotation of ingress %s/%s: denying CIDRs %s for HTTPRoute rule index %d",
+					ing.Namespace, ing.Name, strings.Join(denyList, ", "), ruleIdx),
+					logging.ObjectRef(&eRouteCtx.HTTPRoute),
+				)
 			}
 		}
 		eIR.HTTPRoutes[key] = eRouteCtx

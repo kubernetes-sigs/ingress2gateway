@@ -25,6 +25,7 @@ import (
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
@@ -176,7 +177,7 @@ func TestPathRegex(t *testing.T) {
 				HTTPRoute: httpRoute,
 			}
 
-			errs := PathRegexFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+			errs := PathRegexFeature(logging.Noop(), []networkingv1.Ingress{ingress}, nil, &ir)
 			if len(errs) > 0 {
 				t.Fatalf("Unexpected errors: %v", errs)
 			}
@@ -285,7 +286,7 @@ func TestPathRegexMultipleMatches(t *testing.T) {
 		HTTPRoute: httpRoute,
 	}
 
-	errs := PathRegexFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+	errs := PathRegexFeature(logging.Noop(), []networkingv1.Ingress{ingress}, nil, &ir)
 	if len(errs) > 0 {
 		t.Fatalf("Unexpected errors: %v", errs)
 	}
@@ -310,7 +311,7 @@ func TestPathRegexMultipleMatches(t *testing.T) {
 	}
 }
 
-func TestPathRegexCaseInsensitiveNotification(t *testing.T) {
+func TestPathRegexCaseInsensitiveWarningOnly(t *testing.T) {
 	ingress := networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-case-insensitive",
@@ -375,9 +376,9 @@ func TestPathRegexCaseInsensitiveNotification(t *testing.T) {
 		HTTPRoute: httpRoute,
 	}
 
-	errs := PathRegexFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+	errs := PathRegexFeature(logging.Noop(), []networkingv1.Ingress{ingress}, nil, &ir)
 
-	// Should have no errors since we're using notifications now
+	// Should have no errors since warnings are logged via slog.
 	if len(errs) != 0 {
 		t.Errorf("Expected 0 errors, got %d", len(errs))
 		return
@@ -388,10 +389,6 @@ func TestPathRegexCaseInsensitiveNotification(t *testing.T) {
 	if *updatedRoute.HTTPRoute.Spec.Rules[0].Matches[0].Path.Type != gatewayv1.PathMatchRegularExpression {
 		t.Errorf("Expected path type to be PathMatchRegularExpression")
 	}
-
-	// Note: Testing notifications requires access to the notification aggregator,
-	// which is more complex to test in unit tests. The notification dispatch
-	// is tested through integration tests.
 }
 
 func TestPathRegexCaseInsensitiveFlagInjection(t *testing.T) {
@@ -462,7 +459,7 @@ func TestPathRegexCaseInsensitiveFlagInjection(t *testing.T) {
 	}
 
 	// Apply path regex feature
-	errs := PathRegexFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+	errs := PathRegexFeature(logging.Noop(), []networkingv1.Ingress{ingress}, nil, &ir)
 	if len(errs) > 0 {
 		t.Fatalf("Unexpected errors: %v", errs)
 	}
@@ -571,7 +568,7 @@ func TestPathRegexCaseInsensitiveFlagNotDuplicated(t *testing.T) {
 	}
 
 	// Apply path regex feature
-	errs := PathRegexFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+	errs := PathRegexFeature(logging.Noop(), []networkingv1.Ingress{ingress}, nil, &ir)
 	if len(errs) > 0 {
 		t.Fatalf("Unexpected errors: %v", errs)
 	}

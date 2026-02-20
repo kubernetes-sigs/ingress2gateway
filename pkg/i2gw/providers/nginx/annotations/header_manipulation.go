@@ -18,6 +18,7 @@ package annotations
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 
 	networkingv1 "k8s.io/api/networking/v1"
@@ -30,7 +31,7 @@ import (
 )
 
 // HeaderManipulationFeature converts header manipulation annotations to HTTPRoute filters
-func HeaderManipulationFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func HeaderManipulationFeature(_ *slog.Logger, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 
 	ruleGroups := common.GetRuleGroups(ingresses)

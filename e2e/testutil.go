@@ -542,9 +542,9 @@ func runI2GW(
 	err := cmd.Run()
 	require.NoError(t, err, "ingress2gateway run failed\nstdout: %s\nstderr: %s", stdout.String(), stderr.String())
 
-	// Log any notifications from stderr.
+	// Print any logs from stderr.
 	if stderr.Len() > 0 {
-		t.Log("Got stderr from ingress2gateway:\n", stderr.String())
+		t.Logf("Got stderr from ingress2gateway:\n%s", stderr.String())
 	}
 
 	return parseYAMLOutput(t, stdout.Bytes())

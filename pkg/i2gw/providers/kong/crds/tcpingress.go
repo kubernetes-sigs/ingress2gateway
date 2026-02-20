@@ -18,10 +18,11 @@ package crds
 
 import (
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
@@ -34,22 +35,21 @@ import (
 	kongv1beta1 "github.com/kong/kubernetes-ingress-controller/v2/pkg/apis/configuration/v1beta1"
 )
 
-// TCPIngressToGatewayIR converts the received TCPingresses to providerir.ProviderIR,
-func TCPIngressToGatewayIR(ingresses []kongv1beta1.TCPIngress) (providerir.ProviderIR, []notifications.Notification, field.ErrorList) {
-	aggregator := tcpIngressAggregator{ruleGroups: map[ruleGroupKey]*tcpIngressRuleGroup{}}
-	var notificationsAggregator []notifications.Notification
+// TCPIngressToGatewayIR converts the received TCPingresses to providerir.ProviderIR.
+func TCPIngressToGatewayIR(log *slog.Logger, ingresses []kongv1beta1.TCPIngress) (providerir.ProviderIR, field.ErrorList) {
+	aggregator := tcpIngressAggregator{log: log, ruleGroups: map[ruleGroupKey]*tcpIngressRuleGroup{}}
 
 	var errs field.ErrorList
 	for _, ingress := range ingresses {
-		aggregator.addIngress(ingress, &notificationsAggregator)
+		aggregator.addIngress(ingress)
 	}
 	if len(errs) > 0 {
-		return providerir.ProviderIR{}, notificationsAggregator, errs
+		return providerir.ProviderIR{}, errs
 	}
 
 	tcpRoutes, tlsRoutes, gateways, errs := aggregator.toRoutesAndGateways()
 	if len(errs) > 0 {
-		return providerir.ProviderIR{}, notificationsAggregator, errs
+		return providerir.ProviderIR{}, errs
 	}
 
 	tcpRouteByKey := make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute)
@@ -74,19 +74,27 @@ func TCPIngressToGatewayIR(ingresses []kongv1beta1.TCPIngress) (providerir.Provi
 		Gateways:  gatewayByKey,
 		TCPRoutes: tcpRouteByKey,
 		TLSRoutes: tlsRouteByKey,
-	}, notificationsAggregator, nil
+	}, nil
 }
 
-func (a *tcpIngressAggregator) addIngress(tcpIngress kongv1beta1.TCPIngress, notificationsAggregator *[]notifications.Notification) {
+func (a *tcpIngressAggregator) addIngress(tcpIngress kongv1beta1.TCPIngress) {
 	var ingressClass string
 	if ingressClassAnnotation, ok := tcpIngress.Annotations[networkingv1beta1.AnnotationIngressClass]; ok {
 		ingressClass = tcpIngress.Annotations[networkingv1beta1.AnnotationIngressClass]
-		n := notifications.NewNotification(notifications.InfoNotification, fmt.Sprintf("ingress class \"%v\" taken from %v annotation", ingressClassAnnotation, networkingv1beta1.AnnotationIngressClass), &tcpIngress)
-		*notificationsAggregator = append(*notificationsAggregator, n)
+		a.log.Info(
+			fmt.Sprintf(
+				"ingress class \"%v\" taken from %v annotation",
+				ingressClassAnnotation,
+				networkingv1beta1.AnnotationIngressClass,
+			),
+			logging.ObjectRef(&tcpIngress),
+		)
 	} else {
 		ingressClass = tcpIngress.Name
-		n := notifications.NewNotification(notifications.InfoNotification, "ingress class taken from name of TCPIngress", &tcpIngress)
-		*notificationsAggregator = append(*notificationsAggregator, n)
+		a.log.Info(
+			"ingress class taken from name of TCPIngress",
+			logging.ObjectRef(&tcpIngress),
+		)
 	}
 	for _, rule := range tcpIngress.Spec.Rules {
 		a.addIngressRule(tcpIngress.Namespace, tcpIngress.Name, ingressClass, rule, tcpIngress.Spec)

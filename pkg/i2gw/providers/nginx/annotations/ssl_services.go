@@ -18,24 +18,25 @@ package annotations
 
 import (
 	"fmt"
+	"log/slog"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
 
 // SSLServicesFeature processes nginx.org/ssl-services annotation
-func SSLServicesFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func SSLServicesFeature(log *slog.Logger, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 
 	for _, ingress := range ingresses {
 		if sslServices, exists := ingress.Annotations[nginxSSLServicesAnnotation]; exists && sslServices != "" {
-			errs = append(errs, processSSLServicesAnnotation(ingress, sslServices, ir)...)
+			errs = append(errs, processSSLServicesAnnotation(log, ingress, sslServices, ir)...)
 		}
 	}
 
@@ -45,7 +46,7 @@ func SSLServicesFeature(ingresses []networkingv1.Ingress, _ map[types.Namespaced
 // processSSLServicesAnnotation configures HTTPS backend protocol using BackendTLSPolicy
 //
 //nolint:unparam // ErrorList return type maintained for consistency
-func processSSLServicesAnnotation(ingress networkingv1.Ingress, sslServices string, ir *providerir.ProviderIR) field.ErrorList {
+func processSSLServicesAnnotation(log *slog.Logger, ingress networkingv1.Ingress, sslServices string, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList //nolint:unparam // ErrorList return type maintained for consistency
 
 	services := splitAndTrimCommaList(sslServices)
@@ -70,8 +71,10 @@ func processSSLServicesAnnotation(ingress networkingv1.Ingress, sslServices stri
 
 	// Add warning about manual certificate configuration
 	if len(sslServiceSet) > 0 {
-		message := "nginx.org/ssl-services: " + BackendTLSPolicyKind + " created but requires manual configuration. You must set the 'validation.hostname' field to match your backend service's TLS certificate hostname, and configure appropriate CA certificates or certificateRefs for TLS verification."
-		notify(notifications.WarningNotification, message, &ingress)
+		log.Warn(
+			"nginx.org/ssl-services: "+BackendTLSPolicyKind+" created but requires manual configuration. You must set the 'validation.hostname' field to match your backend service's TLS certificate hostname, and configure appropriate CA certificates or certificateRefs for TLS verification.",
+			logging.ObjectRef(&ingress),
+		)
 	}
 
 	return errs

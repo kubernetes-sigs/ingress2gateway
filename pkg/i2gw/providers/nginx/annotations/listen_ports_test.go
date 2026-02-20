@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -268,7 +269,7 @@ func TestListenPortsFeature(t *testing.T) {
 				HTTPRoutes: make(map[types.NamespacedName]providerir.HTTPRouteContext),
 			}
 
-			errs := ListenPortsFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+			errs := ListenPortsFeature(logging.Noop(), []networkingv1.Ingress{ingress}, nil, &ir)
 			if len(errs) > 0 {
 				t.Fatalf("Unexpected errors: %v", errs)
 			}
@@ -416,7 +417,7 @@ func TestListenPortsReplacesDefaultListeners(t *testing.T) {
 	}
 
 	// Apply listen-ports feature
-	errs := ListenPortsFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+	errs := ListenPortsFeature(logging.Noop(), []networkingv1.Ingress{ingress}, nil, &ir)
 	if len(errs) > 0 {
 		t.Fatalf("Unexpected errors: %v", errs)
 	}
@@ -494,7 +495,7 @@ func TestListenPortsConflictResolution(t *testing.T) {
 		HTTPRoutes: make(map[types.NamespacedName]providerir.HTTPRouteContext),
 	}
 
-	errs := ListenPortsFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+	errs := ListenPortsFeature(logging.Noop(), []networkingv1.Ingress{ingress}, nil, &ir)
 	if len(errs) > 0 {
 		t.Fatalf("Unexpected errors: %v", errs)
 	}

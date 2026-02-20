@@ -215,7 +215,7 @@ type GRPCFilterConversionResult struct {
 }
 
 // ConvertHTTPFiltersToGRPCFilters converts a list of HTTPRoute filters to GRPCRoute filters
-// Returns both the converted filters and a list of unsupported filter types for notification
+// Returns both the converted filters and a list of unsupported filter types for logging
 func ConvertHTTPFiltersToGRPCFilters(httpFilters []gatewayv1.HTTPRouteFilter) GRPCFilterConversionResult {
 	if len(httpFilters) == 0 {
 		return GRPCFilterConversionResult{

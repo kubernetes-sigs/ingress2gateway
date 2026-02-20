@@ -22,7 +22,7 @@ import (
 	"github.com/kgateway-dev/kgateway/v2/api/v1alpha1/kgateway"
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	envoygateway_emitter "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/envoygateway"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	"k8s.io/apimachinery/pkg/api/resource"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -50,7 +50,10 @@ func (e *Emitter) EmitBuffer(ir emitterir.EmitterIR) {
 			}
 
 			ruleInfo := e.formatRuleInfo(sectionName)
-			notify(notifications.InfoNotification, fmt.Sprintf("applied Buffer feature for HTTPRoute%s", ruleInfo), &ctx.HTTPRoute)
+			e.log.Info(
+				fmt.Sprintf("applied Buffer feature for HTTPRoute%s", ruleInfo),
+				logging.ObjectRef(&ctx.HTTPRoute),
+			)
 		}
 	}
 }
@@ -67,10 +70,13 @@ func (e *Emitter) getSectionName(ctx emitterir.HTTPRouteContext, idx int) *gatew
 func (e *Emitter) selectBufferValue(bs *emitterir.BodySize, httpRoute *gatewayv1.HTTPRoute) *resource.Quantity {
 	if bs.MaxSize != nil {
 		if bs.BufferSize != nil {
-			notify(
-				notifications.WarningNotification,
-				fmt.Sprintf("Body max size (%s) takes precedence; buffer size (%s) will be ignored", bs.MaxSize.String(), bs.BufferSize.String()),
-				httpRoute,
+			e.log.Warn(
+				fmt.Sprintf(
+					"Body max size (%s) takes precedence; buffer size (%s) will be ignored",
+					bs.MaxSize.String(),
+					bs.BufferSize.String(),
+				),
+				logging.ObjectRef(httpRoute),
 			)
 		}
 		return bs.MaxSize

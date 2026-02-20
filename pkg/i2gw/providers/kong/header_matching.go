@@ -18,9 +18,10 @@ package kong
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -38,7 +39,7 @@ import (
 //
 // All the values defined for each annotation name, and separated by comma, MUST be ORed.
 // All the annotation names MUST be ANDed, with the respective values.
-func headerMatchingFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func headerMatchingFeature(log *slog.Logger, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	ruleGroups := common.GetRuleGroups(ingresses)
 	for _, rg := range ruleGroups {
 		for _, rule := range rg.Rules {
@@ -49,14 +50,14 @@ func headerMatchingFeature(ingresses []networkingv1.Ingress, _ map[types.Namespa
 				return field.ErrorList{field.InternalError(nil, fmt.Errorf("HTTPRoute does not exist - this should never happen"))}
 			}
 
-			patchHTTPRouteHeaderMatching(&httpRouteContext.HTTPRoute, headerskeys, headersValues)
+			patchHTTPRouteHeaderMatching(log, &httpRouteContext.HTTPRoute, headerskeys, headersValues)
 		}
 
 	}
 	return nil
 }
 
-func patchHTTPRouteHeaderMatching(httpRoute *gatewayv1.HTTPRoute, headerNames []string, headerValues [][]string) {
+func patchHTTPRouteHeaderMatching(log *slog.Logger, httpRoute *gatewayv1.HTTPRoute, headerNames []string, headerValues [][]string) {
 	for i := range httpRoute.Spec.Rules {
 		newMatches := []gatewayv1.HTTPRouteMatch{}
 		for _, match := range httpRoute.Spec.Rules[i].Matches {
@@ -83,7 +84,14 @@ func patchHTTPRouteHeaderMatching(httpRoute *gatewayv1.HTTPRoute, headerNames []
 		}
 		httpRoute.Spec.Rules[i].Matches = newMatches
 		if len(newMatches) > 0 {
-			notify(notifications.InfoNotification, fmt.Sprintf("parsed \"%v\" annotation of ingress and patched %v fields", kongAnnotation(headersKey), field.NewPath("httproute", "spec", "rules").Key("").Child("matches")), httpRoute)
+			log.Info(
+				fmt.Sprintf(
+					"parsed \"%v\" annotation of ingress and patched %v fields",
+					kongAnnotation(headersKey),
+					field.NewPath("httproute", "spec", "rules").Key("").Child("matches"),
+				),
+				logging.ObjectRef(httpRoute),
+			)
 		}
 	}
 }

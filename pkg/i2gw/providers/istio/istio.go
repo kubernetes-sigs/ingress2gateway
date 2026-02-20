@@ -23,6 +23,7 @@ import (
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -42,10 +43,11 @@ type Provider struct {
 
 // NewProvider returns the istio implementation of i2gw.Provider.
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
+	log := logging.WithProvider(ProviderName)
 	return &Provider{
 		storage:                newResourcesStorage(),
-		reader:                 newResourceReader(conf),
-		resourcesToIRConverter: newResourcesToIRConverter(),
+		reader:                 newResourceReader(log, conf),
+		resourcesToIRConverter: newResourcesToIRConverter(log),
 	}
 }
 

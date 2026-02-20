@@ -22,7 +22,7 @@ import (
 	egapiv1a1 "github.com/envoyproxy/gateway/api/v1alpha1"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/logging"
 	"github.com/samber/lo"
 	"k8s.io/utils/ptr"
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -75,7 +75,10 @@ func (e *Emitter) EmitIPRangeControl(ir emitterir.EmitterIR, gwResources *i2gw.G
 			if sectionName != nil {
 				ruleInfo = fmt.Sprintf(" rule %s", *sectionName)
 			}
-			notify(notifications.InfoNotification, fmt.Sprintf("applied IP Range Control feature for HTTPRoute%s", ruleInfo), &ctx.HTTPRoute)
+			e.log.Info(
+				fmt.Sprintf("applied IP Range Control feature for HTTPRoute%s", ruleInfo),
+				logging.ObjectRef(&ctx.HTTPRoute),
+			)
 		}
 
 		// mark IP Range Control IR as processed
