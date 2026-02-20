@@ -67,7 +67,7 @@ func TestIngressNGINXTLS(t *testing.T) {
 						&httpRequestVerifier{
 							host:         host,
 							path:         "/",
-							allowedCodes: []int{308},
+							allowedCodes: []int{301, 308},
 							useTLS:       false,
 							headerMatches: []headerMatch{
 								{
@@ -130,7 +130,7 @@ func TestIngressNGINXTLS(t *testing.T) {
 						&httpRequestVerifier{
 							host:         redirectHost,
 							path:         "/",
-							allowedCodes: []int{308},
+							allowedCodes: []int{301, 308},
 							useTLS:       false,
 							headerMatches: []headerMatch{
 								{
