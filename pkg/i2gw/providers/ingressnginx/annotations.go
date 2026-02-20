@@ -63,4 +63,9 @@ const (
 	// IP Range Control annotations
 	WhiteListSourceRangeAnnotation = "nginx.ingress.kubernetes.io/whitelist-source-range"
 	DenyListSourceRangeAnnotation  = "nginx.ingress.kubernetes.io/denylist-source-range"
+
+	// Affinity annotations
+	AffinityAnnotation            = "nginx.ingress.kubernetes.io/affinity"
+	AffinityModeAnnotation        = "nginx.ingress.kubernetes.io/affinity-mode"
+	SessionCookieMaxAgeAnnotation = "nginx.ingress.kubernetes.io/session-cookie-max-age"
 )

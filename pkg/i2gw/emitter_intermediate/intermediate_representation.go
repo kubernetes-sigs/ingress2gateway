@@ -43,6 +43,16 @@ type EmitterIR struct {
 	ReferenceGrants    map[types.NamespacedName]ReferenceGrantContext
 
 	GceServices map[types.NamespacedName]gce.ServiceIR
+	Services    map[types.NamespacedName]ServiceContext
+}
+
+type ServiceContext struct {
+	SessionAffinity *SessionAffinityConfig
+}
+
+type SessionAffinityConfig struct {
+	AffinityType string
+	CookieTTLSec *int64
 }
 
 type GatewayContext struct {

@@ -64,7 +64,7 @@ func processGRPCServicesAnnotation(ingress networkingv1.Ingress, grpcServices st
 
 	// Mark services as gRPC in provider-specific IR
 	if ir.Services == nil {
-		ir.Services = make(map[types.NamespacedName]providerir.ProviderSpecificServiceIR)
+		ir.Services = make(map[types.NamespacedName]providerir.ServiceContext)
 	}
 
 	// Process each ingress rule that uses gRPC services

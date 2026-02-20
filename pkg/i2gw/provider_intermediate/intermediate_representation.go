@@ -32,7 +32,7 @@ import (
 type ProviderIR struct {
 	Gateways   map[types.NamespacedName]GatewayContext
 	HTTPRoutes map[types.NamespacedName]HTTPRouteContext
-	Services   map[types.NamespacedName]ProviderSpecificServiceIR
+	Services   map[types.NamespacedName]ServiceContext
 
 	GatewayClasses map[types.NamespacedName]gatewayv1.GatewayClass
 	TLSRoutes      map[types.NamespacedName]gatewayv1alpha2.TLSRoute
@@ -79,6 +79,19 @@ type ProviderSpecificHTTPRouteIR struct {
 // extension features on Service.
 type ProviderSpecificServiceIR struct {
 	Gce *gce.ServiceIR
+}
+
+// ServiceContext contains the Gateway-API Service object and ServiceIR, which
+// has a dedicated field for each provider to specify their extension features
+// on Service.
+type ServiceContext struct {
+	ProviderSpecificIR ProviderSpecificServiceIR
+	SessionAffinity    *SessionAffinityConfig
+}
+
+type SessionAffinityConfig struct {
+	AffinityType string
+	CookieTTLSec *int64
 }
 
 // BackendSource tracks the source Ingress resource that contributed

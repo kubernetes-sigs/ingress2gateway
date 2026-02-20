@@ -239,9 +239,9 @@ func Test_irToGateway(t *testing.T) {
 						HTTPRoute: testHTTPRoute,
 					},
 				},
-				GceServices: map[types.NamespacedName]gce.ServiceIR{
+				Services: map[types.NamespacedName]emitterir.ServiceContext{
 					{Namespace: testNamespace, Name: testServiceName}: {
-						SessionAffinity: &gce.SessionAffinityConfig{
+						SessionAffinity: &emitterir.SessionAffinityConfig{
 							AffinityType: saTypeClientIP,
 						},
 					},
@@ -273,9 +273,9 @@ func Test_irToGateway(t *testing.T) {
 						HTTPRoute: testHTTPRoute,
 					},
 				},
-				GceServices: map[types.NamespacedName]gce.ServiceIR{
+				Services: map[types.NamespacedName]emitterir.ServiceContext{
 					{Namespace: testNamespace, Name: testServiceName}: {
-						SessionAffinity: &gce.SessionAffinityConfig{
+						SessionAffinity: &emitterir.SessionAffinityConfig{
 							AffinityType: saTypeCookie,
 							CookieTTLSec: common.PtrTo(testCookieTTLSec),
 						},

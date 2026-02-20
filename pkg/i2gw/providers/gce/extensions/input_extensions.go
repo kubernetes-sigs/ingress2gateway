@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
+	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"k8s.io/apimachinery/pkg/util/sets"
 	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
 	frontendconfigv1beta1 "k8s.io/ingress-gce/pkg/apis/frontendconfig/v1beta1"
@@ -60,8 +61,8 @@ func validateHealthCheck(beConfig *backendconfigv1.BackendConfig) error {
 	return nil
 }
 
-func BuildIRSessionAffinityConfig(beConfig *backendconfigv1.BackendConfig) *gce.SessionAffinityConfig {
-	return &gce.SessionAffinityConfig{
+func BuildIRSessionAffinityConfig(beConfig *backendconfigv1.BackendConfig) *providerir.SessionAffinityConfig {
+	return &providerir.SessionAffinityConfig{
 		AffinityType: beConfig.Spec.SessionAffinity.AffinityType,
 		CookieTTLSec: beConfig.Spec.SessionAffinity.AffinityCookieTtlSec,
 	}
