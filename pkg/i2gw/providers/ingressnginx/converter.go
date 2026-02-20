@@ -54,7 +54,7 @@ func (c *resourcesToIRConverter) convert(storage *storage) (providerir.ProviderI
 	for _, ingress := range ingressList {
 		for annotation, _ := range ingress.Annotations {
 			if _, ok := parsedAnnotations[annotation]; !ok && strings.HasPrefix(annotation, ingressNGINXAnnotationsPrefix) {
-  				notify(notifications.WarningNotification, fmt.Sprintf("Unsupported annotation %v", annotation), &ingress)
+				notify(notifications.WarningNotification, fmt.Sprintf("Unsupported annotation %v", annotation), &ingress)
 			}
 		}
 	}
