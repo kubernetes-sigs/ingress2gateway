@@ -191,3 +191,166 @@ func TestMergeBodySizeIR(t *testing.T) {
 		})
 	}
 }
+
+func TestMergeIPRangeControlIR(t *testing.T) {
+	allowList1 := []string{"192.168.1.0/24", "10.0.0.0/8"}
+	allowList2 := []string{"172.16.0.0/12"}
+	denyList1 := []string{"203.0.113.0/24"}
+	denyList2 := []string{"198.51.100.0/24"}
+
+	tests := []struct {
+		name               string
+		numRules           int
+		ipRangeControlMap  map[int]*emitterir.IPRangeControl
+		wantMerged         bool
+		wantIPRangeControl *emitterir.IPRangeControl
+	}{
+		{
+			name:     "all rules have same IP range control - should merge",
+			numRules: 3,
+			ipRangeControlMap: map[int]*emitterir.IPRangeControl{
+				0: {AllowList: allowList1, DenyList: denyList1},
+				1: {AllowList: allowList1, DenyList: denyList1},
+				2: {AllowList: allowList1, DenyList: denyList1},
+			},
+			wantMerged:         true,
+			wantIPRangeControl: &emitterir.IPRangeControl{AllowList: allowList1, DenyList: denyList1},
+		},
+		{
+			name:     "all rules have same allow list only - should merge",
+			numRules: 2,
+			ipRangeControlMap: map[int]*emitterir.IPRangeControl{
+				0: {AllowList: allowList1},
+				1: {AllowList: allowList1},
+			},
+			wantMerged:         true,
+			wantIPRangeControl: &emitterir.IPRangeControl{AllowList: allowList1},
+		},
+		{
+			name:     "all rules have same deny list only - should merge",
+			numRules: 2,
+			ipRangeControlMap: map[int]*emitterir.IPRangeControl{
+				0: {DenyList: denyList1},
+				1: {DenyList: denyList1},
+			},
+			wantMerged:         true,
+			wantIPRangeControl: &emitterir.IPRangeControl{DenyList: denyList1},
+		},
+		{
+			name:     "different allow list - should not merge",
+			numRules: 2,
+			ipRangeControlMap: map[int]*emitterir.IPRangeControl{
+				0: {AllowList: allowList1},
+				1: {AllowList: allowList2},
+			},
+			wantMerged: false,
+		},
+		{
+			name:     "different deny list - should not merge",
+			numRules: 2,
+			ipRangeControlMap: map[int]*emitterir.IPRangeControl{
+				0: {DenyList: denyList1},
+				1: {DenyList: denyList2},
+			},
+			wantMerged: false,
+		},
+		{
+			name:     "one has deny list, one doesn't - should not merge",
+			numRules: 2,
+			ipRangeControlMap: map[int]*emitterir.IPRangeControl{
+				0: {AllowList: allowList1, DenyList: denyList1},
+				1: {AllowList: allowList1},
+			},
+			wantMerged: false,
+		},
+		{
+			name:     "one has allow list, one doesn't - should not merge",
+			numRules: 2,
+			ipRangeControlMap: map[int]*emitterir.IPRangeControl{
+				0: {AllowList: allowList1},
+				1: {DenyList: denyList1},
+			},
+			wantMerged: false,
+		},
+		{
+			name:     "IP range control map length doesn't match rules - should not merge",
+			numRules: 3,
+			ipRangeControlMap: map[int]*emitterir.IPRangeControl{
+				0: {AllowList: allowList1},
+				1: {AllowList: allowList1},
+			},
+			wantMerged: false,
+		},
+		{
+			name:              "empty IP range control map - should not merge",
+			numRules:          2,
+			ipRangeControlMap: map[int]*emitterir.IPRangeControl{},
+			wantMerged:        false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create HTTPRouteContext with specified number of rules
+			ctx := &emitterir.HTTPRouteContext{
+				HTTPRoute: gatewayv1.HTTPRoute{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-route",
+						Namespace: "default",
+					},
+					Spec: gatewayv1.HTTPRouteSpec{
+						Rules: make([]gatewayv1.HTTPRouteRule, tt.numRules),
+					},
+				},
+				IPRangeControlByRuleIdx: tt.ipRangeControlMap,
+			}
+
+			// Call MergeIPRangeControlIR
+			MergeIPRangeControlIR(ctx)
+
+			if tt.wantMerged {
+				// Should have merged to RouteRuleAllIndex
+				if len(ctx.IPRangeControlByRuleIdx) != 1 {
+					t.Errorf("expected IPRangeControlByRuleIdx to have 1 entry, got %d", len(ctx.IPRangeControlByRuleIdx))
+					return
+				}
+
+				merged, ok := ctx.IPRangeControlByRuleIdx[RouteRuleAllIndex]
+				if !ok {
+					t.Errorf("expected IPRangeControlByRuleIdx to have entry at RouteRuleAllIndex=%d", RouteRuleAllIndex)
+					return
+				}
+
+				// Check AllowList
+				if len(tt.wantIPRangeControl.AllowList) != len(merged.AllowList) {
+					t.Errorf("expected AllowList length %d, got %d", len(tt.wantIPRangeControl.AllowList), len(merged.AllowList))
+				} else {
+					for i, cidr := range tt.wantIPRangeControl.AllowList {
+						if merged.AllowList[i] != cidr {
+							t.Errorf("expected AllowList[%d] = %s, got %s", i, cidr, merged.AllowList[i])
+						}
+					}
+				}
+
+				// Check DenyList
+				if len(tt.wantIPRangeControl.DenyList) != len(merged.DenyList) {
+					t.Errorf("expected DenyList length %d, got %d", len(tt.wantIPRangeControl.DenyList), len(merged.DenyList))
+				} else {
+					for i, cidr := range tt.wantIPRangeControl.DenyList {
+						if merged.DenyList[i] != cidr {
+							t.Errorf("expected DenyList[%d] = %s, got %s", i, cidr, merged.DenyList[i])
+						}
+					}
+				}
+			} else {
+				// Should not have merged - IPRangeControlByRuleIdx should be unchanged
+				if len(ctx.IPRangeControlByRuleIdx) != len(tt.ipRangeControlMap) {
+					t.Errorf("expected IPRangeControlByRuleIdx length to remain %d, got %d", len(tt.ipRangeControlMap), len(ctx.IPRangeControlByRuleIdx))
+				}
+				if _, exists := ctx.IPRangeControlByRuleIdx[RouteRuleAllIndex]; exists {
+					t.Errorf("expected no entry at RouteRuleAllIndex=%d, but found one", RouteRuleAllIndex)
+				}
+			}
+		})
+	}
+}

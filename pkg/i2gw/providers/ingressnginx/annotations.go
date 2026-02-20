@@ -21,6 +21,10 @@ const (
 	CanaryAnnotation            = "nginx.ingress.kubernetes.io/canary"
 	CanaryWeightAnnotation      = "nginx.ingress.kubernetes.io/canary-weight"
 	CanaryWeightTotalAnnotation = "nginx.ingress.kubernetes.io/canary-weight-total"
+	CanaryByHeader              = "nginx.ingress.kubernetes.io/canary-by-header"
+	CanaryByHeaderValue         = "nginx.ingress.kubernetes.io/canary-by-header-value"
+	CanaryByHeaderPattern       = "nginx.ingress.kubernetes.io/canary-by-header-pattern"
+	CanaryByCookie              = "nginx.ingress.kubernetes.io/canary-by-cookie"
 
 	// Rewrite annotations
 	RewriteTargetAnnotation = "nginx.ingress.kubernetes.io/rewrite-target"
@@ -55,6 +59,10 @@ const (
 	CorsAllowCredentialsAnnotation = "nginx.ingress.kubernetes.io/cors-allow-credentials"
 	CorsExposeHeadersAnnotation    = "nginx.ingress.kubernetes.io/cors-expose-headers"
 	CorsMaxAgeAnnotation           = "nginx.ingress.kubernetes.io/cors-max-age"
+
+	// IP Range Control annotations
+	WhiteListSourceRangeAnnotation = "nginx.ingress.kubernetes.io/whitelist-source-range"
+	DenyListSourceRangeAnnotation  = "nginx.ingress.kubernetes.io/denylist-source-range"
 )
 
 // An annotation being in this field doesn't necessary mean that

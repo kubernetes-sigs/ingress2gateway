@@ -18,6 +18,7 @@ package nginx
 
 import (
 	"context"
+	"io"
 
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -61,16 +62,16 @@ func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage
 }
 
 // readResourcesFromFile reads nginx resources from a YAML file
-func (r *resourceReader) readResourcesFromFile(filename string) (*storage, error) {
+func (r *resourceReader) readResourcesFromFile(reader io.Reader) (*storage, error) {
 	storage := newResourceStorage()
 
-	ingresses, err := common.ReadIngressesFromFile(filename, r.conf.Namespace, NginxIngressClasses)
+	ingresses, err := common.ReadIngressesFromFile(reader, r.conf.Namespace, NginxIngressClasses)
 	if err != nil {
 		return nil, err
 	}
 	storage.Ingresses = ingresses
 
-	services, err := common.ReadServicesFromFile(filename, r.conf.Namespace)
+	services, err := common.ReadServicesFromFile(reader, r.conf.Namespace)
 	if err != nil {
 		return nil, err
 	}

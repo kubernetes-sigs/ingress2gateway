@@ -31,21 +31,20 @@ import (
 )
 
 const (
-	name    = "dummy-app"
 	image   = "registry.k8s.io/e2e-test-images/agnhost"
 	version = "2.39"
 )
 
-func deployDummyApp(ctx context.Context, l logger, client *kubernetes.Clientset, namespace string, skipCleanup bool) (func(), error) {
-	if err := createDummyAppDeployment(ctx, l, client, namespace); err != nil {
+func deployDummyApp(ctx context.Context, l logger, client *kubernetes.Clientset, name, namespace string, skipCleanup bool) (func(), error) {
+	if err := createDummyAppDeployment(ctx, l, client, name, namespace); err != nil {
 		return nil, fmt.Errorf("creating deployment: %w", err)
 	}
 
-	if err := createDummyAppService(ctx, client, namespace); err != nil {
+	if err := createDummyAppService(ctx, client, name, namespace); err != nil {
 		return nil, fmt.Errorf("creating service: %w", err)
 	}
 
-	if err := waitForDummyApp(ctx, l, client, namespace); err != nil {
+	if err := waitForDummyApp(ctx, l, client, name, namespace); err != nil {
 		return nil, fmt.Errorf("waiting for dummy app: %w", err)
 	}
 
@@ -72,7 +71,7 @@ func deployDummyApp(ctx context.Context, l logger, client *kubernetes.Clientset,
 	}, nil
 }
 
-func createDummyAppDeployment(ctx context.Context, l logger, client *kubernetes.Clientset, namespace string) error {
+func createDummyAppDeployment(ctx context.Context, l logger, client *kubernetes.Clientset, name, namespace string) error {
 	labels := map[string]string{"app": name}
 
 	l.Logf("Creating dummy app %s", name)
@@ -116,7 +115,7 @@ func createDummyAppDeployment(ctx context.Context, l logger, client *kubernetes.
 	return nil
 }
 
-func createDummyAppService(ctx context.Context, client *kubernetes.Clientset, namespace string) error {
+func createDummyAppService(ctx context.Context, client *kubernetes.Clientset, name, namespace string) error {
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -141,7 +140,7 @@ func createDummyAppService(ctx context.Context, client *kubernetes.Clientset, na
 	return nil
 }
 
-func waitForDummyApp(ctx context.Context, l logger, client *kubernetes.Clientset, namespace string) error {
+func waitForDummyApp(ctx context.Context, l logger, client *kubernetes.Clientset, name, namespace string) error {
 	l.Logf("Waiting for dummy app to be ready")
 	err := wait.PollUntilContextTimeout(ctx, 1*time.Second, 5*time.Minute, true, func(ctx context.Context) (bool, error) {
 		dep, err := client.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
