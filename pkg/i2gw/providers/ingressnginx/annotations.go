@@ -65,6 +65,8 @@ const (
 	DenyListSourceRangeAnnotation  = "nginx.ingress.kubernetes.io/denylist-source-range"
 )
 
+const ingressNGINXAnnotationsPrefix = "nginx.ingress.kubernetes.io/"
+
 // An annotation being in this field doesn't necessary mean that
 // it will be converted. Rather, if it isn't converted, the
 // error will be logged elsewhere.
