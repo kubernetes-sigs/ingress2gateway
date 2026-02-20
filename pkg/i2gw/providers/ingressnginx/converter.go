@@ -17,7 +17,11 @@ limitations under the License.
 package ingressnginx
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -47,6 +51,13 @@ func (c *resourcesToIRConverter) convert(storage *storage) (providerir.ProviderI
 
 	// Convert plain ingress resources to gateway resources, ignoring all
 	// provider-specific features.
+	for _, ingress := range ingressList {
+		for annotation := range ingress.Annotations {
+			if _, ok := parsedAnnotations[annotation]; !ok && strings.HasPrefix(annotation, ingressNGINXAnnotationsPrefix) {
+				notify(notifications.WarningNotification, fmt.Sprintf("Unsupported annotation %v", annotation), &ingress)
+			}
+		}
+	}
 	pIR, errs := common.ToIR(ingressList, storage.ServicePorts, i2gw.ProviderImplementationSpecificOptions{
 		ToImplementationSpecificHTTPPathTypeMatch: implementationSpecificPathMatch,
 	})
