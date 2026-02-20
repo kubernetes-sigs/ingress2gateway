@@ -56,3 +56,35 @@ const (
 	CorsExposeHeadersAnnotation    = "nginx.ingress.kubernetes.io/cors-expose-headers"
 	CorsMaxAgeAnnotation           = "nginx.ingress.kubernetes.io/cors-max-age"
 )
+
+// An annotation being in this field doesn't necessary mean that
+// it will be converted. Rather, if it isn't converted, the
+// error will be logged elsewhere.
+var parsedAnnotations = map[string]struct{}{
+	CanaryAnnotation:                {},
+	CanaryWeightAnnotation:          {},
+	CanaryWeightTotalAnnotation:     {},
+	CanaryByHeader:                  {},
+	CanaryByHeaderValue:             {},
+	CanaryByHeaderPattern:           {},
+	CanaryByCookie:                  {},
+	RewriteTargetAnnotation:         {},
+	XForwardedPrefixAnnotation:      {},
+	UpstreamVhostAnnotation:         {},
+	ConnectionProxyHeaderAnnotation: {},
+	CustomHeadersAnnotation:         {},
+	ProxyConnectTimeoutAnnotation:   {},
+	ProxySendTimeoutAnnotation:      {},
+	ProxyReadTimeoutAnnotation:      {},
+	ProxyBodySizeAnnotation:         {},
+	ClientBodyBufferSizeAnnotation:  {},
+	UseRegexAnnotation:              {},
+	SSLRedirectAnnotation:           {},
+	EnableCorsAnnotation:            {},
+	CorsAllowOriginAnnotation:       {},
+	CorsAllowHeadersAnnotation:      {},
+	CorsAllowMethodsAnnotation:      {},
+	CorsAllowCredentialsAnnotation:  {},
+	CorsExposeHeadersAnnotation:     {},
+	CorsMaxAgeAnnotation:            {},
+}
