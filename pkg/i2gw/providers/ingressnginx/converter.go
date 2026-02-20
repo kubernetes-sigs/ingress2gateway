@@ -17,9 +17,13 @@ limitations under the License.
 package ingressnginx
 
 import (
+	"fmt"
+
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -34,6 +38,7 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 	return &resourcesToIRConverter{
 		featureParsers: []i2gw.FeatureParser{
 			canaryFeature,
+			createBackendTLSPolicies,
 			headerModifierFeature,
 			regexFeature,
 		},
@@ -45,9 +50,29 @@ func (c *resourcesToIRConverter) convert(storage *storage) (providerir.ProviderI
 	// TODO(liorliberman) temporary until we decide to change ToIR and featureParsers to get a map of [types.NamespacedName]*networkingv1.Ingress instead of a list
 	ingressList := storage.Ingresses.List()
 
+	// Filter Ingresses: Split into HTTP and GRPC
+	var httpIngresses []networkingv1.Ingress
+	var grpcIngresses []networkingv1.Ingress
+
+	for _, ing := range ingressList {
+		if val, ok := ing.Annotations[BackendProtocolAnnotation]; ok {
+			switch val {
+			case "GRPC", "GRPCS":
+				grpcIngresses = append(grpcIngresses, ing)
+			case "HTTP", "HTTPS", "AUTO_HTTP":
+				httpIngresses = append(httpIngresses, ing)
+			default:
+				// Should cover FCGI and unknown
+				notify(notifications.WarningNotification, fmt.Sprintf("%s backend-protocol is not supported in Gateway API conversion for ingress %s/%s", val, ing.Namespace, ing.Name), nil)
+			}
+		} else {
+			httpIngresses = append(httpIngresses, ing)
+		}
+	}
+
 	// Convert plain ingress resources to gateway resources, ignoring all
 	// provider-specific features.
-	pIR, errs := common.ToIR(ingressList, storage.ServicePorts, i2gw.ProviderImplementationSpecificOptions{
+	pIR, errs := common.ToIR(httpIngresses, grpcIngresses, storage.ServicePorts, i2gw.ProviderImplementationSpecificOptions{
 		ToImplementationSpecificHTTPPathTypeMatch: implementationSpecificPathMatch,
 	})
 	if len(errs) > 0 {
