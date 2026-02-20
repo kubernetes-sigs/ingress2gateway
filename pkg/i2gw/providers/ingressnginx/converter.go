@@ -52,7 +52,7 @@ func (c *resourcesToIRConverter) convert(storage *storage) (providerir.ProviderI
 	// Convert plain ingress resources to gateway resources, ignoring all
 	// provider-specific features.
 	for _, ingress := range ingressList {
-		for annotation, _ := range ingress.Annotations {
+		for annotation := range ingress.Annotations {
 			if _, ok := parsedAnnotations[annotation]; !ok && strings.HasPrefix(annotation, ingressNGINXAnnotationsPrefix) {
 				notify(notifications.WarningNotification, fmt.Sprintf("Unsupported annotation %v", annotation), &ingress)
 			}
