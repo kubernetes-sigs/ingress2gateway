@@ -32,6 +32,7 @@ type ServiceIR struct {
 type SessionAffinityConfig struct {
 	AffinityType string
 	CookieTTLSec *int64
+	CookieName   string
 }
 type SecurityPolicyConfig struct {
 	Name string
