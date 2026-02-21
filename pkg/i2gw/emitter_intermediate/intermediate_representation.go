@@ -54,7 +54,6 @@ type GatewayContext struct {
 
 type HTTPRouteContext struct {
 	gatewayv1.HTTPRoute
-<<<<<<< HEAD
 	// TCPTimeoutsByRuleIdx holds provider TCP-level timeouts by HTTPRoute rule index.
 	TCPTimeoutsByRuleIdx map[int]*TCPTimeouts
 

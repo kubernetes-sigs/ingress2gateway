@@ -67,7 +67,6 @@ func (c *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.Err
 		return i2gw.GatewayResources{}, errs
 	}
 	buildGceGatewayExtensions(ir, &gatewayResources)
-	buildGceGatewayExtensions(ir, &gatewayResources)
 	buildGceServiceExtensions(ir, &gatewayResources)
 	upsellGatewayClass(&gatewayResources)
 	return gatewayResources, nil
