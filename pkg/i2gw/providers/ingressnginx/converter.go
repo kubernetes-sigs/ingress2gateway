@@ -18,6 +18,7 @@ package ingressnginx
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
@@ -75,6 +76,14 @@ func (c *resourcesToIRConverter) convert(storage *storage) (providerir.ProviderI
 	pIR, errs := common.ToIR(httpIngresses, grpcIngresses, storage.ServicePorts, i2gw.ProviderImplementationSpecificOptions{
 		ToImplementationSpecificHTTPPathTypeMatch: implementationSpecificPathMatch,
 	})
+	for _, ingress := range ingressList {
+		for annotation := range ingress.Annotations {
+			if _, ok := parsedAnnotations[annotation]; !ok && strings.HasPrefix(annotation, ingressNGINXAnnotationsPrefix) {
+				notify(notifications.WarningNotification, fmt.Sprintf("Unsupported annotation %v", annotation), &ingress)
+			}
+		}
+	}
+
 	if len(errs) > 0 {
 		return providerir.ProviderIR{}, errs
 	}

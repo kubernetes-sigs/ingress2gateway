@@ -32,8 +32,17 @@ import (
 
 const ProviderName = "gce"
 
+const (
+	GatewayClassNameFlag = "gateway-class-name"
+)
+
 func init() {
 	i2gw.ProviderConstructorByName[ProviderName] = NewProvider
+	i2gw.RegisterProviderSpecificFlag("gce", i2gw.ProviderSpecificFlag{
+		Name:         GatewayClassNameFlag,
+		Description:  "The name of the GatewayClass to use for the Gateway",
+		DefaultValue: "",
+	})
 }
 
 // Provider implements the i2gw.Provider interface.
