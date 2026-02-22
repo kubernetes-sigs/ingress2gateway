@@ -58,17 +58,18 @@ func Test_parseCanaryConfig(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "actually get weights with canary-by-weight",
+			name: "actually get weights with canary-weight",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
 						"nginx.ingress.kubernetes.io/canary":              "true",
-						"nginx.ingress.kubernetes.io/canary-by-weight":    "50",
+						"nginx.ingress.kubernetes.io/canary-weight":       "50",
 						"nginx.ingress.kubernetes.io/canary-weight-total": "100",
 					},
 				},
 			},
 			expectedConfig: canaryConfig{
+				isWeight:    true,
 				weight:      50,
 				weightTotal: 100,
 			},
@@ -567,7 +568,7 @@ func Test_canaryFeature_GRPC_ByWeight(t *testing.T) {
 			Annotations: map[string]string{
 				"nginx.ingress.kubernetes.io/backend-protocol": "GRPC",
 				"nginx.ingress.kubernetes.io/canary":           "true",
-				"nginx.ingress.kubernetes.io/canary-by-weight": "25",
+				"nginx.ingress.kubernetes.io/canary-weight":    "25",
 			},
 		},
 		Spec: networkingv1.IngressSpec{

@@ -17,6 +17,7 @@ limitations under the License.
 package ingressnginx
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
@@ -121,6 +122,50 @@ func TestBackendProtocolFeature(t *testing.T) {
 			expectedHTTP: map[types.NamespacedName]int{},
 			expectedGRPC: map[types.NamespacedName]int{
 				{Namespace: "default", Name: "test-ingress-grpc-grpc-example-com"}: 1,
+			},
+			expectedGVK: true,
+		},
+		{
+			name: "backend protocol grpc (lowercase) - should result in GRPCRoute",
+			ingresses: []networkingv1.Ingress{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-ingress-grpc-lower",
+						Namespace: "default",
+						Annotations: map[string]string{
+							"nginx.ingress.kubernetes.io/backend-protocol": "grpc",
+						},
+					},
+					Spec: networkingv1.IngressSpec{
+						Rules: []networkingv1.IngressRule{
+							{
+								Host: "grpc-lower.example.com",
+								IngressRuleValue: networkingv1.IngressRuleValue{
+									HTTP: &networkingv1.HTTPIngressRuleValue{
+										Paths: []networkingv1.HTTPIngressPath{
+											{
+												Path:     "/",
+												PathType: ptrTo(networkingv1.PathTypePrefix),
+												Backend: networkingv1.IngressBackend{
+													Service: &networkingv1.IngressServiceBackend{
+														Name: "grpc-service",
+														Port: networkingv1.ServiceBackendPort{
+															Number: 50051,
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedHTTP: map[types.NamespacedName]int{},
+			expectedGRPC: map[types.NamespacedName]int{
+				{Namespace: "default", Name: "test-ingress-grpc-lower-grpc-lower-example-com"}: 1,
 			},
 			expectedGVK: true,
 		},
@@ -449,8 +494,13 @@ func TestBackendProtocolFeature(t *testing.T) {
 			var grpcIngresses []networkingv1.Ingress
 
 			for _, ing := range tc.ingresses {
-				if val, ok := ing.Annotations["nginx.ingress.kubernetes.io/backend-protocol"]; ok && (val == "GRPC" || val == "GRPCS") {
-					grpcIngresses = append(grpcIngresses, ing)
+				if val, ok := ing.Annotations["nginx.ingress.kubernetes.io/backend-protocol"]; ok {
+					protocol := strings.ToUpper(val)
+					if protocol == "GRPC" || protocol == "GRPCS" {
+						grpcIngresses = append(grpcIngresses, ing)
+					} else {
+						httpIngresses = append(httpIngresses, ing)
+					}
 				} else {
 					httpIngresses = append(httpIngresses, ing)
 				}

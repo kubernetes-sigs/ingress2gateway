@@ -17,6 +17,8 @@ limitations under the License.
 package ingressnginx
 
 import (
+	"strings"
+
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -37,14 +39,10 @@ func createBackendTLSPolicies(ingresses []networkingv1.Ingress, servicePorts map
 		for _, rule := range rg.Rules {
 			if val, ok := rule.Ingress.Annotations[BackendProtocolAnnotation]; ok {
 				if val != "" {
-					protocolType = val
+					protocolType = strings.ToUpper(val)
 					break
 				}
 			}
-		}
-
-		if protocolType == "" {
-			continue
 		}
 
 		// Handle HTTPS and GRPCS (TLS Policy)

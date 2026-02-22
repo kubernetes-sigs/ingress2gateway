@@ -65,8 +65,6 @@ func parseCanaryConfig(ingress *networkingv1.Ingress) (canaryConfig, error) {
 	weight := ingress.Annotations[CanaryWeightAnnotation]
 	if weight != "" {
 		config.isWeight = true
-	} else {
-		weight = ingress.Annotations[CanaryByWeightAnnotation]
 	}
 
 	if weight != "" {

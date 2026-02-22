@@ -20,7 +20,6 @@ const (
 	// Canary annotations
 	CanaryAnnotation            = "nginx.ingress.kubernetes.io/canary"
 	CanaryWeightAnnotation      = "nginx.ingress.kubernetes.io/canary-weight"
-	CanaryByWeightAnnotation    = "nginx.ingress.kubernetes.io/canary-by-weight"
 	CanaryWeightTotalAnnotation = "nginx.ingress.kubernetes.io/canary-weight-total"
 	CanaryByHeader              = "nginx.ingress.kubernetes.io/canary-by-header"
 	CanaryByHeaderValue         = "nginx.ingress.kubernetes.io/canary-by-header-value"

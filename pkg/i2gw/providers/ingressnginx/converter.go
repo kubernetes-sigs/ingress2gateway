@@ -57,7 +57,7 @@ func (c *resourcesToIRConverter) convert(storage *storage) (providerir.ProviderI
 
 	for _, ing := range ingressList {
 		if val, ok := ing.Annotations[BackendProtocolAnnotation]; ok {
-			switch val {
+			switch strings.ToUpper(val) {
 			case "GRPC", "GRPCS":
 				grpcIngresses = append(grpcIngresses, ing)
 			case "HTTP", "HTTPS", "AUTO_HTTP":
