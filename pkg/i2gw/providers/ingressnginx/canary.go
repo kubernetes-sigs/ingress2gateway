@@ -65,6 +65,7 @@ func parseCanaryConfig(ingress *networkingv1.Ingress) (canaryConfig, error) {
 	weight := ingress.Annotations[CanaryWeightAnnotation]
 
 	if weight != "" {
+		config.isWeight = true
 		w, err := strconv.ParseInt(weight, 10, 32)
 		if err != nil {
 			return config, fmt.Errorf("invalid canary-weight annotation %q: %w", weight, err)
@@ -72,7 +73,6 @@ func parseCanaryConfig(ingress *networkingv1.Ingress) (canaryConfig, error) {
 		if w < 0 {
 			return config, fmt.Errorf("canary-weight must be non-negative, got %d", w)
 		}
-		config.isWeight = true
 		config.weight = int32(w)
 	}
 
