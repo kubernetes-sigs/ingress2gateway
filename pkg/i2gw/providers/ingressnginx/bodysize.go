@@ -88,7 +88,6 @@ func applyBodySizeToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterI
 
 	for key, pRouteCtx := range pIR.HTTPRoutes {
 		eRouteCtx, ok := eIR.HTTPRoutes[key]
-		parsedAnnotations := make([]string, 0, 2)
 		if !ok {
 			continue
 		}
@@ -106,6 +105,7 @@ func applyBodySizeToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterI
 				maxSize    *resource.Quantity
 				bufferSize *resource.Quantity
 			)
+			parsedAnnotations := make([]string, 0, 2)
 
 			// handle proxy-body-size
 			if val, ok := ing.Annotations[ProxyBodySizeAnnotation]; ok && val != "" {
@@ -167,7 +167,7 @@ func applyBodySizeToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterI
 
 			bodySizeIR := emitterir.BodySize{}
 			{
-				source := fmt.Sprintf("%s/%s", ing.Name, ing.Namespace)
+				source := fmt.Sprintf("%s/%s", ing.Namespace, ing.Name)
 				message := "Most Gateway API implementations have reasonable body size and buffering defaults"
 				paths := make([]*field.Path, len(parsedAnnotations))
 				for i, ann := range parsedAnnotations {
