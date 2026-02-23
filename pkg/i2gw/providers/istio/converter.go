@@ -48,12 +48,14 @@ type resourcesToIRConverter struct {
 	// gw -> namespace -> hosts; stores hosts allowed by each Gateway
 	gwAllowedHosts map[types.NamespacedName]map[string]sets.Set[string]
 	ctx            context.Context
+	notify         notifications.NotifyFunc
 }
 
-func newResourcesToIRConverter() resourcesToIRConverter {
+func newResourcesToIRConverter(notify notifications.NotifyFunc) resourcesToIRConverter {
 	return resourcesToIRConverter{
 		gwAllowedHosts: make(map[types.NamespacedName]map[string]sets.Set[string]),
 		ctx:            context.Background(),
+		notify:         notify,
 	}
 }
 
@@ -154,7 +156,7 @@ func (c *resourcesToIRConverter) convertGateway(gw *istioclientv1beta1.Gateway, 
 
 		serverPort := server.GetPort()
 		if serverPort == nil {
-			notify(notifications.ErrorNotification, fmt.Sprintf("port is nil, path %v", serverFieldPath), gw)
+			c.notify(notifications.ErrorNotification, fmt.Sprintf("port is nil, path %v", serverFieldPath), gw)
 			klog.Error(field.Invalid(serverFieldPath, nil, "port is nil"))
 			continue
 		}
@@ -162,7 +164,7 @@ func (c *resourcesToIRConverter) convertGateway(gw *istioclientv1beta1.Gateway, 
 		portFieldPath := serverFieldPath.Child("Port")
 
 		if serverPort.GetName() != "" {
-			notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", portFieldPath.Child("Name")), gw)
+			c.notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", portFieldPath.Child("Name")), gw)
 			klog.Infof("ignoring field: %v", portFieldPath.Child("Name"))
 		}
 
@@ -193,7 +195,7 @@ func (c *resourcesToIRConverter) convertGateway(gw *istioclientv1beta1.Gateway, 
 			case istiov1beta1.ServerTLSSettings_SIMPLE, istiov1beta1.ServerTLSSettings_MUTUAL:
 				tlsMode = gatewayv1.TLSModeTerminate
 			case istiov1beta1.ServerTLSSettings_ISTIO_MUTUAL, istiov1beta1.ServerTLSSettings_OPTIONAL_MUTUAL:
-				notify(notifications.WarningNotification, fmt.Sprintf("the istio server is ignored as there's no direct translation for this TLS istio protocol: %v", tlsFieldPath.Child("Mode").Key(serverTLSMode.String())), gw)
+				c.notify(notifications.WarningNotification, fmt.Sprintf("the istio server is ignored as there's no direct translation for this TLS istio protocol: %v", tlsFieldPath.Child("Mode").Key(serverTLSMode.String())), gw)
 				klog.Warningf("the istio server is ignored as there's no direct translation for this TLS istio protocol: %v", tlsFieldPath.Child("Mode").Key(serverTLSMode.String()))
 				continue
 			default:
@@ -201,53 +203,53 @@ func (c *resourcesToIRConverter) convertGateway(gw *istioclientv1beta1.Gateway, 
 			}
 
 			if serverTLS.GetHttpsRedirect() {
-				notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("HttpsRedirect")), gw)
+				c.notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("HttpsRedirect")), gw)
 				klog.Infof("ignoring field: %v", tlsFieldPath.Child("HttpsRedirect"))
 			}
 			if serverTLS.GetServerCertificate() != "" {
-				notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("ServerCertificate")), gw)
+				c.notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("ServerCertificate")), gw)
 				klog.Infof("ignoring field: %v", tlsFieldPath.Child("ServerCertificate"))
 			}
 			if serverTLS.GetPrivateKey() != "" {
-				notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("PrivateKey")), gw)
+				c.notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("PrivateKey")), gw)
 				klog.Infof("ignoring field: %v", tlsFieldPath.Child("PrivateKey"))
 			}
 			if serverTLS.GetCaCertificates() != "" {
-				notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("CaCertificates")), gw)
+				c.notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("CaCertificates")), gw)
 				klog.Infof("ignoring field: %v", tlsFieldPath.Child("CaCertificates"))
 			}
 			if len(serverTLS.GetSubjectAltNames()) > 0 {
-				notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("SubjectAltNames")), gw)
+				c.notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("SubjectAltNames")), gw)
 				klog.Infof("ignoring field: %v", tlsFieldPath.Child("SubjectAltNames"))
 			}
 			if serverTLS.GetCredentialName() != "" {
-				notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("CredentialName")), gw)
+				c.notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("CredentialName")), gw)
 				klog.Infof("ignoring field: %v", tlsFieldPath.Child("CredentialName"))
 			}
 			if len(serverTLS.GetVerifyCertificateSpki()) > 0 {
-				notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("VerifyCertificateSpki")), gw)
+				c.notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("VerifyCertificateSpki")), gw)
 				klog.Infof("ignoring field: %v", tlsFieldPath.Child("VerifyCertificateSpki"))
 			}
 			if len(serverTLS.GetVerifyCertificateHash()) > 0 {
-				notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("VerifyCertificateHash")), gw)
+				c.notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("VerifyCertificateHash")), gw)
 				klog.Infof("ignoring field: %v", tlsFieldPath.Child("VerifyCertificateHash"))
 			}
 			if serverTLS.GetMinProtocolVersion() != 0 {
-				notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("MinProtocolVersion")), gw)
+				c.notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("MinProtocolVersion")), gw)
 				klog.Infof("ignoring field: %v", tlsFieldPath.Child("MinProtocolVersion"))
 			}
 			if serverTLS.GetMaxProtocolVersion() != 0 {
-				notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("MaxProtocolVersion")), gw)
+				c.notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("MaxProtocolVersion")), gw)
 				klog.Infof("ignoring field: %v", tlsFieldPath.Child("MaxProtocolVersion"))
 			}
 			if len(serverTLS.GetCipherSuites()) > 0 {
-				notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("CipherSuites")), gw)
+				c.notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", tlsFieldPath.Child("CipherSuites")), gw)
 				klog.Infof("ignoring field: %v", tlsFieldPath.Child("CipherSuites"))
 			}
 		}
 
 		if server.GetBind() != "" {
-			notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", serverFieldPath.Child("Bind").Key(server.GetBind())), gw)
+			c.notify(notifications.WarningNotification, fmt.Sprintf("ignoring field: %v", serverFieldPath.Child("Bind").Key(server.GetBind())), gw)
 			klog.Infof("ignoring field: %v", serverFieldPath.Child("Bind").Key(server.GetBind()))
 		}
 
@@ -265,7 +267,7 @@ func (c *resourcesToIRConverter) convertGateway(gw *istioclientv1beta1.Gateway, 
 			namespace, dnsName, ok := strings.Cut(host, "/")
 			if !ok {
 				// The default, if no `namespace/` is specified, is `*/`, that is, select services from any namespace.
-				notify(notifications.InfoNotification, fmt.Sprintf("no namespace specified for host \"%v\", selecting services from all namespaces", host), gw)
+				c.notify(notifications.InfoNotification, fmt.Sprintf("no namespace specified for host \"%v\", selecting services from all namespaces", host), gw)
 				namespace, dnsName = "*", host
 			}
 
@@ -320,7 +322,7 @@ func (c *resourcesToIRConverter) convertGateway(gw *istioclientv1beta1.Gateway, 
 		},
 	}
 
-	notify(notifications.InfoNotification, fmt.Sprintf("successfully converted to Kubernetes Gateway \"%v/%v\"", gateway.Namespace, gateway.Name), gw)
+	c.notify(notifications.InfoNotification, fmt.Sprintf("successfully converted to Kubernetes Gateway \"%v/%v\"", gateway.Namespace, gateway.Name), gw)
 
 	return &gateway, nil
 }
@@ -329,7 +331,7 @@ var hostnameRegexp = regexp.MustCompile(`^(\*\.)?[a-z0-9]([-a-z0-9]*[a-z0-9])?(\
 
 // convertHostnames set istio hostnames as is, without extra filters.
 // If it's not a fqdn, it would be rejected by K8S API implementation
-func convertHostnames(ctx context.Context, hosts []string, fieldPath *field.Path) []gatewayv1.Hostname {
+func convertHostnames(ctx context.Context, notify notifications.NotifyFunc, hosts []string, fieldPath *field.Path) []gatewayv1.Hostname {
 	var resHostnames []gatewayv1.Hostname
 	vs := ctx.Value(virtualServiceKey).(*istioclientv1beta1.VirtualService)
 	for i, host := range hosts {
@@ -357,7 +359,7 @@ func (c *resourcesToIRConverter) convertVsHTTPRoutes(virtualService metav1.Objec
 	var errList field.ErrorList
 	var resHTTPRoutes []*gatewayv1.HTTPRoute
 
-	allowedHostnames := convertHostnames(c.ctx, istioHTTPHosts, fieldPath)
+	allowedHostnames := convertHostnames(c.ctx, c.notify, istioHTTPHosts, fieldPath)
 	vs := c.ctx.Value(virtualServiceKey).(*istioclientv1beta1.VirtualService)
 
 	for i, httpRoute := range istioHTTPRoutes {
@@ -378,39 +380,39 @@ func (c *resourcesToIRConverter) convertVsHTTPRoutes(virtualService metav1.Objec
 			httpMatchFieldPath := httpRouteFieldPath.Child("HTTPMatchRequest").Key(httpMatchFieldName)
 
 			if match.GetScheme() != nil {
-				notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpMatchFieldPath.Child("Scheme").Key(match.GetScheme().String())), vs)
+				c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpMatchFieldPath.Child("Scheme").Key(match.GetScheme().String())), vs)
 				klog.Infof("ignoring field: %v", httpMatchFieldPath.Child("Scheme").Key(match.GetScheme().String()))
 			}
 			if match.GetAuthority() != nil {
-				notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpMatchFieldPath.Child("Authority").Key(match.GetAuthority().String())), vs)
+				c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpMatchFieldPath.Child("Authority").Key(match.GetAuthority().String())), vs)
 				klog.Infof("ignoring field: %v", httpMatchFieldPath.Child("Authority").Key(match.GetAuthority().String()))
 			}
 			if match.GetPort() != 0 {
-				notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpMatchFieldPath.Child("Port").Key(fmt.Sprintf("%v", match.GetPort()))), vs)
+				c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpMatchFieldPath.Child("Port").Key(fmt.Sprintf("%v", match.GetPort()))), vs)
 				klog.Infof("ignoring field: %v", httpMatchFieldPath.Child("Port").Key(fmt.Sprintf("%v", match.GetPort())))
 			}
 			if len(match.GetSourceLabels()) > 0 {
-				notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpMatchFieldPath.Child("SourceLabels")), vs)
+				c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpMatchFieldPath.Child("SourceLabels")), vs)
 				klog.Infof("ignoring field: %v", httpMatchFieldPath.Child("SourceLabels"))
 			}
 			if match.GetIgnoreUriCase() {
-				notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpMatchFieldPath.Child("IgnoreUriCase")), vs)
+				c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpMatchFieldPath.Child("IgnoreUriCase")), vs)
 				klog.Infof("ignoring field: %v", httpMatchFieldPath.Child("IgnoreUriCase"))
 			}
 			if len(match.GetWithoutHeaders()) > 0 {
-				notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpMatchFieldPath.Child("WithoutHeaders")), vs)
+				c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpMatchFieldPath.Child("WithoutHeaders")), vs)
 				klog.Infof("ignoring field: %v", httpMatchFieldPath.Child("WithoutHeaders"))
 			}
 			if match.GetSourceNamespace() != "" {
-				notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpMatchFieldPath.Child("SourceNamespace")), vs)
+				c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpMatchFieldPath.Child("SourceNamespace")), vs)
 				klog.Infof("ignoring field: %v", httpMatchFieldPath.Child("SourceNamespace"))
 			}
 			if match.GetStatPrefix() != "" {
-				notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpMatchFieldPath.Child("StatPrefix")), vs)
+				c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpMatchFieldPath.Child("StatPrefix")), vs)
 				klog.Infof("ignoring field: %v", httpMatchFieldPath.Child("StatPrefix"))
 			}
 			if len(match.GetGateways()) > 0 {
-				notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpMatchFieldPath.Child("Gateways")), vs)
+				c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpMatchFieldPath.Child("Gateways")), vs)
 				klog.Infof("ignoring field: %v", httpMatchFieldPath.Child("Gateways"))
 			}
 
@@ -433,7 +435,7 @@ func (c *resourcesToIRConverter) convertVsHTTPRoutes(virtualService metav1.Objec
 					matchType = gatewayv1.PathMatchRegularExpression
 					value = matchURI.GetRegex()
 				default:
-					notify(notifications.ErrorNotification, fmt.Sprintf("Unsupported Uri match type, path %v", httpMatchFieldPath.Child("Uri")), vs)
+					c.notify(notifications.ErrorNotification, fmt.Sprintf("Unsupported Uri match type, path %v", httpMatchFieldPath.Child("Uri")), vs)
 					klog.Error(field.Invalid(httpMatchFieldPath.Child("Uri"), matchURI, "unsupported Uri match type %v"))
 				}
 
@@ -459,7 +461,7 @@ func (c *resourcesToIRConverter) convertVsHTTPRoutes(virtualService metav1.Objec
 					matchType = gatewayv1.HeaderMatchRegularExpression
 					value = headerMatch.GetRegex()
 				default:
-					notify(notifications.ErrorNotification, fmt.Sprintf("Unsupported Headers match type, path %v", httpMatchFieldPath.Child("Headers")), vs)
+					c.notify(notifications.ErrorNotification, fmt.Sprintf("Unsupported Headers match type, path %v", httpMatchFieldPath.Child("Headers")), vs)
 					klog.Error(field.Invalid(httpMatchFieldPath.Child("Headers"), headerMatch, "unsupported Headers match type"))
 				}
 
@@ -486,7 +488,7 @@ func (c *resourcesToIRConverter) convertVsHTTPRoutes(virtualService metav1.Objec
 					matchType = gatewayv1.QueryParamMatchRegularExpression
 					value = queryMatch.GetRegex()
 				default:
-					notify(notifications.ErrorNotification, fmt.Sprintf("Unsupported QueryParams match type, path %v", httpMatchFieldPath.Child("QueryParams")), vs)
+					c.notify(notifications.ErrorNotification, fmt.Sprintf("Unsupported QueryParams match type, path %v", httpMatchFieldPath.Child("QueryParams")), vs)
 					klog.Error(field.Invalid(httpMatchFieldPath.Child("QueryParams"), queryMatch, "unsupported QueryParams match type"))
 				}
 
@@ -504,7 +506,7 @@ func (c *resourcesToIRConverter) convertVsHTTPRoutes(virtualService metav1.Objec
 				case *istiov1beta1.StringMatch_Exact:
 					gwHTTPRouteMatch.Method = common.PtrTo[gatewayv1.HTTPMethod](gatewayv1.HTTPMethod(matchMethod.GetExact()))
 				default:
-					notify(notifications.ErrorNotification, fmt.Sprintf("Unsupported Method match type, path %v", httpMatchFieldPath.Child("Method")), vs)
+					c.notify(notifications.ErrorNotification, fmt.Sprintf("Unsupported Method match type, path %v", httpMatchFieldPath.Child("Method")), vs)
 					klog.Error(field.Invalid(httpMatchFieldPath.Child("Method"), matchMethod, "unsupported Method match type"))
 				}
 			}
@@ -516,11 +518,11 @@ func (c *resourcesToIRConverter) convertVsHTTPRoutes(virtualService metav1.Objec
 			routeDestinationFieldPath := httpRouteFieldPath.Child("HTTPRouteDestination").Index(j)
 
 			if routeDestination.GetHeaders() != nil {
-				notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", routeDestinationFieldPath.Child("Headers")), vs)
+				c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", routeDestinationFieldPath.Child("Headers")), vs)
 				klog.Infof("ignoring field: %v", routeDestinationFieldPath.Child("Headers"))
 			}
 
-			backendObjRef := destination2backendObjRef(c.ctx, routeDestination.GetDestination(), virtualService.Namespace, routeDestinationFieldPath)
+			backendObjRef := destination2backendObjRef(c.ctx, c.notify, routeDestination.GetDestination(), virtualService.Namespace, routeDestinationFieldPath)
 			if backendObjRef != nil {
 				backendRefs = append(backendRefs, gatewayv1.HTTPBackendRef{
 					BackendRef: gatewayv1.BackendRef{
@@ -535,11 +537,11 @@ func (c *resourcesToIRConverter) convertVsHTTPRoutes(virtualService metav1.Objec
 			redirectFieldPath := httpRouteFieldPath.Child("HTTPRedirect")
 
 			if routeRedirect.GetAuthority() != "" {
-				notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", redirectFieldPath.Child("Authority")), vs)
+				c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", redirectFieldPath.Child("Authority")), vs)
 				klog.Infof("ignoring field: %v", redirectFieldPath.Child("Authority"))
 			}
 			if _, ok := routeRedirect.GetRedirectPort().(*istiov1beta1.HTTPRedirect_DerivePort); ok {
-				notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", redirectFieldPath.Child("DerivePort")), vs)
+				c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", redirectFieldPath.Child("DerivePort")), vs)
 				klog.Infof("ignoring field: %v", redirectFieldPath.Child("DerivePort"))
 			}
 
@@ -578,23 +580,23 @@ func (c *resourcesToIRConverter) convertVsHTTPRoutes(virtualService metav1.Objec
 		}
 
 		if httpRoute.GetDirectResponse() != nil {
-			notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpRouteFieldPath.Child("DirectResponse")), vs)
+			c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpRouteFieldPath.Child("DirectResponse")), vs)
 			klog.Infof("ignoring field: %v", httpRouteFieldPath.Child("DirectResponse"))
 		}
 		if httpRoute.GetDelegate() != nil {
-			notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpRouteFieldPath.Child("Delegate")), vs)
+			c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpRouteFieldPath.Child("Delegate")), vs)
 			klog.Infof("ignoring field: %v", httpRouteFieldPath.Child("Delegate"))
 		}
 		if httpRoute.GetRetries() != nil {
-			notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpRouteFieldPath.Child("Retries")), vs)
+			c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpRouteFieldPath.Child("Retries")), vs)
 			klog.Infof("ignoring field: %v", httpRouteFieldPath.Child("Retries"))
 		}
 		if httpRoute.GetFault() != nil {
-			notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpRouteFieldPath.Child("Fault")), vs)
+			c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpRouteFieldPath.Child("Fault")), vs)
 			klog.Infof("ignoring field: %v", httpRouteFieldPath.Child("Fault"))
 		}
 		if httpRoute.GetCorsPolicy() != nil {
-			notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpRouteFieldPath.Child("CorsPolicy")), vs)
+			c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpRouteFieldPath.Child("CorsPolicy")), vs)
 			klog.Infof("ignoring field: %v", httpRouteFieldPath.Child("CorsPolicy"))
 		}
 
@@ -606,7 +608,7 @@ func (c *resourcesToIRConverter) convertVsHTTPRoutes(virtualService metav1.Objec
 		if mirror := httpRoute.GetMirror(); mirror != nil {
 			routeDestinationFieldPath := httpRouteFieldPath.Child("Mirror")
 
-			backendObjRef := destination2backendObjRef(c.ctx, mirror, virtualService.Namespace, routeDestinationFieldPath)
+			backendObjRef := destination2backendObjRef(c.ctx, c.notify, mirror, virtualService.Namespace, routeDestinationFieldPath)
 			if backendObjRef != nil {
 				gwHTTPRouteFilters = append(gwHTTPRouteFilters, gatewayv1.HTTPRouteFilter{
 					Type: gatewayv1.HTTPRouteFilterRequestMirror,
@@ -621,11 +623,11 @@ func (c *resourcesToIRConverter) convertVsHTTPRoutes(virtualService metav1.Objec
 			routeDestinationFieldPath := httpRouteFieldPath.Child("Mirrors").Index(j)
 
 			if mirror.GetPercentage() != nil {
-				notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", routeDestinationFieldPath.Child("Percentage")), vs)
+				c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", routeDestinationFieldPath.Child("Percentage")), vs)
 				klog.Infof("ignoring field: %v", routeDestinationFieldPath.Child("Percentage"))
 			}
 
-			backendObjRef := destination2backendObjRef(c.ctx, mirror.GetDestination(), virtualService.Namespace, routeDestinationFieldPath)
+			backendObjRef := destination2backendObjRef(c.ctx, c.notify, mirror.GetDestination(), virtualService.Namespace, routeDestinationFieldPath)
 			if backendObjRef != nil {
 				gwHTTPRouteFilters = append(gwHTTPRouteFilters, gatewayv1.HTTPRouteFilter{
 					Type: gatewayv1.HTTPRouteFilterRequestMirror,
@@ -693,14 +695,14 @@ func (c *resourcesToIRConverter) convertVsHTTPRoutes(virtualService metav1.Objec
 			httpRoutesWithRewrites := c.createHTTPRoutesWithRewrite(createHTTPRouteParams, httpRoute.GetRewrite(), httpRouteFieldPath.Child("HTTPRewrite"))
 			resHTTPRoutes = append(resHTTPRoutes, httpRoutesWithRewrites...)
 			for _, httpRoute := range httpRoutesWithRewrites {
-				notify(notifications.InfoNotification, fmt.Sprintf("successfully converted to HTTPRoute \"%v/%v\"", httpRoute.Namespace, httpRoute.Name), vs)
+				c.notify(notifications.InfoNotification, fmt.Sprintf("successfully converted to HTTPRoute \"%v/%v\"", httpRoute.Namespace, httpRoute.Name), vs)
 			}
 			continue
 		}
 
 		httpRoute := c.createHTTPRoute(createHTTPRouteParams)
 		resHTTPRoutes = append(resHTTPRoutes, httpRoute)
-		notify(notifications.InfoNotification, fmt.Sprintf("successfully converted to HTTPRoute \"%v/%v\"", httpRoute.Namespace, httpRoute.Name), vs)
+		c.notify(notifications.InfoNotification, fmt.Sprintf("successfully converted to HTTPRoute \"%v/%v\"", httpRoute.Namespace, httpRoute.Name), vs)
 	}
 
 	if len(errList) > 0 {
@@ -761,11 +763,11 @@ func (c *resourcesToIRConverter) createHTTPRoutesWithRewrite(params createHTTPRo
 	}
 
 	if rewrite.GetAuthority() != "" {
-		notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", fieldPath.Child("Authority")), vs)
+		c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", fieldPath.Child("Authority")), vs)
 		klog.Infof("ignoring field: %v", fieldPath.Child("Authority"))
 	}
 	if rewrite.GetUriRegexRewrite() != nil {
-		notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", fieldPath.Child("UriRegexRewrite")), vs)
+		c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", fieldPath.Child("UriRegexRewrite")), vs)
 		klog.Infof("ignoring field: %v", fieldPath.Child("UriRegexRewrite"))
 	}
 
@@ -834,7 +836,7 @@ func (c *resourcesToIRConverter) convertVsTLSRoutes(virtualService metav1.Object
 
 		var backendRefs []gatewayv1.BackendRef
 		for _, destination := range route.GetRoute() {
-			backendObjRef := destination2backendObjRef(c.ctx, destination.GetDestination(), virtualService.Namespace, tlsRouteFieldPath)
+			backendObjRef := destination2backendObjRef(c.ctx, c.notify, destination.GetDestination(), virtualService.Namespace, tlsRouteFieldPath)
 			if backendObjRef != nil {
 				backendRefs = append(backendRefs, gatewayv1.BackendRef{
 					BackendObjectReference: *backendObjRef,
@@ -853,23 +855,23 @@ func (c *resourcesToIRConverter) convertVsTLSRoutes(virtualService metav1.Object
 			tlsMatchFieldPath := tlsRouteFieldPath.Child("TLSMatchAttributes").Index(j)
 
 			if len(match.GetDestinationSubnets()) > 0 {
-				notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", tlsMatchFieldPath.Child("DestinationSubnets")), vs)
+				c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", tlsMatchFieldPath.Child("DestinationSubnets")), vs)
 				klog.Infof("ignoring field: %v", tlsMatchFieldPath.Child("DestinationSubnets"))
 			}
 			if match.GetPort() != 0 {
-				notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", tlsMatchFieldPath.Child("Port")), vs)
+				c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", tlsMatchFieldPath.Child("Port")), vs)
 				klog.Infof("ignoring field: %v", tlsMatchFieldPath.Child("Port"))
 			}
 			if len(match.GetSourceLabels()) > 0 {
-				notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", tlsMatchFieldPath.Child("SourceLabels")), vs)
+				c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", tlsMatchFieldPath.Child("SourceLabels")), vs)
 				klog.Infof("ignoring field: %v", tlsMatchFieldPath.Child("SourceLabels"))
 			}
 			if len(match.GetGateways()) > 0 {
-				notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", tlsMatchFieldPath.Child("Gateways")), vs)
+				c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", tlsMatchFieldPath.Child("Gateways")), vs)
 				klog.Infof("ignoring field: %v", tlsMatchFieldPath.Child("Gateways"))
 			}
 			if match.GetSourceNamespace() != "" {
-				notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", tlsMatchFieldPath.Child("SourceNamespace")), vs)
+				c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", tlsMatchFieldPath.Child("SourceNamespace")), vs)
 				klog.Infof("ignoring field: %v", tlsMatchFieldPath.Child("SourceNamespace"))
 			}
 		}
@@ -901,7 +903,7 @@ func (c *resourcesToIRConverter) convertVsTLSRoutes(virtualService metav1.Object
 			},
 		}
 		resTLSRoutes = append(resTLSRoutes, tlsRoute)
-		notify(notifications.InfoNotification, fmt.Sprintf("successfully converted to TLSRoute \"%v/%v\"", tlsRoute.Namespace, tlsRoute.Name), vs)
+		c.notify(notifications.InfoNotification, fmt.Sprintf("successfully converted to TLSRoute \"%v/%v\"", tlsRoute.Namespace, tlsRoute.Name), vs)
 	}
 
 	return resTLSRoutes
@@ -916,7 +918,7 @@ func (c *resourcesToIRConverter) convertVsTCPRoutes(virtualService metav1.Object
 
 		var backendRefs []gatewayv1.BackendRef
 		for _, destination := range route.GetRoute() {
-			backendObjRef := destination2backendObjRef(c.ctx, destination.GetDestination(), virtualService.Namespace, tcpRouteFieldPath)
+			backendObjRef := destination2backendObjRef(c.ctx, c.notify, destination.GetDestination(), virtualService.Namespace, tcpRouteFieldPath)
 			if backendObjRef != nil {
 				backendRefs = append(backendRefs, gatewayv1.BackendRef{
 					BackendObjectReference: *backendObjRef,
@@ -929,27 +931,27 @@ func (c *resourcesToIRConverter) convertVsTCPRoutes(virtualService metav1.Object
 			tcpMatchFieldPath := tcpRouteFieldPath.Child("L4MatchAttributes").Index(j)
 
 			if len(match.GetDestinationSubnets()) > 0 {
-				notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", tcpMatchFieldPath.Child("DestinationSubnets")), vs)
+				c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", tcpMatchFieldPath.Child("DestinationSubnets")), vs)
 				klog.Infof("ignoring field: %v", tcpMatchFieldPath.Child("DestinationSubnets"))
 			}
 			if match.GetPort() != 0 {
-				notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", tcpMatchFieldPath.Child("Port")), vs)
+				c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", tcpMatchFieldPath.Child("Port")), vs)
 				klog.Infof("ignoring field: %v", tcpMatchFieldPath.Child("Port"))
 			}
 			if match.GetSourceSubnet() != "" {
-				notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", tcpMatchFieldPath.Child("SourceSubnet")), vs)
+				c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", tcpMatchFieldPath.Child("SourceSubnet")), vs)
 				klog.Infof("ignoring field: %v", tcpMatchFieldPath.Child("SourceSubnet"))
 			}
 			if len(match.GetSourceLabels()) > 0 {
-				notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", tcpMatchFieldPath.Child("SourceLabels")), vs)
+				c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", tcpMatchFieldPath.Child("SourceLabels")), vs)
 				klog.Infof("ignoring field: %v", tcpMatchFieldPath.Child("SourceLabels"))
 			}
 			if match.GetSourceNamespace() != "" {
-				notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", tcpMatchFieldPath.Child("SourceNamespace")), vs)
+				c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", tcpMatchFieldPath.Child("SourceNamespace")), vs)
 				klog.Infof("ignoring field: %v", tcpMatchFieldPath.Child("SourceNamespace"))
 			}
 			if len(match.GetGateways()) > 0 {
-				notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", tcpMatchFieldPath.Child("Gateways")), vs)
+				c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", tcpMatchFieldPath.Child("Gateways")), vs)
 				klog.Infof("ignoring field: %v", tcpMatchFieldPath.Child("Gateways"))
 			}
 		}
@@ -980,7 +982,7 @@ func (c *resourcesToIRConverter) convertVsTCPRoutes(virtualService metav1.Object
 			},
 		}
 		resTCPRoutes = append(resTCPRoutes, tcpRoute)
-		notify(notifications.InfoNotification, fmt.Sprintf("successfully converted to TCPRoute \"%v/%v\"", tcpRoute.Namespace, tcpRoute.Name), vs)
+		c.notify(notifications.InfoNotification, fmt.Sprintf("successfully converted to TCPRoute \"%v/%v\"", tcpRoute.Namespace, tcpRoute.Name), vs)
 	}
 
 	return resTCPRoutes
@@ -995,14 +997,14 @@ func (c *resourcesToIRConverter) isVirtualServiceAllowedForGateway(gateway types
 
 	isAllowedNamespace := vsAllowedNamespaces.HasAny(gateway.Namespace, "*") || (vsAllowedNamespaces.Has(".") && vs.Namespace == gateway.Namespace)
 	if !isAllowedNamespace {
-		notify(notifications.WarningNotification, fmt.Sprintf("gateway from vs.Spec.Gateways %q is not visible in vs.ExportTo %v, parentRefs are not generated for this host, path: %v", gateway.String(), vs.Spec.GetExportTo(), fieldPath), vs)
+		c.notify(notifications.WarningNotification, fmt.Sprintf("gateway from vs.Spec.Gateways %q is not visible in vs.ExportTo %v, parentRefs are not generated for this host, path: %v", gateway.String(), vs.Spec.GetExportTo(), fieldPath), vs)
 		klog.Warningf("gateway from vs.Spec.Gateways %q is not visible in vs.ExportTo %v, parentRefs are not generated for this host, path: %v", gateway.String(), vs.Spec.GetExportTo(), fieldPath)
 		return false
 	}
 
 	allowedHosts, ok := c.gwAllowedHosts[gateway]
 	if !ok {
-		notify(notifications.WarningNotification, fmt.Sprintf("no info about gateway %v allowed hosts, parentRefs won't be generated to it, path: %v", gateway.String(), fieldPath), vs)
+		c.notify(notifications.WarningNotification, fmt.Sprintf("no info about gateway %v allowed hosts, parentRefs won't be generated to it, path: %v", gateway.String(), fieldPath), vs)
 		klog.Warningf("no info about gateway %v allowed hosts, parentRefs won't be generated to it, path: %v", gateway.String(), fieldPath)
 		return false
 	}
@@ -1010,24 +1012,24 @@ func (c *resourcesToIRConverter) isVirtualServiceAllowedForGateway(gateway types
 	for _, host := range vs.Spec.GetHosts() {
 		hosts, ok := allowedHosts[vs.Namespace]
 		if ok && matchAny(hosts.UnsortedList(), host) {
-			notify(notifications.InfoNotification, fmt.Sprintf("host for gateway \"%v\" matched from same namespace as VirtualService \"%v\", namespace: %v", gateway, vs.Name, vs.Namespace), vs)
+			c.notify(notifications.InfoNotification, fmt.Sprintf("host for gateway \"%v\" matched from same namespace as VirtualService \"%v\", namespace: %v", gateway, vs.Name, vs.Namespace), vs)
 			return true
 		}
 
 		hosts, ok = allowedHosts["."]
 		if ok && vs.Namespace == gateway.Namespace && matchAny(hosts.UnsortedList(), host) {
-			notify(notifications.InfoNotification, fmt.Sprintf("host for gateway \"%v\" matched from the current namespace", gateway), vs)
+			c.notify(notifications.InfoNotification, fmt.Sprintf("host for gateway \"%v\" matched from the current namespace", gateway), vs)
 			return true
 		}
 
 		hosts, ok = allowedHosts["*"]
 		if ok && matchAny(hosts.UnsortedList(), host) {
-			notify(notifications.InfoNotification, fmt.Sprintf("host for gateway \"%v\" matched from all namespaces", gateway), vs)
+			c.notify(notifications.InfoNotification, fmt.Sprintf("host for gateway \"%v\" matched from all namespaces", gateway), vs)
 			return true
 		}
 	}
 
-	notify(notifications.WarningNotification, fmt.Sprintf("no host in vs.Spec.Hosts matched any gateway.allowedHosts, parentRefs are not generated for this VirtualService, path: %v", fieldPath), vs)
+	c.notify(notifications.WarningNotification, fmt.Sprintf("no host in vs.Spec.Hosts matched any gateway.allowedHosts, parentRefs are not generated for this VirtualService, path: %v", fieldPath), vs)
 	klog.Warningf("no host in vs.Spec.Hosts matched any gateway.allowedHosts, parentRefs are not generated for this VirtualService, path: %v", fieldPath)
 	return false
 }
@@ -1056,7 +1058,7 @@ func (c *resourcesToIRConverter) generateReferences(vs *istioclientv1beta1.Virtu
 		}
 
 		if !ok {
-			notify(notifications.InfoNotification, fmt.Sprintf("namespace of \"%v\" gateway taken from namespace of VirtualService", gwName), vs)
+			c.notify(notifications.InfoNotification, fmt.Sprintf("namespace of \"%v\" gateway taken from namespace of VirtualService", gwName), vs)
 		}
 
 		g := gatewayv1.Group(common.GatewayGVK.Group)
@@ -1081,11 +1083,11 @@ func (c *resourcesToIRConverter) generateReferences(vs *istioclientv1beta1.Virtu
 			})
 
 			referenceGrants = append(referenceGrants, referenceGrant)
-			notify(notifications.InfoNotification, fmt.Sprintf("successfully created reference grant from %v to %v namespace", vs.Namespace, gateway.Namespace), vs, referenceGrant)
+			c.notify(notifications.InfoNotification, fmt.Sprintf("successfully created reference grant from %v to %v namespace", vs.Namespace, gateway.Namespace), vs, referenceGrant)
 		}
 
 		parentRefs = append(parentRefs, parentRef)
-		notify(notifications.InfoNotification, fmt.Sprintf("generated new Parent Reference %v", parentRef.Name), vs)
+		c.notify(notifications.InfoNotification, fmt.Sprintf("generated new Parent Reference %v", parentRef.Name), vs)
 	}
 
 	return parentRefs, referenceGrants
@@ -1166,7 +1168,7 @@ func parseK8SServiceFromDomain(domain string, fallbackNamespace string) (string,
 	return name, namespace
 }
 
-func destination2backendObjRef(ctx context.Context, destination *istiov1beta1.Destination, vsNamespace string, fieldPath *field.Path) *gatewayv1.BackendObjectReference {
+func destination2backendObjRef(ctx context.Context, notify notifications.NotifyFunc, destination *istiov1beta1.Destination, vsNamespace string, fieldPath *field.Path) *gatewayv1.BackendObjectReference {
 	vs := ctx.Value(virtualServiceKey).(*istioclientv1beta1.VirtualService)
 	if destination == nil {
 		notify(notifications.InfoNotification, fmt.Sprintf("destination is nil: %v", fieldPath), vs)

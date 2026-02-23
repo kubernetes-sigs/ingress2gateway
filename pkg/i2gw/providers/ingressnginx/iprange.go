@@ -37,7 +37,7 @@ func parseIPSourceRangeAnnotation(annotations map[string]string, key string) []s
 	return items
 }
 
-func applyIPRangeControlToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) {
+func applyIPRangeControlToEmitterIR(notify notifications.NotifyFunc, pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) {
 	for key, pRouteCtx := range pIR.HTTPRoutes {
 		eRouteCtx, ok := eIR.HTTPRoutes[key]
 		if !ok {

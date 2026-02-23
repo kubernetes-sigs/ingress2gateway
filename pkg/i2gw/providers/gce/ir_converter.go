@@ -18,7 +18,6 @@ package gce
 
 import (
 	"context"
-
 	"encoding/json"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
@@ -48,16 +47,18 @@ type resourcesToIRConverter struct {
 
 	implementationSpecificOptions i2gw.ProviderImplementationSpecificOptions
 	ctx                           context.Context
+	notify                        notifications.NotifyFunc
 }
 
 // newResourcesToIRConverter returns an ingress-gce resourcesToIRConverter instance.
-func newResourcesToIRConverter(conf *i2gw.ProviderConf) resourcesToIRConverter {
+func newResourcesToIRConverter(conf *i2gw.ProviderConf, notify notifications.NotifyFunc) resourcesToIRConverter {
 	return resourcesToIRConverter{
 		conf: conf,
 		implementationSpecificOptions: i2gw.ProviderImplementationSpecificOptions{
-			ToImplementationSpecificHTTPPathTypeMatch: implementationSpecificHTTPPathTypeMatch,
+			ToImplementationSpecificHTTPPathTypeMatch: implementationSpecificHTTPPathTypeMatch(notify),
 		},
-		ctx: context.Background(),
+		ctx:    context.Background(),
+		notify: notify,
 	}
 }
 
@@ -96,7 +97,7 @@ func (c *resourcesToIRConverter) convertToIR(storage *storage) (providerir.Provi
 		return providerir.ProviderIR{}, errs
 	}
 	buildGceGatewayIR(c.ctx, storage, &ir)
-	buildGceServiceIR(c.ctx, storage, &ir)
+	buildGceServiceIR(c.ctx, c.notify, storage, &ir)
 	return ir, errs
 }
 
@@ -162,12 +163,12 @@ func feConfigToGceGatewayIR(feConfig *frontendconfigv1beta1.FrontendConfig) gce.
 
 type serviceNames []types.NamespacedName
 
-func buildGceServiceIR(ctx context.Context, storage *storage, ir *providerir.ProviderIR) {
+func buildGceServiceIR(ctx context.Context, notify notifications.NotifyFunc, storage *storage, ir *providerir.ProviderIR) {
 	if ir.Services == nil {
 		ir.Services = make(map[types.NamespacedName]providerir.ProviderSpecificServiceIR)
 	}
 
-	beConfigToSvcs := getBackendConfigMapping(ctx, storage)
+	beConfigToSvcs := getBackendConfigMapping(ctx, notify, storage)
 	for beConfigKey, beConfig := range storage.BackendConfigs {
 		if beConfig == nil {
 			continue
@@ -186,7 +187,7 @@ func buildGceServiceIR(ctx context.Context, storage *storage, ir *providerir.Pro
 	}
 }
 
-func getBackendConfigMapping(ctx context.Context, storage *storage) map[types.NamespacedName]serviceNames {
+func getBackendConfigMapping(ctx context.Context, notify notifications.NotifyFunc, storage *storage) map[types.NamespacedName]serviceNames {
 	beConfigToSvcs := make(map[types.NamespacedName]serviceNames)
 
 	for _, service := range storage.Services {
@@ -194,7 +195,7 @@ func getBackendConfigMapping(ctx context.Context, storage *storage) map[types.Na
 		ctx = context.WithValue(ctx, serviceKey, service)
 
 		// Read BackendConfig based on v1 BackendConfigKey.
-		beConfigName, exists := getBackendConfigName(ctx, service, backendConfigKey)
+		beConfigName, exists := getBackendConfigName(ctx, notify, service, backendConfigKey)
 		if exists {
 			beConfigKey := types.NamespacedName{Namespace: service.Namespace, Name: beConfigName}
 			beConfigToSvcs[beConfigKey] = append(beConfigToSvcs[beConfigKey], svc)
@@ -202,7 +203,7 @@ func getBackendConfigMapping(ctx context.Context, storage *storage) map[types.Na
 		}
 
 		// Read BackendConfig based on v1beta1 BackendConfigKey.
-		beConfigName, exists = getBackendConfigName(ctx, service, betaBackendConfigKey)
+		beConfigName, exists = getBackendConfigName(ctx, notify, service, betaBackendConfigKey)
 		if exists {
 			beConfigKey := types.NamespacedName{Namespace: service.Namespace, Name: beConfigName}
 			beConfigToSvcs[beConfigKey] = append(beConfigToSvcs[beConfigKey], svc)
@@ -214,13 +215,13 @@ func getBackendConfigMapping(ctx context.Context, storage *storage) map[types.Na
 
 // Get names of the BackendConfig in the cluster based on the BackendConfig
 // annotation on k8s Services.
-func getBackendConfigName(ctx context.Context, service *apiv1.Service, backendConfigKey string) (string, bool) {
+func getBackendConfigName(ctx context.Context, notify notifications.NotifyFunc, service *apiv1.Service, backendConfigKey string) (string, bool) {
 	val, exists := getBackendConfigAnnotation(service, backendConfigKey)
 	if !exists {
 		return "", false
 	}
 
-	return parseBackendConfigName(ctx, val)
+	return parseBackendConfigName(ctx, notify, val)
 }
 
 // Get the backend config annotation from the K8s service if it exists.
@@ -240,7 +241,7 @@ type backendConfigs struct {
 // Parse the name of the BackendConfig based on the annotation.
 // If different BackendConfigs are used on the same service, pick the one with
 // the alphabetically smallest name.
-func parseBackendConfigName(ctx context.Context, val string) (string, bool) {
+func parseBackendConfigName(ctx context.Context, notify notifications.NotifyFunc, val string) (string, bool) {
 	service := ctx.Value(serviceKey).(*apiv1.Service)
 
 	var configs backendConfigs

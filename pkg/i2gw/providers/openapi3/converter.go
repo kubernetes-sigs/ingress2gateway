@@ -65,11 +65,12 @@ type ResourcesToIRConverter interface {
 }
 
 // NewResourcesToIRConverter returns a resourcesToIRConverter of OpenAPI Specifications 3.x from a storage into Gateway API resources.
-func NewResourcesToIRConverter(conf *i2gw.ProviderConf) ResourcesToIRConverter {
+func NewResourcesToIRConverter(conf *i2gw.ProviderConf, notify notifications.NotifyFunc) ResourcesToIRConverter {
 	converter := &resourcesToIRConverter{
 		namespace:    conf.Namespace,
 		tlsSecretRef: types.NamespacedName{},
 		backendRef:   toBackendRef(""),
+		notify:       notify,
 	}
 
 	if ps := conf.ProviderSpecificFlags[ProviderName]; ps != nil {
@@ -91,6 +92,7 @@ type resourcesToIRConverter struct {
 	gatewayClassName string
 	tlsSecretRef     types.NamespacedName
 	backendRef       backendRef
+	notify           notifications.NotifyFunc
 }
 
 var _ ResourcesToIRConverter = &resourcesToIRConverter{}
@@ -122,21 +124,21 @@ func (c *resourcesToIRConverter) Convert(storage Storage) (emitterir.EmitterIR, 
 		httpRoutes, gateways := c.toHTTPRoutesAndGateways(spec, resourcesNamePrefix, errors)
 		for _, httpRoute := range httpRoutes {
 			ir.HTTPRoutes[types.NamespacedName{Name: httpRoute.GetName(), Namespace: httpRoute.GetNamespace()}] = emitterir.HTTPRouteContext{HTTPRoute: httpRoute}
-			notify(notifications.InfoNotification, fmt.Sprintf("successfully created HTTPRoute \"%v/%v\" from OpenAPI spec \"%v\"", httpRoute.Namespace, httpRoute.Name, spec.Info.Title))
+			c.notify(notifications.InfoNotification, fmt.Sprintf("successfully created HTTPRoute \"%v/%v\" from OpenAPI spec \"%v\"", httpRoute.Namespace, httpRoute.Name, spec.Info.Title))
 		}
 
 		// build reference grants for the resources
 		if referenceGrant := c.buildHTTPRouteBackendReferenceGrant(); referenceGrant != nil {
 			ir.ReferenceGrants[types.NamespacedName{Name: referenceGrant.GetName(), Namespace: referenceGrant.GetNamespace()}] = emitterir.ReferenceGrantContext{ReferenceGrant: *referenceGrant}
-			notify(notifications.InfoNotification, fmt.Sprintf("successfully created ReferenceGrant \"%v/%v\" from OpenAPI spec \"%v\"", referenceGrant.Namespace, referenceGrant.Name, spec.Info.Title))
+			c.notify(notifications.InfoNotification, fmt.Sprintf("successfully created ReferenceGrant \"%v/%v\" from OpenAPI spec \"%v\"", referenceGrant.Namespace, referenceGrant.Name, spec.Info.Title))
 		}
 		for _, gateway := range gateways {
 			ir.Gateways[types.NamespacedName{Name: gateway.GetName(), Namespace: gateway.GetNamespace()}] = emitterir.GatewayContext{Gateway: gateway}
 			if referenceGrant := c.buildGatewayTLSSecretReferenceGrant(gateway); referenceGrant != nil {
 				ir.ReferenceGrants[types.NamespacedName{Name: referenceGrant.GetName(), Namespace: referenceGrant.GetNamespace()}] = emitterir.ReferenceGrantContext{ReferenceGrant: *referenceGrant}
-				notify(notifications.InfoNotification, fmt.Sprintf("successfully created ReferenceGrant \"%v/%v\" from OpenAPI spec \"%v\"", referenceGrant.Namespace, referenceGrant.Name, spec.Info.Title))
+				c.notify(notifications.InfoNotification, fmt.Sprintf("successfully created ReferenceGrant \"%v/%v\" from OpenAPI spec \"%v\"", referenceGrant.Namespace, referenceGrant.Name, spec.Info.Title))
 			}
-			notify(notifications.InfoNotification, fmt.Sprintf("successfully created Gateway \"%v/%v\" from OpenAPI spec \"%v\"", gateway.Namespace, gateway.Name, spec.Info.Title))
+			c.notify(notifications.InfoNotification, fmt.Sprintf("successfully created Gateway \"%v/%v\" from OpenAPI spec \"%v\"", gateway.Namespace, gateway.Name, spec.Info.Title))
 		}
 	}
 
