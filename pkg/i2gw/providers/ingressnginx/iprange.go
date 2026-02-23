@@ -76,7 +76,7 @@ func applyIPRangeControlToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.Em
 			{
 				source := fmt.Sprintf("%s/%s", ing.Name, ing.Namespace)
 				message := "IP-based authorization is not supported"
-				paths := make([]*field.Path, 2)
+				paths := make([]*field.Path, 0, 2)
 				if len(allowList) > 0 {
 					paths = append(paths, field.NewPath("ingress", ing.Namespace, ing.Name, "metadata", "annotations", WhiteListSourceRangeAnnotation))
 				}
@@ -89,6 +89,7 @@ func applyIPRangeControlToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.Em
 					message,
 				)
 			}
+			eRouteCtx.IPRangeControlByRuleIdx[ruleIdx] = ipRangeControl
 
 			if len(allowList) > 0 {
 				notify(notifications.InfoNotification, fmt.Sprintf("parsed whitelist-source-range annotation of ingress %s/%s: allowing CIDRs %s for HTTPRoute rule index %d",

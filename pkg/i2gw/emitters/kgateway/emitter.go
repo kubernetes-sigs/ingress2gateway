@@ -58,6 +58,7 @@ func (e *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.Err
 
 	e.ToKgatewayResources(ir, &gatewayResources)
 
+	utils.LogUnparsedErrors(ir, notify)
 	return gatewayResources, nil
 }
 

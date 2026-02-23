@@ -166,7 +166,9 @@ func TestApplyCorsToEmitterIR(t *testing.T) {
 			result := eIR.HTTPRoutes[key]
 			var cors *gatewayv1.HTTPCORSFilter
 			if result.CorsPolicyByRuleIdx != nil {
-				cors = result.CorsPolicyByRuleIdx[0]
+				if cfg := result.CorsPolicyByRuleIdx[0]; cfg != nil {
+					cors = &cfg.HTTPCORSFilter
+				}
 			}
 
 			if tc.expectedCors == nil {
