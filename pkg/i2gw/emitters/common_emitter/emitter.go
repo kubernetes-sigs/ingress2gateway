@@ -79,7 +79,7 @@ func (e *Emitter) applyCorsPolicies(ir *emitterir.EmitterIR) {
 			}
 			routeCtx.Spec.Rules[ruleIdx].Filters = append(routeCtx.Spec.Rules[ruleIdx].Filters, gatewayv1.HTTPRouteFilter{
 				Type: gatewayv1.HTTPRouteFilterCORS,
-				CORS: policy,
+				CORS: &policy.HTTPCORSFilter,
 			})
 			routeCtx.CorsPolicyByRuleIdx[ruleIdx] = nil
 		}
