@@ -20,7 +20,8 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
+
+	"k8s.io/klog/v2"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
@@ -80,7 +81,7 @@ func (r *reader) readUnstructuredObjects(objects []*unstructured.Unstructured) (
 
 	for _, obj := range objects {
 		if obj.GetAPIVersion() != APIVersion {
-			log.Printf("%v provider: skipped resource with unsupported APIVersion: %v", ProviderName, obj.GetAPIVersion())
+			klog.Infof("%v provider: skipped resource with unsupported APIVersion: %v", ProviderName, obj.GetAPIVersion())
 			continue
 		}
 
@@ -106,7 +107,7 @@ func (r *reader) readUnstructuredObjects(objects []*unstructured.Unstructured) (
 				Name:      vs.Name,
 			}] = &vs
 		default:
-			log.Printf("%v provider: skipped resource with unsupported Kind: %v", ProviderName, objKind)
+			klog.Infof("%v provider: skipped resource with unsupported Kind: %v", ProviderName, objKind)
 			continue
 		}
 	}

@@ -18,7 +18,6 @@ package openapi3
 
 import (
 	"fmt"
-	"log"
 	"regexp"
 	"slices"
 	"sort"
@@ -31,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/klog/v2"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
@@ -684,7 +684,7 @@ func toBackendRef(s string) backendRef {
 	if len(parts) > 1 {
 		port, err := strconv.ParseUint(parts[1], 10, 32)
 		if err != nil {
-			log.Printf("%s provider: invalid backend: %v", ProviderName, err)
+			klog.Warningf("%s provider: invalid backend: %v", ProviderName, err)
 			return ref
 		}
 		ref.port = common.PtrTo(gatewayv1.PortNumber(port))
