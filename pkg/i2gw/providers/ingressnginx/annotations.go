@@ -61,7 +61,6 @@ const (
 
 	// SSL Redirect annotation
 	SSLRedirectAnnotation = "nginx.ingress.kubernetes.io/ssl-redirect"
-
 	// CORS annotations
 	EnableCorsAnnotation       = "nginx.ingress.kubernetes.io/enable-cors"
 	CorsAllowOriginAnnotation  = "nginx.ingress.kubernetes.io/cors-allow-origin"
