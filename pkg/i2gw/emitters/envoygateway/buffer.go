@@ -50,7 +50,7 @@ func (e *Emitter) EmitBuffer(ir emitterir.EmitterIR, gwResources *i2gw.GatewayRe
 			if bs.MaxSize != nil {
 				bufferVal = bs.MaxSize
 				if bs.BufferSize != nil {
-					notify(
+					e.notify(
 						notifications.WarningNotification,
 						fmt.Sprintf("Body max size (%s) takes precedence; buffer size (%s) will be ignored", bs.MaxSize.String(), bs.BufferSize.String()),
 						&ctx.HTTPRoute,
@@ -67,7 +67,7 @@ func (e *Emitter) EmitBuffer(ir emitterir.EmitterIR, gwResources *i2gw.GatewayRe
 			if sectionName != nil {
 				ruleInfo = fmt.Sprintf(" rule %s", *sectionName)
 			}
-			notify(notifications.InfoNotification, fmt.Sprintf("applied Buffer feature for HTTPRoute%s", ruleInfo), &ctx.HTTPRoute)
+			e.notify(notifications.InfoNotification, fmt.Sprintf("applied Buffer feature for HTTPRoute%s", ruleInfo), &ctx.HTTPRoute)
 		}
 
 		// mark Buffer IR as processed
