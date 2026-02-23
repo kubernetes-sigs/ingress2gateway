@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -513,7 +514,7 @@ func TestBackendProtocolFeature(t *testing.T) {
 			}
 
 			// createBackendTLSPolicies for ALL
-			tlsErrs := createBackendTLSPolicies(tc.ingresses, servicePorts, &ir)
+			tlsErrs := createBackendTLSPolicies(notifications.NoopNotify, tc.ingresses, servicePorts, &ir)
 			if len(tlsErrs) > 0 {
 				t.Fatalf("createBackendTLSPolicies returned errors: %v", tlsErrs)
 			}

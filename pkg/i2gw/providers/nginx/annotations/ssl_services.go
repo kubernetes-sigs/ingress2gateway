@@ -30,12 +30,12 @@ import (
 )
 
 // SSLServicesFeature processes nginx.org/ssl-services annotation
-func SSLServicesFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func SSLServicesFeature(notify notifications.NotifyFunc, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 
 	for _, ingress := range ingresses {
 		if sslServices, exists := ingress.Annotations[nginxSSLServicesAnnotation]; exists && sslServices != "" {
-			errs = append(errs, processSSLServicesAnnotation(ingress, sslServices, ir)...)
+			errs = append(errs, processSSLServicesAnnotation(notify, ingress, sslServices, ir)...)
 		}
 	}
 
@@ -45,7 +45,7 @@ func SSLServicesFeature(ingresses []networkingv1.Ingress, _ map[types.Namespaced
 // processSSLServicesAnnotation configures HTTPS backend protocol using BackendTLSPolicy
 //
 //nolint:unparam // ErrorList return type maintained for consistency
-func processSSLServicesAnnotation(ingress networkingv1.Ingress, sslServices string, ir *providerir.ProviderIR) field.ErrorList {
+func processSSLServicesAnnotation(notify notifications.NotifyFunc, ingress networkingv1.Ingress, sslServices string, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList //nolint:unparam // ErrorList return type maintained for consistency
 
 	services := splitAndTrimCommaList(sslServices)

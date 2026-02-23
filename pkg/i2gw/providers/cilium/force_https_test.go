@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"k8s.io/apimachinery/pkg/types"
@@ -320,7 +321,7 @@ func Test_forceHTTPSFeature(t *testing.T) {
 				},
 			}
 
-			errs := forceHTTPSFeature(ingresses, map[types.NamespacedName]map[string]int32{}, ir)
+			errs := forceHTTPSFeature(notifications.NoopNotify, ingresses, map[types.NamespacedName]map[string]int32{}, ir)
 
 			if len(errs) != len(tc.expectedError) {
 				t.Errorf("expected %d errors, got %d", len(tc.expectedError), len(errs))

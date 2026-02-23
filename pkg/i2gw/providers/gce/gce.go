@@ -50,9 +50,12 @@ type Provider struct {
 	storage     *storage
 	reader      reader
 	irConverter resourcesToIRConverter
+	notify      notifications.NotifyFunc
 }
 
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
+	notify := conf.Report.Notifier(ProviderName)
+
 	// Add BackendConfig and FrontendConfig to Schema when reading in-cluster
 	// so these resources can be recognized.
 	if conf.Client != nil {
@@ -66,7 +69,8 @@ func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 	return &Provider{
 		storage:     newResourcesStorage(),
 		reader:      newResourceReader(conf),
-		irConverter: newResourcesToIRConverter(conf),
+		irConverter: newResourcesToIRConverter(conf, notify),
+		notify:      notify,
 	}
 }
 
