@@ -193,7 +193,7 @@ func TestEmitCORSFiltering(t *testing.T) {
 								},
 							},
 						},
-						CorsPolicyByRuleIdx: map[int]*gatewayv1.HTTPCORSFilter{
+						CorsPolicyByRuleIdx: map[int]*emitterir.CORSConfig{
 							0: tc.corsInSidecar,
 						},
 					},
