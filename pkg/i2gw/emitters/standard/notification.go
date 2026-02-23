@@ -17,8 +17,8 @@ limitations under the License.
 package standard_emitter
 
 import (
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const emitterName = "standard_emitter"
