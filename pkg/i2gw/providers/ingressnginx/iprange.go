@@ -74,7 +74,7 @@ func applyIPRangeControlToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.Em
 				DenyList:  denyList,
 			}
 			{
-				source := fmt.Sprintf("%s/%s", ing.Name, ing.Namespace)
+				source := fmt.Sprintf("%s/%s", ing.Namespace, ing.Name)
 				message := "IP-based authorization is not supported"
 				paths := make([]*field.Path, 0, 2)
 				if len(allowList) > 0 {
