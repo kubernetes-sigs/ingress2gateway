@@ -18,7 +18,6 @@ package utils
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
@@ -138,7 +137,7 @@ func LogUnparsedErrors(ir emitterir.EmitterIR, notify func(mType notifications.M
 				continue
 			}
 			source := unparsedExtension.Source()
-			paths := strings.Builder{};
+			paths := strings.Builder{}
 			for _, p := range unparsedExtension.Paths() {
 				paths.WriteString(p.String())
 				paths.WriteString(", ")
@@ -147,7 +146,7 @@ func LogUnparsedErrors(ir emitterir.EmitterIR, notify func(mType notifications.M
 			message := unparsedExtension.FailureMessage()
 
 			notify(notifications.ErrorNotification,
-				fmt.Sprintf("failed to parse %s from Ingress %s: %s", source, paths, message),
+				fmt.Sprintf("failed to parse %s from Ingress %s: %s", source, strings.TrimSuffix(paths.String(), ", "), message),
 				&httpRouteContext.HTTPRoute,
 			)
 		}

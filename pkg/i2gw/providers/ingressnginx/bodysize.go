@@ -88,7 +88,7 @@ func applyBodySizeToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterI
 
 	for key, pRouteCtx := range pIR.HTTPRoutes {
 		eRouteCtx, ok := eIR.HTTPRoutes[key]
-		parsedAnnotations := make([]string, 2)
+		parsedAnnotations := make([]string, 0, 2)
 		if !ok {
 			continue
 		}
