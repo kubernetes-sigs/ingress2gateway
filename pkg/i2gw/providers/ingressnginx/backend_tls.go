@@ -38,7 +38,22 @@ func backendTLSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedN
 		ir.BackendTLSPolicies = make(map[types.NamespacedName]gatewayv1.BackendTLSPolicy)
 	}
 
-	for _, httpRouteContext := range ir.HTTPRoutes {
+	// Sort route keys for deterministic output during conflict resolution
+	var routeKeys []types.NamespacedName
+	for k := range ir.HTTPRoutes {
+		routeKeys = append(routeKeys, k)
+	}
+	// Sort by Namespace, then Name
+	for i := 0; i < len(routeKeys)-1; i++ {
+		for j := i + 1; j < len(routeKeys); j++ {
+			if routeKeys[i].Namespace > routeKeys[j].Namespace || (routeKeys[i].Namespace == routeKeys[j].Namespace && routeKeys[i].Name > routeKeys[j].Name) {
+				routeKeys[i], routeKeys[j] = routeKeys[j], routeKeys[i]
+			}
+		}
+	}
+
+	for _, key := range routeKeys {
+		httpRouteContext := ir.HTTPRoutes[key]
 		for ruleIdx, backendSources := range httpRouteContext.RuleBackendSources {
 			if ruleIdx >= len(httpRouteContext.HTTPRoute.Spec.Rules) {
 				continue
