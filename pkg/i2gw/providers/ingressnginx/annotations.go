@@ -137,4 +137,8 @@ var parsedAnnotations = map[string]struct{}{
 	ProxySSLServerNameAnnotation:    {},
 	ProxySSLVerifyDepthAnnotation:   {},
 	ProxySSLProtocolsAnnotation:     {},
+	AffinityAnnotation:              {},
+	AffinityModeAnnotation:          {},
+	SessionCookieExpiresAnnotation:  {},
+	SessionCookieNameAnnotation:     {},
 }
