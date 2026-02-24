@@ -111,4 +111,8 @@ var parsedAnnotations = map[string]struct{}{
 	CorsAllowCredentialsAnnotation:  {},
 	CorsExposeHeadersAnnotation:     {},
 	CorsMaxAgeAnnotation:            {},
+	AffinityAnnotation:              {},
+	AffinityModeAnnotation:          {},
+	SessionCookieExpiresAnnotation:  {},
+	SessionCookieNameAnnotation:     {},
 }
