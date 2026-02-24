@@ -28,6 +28,9 @@ func BuildGCPBackendPolicySessionAffinityConfig(genericServiceIR *emitterir.Serv
 
 	if genericServiceIR != nil && genericServiceIR.SessionAffinity != nil {
 		affinityType = genericServiceIR.SessionAffinity.Type
+		if affinityType == "Cookie" {
+			affinityType = "GENERATED_COOKIE"
+		}
 		cookieTTL = genericServiceIR.SessionAffinity.CookieTTLSec
 	} else if gceServiceIR != nil && gceServiceIR.SessionAffinity != nil {
 		affinityType = gceServiceIR.SessionAffinity.AffinityType
