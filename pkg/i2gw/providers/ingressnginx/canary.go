@@ -200,17 +200,33 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 				canaryBackendCopy := *canaryBackend
 				// Remove weight from the header-matched backend
 				canaryBackendCopy.Weight = nil
-				newRule := gatewayv1.HTTPRouteRule{
-					Matches: []gatewayv1.HTTPRouteMatch{
+
+				// Build header matches by combining the path from each existing match
+				// with the canary header, so the new rules are scoped to the same path.
+				existingMatches := httpRouteContext.HTTPRoute.Spec.Rules[ruleIdx].Matches
+				var headerMatches []gatewayv1.HTTPRouteMatch
+				if len(existingMatches) == 0 {
+					headerMatches = []gatewayv1.HTTPRouteMatch{
 						{
 							Headers: []gatewayv1.HTTPHeaderMatch{
-								{
-									Name:  gatewayv1.HTTPHeaderName(canaryConf.header),
-									Value: header,
-								},
+								{Name: gatewayv1.HTTPHeaderName(canaryConf.header), Value: header},
 							},
 						},
-					},
+					}
+				} else {
+					for _, m := range existingMatches {
+						newMatch := gatewayv1.HTTPRouteMatch{
+							Path: m.Path,
+							Headers: []gatewayv1.HTTPHeaderMatch{
+								{Name: gatewayv1.HTTPHeaderName(canaryConf.header), Value: header},
+							},
+						}
+						headerMatches = append(headerMatches, newMatch)
+					}
+				}
+
+				newRule := gatewayv1.HTTPRouteRule{
+					Matches:     headerMatches,
 					BackendRefs: []gatewayv1.HTTPBackendRef{canaryBackendCopy},
 				}
 
@@ -226,17 +242,31 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 				if canaryConf.headerValue == "" {
 					nonCanaryBackendCopy := *nonCanaryBackend
 					nonCanaryBackendCopy.Weight = nil
-					neverRule := gatewayv1.HTTPRouteRule{
-						Matches: []gatewayv1.HTTPRouteMatch{
+
+					// Build "never" matches the same way — path + header per existing match.
+					var neverMatches []gatewayv1.HTTPRouteMatch
+					if len(existingMatches) == 0 {
+						neverMatches = []gatewayv1.HTTPRouteMatch{
 							{
 								Headers: []gatewayv1.HTTPHeaderMatch{
-									{
-										Name:  gatewayv1.HTTPHeaderName(canaryConf.header),
-										Value: "never",
-									},
+									{Name: gatewayv1.HTTPHeaderName(canaryConf.header), Value: "never"},
 								},
 							},
-						},
+						}
+					} else {
+						for _, m := range existingMatches {
+							neverMatch := gatewayv1.HTTPRouteMatch{
+								Path: m.Path,
+								Headers: []gatewayv1.HTTPHeaderMatch{
+									{Name: gatewayv1.HTTPHeaderName(canaryConf.header), Value: "never"},
+								},
+							}
+							neverMatches = append(neverMatches, neverMatch)
+						}
+					}
+
+					neverRule := gatewayv1.HTTPRouteRule{
+						Matches:     neverMatches,
 						BackendRefs: []gatewayv1.HTTPBackendRef{nonCanaryBackendCopy},
 					}
 
