@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
+	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,9 +31,9 @@ import (
 
 func TestGCEFeature(t *testing.T) {
 	testCases := []struct {
-		name        string
-		ingress     networkingv1.Ingress
-		expectedGCE *gce.ServiceIR
+		name                   string
+		ingress                networkingv1.Ingress
+		expectedSessionAffinity *emitterir.SessionAffinity
 	}{
 		{
 			name: "No Affinity",
@@ -42,7 +42,7 @@ func TestGCEFeature(t *testing.T) {
 					Name: "no-affinity",
 				},
 			},
-			expectedGCE: nil, // Should not modify service
+			expectedSessionAffinity: nil, // Should not modify service
 		},
 		{
 			name: "Cookie Affinity",
@@ -54,10 +54,8 @@ func TestGCEFeature(t *testing.T) {
 					},
 				},
 			},
-			expectedGCE: &gce.ServiceIR{
-				SessionAffinity: &gce.SessionAffinityConfig{
-					AffinityType: "GENERATED_COOKIE",
-				},
+			expectedSessionAffinity: &emitterir.SessionAffinity{
+				Type: "GENERATED_COOKIE",
 			},
 		},
 		{
@@ -71,11 +69,9 @@ func TestGCEFeature(t *testing.T) {
 					},
 				},
 			},
-			expectedGCE: &gce.ServiceIR{
-				SessionAffinity: &gce.SessionAffinityConfig{
-					AffinityType: "GENERATED_COOKIE",
-					CookieTTLSec: ptr.To(int64(3600)),
-				},
+			expectedSessionAffinity: &emitterir.SessionAffinity{
+				Type:         "GENERATED_COOKIE",
+				CookieTTLSec: ptr.To(int64(3600)),
 			},
 		},
 		{
@@ -89,11 +85,9 @@ func TestGCEFeature(t *testing.T) {
 					},
 				},
 			},
-			expectedGCE: &gce.ServiceIR{
-				SessionAffinity: &gce.SessionAffinityConfig{
-					AffinityType: "GENERATED_COOKIE",
-					CookieName:   "MY_COOKIE",
-				},
+			expectedSessionAffinity: &emitterir.SessionAffinity{
+				Type:       "GENERATED_COOKIE",
+				CookieName: "MY_COOKIE",
 			},
 		},
 	}
@@ -109,7 +103,7 @@ func TestGCEFeature(t *testing.T) {
 			svcKey := types.NamespacedName{Namespace: "default", Name: "my-service"}
 			ir.Services[svcKey] = providerir.ProviderSpecificServiceIR{}
 
-			// Mock Route Logic (Simplified to match gceFeature expectations)
+			// Mock Route Logic (Simplified to match sessionAffinityFeature expectations)
 			key := types.NamespacedName{Namespace: "default", Name: "test"}
 			route := gatewayv1.HTTPRoute{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "test"},
@@ -138,20 +132,20 @@ func TestGCEFeature(t *testing.T) {
 				},
 			}
 
-			gceFeature([]networkingv1.Ingress{tc.ingress}, nil, &ir)
+			sessionAffinityFeature([]networkingv1.Ingress{tc.ingress}, nil, &ir)
 
-			actual := ir.Services[svcKey].Gce
+			actual := ir.Services[svcKey].SessionAffinity
 
-			// If expected is nil, we expect nil OR empty Gce struct (depends on implementation)
-			// Our implementation initializes Gce if it finds affinity.
+			// If expected is nil, we expect nil OR empty SessionAffinity struct (depends on implementation)
+			// Our implementation initializes SessionAffinity if it finds affinity.
 
-			if tc.expectedGCE == nil {
-				if actual != nil && actual.SessionAffinity != nil {
-					t.Errorf("Expected nil SessionAffinity, got %v", actual.SessionAffinity)
+			if tc.expectedSessionAffinity == nil {
+				if actual != nil {
+					t.Errorf("Expected nil SessionAffinity, got %v", actual)
 				}
 			} else {
-				if diff := cmp.Diff(tc.expectedGCE, actual); diff != "" {
-					t.Errorf("GCE Service IR mismatch (-want +got):\n%s", diff)
+				if diff := cmp.Diff(tc.expectedSessionAffinity, actual); diff != "" {
+					t.Errorf("SessionAffinity IR mismatch (-want +got):\n%s", diff)
 				}
 			}
 		})

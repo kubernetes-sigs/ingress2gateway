@@ -19,15 +19,15 @@ package ingressnginx
 import (
 	"strconv"
 
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
+	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-func gceFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
-	// Iterate over all HTTPRoutes to find backend services and apply GCE specific policies
+func sessionAffinityFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+	// Iterate over all HTTPRoutes to find backend services and apply generic SessionAffinity
 	for _, httpRouteCtx := range ir.HTTPRoutes {
 		for ruleIdx := range httpRouteCtx.Spec.Rules {
 			if ruleIdx >= len(httpRouteCtx.RuleBackendSources) {
@@ -73,49 +73,35 @@ func gceFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]
 			}
 
 			// Apply to all backend refs in this rule?
-			// Session Affinity in GCE is per Backend Service.
-			// We need to update the GceServiceIR for the referenced services.
+			// Session Affinity is per Backend Service.
+			// We need to update the ServiceIR for the referenced services.
 
 			for _, backendRef := range httpRouteCtx.Spec.Rules[ruleIdx].BackendRefs {
 				refName := string(backendRef.Name)
-				// refGroup := backendRef.Group // usually nil or core
-				// refKind := backendRef.Kind // usually Service
-
-				// We need to find the ServiceIR for this backend.
-				// In ProviderIR, Services map key is NamespacedName.
-				// We assume BackendRef name is the service name in the same namespace (usually).
-
-				// Wait, HTTPRouteCtx doesn't easily give us the namespace of the service if it's cross-namespace?
-				// But we can check ir.Services.
-
+				
 				svcKey := types.NamespacedName{
 					Namespace: httpRouteCtx.HTTPRoute.Namespace, // assumption: same namespace
 					Name:      refName,
 				}
 
 				if svc, ok := ir.Services[svcKey]; ok {
-					if svc.Gce == nil {
-						svc.Gce = &gce.ServiceIR{}
-					}
-					if svc.Gce.SessionAffinity == nil {
-						svc.Gce.SessionAffinity = &gce.SessionAffinityConfig{}
+					if svc.SessionAffinity == nil {
+						svc.SessionAffinity = &emitterir.SessionAffinity{}
 					}
 
-					svc.Gce.SessionAffinity.AffinityType = affinityType
-					svc.Gce.SessionAffinity.CookieTTLSec = cookieTTL
-					svc.Gce.SessionAffinity.CookieName = cookieName
+					svc.SessionAffinity.Type = affinityType
+					svc.SessionAffinity.CookieTTLSec = cookieTTL
+					svc.SessionAffinity.CookieName = cookieName
 
 					// Update the map
 					ir.Services[svcKey] = svc
 				} else {
 					// Service doesn't exist yet, create it
 					svc = providerir.ProviderSpecificServiceIR{
-						Gce: &gce.ServiceIR{
-							SessionAffinity: &gce.SessionAffinityConfig{
-								AffinityType: affinityType,
-								CookieTTLSec: cookieTTL,
-								CookieName:   cookieName,
-							},
+						SessionAffinity: &emitterir.SessionAffinity{
+							Type:         affinityType,
+							CookieTTLSec: cookieTTL,
+							CookieName:   cookieName,
 						},
 					}
 					ir.Services[svcKey] = svc

@@ -42,6 +42,7 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 			regexFeature,
 			backendTLSFeature,
 			gceFeature,
+			sessionAffinityFeature,
 		},
 	}
 }

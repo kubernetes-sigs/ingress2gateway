@@ -384,10 +384,10 @@ func (rg *ingressRuleGroup) toHTTPRoute(servicePorts map[types.NamespacedName]ma
 		httpRoute.Spec.Rules = append(httpRoute.Spec.Rules, hrRule)
 		allRuleBackendSources = append(allRuleBackendSources, sources)
 	}
-
-	for idx := range httpRoute.Spec.Rules {
-		httpRoute.Spec.Rules[idx].Name = ptr.To(gatewayv1.SectionName(fmt.Sprintf("rule-%d", idx)))
-	}
+	// Name is not yet supported in GKE v1 Gateway API implementation.
+	// for idx := range httpRoute.Spec.Rules {
+	// 	httpRoute.Spec.Rules[idx].Name = ptr.To(gatewayv1.SectionName(fmt.Sprintf("rule-%d", idx)))
+	// }
 
 	return httpRoute, allRuleBackendSources, errors
 }
