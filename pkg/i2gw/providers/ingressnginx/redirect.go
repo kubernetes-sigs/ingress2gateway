@@ -48,17 +48,8 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 				continue
 			}
 
-			// Get ingress from the first backend source (all backends in a rule should come from the same ingress)
-			if len(httpRouteContext.RuleBackendSources[ruleIndex]) == 0 {
-				continue
-			}
-
-			backendSource := httpRouteContext.RuleBackendSources[ruleIndex][0]
-			if backendSource.Ingress == nil {
-				continue
-			}
-
-			ingress := backendSource.Ingress
+			// Get the non canary ingress for this rule
+			ingress := getNonCanaryIngress(httpRouteContext.RuleBackendSources[ruleIndex])
 
 			// Warn about unsupported proxy-redirect annotations
 			if ingress.Annotations[ProxyRedirectFromAnnotation] != "" {
