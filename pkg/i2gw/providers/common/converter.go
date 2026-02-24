@@ -74,7 +74,7 @@ func ToIR(ingresses []networkingv1.Ingress, servicePorts map[types.NamespacedNam
 	return providerir.ProviderIR{
 		Gateways:           gatewayByKey,
 		HTTPRoutes:         routeByKey,
-		Services:           make(map[types.NamespacedName]providerir.ProviderSpecificServiceIR),
+		Services:           make(map[types.NamespacedName]providerir.ServiceContext),
 		GatewayClasses:     make(map[types.NamespacedName]gatewayv1.GatewayClass),
 		TLSRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
 		TCPRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),

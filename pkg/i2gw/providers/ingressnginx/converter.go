@@ -37,6 +37,7 @@ type resourcesToIRConverter struct {
 func newResourcesToIRConverter() *resourcesToIRConverter {
 	return &resourcesToIRConverter{
 		featureParsers: []i2gw.FeatureParser{
+			affinityFeature,
 			canaryFeature,
 			headerModifierFeature,
 			regexFeature,
