@@ -40,6 +40,7 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 			canaryFeature,
 			headerModifierFeature,
 			regexFeature,
+			backendTLSFeature,
 		},
 	}
 }

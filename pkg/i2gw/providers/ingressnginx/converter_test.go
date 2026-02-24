@@ -1017,7 +1017,6 @@ func Test_ToIR(t *testing.T) {
 					},
 				},
 			},
-			expectedErrors: field.ErrorList{},
 		},
 	}
 
@@ -1065,6 +1064,20 @@ func Test_ToIR(t *testing.T) {
 					wantGatewayContext.Gateway.SetGroupVersionKind(common.GatewayGVK)
 					if !apiequality.Semantic.DeepEqual(gotGatewayContext.Gateway, wantGatewayContext.Gateway) {
 						t.Errorf("Expected Gateway %s to be %+v\n Got: %+v\n Diff: %s", i, wantGatewayContext.Gateway, gotGatewayContext.Gateway, cmp.Diff(wantGatewayContext.Gateway, gotGatewayContext.Gateway))
+					}
+				}
+			}
+
+			if len(ir.BackendTLSPolicies) != len(tc.expectedIR.BackendTLSPolicies) {
+				t.Errorf("Expected %d BackendTLSPolicies, got %d: %+v",
+					len(tc.expectedIR.BackendTLSPolicies), len(ir.BackendTLSPolicies), ir.BackendTLSPolicies)
+			} else {
+				for i, gotPolicy := range ir.BackendTLSPolicies {
+					wantPolicy := tc.expectedIR.BackendTLSPolicies[i]
+					wantPolicy.SetGroupVersionKind(gatewayv1.SchemeGroupVersion.WithKind("BackendTLSPolicy"))
+					// gotPolicy is emitterir.BackendTLSPolicyContext, wantPolicy is gatewayv1.BackendTLSPolicy
+					if !apiequality.Semantic.DeepEqual(gotPolicy.BackendTLSPolicy, wantPolicy) {
+						t.Errorf("Expected BackendTLSPolicy %s to be %+v\n Got: %+v\n Diff: %s", i, wantPolicy, gotPolicy.BackendTLSPolicy, cmp.Diff(wantPolicy, gotPolicy.BackendTLSPolicy))
 					}
 				}
 			}

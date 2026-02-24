@@ -63,6 +63,15 @@ const (
 	// IP Range Control annotations
 	WhiteListSourceRangeAnnotation = "nginx.ingress.kubernetes.io/whitelist-source-range"
 	DenyListSourceRangeAnnotation  = "nginx.ingress.kubernetes.io/denylist-source-range"
+
+	// Backend TLS annotations
+	BackendProtocolAnnotation     = "nginx.ingress.kubernetes.io/backend-protocol"
+	ProxySSLVerifyAnnotation      = "nginx.ingress.kubernetes.io/proxy-ssl-verify"
+	ProxySSLSecretAnnotation      = "nginx.ingress.kubernetes.io/proxy-ssl-secret" //nolint:gosec // This is an annotation key, not a secret
+	ProxySSLNameAnnotation        = "nginx.ingress.kubernetes.io/proxy-ssl-name"
+	ProxySSLServerNameAnnotation  = "nginx.ingress.kubernetes.io/proxy-ssl-server-name"
+	ProxySSLVerifyDepthAnnotation = "nginx.ingress.kubernetes.io/proxy-ssl-verify-depth"
+	ProxySSLProtocolsAnnotation   = "nginx.ingress.kubernetes.io/proxy-ssl-protocols"
 )
 
 const ingressNGINXAnnotationsPrefix = "nginx.ingress.kubernetes.io/"
