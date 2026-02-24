@@ -31,9 +31,9 @@ import (
 
 func TestGCEFeature(t *testing.T) {
 	testCases := []struct {
-		name          string
-		ingress       networkingv1.Ingress
-		expectedGCE   *gce.ServiceIR
+		name        string
+		ingress     networkingv1.Ingress
+		expectedGCE *gce.ServiceIR
 	}{
 		{
 			name: "No Affinity",
@@ -141,10 +141,10 @@ func TestGCEFeature(t *testing.T) {
 			gceFeature([]networkingv1.Ingress{tc.ingress}, nil, &ir)
 
 			actual := ir.Services[svcKey].Gce
-			
+
 			// If expected is nil, we expect nil OR empty Gce struct (depends on implementation)
 			// Our implementation initializes Gce if it finds affinity.
-			
+
 			if tc.expectedGCE == nil {
 				if actual != nil && actual.SessionAffinity != nil {
 					t.Errorf("Expected nil SessionAffinity, got %v", actual.SessionAffinity)

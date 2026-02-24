@@ -29,7 +29,7 @@ import (
 func gceFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	// Iterate over all HTTPRoutes to find backend services and apply GCE specific policies
 	for _, httpRouteCtx := range ir.HTTPRoutes {
-		for ruleIdx, _ := range httpRouteCtx.Spec.Rules {
+		for ruleIdx := range httpRouteCtx.Spec.Rules {
 			if ruleIdx >= len(httpRouteCtx.RuleBackendSources) {
 				continue
 			}
@@ -43,15 +43,15 @@ func gceFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]
 			// Note: This logic assumes we can map back to the service.
 			// Ingress-Nginx usually maps path -> backend service.
 			// We check the Ingress sources for the annotation.
-			
+
 			var affinityType string
 			var cookieTTL *int64
 			var cookieName string
-			
+
 			for _, source := range sources {
 				if val, ok := source.Ingress.Annotations[AffinityAnnotation]; ok && val == "cookie" {
 					affinityType = "GENERATED_COOKIE"
-					
+
 					// Check for Max Age (Expires)
 					if ttlVal, ok := source.Ingress.Annotations[SessionCookieExpiresAnnotation]; ok {
 						if ttl, err := strconv.ParseInt(ttlVal, 10, 64); err == nil {
@@ -84,15 +84,15 @@ func gceFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]
 				// We need to find the ServiceIR for this backend.
 				// In ProviderIR, Services map key is NamespacedName.
 				// We assume BackendRef name is the service name in the same namespace (usually).
-				
+
 				// Wait, HTTPRouteCtx doesn't easily give us the namespace of the service if it's cross-namespace?
 				// But we can check ir.Services.
-				
+
 				svcKey := types.NamespacedName{
 					Namespace: httpRouteCtx.HTTPRoute.Namespace, // assumption: same namespace
 					Name:      refName,
 				}
-				
+
 				if svc, ok := ir.Services[svcKey]; ok {
 					if svc.Gce == nil {
 						svc.Gce = &gce.ServiceIR{}
@@ -100,11 +100,11 @@ func gceFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]
 					if svc.Gce.SessionAffinity == nil {
 						svc.Gce.SessionAffinity = &gce.SessionAffinityConfig{}
 					}
-					
+
 					svc.Gce.SessionAffinity.AffinityType = affinityType
 					svc.Gce.SessionAffinity.CookieTTLSec = cookieTTL
 					svc.Gce.SessionAffinity.CookieName = cookieName
-					
+
 					// Update the map
 					ir.Services[svcKey] = svc
 				} else {
