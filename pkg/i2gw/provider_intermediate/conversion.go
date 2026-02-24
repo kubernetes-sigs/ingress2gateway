@@ -33,6 +33,7 @@ func ToEmitterIR(pIR ProviderIR) emitterir.EmitterIR {
 		GRPCRoutes:         make(map[types.NamespacedName]emitterir.GRPCRouteContext),
 		BackendTLSPolicies: make(map[types.NamespacedName]emitterir.BackendTLSPolicyContext),
 		ReferenceGrants:    make(map[types.NamespacedName]emitterir.ReferenceGrantContext),
+		Services:           make(map[types.NamespacedName]emitterir.ServiceContext),
 		GceServices:        make(map[types.NamespacedName]gce.ServiceIR),
 	}
 
@@ -72,6 +73,9 @@ func ToEmitterIR(pIR ProviderIR) emitterir.EmitterIR {
 		eIR.ReferenceGrants[k] = emitterir.ReferenceGrantContext{ReferenceGrant: v}
 	}
 	for k, v := range pIR.Services {
+		eIR.Services[k] = emitterir.ServiceContext{
+			SessionAffinity: v.SessionAffinity,
+		}
 		if v.Gce != nil {
 			eIR.GceServices[k] = *v.Gce
 		}
