@@ -83,7 +83,7 @@ func (r *Report) Render() map[string]string {
 		t.SetRowLine(true)
 
 		for _, n := range notifications {
-			row := []string{string(n.Type), n.Message, convertObjectsToStr(n.CallingObjects)}
+			row := []string{string(n.Type), n.Message, objectsToStr(n.CallingObjects)}
 			t.Append(row)
 		}
 

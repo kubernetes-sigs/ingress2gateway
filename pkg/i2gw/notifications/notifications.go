@@ -75,7 +75,7 @@ func (na *NotificationAggregator) CreateNotificationTables() map[string]string {
 		t.SetRowLine(true)
 
 		for _, n := range msgs {
-			row := []string{string(n.Type), n.Message, convertObjectsToStr(n.CallingObjects)}
+			row := []string{string(n.Type), n.Message, objectsToStr(n.CallingObjects)}
 			t.Append(row)
 		}
 
@@ -87,18 +87,14 @@ func (na *NotificationAggregator) CreateNotificationTables() map[string]string {
 	return notificationTablesMap
 }
 
-func convertObjectsToStr(ob []client.Object) string {
-	var sb strings.Builder
+func objectsToStr(ob []client.Object) string {
+	strs := make([]string, len(ob))
 
 	for i, o := range ob {
-		if i > 0 {
-			sb.WriteString(", ")
-		}
-		object := o.GetObjectKind().GroupVersionKind().Kind + ": " + client.ObjectKeyFromObject(o).String()
-		sb.WriteString(object)
+		strs[i] = o.GetObjectKind().GroupVersionKind().Kind + ": " + client.ObjectKeyFromObject(o).String()
 	}
 
-	return sb.String()
+	return strings.Join(strs, ", ")
 }
 
 func NewNotification(mType MessageType, message string, callingObject ...client.Object) Notification {

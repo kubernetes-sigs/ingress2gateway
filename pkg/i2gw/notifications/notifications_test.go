@@ -192,7 +192,7 @@ func TestNotificationAggregatorRace(_ *testing.T) {
 	wg.Wait()
 }
 
-func TestConvertObjectsToStr(t *testing.T) {
+func TestObjectsToStr(t *testing.T) {
 	testCases := []struct {
 		name    string
 		objects []client.Object
@@ -242,7 +242,7 @@ func TestConvertObjectsToStr(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			result := convertObjectsToStr(tc.objects)
+			result := objectsToStr(tc.objects)
 			assert.Equal(t, tc.want, result)
 		})
 	}
