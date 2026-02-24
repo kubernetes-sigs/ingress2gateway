@@ -55,7 +55,7 @@ func TestGCEFeature(t *testing.T) {
 				},
 			},
 			expectedSessionAffinity: &emitterir.SessionAffinity{
-				Type: "GENERATED_COOKIE",
+				Type: "Cookie",
 			},
 		},
 		{
@@ -70,7 +70,7 @@ func TestGCEFeature(t *testing.T) {
 				},
 			},
 			expectedSessionAffinity: &emitterir.SessionAffinity{
-				Type:         "GENERATED_COOKIE",
+				Type:         "Cookie",
 				CookieTTLSec: ptr.To(int64(3600)),
 			},
 		},
@@ -86,7 +86,7 @@ func TestGCEFeature(t *testing.T) {
 				},
 			},
 			expectedSessionAffinity: &emitterir.SessionAffinity{
-				Type:       "GENERATED_COOKIE",
+				Type:       "Cookie",
 				CookieName: "MY_COOKIE",
 			},
 		},

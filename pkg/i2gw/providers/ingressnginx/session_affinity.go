@@ -50,7 +50,7 @@ func sessionAffinityFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName
 
 			for _, source := range sources {
 				if val, ok := source.Ingress.Annotations[AffinityAnnotation]; ok && val == "cookie" {
-					affinityType = "GENERATED_COOKIE"
+					affinityType = "Cookie"
 
 					// Check for Max Age (Expires)
 					if ttlVal, ok := source.Ingress.Annotations[SessionCookieExpiresAnnotation]; ok {
