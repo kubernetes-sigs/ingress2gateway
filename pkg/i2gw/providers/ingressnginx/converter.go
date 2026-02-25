@@ -45,7 +45,6 @@ func newResourcesToIRConverter(notify notifications.NotifyFunc) *resourcesToIRCo
 			headerModifierFeature,
 			regexFeature,
 			backendTLSFeature,
-			gceFeature,
 			sessionAffinityFeature,
 		},
 		notify: notify,
