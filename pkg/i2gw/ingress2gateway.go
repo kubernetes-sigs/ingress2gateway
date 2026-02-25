@@ -102,6 +102,9 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, reader io.Read
 		gatewayResources = append(gatewayResources, providerGatewayResources)
 	}
 	notificationTablesMap := notifications.NotificationAggr.CreateNotificationTables()
+	for _, gw := range gatewayResources {
+		errs = append(errs, ValidateMaxItems(&gw)...)
+	}
 	if len(errs) > 0 {
 		return nil, notificationTablesMap, aggregatedErrs(errs)
 	}
