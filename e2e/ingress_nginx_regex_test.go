@@ -42,7 +42,7 @@ func TestIngressNGINXRegex(t *testing.T) {
 				withName("plain").
 				withIngressClass(ingressnginx.NginxIngressClass).
 				withHost(regexHost).
-				withPath("/hostn").
+				withPath("/hoSTn"). // Check for case-insensitivity of regex matching
 				build()
 			// Exact becomes regex which are prefix
 			plain.Spec.Rules[0].HTTP.Paths[0].PathType = &exactPathType
@@ -51,7 +51,7 @@ func TestIngressNGINXRegex(t *testing.T) {
 				withName("regex").
 				withIngressClass(ingressnginx.NginxIngressClass).
 				withHost(regexHost).
-				withPath("/client.+").
+				withPath("/cliEnt.+"). // Check for case-insensitivity of regex matching
 				withAnnotation(ingressnginx.UseRegexAnnotation, "true").
 				build()
 			regex.Spec.Rules[0].HTTP.Paths[0].PathType = &implementationSpecific

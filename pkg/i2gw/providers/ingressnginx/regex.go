@@ -75,8 +75,8 @@ func regexFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]m
 				if path.Path != nil {
 					// Ingress nginx regex path matches are prefix matches by default
 					httpRouteCtx.Spec.Rules[i].Matches[j].Path.Type = ptr.To[gatewayv1.PathMatchType](gatewayv1.PathMatchRegularExpression)
-					httpRouteCtx.Spec.Rules[i].Matches[j].Path.Value = ptr.To(*httpRouteCtx.Spec.Rules[i].Matches[j].Path.Value + ".*")
-					// TODO. They are also case insensitive.
+					// All engines I could find support (?i) (other than javascript).
+					httpRouteCtx.Spec.Rules[i].Matches[j].Path.Value = ptr.To("(?i)" + *httpRouteCtx.Spec.Rules[i].Matches[j].Path.Value + ".*")
 				}
 			}
 		}
