@@ -63,4 +63,47 @@ const (
 	// IP Range Control annotations
 	WhiteListSourceRangeAnnotation = "nginx.ingress.kubernetes.io/whitelist-source-range"
 	DenyListSourceRangeAnnotation  = "nginx.ingress.kubernetes.io/denylist-source-range"
+
+	// Backend TLS annotations
+	BackendProtocolAnnotation     = "nginx.ingress.kubernetes.io/backend-protocol"
+	ProxySSLVerifyAnnotation      = "nginx.ingress.kubernetes.io/proxy-ssl-verify"
+	ProxySSLSecretAnnotation      = "nginx.ingress.kubernetes.io/proxy-ssl-secret" //nolint:gosec // This is an annotation key, not a secret
+	ProxySSLNameAnnotation        = "nginx.ingress.kubernetes.io/proxy-ssl-name"
+	ProxySSLServerNameAnnotation  = "nginx.ingress.kubernetes.io/proxy-ssl-server-name"
+	ProxySSLVerifyDepthAnnotation = "nginx.ingress.kubernetes.io/proxy-ssl-verify-depth"
+	ProxySSLProtocolsAnnotation   = "nginx.ingress.kubernetes.io/proxy-ssl-protocols"
 )
+
+const ingressNGINXAnnotationsPrefix = "nginx.ingress.kubernetes.io/"
+
+// An annotation being in this field doesn't necessary mean that
+// it will be converted. Rather, if it isn't converted, the
+// error will be logged elsewhere.
+var parsedAnnotations = map[string]struct{}{
+	CanaryAnnotation:                {},
+	CanaryWeightAnnotation:          {},
+	CanaryWeightTotalAnnotation:     {},
+	CanaryByHeader:                  {},
+	CanaryByHeaderValue:             {},
+	CanaryByHeaderPattern:           {},
+	CanaryByCookie:                  {},
+	RewriteTargetAnnotation:         {},
+	XForwardedPrefixAnnotation:      {},
+	UpstreamVhostAnnotation:         {},
+	ConnectionProxyHeaderAnnotation: {},
+	CustomHeadersAnnotation:         {},
+	ProxyConnectTimeoutAnnotation:   {},
+	ProxySendTimeoutAnnotation:      {},
+	ProxyReadTimeoutAnnotation:      {},
+	ProxyBodySizeAnnotation:         {},
+	ClientBodyBufferSizeAnnotation:  {},
+	UseRegexAnnotation:              {},
+	SSLRedirectAnnotation:           {},
+	EnableCorsAnnotation:            {},
+	CorsAllowOriginAnnotation:       {},
+	CorsAllowHeadersAnnotation:      {},
+	CorsAllowMethodsAnnotation:      {},
+	CorsAllowCredentialsAnnotation:  {},
+	CorsExposeHeadersAnnotation:     {},
+	CorsMaxAgeAnnotation:            {},
+}
