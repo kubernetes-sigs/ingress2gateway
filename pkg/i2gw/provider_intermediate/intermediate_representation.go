@@ -80,7 +80,7 @@ type ProviderSpecificHTTPRouteIR struct {
 // extension features on Service.
 type ProviderSpecificServiceIR struct {
 	SessionAffinity *emitterir.SessionAffinity
-	Gce *gce.ServiceIR
+	Gce             *gce.ServiceIR
 }
 
 // BackendSource tracks the source Ingress resource that contributed

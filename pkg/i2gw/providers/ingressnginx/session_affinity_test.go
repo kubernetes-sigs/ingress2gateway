@@ -31,8 +31,8 @@ import (
 
 func TestGCEFeature(t *testing.T) {
 	testCases := []struct {
-		name                   string
-		ingress                networkingv1.Ingress
+		name                    string
+		ingress                 networkingv1.Ingress
 		expectedSessionAffinity *emitterir.SessionAffinity
 	}{
 		{

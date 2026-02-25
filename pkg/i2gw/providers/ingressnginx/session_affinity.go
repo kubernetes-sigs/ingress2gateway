@@ -78,7 +78,7 @@ func sessionAffinityFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName
 
 			for _, backendRef := range httpRouteCtx.Spec.Rules[ruleIdx].BackendRefs {
 				refName := string(backendRef.Name)
-				
+
 				svcKey := types.NamespacedName{
 					Namespace: httpRouteCtx.HTTPRoute.Namespace, // assumption: same namespace
 					Name:      refName,

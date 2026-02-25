@@ -69,6 +69,7 @@ func (c *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.Err
 	buildGceGatewayExtensions(ir, &gatewayResources)
 	buildGceServiceExtensions(ir, &gatewayResources)
 	upsellGatewayClass(&gatewayResources)
+	removeHTTPRouteRuleNames(&gatewayResources)
 	return gatewayResources, nil
 }
 
@@ -78,6 +79,15 @@ func upsellGatewayClass(gatewayResources *i2gw.GatewayResources) {
 			gw.Spec.GatewayClassName = "gke-l7-global-external-managed"
 			gatewayResources.Gateways[i] = gw
 		}
+	}
+}
+
+func removeHTTPRouteRuleNames(gatewayResources *i2gw.GatewayResources) {
+	for i, route := range gatewayResources.HTTPRoutes {
+		for j := range route.Spec.Rules {
+			route.Spec.Rules[j].Name = nil
+		}
+		gatewayResources.HTTPRoutes[i] = route
 	}
 }
 
