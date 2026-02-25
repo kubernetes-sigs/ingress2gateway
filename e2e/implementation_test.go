@@ -20,48 +20,83 @@ import (
 	"testing"
 
 	"github.com/kubernetes-sigs/ingress2gateway/e2e/framework"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
+	"github.com/kubernetes-sigs/ingress2gateway/e2e/implementation"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
-// Implementation smoke tests: One test function per gateway implementation, all using
-// ingress-nginx provider + standard emitter.
+// Implementation smoke tests: Table-driven test covering all gateway implementations. Each
+// implementation uses the ingress-nginx provider + standard emitter to isolate implementation
+// behavior from provider behavior.
 
-func TestKongGatewayImplementation(t *testing.T) {
+func TestImplementationSmoke(t *testing.T) {
 	t.Parallel()
-	t.Run("basic conversion", func(t *testing.T) {
-		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: kong.Name,
-			Providers:             []string{kong.Name},
-			Ingresses: []*networkingv1.Ingress{
-				framework.BasicIngress().
-					WithName("foo").
-					WithIngressClass(kong.KongIngressClass).
-					Build(),
-			},
-			Verifiers: map[string][]framework.Verifier{
-				"foo": {&framework.HTTPRequestVerifier{Path: "/"}},
-			},
+
+	type implEntry struct {
+		implementation string
+		provider       string
+		ingressClass   string
+		providerFlags  map[string]map[string]string
+	}
+
+	implementations := []implEntry{
+		{
+			implementation: implementation.KongName,
+			provider:       ingressnginx.Name,
+			ingressClass:   ingressnginx.NginxIngressClass,
+		},
+		{
+			implementation: implementation.IstioName,
+			provider:       ingressnginx.Name,
+			ingressClass:   ingressnginx.NginxIngressClass,
+		},
+		{
+			implementation: implementation.KgatewayName,
+			provider:       ingressnginx.Name,
+			ingressClass:   ingressnginx.NginxIngressClass,
+		},
+	}
+
+	for _, impl := range implementations {
+		t.Run(impl.implementation, func(t *testing.T) {
+			t.Parallel()
+			t.Run("basic conversion", func(t *testing.T) {
+				runTestCase(t, &framework.TestCase{
+					GatewayImplementation: impl.implementation,
+					Providers:             []string{impl.provider},
+					ProviderFlags:         impl.providerFlags,
+					Ingresses: []*networkingv1.Ingress{
+						framework.BasicIngress().
+							WithName("foo").
+							WithIngressClass(impl.ingressClass).
+							Build(),
+					},
+					Verifiers: map[string][]framework.Verifier{
+						"foo": {&framework.HTTPRequestVerifier{Path: "/"}},
+					},
+				})
+			})
+			t.Run("multiple ingresses", func(t *testing.T) {
+				runTestCase(t, &framework.TestCase{
+					GatewayImplementation: impl.implementation,
+					Providers:             []string{impl.provider},
+					ProviderFlags:         impl.providerFlags,
+					Ingresses: []*networkingv1.Ingress{
+						framework.BasicIngress().
+							WithName("foo").
+							WithIngressClass(impl.ingressClass).
+							Build(),
+						framework.BasicIngress().
+							WithName("bar").
+							WithIngressClass(impl.ingressClass).
+							Build(),
+					},
+					Verifiers: map[string][]framework.Verifier{
+						"foo": {&framework.HTTPRequestVerifier{Path: "/"}},
+						"bar": {&framework.HTTPRequestVerifier{Path: "/"}},
+					},
+				})
+			})
 		})
-	})
-	t.Run("multiple ingresses", func(t *testing.T) {
-		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: kong.Name,
-			Providers:             []string{kong.Name},
-			Ingresses: []*networkingv1.Ingress{
-				framework.BasicIngress().
-					WithName("foo").
-					WithIngressClass(kong.KongIngressClass).
-					Build(),
-				framework.BasicIngress().
-					WithName("bar").
-					WithIngressClass(kong.KongIngressClass).
-					Build(),
-			},
-			Verifiers: map[string][]framework.Verifier{
-				"foo": {&framework.HTTPRequestVerifier{Path: "/"}},
-				"bar": {&framework.HTTPRequestVerifier{Path: "/"}},
-			},
-		})
-	})
+	}
 }
