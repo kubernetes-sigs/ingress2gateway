@@ -76,7 +76,7 @@ func TestRegexFeature(t *testing.T) {
 				{
 					Path: &gatewayv1.HTTPPathMatch{
 						Type:  &regexType,
-						Value: ptr.To("/users/.*/profile.*"),
+						Value: ptr.To("(?i)/users/.*/profile.*"),
 					},
 				},
 			},
@@ -159,7 +159,7 @@ func TestRegexFeature(t *testing.T) {
 				{
 					Path: &gatewayv1.HTTPPathMatch{
 						Type:  &regexType,
-						Value: ptr.To("/products/(.+).*"),
+						Value: ptr.To("(?i)/products/(.+).*"),
 					},
 				},
 			},
