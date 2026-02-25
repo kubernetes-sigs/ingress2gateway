@@ -116,6 +116,11 @@ func (h *HTTPRouteContext) UnparsedExtensions() []*ExtensionFeatureMetadata {
 			unparsedExtensions = append(unparsedExtensions, &x.Metadata)
 		}
 	}
+	for _, x := range h.PathRewriteByRuleIdx {
+		if x != nil {
+			unparsedExtensions = append(unparsedExtensions, &x.Metadata)
+		}
+	}
 	return unparsedExtensions
 }
 

@@ -18,10 +18,13 @@ package ingressnginx
 
 import (
 	"strings"
+	"fmt"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
+
+	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 // applyRewriteTargetToEmitterIR is a temporary bridge until we decide how rewrite
@@ -74,6 +77,25 @@ func applyRewriteTargetToEmitterIR(ingresses []networkingv1.Ingress,
 
 			if hasRegex && strings.Contains(rewriteTarget, "\\$") {
 				pathRewriteIR.RegexCaptureGroupReferences = true
+			}
+
+			source := fmt.Sprintf("%s/%s", ing.Namespace, ing.Name)
+			paths := []*field.Path{field.NewPath("metadata", "annotations", RewriteTargetAnnotation)}
+			if hasRegex && strings.Contains(rewriteTarget, "\\$") {
+				// Otherwise, rewrites without capture group references work.
+				pathRewriteIR.RegexCaptureGroupReferences = true
+
+				pathRewriteIR.Metadata = emitterir.NewExtensionFeatureMetadata(
+					source,
+					paths,
+					"Path rewrites with capture group references are not supported",
+				)
+			} else {
+				pathRewriteIR.Metadata = emitterir.NewExtensionFeatureMetadata(
+					source,
+					paths,
+					"Could not apply rewrite-target annotation",
+				)
 			}
 
 			eRouteCtx.PathRewriteByRuleIdx[ruleIdx] = &pathRewriteIR
