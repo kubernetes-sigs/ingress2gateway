@@ -239,6 +239,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: GRPC_ECHO_SERVER
+          value: "true"
         ports:
         - containerPort: 3000
         readinessProbe:

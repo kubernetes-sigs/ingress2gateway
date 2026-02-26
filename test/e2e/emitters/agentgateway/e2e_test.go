@@ -219,6 +219,20 @@ func TestBasic(t *testing.T) {
 	})
 }
 
+func TestBackendProtocol(t *testing.T) {
+	_, gwAddr, host, _, _ := e2eTestSetup(t, "backend_protocol.yaml", "backend_protocol.yaml")
+
+	// Validate end-to-end gRPC traffic via Gateway when backend-protocol is projected.
+	testutils.MakeGRPCRequestEventually(t, testutils.GRPCRequestConfig{
+		Authority:     host,
+		Address:       gwAddr,
+		Port:          "80",
+		Timeout:       1 * time.Minute,
+		Namespace:     "default",
+		BackendPrefix: "echo-backend",
+	})
+}
+
 func TestLoadBalance(t *testing.T) {
 	_, gwAddr, host, ingressHostHeader, ingressIP := e2eTestSetup(t, "load_balance.yaml", "load_balance.yaml")
 

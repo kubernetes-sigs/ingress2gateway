@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+  name: agw-backend-protocol
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: agw.backend-protocol.localdev.me
+    http:
+      paths:
+      - backend:
+          service:
+            name: echo-backend
+            port:
+              number: 8080
+        path: /
+        pathType: Prefix
