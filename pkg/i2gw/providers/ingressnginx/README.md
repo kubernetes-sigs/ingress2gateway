@@ -95,6 +95,9 @@ The ingress-nginx provider currently supports translating the following annotati
 ### Backend Protocol
 
 - `nginx.ingress.kubernetes.io/backend-protocol`: Indicates the L7 protocol that is used to communicate with the proxied backend.
+  - This annotation expresses **upstream/backend** protocol intent only. It does **not** change the generated route kind
+    from `HTTPRoute` to `GRPCRoute`, because the source object is still an HTTP Ingress and the annotation only affects
+    how the proxy talks to the backend.
   - **Supported values (recorded):** `GRPC`, `GRPCS`
     - The provider records protocol intent as policy metadata (used by implementation emitters).
     - For the Kgateway implementation:

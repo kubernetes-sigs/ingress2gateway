@@ -375,6 +375,9 @@ This is projected into a **Service-targeted** `AgentgatewayPolicy` by setting:
 
 - This feature is emitted as a **per-Service** `AgentgatewayPolicy` because backend HTTP protocol selection is
   backend-scoped.
+- This annotation does **not** cause ingress2gateway to emit a `GRPCRoute`. The generated route remains an
+  `HTTPRoute`; the emitter uses `AgentgatewayPolicy.spec.backend.http.version: HTTP2` to express how agentgateway
+  should communicate with the upstream backend.
 - HTTP/HTTPS/AUTO_HTTP are treated as default behavior by the provider and are not projected.
 - The provider currently maps only gRPC-family values into policy IR, so the agentgateway emitter currently emits
   only `HTTP2` for this feature.

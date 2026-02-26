@@ -81,6 +81,9 @@ The command should generate Gateway API and Kgateway resources.
 - `nginx.ingress.kubernetes.io/session-cookie-secure`: Sets the Secure flag on the cookie. Maps to `BackendConfigPolicy.spec.loadBalancer.ringHash.hashPolicies[].cookie.secure`.
 - `nginx.ingress.kubernetes.io/service-upstream`: When set to `"true"`, configures Kgateway to route to the Service’s cluster IP (or equivalent static host) instead of individual Pod IPs. For each covered Service, the emitter creates a `Backend` resource with `spec.type: Static` and rewrites the corresponding `HTTPRoute.spec.rules[].backendRefs[]` to reference that `Backend` (group `gateway.kgateway.dev`, kind `Backend`).
 - `nginx.ingress.kubernetes.io/backend-protocol`: Indicates the L7 protocol that is used to communicate with the proxied backend.
+  - This annotation affects **upstream/backend** protocol selection only. It does **not** cause ingress2gateway to emit
+    a `GRPCRoute`; the generated route remains an `HTTPRoute`, and the emitter projects backend protocol intent onto
+    backend-facing configuration.
   - **Supported values (mapped):** `GRPC`, `GRPCS`
     - If `service-upstream: "true"` is also set for the same Service backend, the emitter sets `spec.static.appProtocol: grpc` on the generated `Backend`.
     - Otherwise, the emitter does **not** create or modify Kubernetes `Service` resources. Instead, it emits an **INFO** notification with a `kubectl patch`
@@ -191,6 +194,8 @@ Currently supported:
     - `spec.static.hosts` containing a single `{host, port}` entry derived from the Service (e.g. `myservice.default.svc.cluster.local:80`).
   - Matching `HTTPRoute.spec.rules[].backendRefs[]` are rewritten to reference this `Backend` instead of the core Service.
 - `nginx.ingress.kubernetes.io/backend-protocol`:
+  - This annotation does **not** switch route generation from `HTTPRoute` to `GRPCRoute`; it only influences backend
+    connection/protocol behavior.
   - When set to `GRPC` or `GRPCS` **and** `service-upstream: "true"` is set for the same backend, the emitter stamps `spec.static.appProtocol: grpc` on the generated `Backend`.
   - When set to `GRPC` or `GRPCS` **without** `service-upstream: "true"`, the emitter emits an **INFO** notification that includes a `kubectl patch service ...`
     command to set `spec.ports[].appProtocol` on the existing Service.
