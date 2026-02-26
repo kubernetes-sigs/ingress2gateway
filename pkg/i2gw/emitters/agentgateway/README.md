@@ -361,6 +361,24 @@ Mappings:
   producing a connect timeout that exceeds the effective request timeout.
 - Invalid/unsupported duration values are ignored by the provider and will not be projected.
 
+#### Backend Protocol
+
+The agentgateway emitter supports projecting gRPC upstream protocol selection via:
+
+- `nginx.ingress.kubernetes.io/backend-protocol: "GRPC"` (or `"GRPCS"`)
+
+This is projected into a **Service-targeted** `AgentgatewayPolicy` by setting:
+
+- `AgentgatewayPolicy.spec.backend.http.version: HTTP2`
+
+**Notes:**
+
+- This feature is emitted as a **per-Service** `AgentgatewayPolicy` because backend HTTP protocol selection is
+  backend-scoped.
+- HTTP/HTTPS/AUTO_HTTP are treated as default behavior by the provider and are not projected.
+- The provider currently maps only gRPC-family values into policy IR, so the agentgateway emitter currently emits
+  only `HTTP2` for this feature.
+
 ## AgentgatewayPolicy Projection
 
 Rate limit, timeout, CORS, rewrite target, etc. annotations are converted into AgentgatewayPolicy resources.
@@ -368,7 +386,7 @@ The agentgateway emitter emits AgentgatewayPolicy resources in two shapes:
 
 - HTTPRoute-scoped policies for traffic-level behavior (rate limit, request timeouts, CORS, rewrite target,
   basic auth, ext auth).
-- Service-scoped policies for backend connection behavior (backend TLS and proxy connect timeout).
+- Service-scoped policies for backend connection behavior (backend TLS, proxy connect timeout, backend protocol).
 
 ### Naming
 
@@ -385,6 +403,11 @@ Backend TLS policies are created **per backend Service**:
 Proxy connect timeout policies are created **per backend Service**:
 
 - `metadata.name: <service-name>-backend-connect-timeout`
+- `metadata.namespace: <route-namespace>`
+
+Backend protocol policies are created **per backend Service**:
+
+- `metadata.name: <service-name>-backend-http-version`
 - `metadata.namespace: <route-namespace>`
 
 ### Attachment Semantics
