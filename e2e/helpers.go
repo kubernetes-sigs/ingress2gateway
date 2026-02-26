@@ -31,15 +31,6 @@ import (
 	gwclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 )
 
-// NOTE: Setting the Host field in ingress rules and in verifiers is optional. When omitted, a
-// random host is generated and used automatically for all ingress objects and verifiers in the
-// test case. Most test cases likely don't need an explicit Host value since the value doesn't
-// matter as long as the verifier verifies the correct Host. In case a specific Host value is
-// important for some test cases, it's important to pay attention to duplicate Host values across
-// test cases: While k8s allows defining multiple ingress objects with identical Host values,
-// whether doing so makes sense (or even works) depends on the ingress controller and can influence
-// test results.
-
 // Wraps framework.RunTestCase with the concrete deploy functions defined in this package, keeping
 // provider-specific deployment code out of the framework.
 func runTestCase(t *testing.T, tc *framework.TestCase) {
