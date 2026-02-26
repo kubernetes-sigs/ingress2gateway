@@ -51,6 +51,10 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 			// Get the non canary ingress for this rule
 			ingress := getNonCanaryIngress(httpRouteContext.RuleBackendSources[ruleIndex])
 
+			if ingress == nil {
+				continue
+			}
+
 			// Warn about unsupported proxy-redirect annotations
 			if ingress.Annotations[ProxyRedirectFromAnnotation] != "" {
 				notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported annotation %s",
