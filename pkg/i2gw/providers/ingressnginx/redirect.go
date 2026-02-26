@@ -34,8 +34,14 @@ import (
 )
 
 // redirectFeature converts permanent and temporal redirect annotations to Gateway API RequestRedirect filters.
-// - permanent-redirect uses a 301 status code
-// - temporal-redirect uses a 302 status code
+// This matches ingress-nginx's execution order: temporal redirect is checked first, then permanent.
+// If the temporal-redirect annotation key is present (even with an empty value), the function
+// short-circuits and permanent redirect annotations are never evaluated.
+//
+// Gateway API only supports status codes 301, 302, 303, 307, 308.
+// Intersecting with ingress-nginx's valid ranges:
+// - temporal-redirect defaults to 302, supported custom codes: 301, 302, 303, 307
+// - permanent-redirect defaults to 301, supported custom codes: 301, 302, 303, 307, 308
 func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 
@@ -65,16 +71,18 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 					ingress.Namespace, ingress.Name, ProxyRedirectToAnnotation), ingress)
 			}
 
-			permanentRedirectURL, hasPermanent := ingress.Annotations[PermanentRedirectAnnotation]
 			temporalRedirectURL, hasTemporal := ingress.Annotations[TemporalRedirectAnnotation]
+			permanentRedirectURL, hasPermanent := ingress.Annotations[PermanentRedirectAnnotation]
 
 			// Skip if neither annotation is present
 			if !hasPermanent && !hasTemporal {
 				continue
 			}
 
-			// Determine redirect URL and status code
-			// If both are present, temporal takes priority
+			// Determine redirect URL and status code.
+			// Matching ingress-nginx execution order: temporal is checked first.
+			// If the temporal-redirect annotation key is present (even with an empty value),
+			// the function short-circuits — permanent redirect is never evaluated.
 			var redirectURL string
 			var statusCode int
 			var annotationUsed string
@@ -84,34 +92,37 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 				statusCode = 302
 				annotationUsed = TemporalRedirectAnnotation
 
-				// Warn if both annotations are present
+				// Warn if both annotations are present (permanent is ignored)
 				if hasPermanent {
-					notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s has both %s and %s annotations, using %s",
-						ingress.Namespace, ingress.Name, PermanentRedirectAnnotation, TemporalRedirectAnnotation, TemporalRedirectAnnotation), ingress)
+					notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s has both %s and %s annotations; temporal-redirect takes priority, permanent-redirect is ignored",
+						ingress.Namespace, ingress.Name, PermanentRedirectAnnotation, TemporalRedirectAnnotation), ingress)
 				}
 
-				// Check custom status code annotation
+				// Check custom status code annotation.
 				if codeStr := ingress.Annotations[TemporalRedirectCodeAnnotation]; codeStr != "" {
 					code, err := strconv.Atoi(codeStr)
-					if err != nil || code != 302 {
-						notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported status code %q in %s annotation, using default 302",
+					if err != nil || !isValidTemporalRedirectCode(code) {
+						notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported status code %q in %s annotation (Gateway API supports: 301, 302, 303, 307 for temporal redirects), using default 302",
 							ingress.Namespace, ingress.Name, codeStr, TemporalRedirectCodeAnnotation), ingress)
+					} else {
+						statusCode = code
 					}
-					// If code is 302, we allow it (it matches the default, so no change needed)
 				}
 			} else {
+				// Only reached if temporal-redirect annotation is completely absent
 				redirectURL = permanentRedirectURL
 				statusCode = 301
 				annotationUsed = PermanentRedirectAnnotation
 
-				// Check custom status code annotation
+				// Check custom status code annotation.
 				if codeStr := ingress.Annotations[PermanentRedirectCodeAnnotation]; codeStr != "" {
 					code, err := strconv.Atoi(codeStr)
-					if err != nil || code != 301 {
-						notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported status code %q in %s annotation, using default 301",
+					if err != nil || !isValidPermanentRedirectCode(code) {
+						notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported status code %q in %s annotation (Gateway API supports: 301, 302, 303, 307, 308 for permanent redirects), using default 301",
 							ingress.Namespace, ingress.Name, codeStr, PermanentRedirectCodeAnnotation), ingress)
+					} else {
+						statusCode = code
 					}
-					// If code is 301, we allow it (it matches the default, so no change needed)
 				}
 			}
 
@@ -288,4 +299,28 @@ func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR)
 		eir.HTTPRoutes[key] = eHTTPRouteContext
 	}
 	return nil
+}
+
+// isValidTemporalRedirectCode returns true if the code is in the intersection of
+// ingress-nginx temporal-redirect codes (300-307) and Gateway API codes (301,302,303,307,308).
+// Result: 301, 302, 303, 307
+func isValidTemporalRedirectCode(code int) bool {
+	switch code {
+	case 301, 302, 303, 307:
+		return true
+	default:
+		return false
+	}
+}
+
+// isValidPermanentRedirectCode returns true if the code is in the intersection of
+// ingress-nginx permanent-redirect codes (300-308) and Gateway API codes (301,302,303,307,308).
+// Result: 301, 302, 303, 307, 308
+func isValidPermanentRedirectCode(code int) bool {
+	switch code {
+	case 301, 302, 303, 307, 308:
+		return true
+	default:
+		return false
+	}
 }
