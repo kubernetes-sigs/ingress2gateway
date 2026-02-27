@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package framework
 
 import (
 	"context"
@@ -27,7 +27,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func createIngresses(ctx context.Context, l logger, client *kubernetes.Clientset, ns string, ingresses []*networkingv1.Ingress, skipCleanup bool) (func(), error) {
+// Creates Kubernetes Ingress resources and returns a cleanup function.
+func createIngresses(ctx context.Context, l Logger, client *kubernetes.Clientset, ns string, ingresses []*networkingv1.Ingress, skipCleanup bool) (func(), error) {
 	for _, ingress := range ingresses {
 		// Add ingress class label for admission webhook selectors. This allows ingress controllers
 		// to configure their admission webhooks to only validate ingresses with matching labels,

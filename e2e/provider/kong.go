@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package provider
 
 import (
 	"context"
@@ -22,13 +22,20 @@ import (
 	"log"
 	"time"
 
+	"github.com/kubernetes-sigs/ingress2gateway/e2e/framework"
 	"helm.sh/helm/v4/pkg/cli"
 	"k8s.io/client-go/kubernetes"
 )
 
-func deployKongIngress(
+const (
+	kongChartVersion = "2.42.0"
+	kongChartRepo    = "https://charts.konghq.com"
+)
+
+// DeployKongIngress deploys the Kong Ingress Controller via Helm and returns a cleanup function.
+func DeployKongIngress(
 	ctx context.Context,
-	l logger,
+	l framework.Logger,
 	client *kubernetes.Clientset,
 	kubeconfigPath string,
 	namespace string,
@@ -39,7 +46,7 @@ func deployKongIngress(
 	settings := cli.New()
 	settings.KubeConfig = kubeconfigPath
 
-	if err := installChart(
+	if err := framework.InstallChart(
 		ctx,
 		l,
 		settings,
@@ -65,11 +72,11 @@ func deployKongIngress(
 		defer cancel()
 
 		log.Printf("Cleaning up Kong Ingress Controller")
-		if err := uninstallChart(cleanupCtx, settings, "kong", namespace); err != nil {
+		if err := framework.UninstallChart(cleanupCtx, settings, "kong", namespace); err != nil {
 			log.Printf("Uninstalling Kong Ingress chart: %v", err)
 		}
 
-		if err := deleteNamespaceAndWait(cleanupCtx, client, namespace); err != nil {
+		if err := framework.DeleteNamespaceAndWait(cleanupCtx, client, namespace); err != nil {
 			log.Printf("Deleting namespace: %v", err)
 		}
 	}, nil

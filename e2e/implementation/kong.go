@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package implementation
 
 import (
 	"context"
@@ -22,6 +22,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/kubernetes-sigs/ingress2gateway/e2e/framework"
 	"helm.sh/helm/v4/pkg/cli"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,15 +32,19 @@ import (
 )
 
 const (
+	// KongName is the name used to identify the Kong implementation.
+	KongName           = "kong"
 	kongChartVersion   = "3.0.2"
 	kongChartRepo      = "https://charts.konghq.com"
 	kongGatewayClass   = "kong"
 	kongControllerName = "konghq.com/kic-gateway-controller"
 )
 
-func deployGatewayAPIKong(
+// DeployGatewayAPIKong deploys Kong as a Gateway API implementation via Helm and returns a cleanup
+// function.
+func DeployGatewayAPIKong(
 	ctx context.Context,
-	l logger,
+	l framework.Logger,
 	client *kubernetes.Clientset,
 	gwClient *gwclientset.Clientset,
 	kubeconfigPath string,
@@ -61,7 +66,7 @@ func deployGatewayAPIKong(
 		},
 	}
 
-	if err := installChart(
+	if err := framework.InstallChart(
 		ctx,
 		l,
 		settings,
@@ -118,11 +123,11 @@ func deployGatewayAPIKong(
 			log.Printf("Deleting GatewayClass: %v", err)
 		}
 
-		if err := uninstallChart(cleanupCtx, settings, "kong", namespace); err != nil {
+		if err := framework.UninstallChart(cleanupCtx, settings, "kong", namespace); err != nil {
 			log.Printf("Uninstalling Kong chart: %v", err)
 		}
 
-		if err := deleteNamespaceAndWait(cleanupCtx, client, namespace); err != nil {
+		if err := framework.DeleteNamespaceAndWait(cleanupCtx, client, namespace); err != nil {
 			log.Printf("Deleting namespace: %v", err)
 		}
 	}, nil

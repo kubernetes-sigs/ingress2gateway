@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package implementation
 
 import (
 	"context"
@@ -22,12 +22,14 @@ import (
 	"log"
 	"time"
 
+	"github.com/kubernetes-sigs/ingress2gateway/e2e/framework"
 	"helm.sh/helm/v4/pkg/cli"
 	"k8s.io/client-go/kubernetes"
 )
 
 const (
-	kgatewayName        = "kgateway"
+	// KgatewayName is the name used to identify the kgateway implementation.
+	KgatewayName        = "kgateway"
 	kgatewayVersion     = "v2.2.0"
 	kgatewayChart       = "oci://ghcr.io/kgateway-dev/charts/kgateway"
 	kgatewayCRDsChart   = "oci://ghcr.io/kgateway-dev/charts/kgateway-crds"
@@ -35,9 +37,11 @@ const (
 	kgatewayCRDsRelease = "kgateway-crds"
 )
 
-func deployGatewayAPIKgateway(
+// DeployGatewayAPIKgateway installs kgateway with Gateway API support using Helm. Returns a
+// cleanup function that uninstalls kgateway and deletes the namespace.
+func DeployGatewayAPIKgateway(
 	ctx context.Context,
-	l logger,
+	l framework.Logger,
 	client *kubernetes.Clientset,
 	kubeconfigPath string,
 	namespace string,
@@ -49,7 +53,7 @@ func deployGatewayAPIKgateway(
 	settings.KubeConfig = kubeconfigPath
 
 	// Install CRDs first to avoid races creating extension resources.
-	if err := installChart(
+	if err := framework.InstallChart(
 		ctx,
 		l,
 		settings,
@@ -64,7 +68,7 @@ func deployGatewayAPIKgateway(
 		return nil, fmt.Errorf("installing kgateway CRDs chart: %w", err)
 	}
 
-	if err := installChart(
+	if err := framework.InstallChart(
 		ctx,
 		l,
 		settings,
@@ -90,14 +94,14 @@ func deployGatewayAPIKgateway(
 		defer cancel()
 
 		log.Printf("Cleaning up kgateway")
-		if err := uninstallChart(cleanupCtx, settings, kgatewayReleaseName, namespace); err != nil {
+		if err := framework.UninstallChart(cleanupCtx, settings, kgatewayReleaseName, namespace); err != nil {
 			log.Printf("Uninstalling kgateway chart: %v", err)
 		}
-		if err := uninstallChart(cleanupCtx, settings, kgatewayCRDsRelease, namespace); err != nil {
+		if err := framework.UninstallChart(cleanupCtx, settings, kgatewayCRDsRelease, namespace); err != nil {
 			log.Printf("Uninstalling kgateway CRDs chart: %v", err)
 		}
 
-		if err := deleteNamespaceAndWait(cleanupCtx, client, namespace); err != nil {
+		if err := framework.DeleteNamespaceAndWait(cleanupCtx, client, namespace); err != nil {
 			log.Printf("Deleting namespace: %v", err)
 		}
 	}, nil

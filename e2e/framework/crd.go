@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package framework
 
 import (
 	"bytes"
@@ -42,7 +42,8 @@ const (
 	gatewayAPIInstallURL = "https://github.com/kubernetes-sigs/gateway-api/releases/download/monthly-2026.01/monthly-2026.01-install.yaml"
 )
 
-func deployCRDs(ctx context.Context, l logger, client *apiextensionsclientset.Clientset, skipCleanup bool) (func(), error) {
+// Fetches and installs Gateway API CRDs. Returns a cleanup function.
+func deployCRDs(ctx context.Context, l Logger, client *apiextensionsclientset.Clientset, skipCleanup bool) (CleanupFunc, error) {
 	l.Logf("Fetching manifests from %s", gatewayAPIInstallURL)
 	yamlData, err := fetchManifests(ctx, l)
 	if err != nil {
@@ -115,7 +116,7 @@ func decodeCRDs(yamlData []byte) ([]apiextensionsv1.CustomResourceDefinition, er
 	return out, nil
 }
 
-func fetchManifests(ctx context.Context, log logger) ([]byte, error) {
+func fetchManifests(ctx context.Context, log Logger) ([]byte, error) {
 	return retryWithData(ctx, log, defaultRetryConfig(),
 		func(attempt, maxAttempts int, err error) string {
 			return fmt.Sprintf("Fetching manifests (attempt %d/%d): %v", attempt, maxAttempts, err)

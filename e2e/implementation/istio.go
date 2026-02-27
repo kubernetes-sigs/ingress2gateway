@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package implementation
 
 import (
 	"context"
@@ -22,19 +22,22 @@ import (
 	"log"
 	"time"
 
+	"github.com/kubernetes-sigs/ingress2gateway/e2e/framework"
 	"helm.sh/helm/v4/pkg/cli"
 	"k8s.io/client-go/kubernetes"
 )
 
 const (
+	// IstioName is the name used to identify the Istio implementation.
+	IstioName      = "istio"
 	istioVersion   = "1.28.2"
 	istioChartRepo = "https://istio-release.storage.googleapis.com/charts"
 )
 
-// Installs Istio with Gateway API support using Helm. Returns a cleanup function that uninstalls
-// Istio and deletes the namespace.
-func deployGatewayAPIIstio(ctx context.Context,
-	l logger,
+// DeployGatewayAPIIstio installs Istio with Gateway API support using Helm. Returns a cleanup
+// function that uninstalls Istio and deletes the namespace.
+func DeployGatewayAPIIstio(ctx context.Context,
+	l framework.Logger,
 	client *kubernetes.Clientset,
 	kubeconfigPath string,
 	namespace string,
@@ -51,7 +54,7 @@ func deployGatewayAPIIstio(ctx context.Context,
 		},
 	}
 
-	if err := installChart(
+	if err := framework.InstallChart(
 		ctx,
 		l,
 		settings,
@@ -72,7 +75,7 @@ func deployGatewayAPIIstio(ctx context.Context,
 		},
 	}
 
-	if err := installChart(
+	if err := framework.InstallChart(
 		ctx,
 		l,
 		settings,
@@ -98,14 +101,14 @@ func deployGatewayAPIIstio(ctx context.Context,
 		defer cancel()
 
 		log.Printf("Cleaning up Istio")
-		if err := uninstallChart(cleanupCtx, settings, "istiod", namespace); err != nil {
+		if err := framework.UninstallChart(cleanupCtx, settings, "istiod", namespace); err != nil {
 			log.Printf("Uninstalling chart %s: %v", "istiod", err)
 		}
-		if err := uninstallChart(cleanupCtx, settings, "istio-base", namespace); err != nil {
+		if err := framework.UninstallChart(cleanupCtx, settings, "istio-base", namespace); err != nil {
 			log.Printf("Uninstalling chart %s: %v", "istio-base", err)
 		}
 
-		if err := deleteNamespaceAndWait(cleanupCtx, client, namespace); err != nil {
+		if err := framework.DeleteNamespaceAndWait(cleanupCtx, client, namespace); err != nil {
 			log.Printf("Deleting namespace: %v", err)
 		}
 	}, nil
