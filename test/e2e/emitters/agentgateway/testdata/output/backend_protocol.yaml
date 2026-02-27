@@ -1,0 +1,51 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: nginx
+spec:
+  gatewayClassName: agentgateway
+  listeners:
+  - hostname: agw.backend-protocol.localdev.me
+    name: agw-backend-protocol-localdev-me-http
+    port: 80
+    protocol: HTTP
+status: {}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: agw-backend-protocol-agw-backend-protocol-localdev-me
+spec:
+  hostnames:
+  - agw.backend-protocol.localdev.me
+  parentRefs:
+  - name: nginx
+  rules:
+  - backendRefs:
+    - name: echo-backend-grpc
+      port: 8080
+    matches:
+    - path:
+        type: PathPrefix
+        value: /
+status:
+  parents: []
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: echo-backend-grpc-backend-http-version
+spec:
+  backend:
+    http:
+      version: HTTP2
+  targetRefs:
+  - group: ""
+    kind: Service
+    name: echo-backend-grpc
+status:
+  ancestors: null

@@ -27,12 +27,15 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc/codes"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlconfig "sigs.k8s.io/controller-runtime/pkg/client/config"
+	pb "sigs.k8s.io/gateway-api/conformance/echo-basic/grpcechoserver"
 	gwtests "sigs.k8s.io/gateway-api/conformance/tests"
 	gwconfig "sigs.k8s.io/gateway-api/conformance/utils/config"
+	gwgrpc "sigs.k8s.io/gateway-api/conformance/utils/grpc"
 	gwhttp "sigs.k8s.io/gateway-api/conformance/utils/http"
 	"sigs.k8s.io/gateway-api/conformance/utils/roundtripper"
 	gwtls "sigs.k8s.io/gateway-api/conformance/utils/tls"
@@ -162,6 +165,22 @@ type HTTPRequestConfig struct {
 	SNI string
 	// Headers is a map of custom HTTP headers to include in the request
 	Headers map[string]string
+}
+
+// GRPCRequestConfig contains configuration for making gRPC requests in tests.
+type GRPCRequestConfig struct {
+	// Authority is the :authority pseudo-header used for route host matching.
+	Authority string
+	// Address is the IP address or hostname to connect to.
+	Address string
+	// Port is the destination port (defaults to 80 when empty).
+	Port string
+	// Timeout is the maximum time to wait for consistency.
+	Timeout time.Duration
+	// Namespace expected from the echo backend assertions (defaults to "default").
+	Namespace string
+	// BackendPrefix optionally requires the responding pod name to start with this prefix.
+	BackendPrefix string
 }
 
 // getRoundTripper creates a DefaultRoundTripper with appropriate timeout configuration.
@@ -423,6 +442,47 @@ func MakeHTTPRequestEventually(t *testing.T, kubeContext string, cfg HTTPRequest
 	} else {
 		gwhttp.MakeRequestAndExpectEventuallyConsistentResponse(t, rt, timeoutConfig, gwAddr, expected)
 	}
+}
+
+// MakeGRPCRequestEventually makes a gRPC request and waits for the expected response.
+func MakeGRPCRequestEventually(t *testing.T, cfg GRPCRequestConfig) {
+	t.Helper()
+
+	port := cfg.Port
+	if port == "" {
+		port = "80"
+	}
+	namespace := cfg.Namespace
+	if namespace == "" {
+		namespace = "default"
+	}
+	timeout := cfg.Timeout
+	if timeout == 0 {
+		timeout = time.Minute
+	}
+
+	gwAddr := net.JoinHostPort(cfg.Address, port)
+	timeoutConfig := gwconfig.DefaultTimeoutConfig()
+	timeoutConfig.MaxTimeToConsistency = timeout
+	timeoutConfig.RequiredConsecutiveSuccesses = 1
+
+	expected := gwgrpc.ExpectedResponse{
+		EchoRequest: &pb.EchoRequest{},
+		RequestMetadata: &gwgrpc.RequestMetadata{
+			Authority: cfg.Authority,
+		},
+		Response:  gwgrpc.Response{Code: codes.OK},
+		Namespace: namespace,
+		Backend:   cfg.BackendPrefix,
+	}
+
+	gwgrpc.MakeRequestAndExpectEventuallyConsistentResponse(
+		t,
+		&gwgrpc.DefaultClient{},
+		timeoutConfig,
+		gwAddr,
+		expected,
+	)
 }
 
 func WaitForGatewayAddress(ctx context.Context, kubeContext, ns, gwName string, timeout time.Duration) (string, error) {

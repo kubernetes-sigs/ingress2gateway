@@ -219,6 +219,31 @@ func TestBasic(t *testing.T) {
 	})
 }
 
+func TestBackendProtocol(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	t.Cleanup(cancel)
+
+	// Use a dedicated gRPC backend so the shared echo backend can remain HTTP for other e2e cases.
+	testutils.ApplyGRPCEchoBackend(ctx, kubeContext)
+	t.Cleanup(func() {
+		if _, err := testutils.Kubectl(ctx, kubeContext, "-n", "default", "delete", "deploy/echo-backend-grpc", "svc/echo-backend-grpc", "--ignore-not-found=true", "--wait=true", "--timeout=2m"); err != nil {
+			t.Logf("failed to delete gRPC backend resources: %v", err)
+		}
+	})
+
+	_, gwAddr, host, _, _ := e2eTestSetup(t, "backend_protocol.yaml", "backend_protocol.yaml")
+
+	// Validate end-to-end gRPC traffic via Gateway when backend-protocol is projected.
+	testutils.MakeGRPCRequestEventually(t, testutils.GRPCRequestConfig{
+		Authority:     host,
+		Address:       gwAddr,
+		Port:          "80",
+		Timeout:       1 * time.Minute,
+		Namespace:     "default",
+		BackendPrefix: "echo-backend-grpc",
+	})
+}
+
 func TestLoadBalance(t *testing.T) {
 	_, gwAddr, host, ingressHostHeader, ingressIP := e2eTestSetup(t, "load_balance.yaml", "load_balance.yaml")
 

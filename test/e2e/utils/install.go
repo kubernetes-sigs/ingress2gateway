@@ -254,6 +254,62 @@ spec:
 	MustKubectl(ctx, kubeContext, "-n", "default", "rollout", "status", "deploy/echo-backend", "--timeout=5m")
 }
 
+func ApplyGRPCEchoBackend(ctx context.Context, kubeContext string) {
+	img := EnvOrDefault("GRPC_ECHO_IMAGE", "gcr.io/k8s-staging-gateway-api/echo-basic:v20240412-v1.0.0-394-g40c666fd")
+	y := fmt.Sprintf(`
+apiVersion: v1
+kind: Service
+metadata:
+  name: echo-backend-grpc
+  namespace: default
+spec:
+  selector:
+    app: echo-backend-grpc
+  ports:
+  - name: grpc
+    port: 8080
+    targetPort: 3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: echo-backend-grpc
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: echo-backend-grpc
+  template:
+    metadata:
+      labels:
+        app: echo-backend-grpc
+    spec:
+      containers:
+      - name: echo-backend-grpc
+        image: %s
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: SERVICE_NAME
+          value: echo-backend-grpc
+        - name: GRPC_ECHO_SERVER
+          value: "true"
+        ports:
+        - containerPort: 3000
+`, img)
+
+	log.Printf("Deploying gRPC echo backend (%s)", img)
+	MustKubectlApplyStdin(ctx, kubeContext, y)
+	MustKubectl(ctx, kubeContext, "-n", "default", "rollout", "status", "deploy/echo-backend-grpc", "--timeout=5m")
+}
+
 func ApplyTLSBackend(ctx context.Context, kubeContext, image string) {
 	img := EnvOrDefault("ECHO_IMAGE", image)
 
