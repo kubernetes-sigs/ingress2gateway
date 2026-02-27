@@ -17,18 +17,10 @@ limitations under the License.
 package notifications
 
 import (
-	"fmt"
 	"strings"
-	"sync"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/olekukonko/tablewriter"
 )
-
-func init() {
-	NotificationAggr = NotificationAggregator{Notifications: map[string][]Notification{}}
-}
 
 const (
 	InfoNotification    MessageType = "INFO"
@@ -44,63 +36,12 @@ type Notification struct {
 	CallingObjects []client.Object
 }
 
-type NotificationAggregator struct {
-	mutex         sync.Mutex
-	Notifications map[string][]Notification
-}
-
-var NotificationAggr NotificationAggregator
-
-// DispatchNotification is used to send a notification to the NotificationAggregator
-func (na *NotificationAggregator) DispatchNotification(notification Notification, ProviderName string) {
-	na.mutex.Lock()
-	na.Notifications[ProviderName] = append(na.Notifications[ProviderName], notification)
-	na.mutex.Unlock()
-}
-
-// CreateNotificationTables takes all generated notifications and returns a map[string]string
-// that displays the notifications in a tabular format based on provider
-func (na *NotificationAggregator) CreateNotificationTables() map[string]string {
-	notificationTablesMap := make(map[string]string)
-
-	na.mutex.Lock()
-	defer na.mutex.Unlock()
-
-	for provider, msgs := range na.Notifications {
-		providerTable := strings.Builder{}
-
-		t := tablewriter.NewWriter(&providerTable)
-		t.SetHeader([]string{"Message Type", "Notification", "Calling Object"})
-		t.SetColWidth(200)
-		t.SetRowLine(true)
-
-		for _, n := range msgs {
-			row := []string{string(n.Type), n.Message, convertObjectsToStr(n.CallingObjects)}
-			t.Append(row)
-		}
-
-		providerTable.WriteString(fmt.Sprintf("Notifications from %v:\n", strings.ToUpper(provider)))
-		t.Render()
-		notificationTablesMap[provider] = providerTable.String()
-	}
-
-	return notificationTablesMap
-}
-
-func convertObjectsToStr(ob []client.Object) string {
-	var sb strings.Builder
+func objectsToStr(ob []client.Object) string {
+	strs := make([]string, len(ob))
 
 	for i, o := range ob {
-		if i > 0 {
-			sb.WriteString(", ")
-		}
-		object := o.GetObjectKind().GroupVersionKind().Kind + ": " + client.ObjectKeyFromObject(o).String()
-		sb.WriteString(object)
+		strs[i] = o.GetObjectKind().GroupVersionKind().Kind + ": " + client.ObjectKeyFromObject(o).String()
 	}
 
-	return sb.String()
-}
-
-func NewNotification(mType MessageType, message string, callingObject ...client.Object) Notification {
-	return Notification{Type: mType, Message: message, CallingObjects: callingObject}
+	return strings.Join(strs, ", ")
 }

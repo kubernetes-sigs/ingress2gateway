@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/nginx/annotations"
@@ -29,9 +30,10 @@ import (
 type resourcesToIRConverter struct {
 	featureParsers                []i2gw.FeatureParser
 	implementationSpecificOptions i2gw.ProviderImplementationSpecificOptions
+	notify                        notifications.NotifyFunc
 }
 
-func newResourcesToIRConverter() *resourcesToIRConverter {
+func newResourcesToIRConverter(notify notifications.NotifyFunc) *resourcesToIRConverter {
 	return &resourcesToIRConverter{
 		featureParsers: []i2gw.FeatureParser{
 			annotations.ListenPortsFeature,
@@ -45,6 +47,7 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 			annotations.GRPCServicesFeature,
 		},
 		implementationSpecificOptions: i2gw.ProviderImplementationSpecificOptions{},
+		notify:                        notify,
 	}
 }
 
@@ -62,7 +65,7 @@ func (c *resourcesToIRConverter) convert(storage *storage) (providerir.ProviderI
 	}
 
 	for _, parseFeatureFunc := range c.featureParsers {
-		errs := parseFeatureFunc(ingressList, storage.ServicePorts, &ir)
+		errs := parseFeatureFunc(c.notify, ingressList, storage.ServicePorts, &ir)
 		errorList = append(errorList, errs...)
 	}
 

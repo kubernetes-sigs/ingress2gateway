@@ -50,7 +50,7 @@ func (e *Emitter) EmitBuffer(ir emitterir.EmitterIR) {
 			}
 
 			ruleInfo := e.formatRuleInfo(sectionName)
-			notify(notifications.InfoNotification, fmt.Sprintf("applied Buffer feature for HTTPRoute%s", ruleInfo), &ctx.HTTPRoute)
+			e.notify(notifications.InfoNotification, fmt.Sprintf("applied Buffer feature for HTTPRoute%s", ruleInfo), &ctx.HTTPRoute)
 		}
 	}
 }
@@ -67,7 +67,7 @@ func (e *Emitter) getSectionName(ctx emitterir.HTTPRouteContext, idx int) *gatew
 func (e *Emitter) selectBufferValue(bs *emitterir.BodySize, httpRoute *gatewayv1.HTTPRoute) *resource.Quantity {
 	if bs.MaxSize != nil {
 		if bs.BufferSize != nil {
-			notify(
+			e.notify(
 				notifications.WarningNotification,
 				fmt.Sprintf("Body max size (%s) takes precedence; buffer size (%s) will be ignored", bs.MaxSize.String(), bs.BufferSize.String()),
 				httpRoute,

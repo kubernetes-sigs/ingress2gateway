@@ -31,7 +31,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 )
 
-func backendTLSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func backendTLSFeature(notify notifications.NotifyFunc, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	var errList field.ErrorList
 
 	if ir.BackendTLSPolicies == nil {

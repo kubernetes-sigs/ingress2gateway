@@ -33,11 +33,13 @@ func init() {
 
 type Emitter struct {
 	builderMap *BuilderMap
+	notify     notifications.NotifyFunc
 }
 
-func NewEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
+func NewEmitter(conf *i2gw.EmitterConf) i2gw.Emitter {
 	return &Emitter{
 		builderMap: NewBuilderMap(),
+		notify:     conf.Report.Notifier(emitterName),
 	}
 }
 
@@ -58,7 +60,7 @@ func (e *Emitter) ToEnvoyGatewayResources(ir emitterir.EmitterIR, gwResources *i
 	for _, backendTrafficPolicy := range e.builderMap.BackendTrafficPolicies {
 		obj, err := i2gw.CastToUnstructured(backendTrafficPolicy)
 		if err != nil {
-			notify(notifications.ErrorNotification, "Failed to cast BackendTrafficPolicy to unstructured", backendTrafficPolicy)
+			e.notify(notifications.ErrorNotification, "Failed to cast BackendTrafficPolicy to unstructured", backendTrafficPolicy)
 			continue
 		}
 		gwResources.GatewayExtensions = append(gwResources.GatewayExtensions, *obj)
@@ -67,7 +69,7 @@ func (e *Emitter) ToEnvoyGatewayResources(ir emitterir.EmitterIR, gwResources *i
 	for _, securityPolicy := range e.builderMap.SecurityPolicies {
 		obj, err := i2gw.CastToUnstructured(securityPolicy)
 		if err != nil {
-			notify(notifications.ErrorNotification, "Failed to cast SecurityPolicy to unstructured", securityPolicy)
+			e.notify(notifications.ErrorNotification, "Failed to cast SecurityPolicy to unstructured", securityPolicy)
 			continue
 		}
 		gwResources.GatewayExtensions = append(gwResources.GatewayExtensions, *obj)

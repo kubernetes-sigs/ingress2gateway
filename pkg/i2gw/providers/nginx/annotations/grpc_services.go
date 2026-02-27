@@ -29,14 +29,14 @@ import (
 )
 
 // GRPCServicesFeature processes nginx.org/grpc-services annotation
-func GRPCServicesFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func GRPCServicesFeature(notify notifications.NotifyFunc, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 
 	ruleGroups := common.GetRuleGroups(ingresses)
 	for _, rg := range ruleGroups {
 		for _, rule := range rg.Rules {
 			if grpcServices, exists := rule.Ingress.Annotations[nginxGRPCServicesAnnotation]; exists && grpcServices != "" {
-				errs = append(errs, processGRPCServicesAnnotation(rule.Ingress, grpcServices, ir)...)
+				errs = append(errs, processGRPCServicesAnnotation(notify, rule.Ingress, grpcServices, ir)...)
 			}
 		}
 	}
@@ -47,7 +47,7 @@ func GRPCServicesFeature(ingresses []networkingv1.Ingress, _ map[types.Namespace
 // processGRPCServicesAnnotation handles gRPC backend services
 //
 //nolint:unparam // ErrorList return type maintained for consistency
-func processGRPCServicesAnnotation(ingress networkingv1.Ingress, grpcServices string, ir *providerir.ProviderIR) field.ErrorList {
+func processGRPCServicesAnnotation(notify notifications.NotifyFunc, ingress networkingv1.Ingress, grpcServices string, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList //nolint:unparam // ErrorList return type maintained for consistency
 
 	// Parse comma-separated service names that should use gRPC
@@ -125,7 +125,7 @@ func processGRPCServicesAnnotation(ingress networkingv1.Ingress, grpcServices st
 				var grpcFilters []gatewayv1.GRPCRouteFilter
 				if httpRouteExists {
 					// Find the corresponding HTTP rule for this path to copy its filters
-					grpcFilters = findAndConvertFiltersForGRPCPath(httpRouteContext.HTTPRoute.Spec.Rules, path.Path)
+					grpcFilters = findAndConvertFiltersForGRPCPath(notify, httpRouteContext.HTTPRoute.Spec.Rules, path.Path)
 				}
 
 				grpcRule := gatewayv1.GRPCRouteRule{
@@ -194,7 +194,7 @@ func processGRPCServicesAnnotation(ingress networkingv1.Ingress, grpcServices st
 }
 
 // findAndConvertFiltersForGRPCPath finds the HTTP rule that matches the given path and converts its filters to gRPC filters
-func findAndConvertFiltersForGRPCPath(httpRules []gatewayv1.HTTPRouteRule, grpcPath string) []gatewayv1.GRPCRouteFilter {
+func findAndConvertFiltersForGRPCPath(notify notifications.NotifyFunc, httpRules []gatewayv1.HTTPRouteRule, grpcPath string) []gatewayv1.GRPCRouteFilter {
 	// Find the HTTP rule that contains this path
 	for _, httpRule := range httpRules {
 		for _, match := range httpRule.Matches {

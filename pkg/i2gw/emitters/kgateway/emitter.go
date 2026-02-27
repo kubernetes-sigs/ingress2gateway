@@ -27,18 +27,22 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const emitterName = "kgateway"
+
 func init() {
-	i2gw.EmitterConstructorByName["kgateway"] = NewEmitter
+	i2gw.EmitterConstructorByName[emitterName] = NewEmitter
 }
 
 type Emitter struct {
 	builderMap *BuilderMap
+	notify     notifications.NotifyFunc
 }
 
 // NewEmitter returns a new instance of KgatewayEmitter
-func NewEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
+func NewEmitter(conf *i2gw.EmitterConf) i2gw.Emitter {
 	return &Emitter{
 		builderMap: NewBuilderMap(),
+		notify:     conf.Report.Notifier(emitterName),
 	}
 }
 
@@ -52,7 +56,7 @@ func (e *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.Err
 	// Set GatewayClassName to "kgateway" for all Gateways
 	for key := range gatewayResources.Gateways {
 		gateway := gatewayResources.Gateways[key]
-		gateway.Spec.GatewayClassName = "kgateway"
+		gateway.Spec.GatewayClassName = emitterName
 		gatewayResources.Gateways[key] = gateway
 	}
 
@@ -95,7 +99,7 @@ func (e *Emitter) ToKgatewayResources(ir emitterir.EmitterIR, gwResources *i2gw.
 	for _, obj := range kgatewayObjs {
 		u, err := i2gw.CastToUnstructured(obj)
 		if err != nil {
-			notify(notifications.ErrorNotification, "Failed to cast TrafficPolicy to unstructured", obj)
+			e.notify(notifications.ErrorNotification, "Failed to cast TrafficPolicy to unstructured", obj)
 			continue
 		}
 		gwResources.GatewayExtensions = append(gwResources.GatewayExtensions, *u)

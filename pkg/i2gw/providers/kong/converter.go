@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong/crds"
@@ -30,10 +31,11 @@ import (
 type resourcesToIRConverter struct {
 	featureParsers                []i2gw.FeatureParser
 	implementationSpecificOptions i2gw.ProviderImplementationSpecificOptions
+	notify                        notifications.NotifyFunc
 }
 
 // newResourcesToIRConverter returns an kong converter instance.
-func newResourcesToIRConverter() *resourcesToIRConverter {
+func newResourcesToIRConverter(notify notifications.NotifyFunc) *resourcesToIRConverter {
 	return &resourcesToIRConverter{
 		featureParsers: []i2gw.FeatureParser{
 			headerMatchingFeature,
@@ -43,6 +45,7 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 		implementationSpecificOptions: i2gw.ProviderImplementationSpecificOptions{
 			ToImplementationSpecificHTTPPathTypeMatch: implementationSpecificHTTPPathTypeMatch,
 		},
+		notify: notify,
 	}
 }
 
@@ -59,12 +62,10 @@ func (c *resourcesToIRConverter) convert(storage *storage) (providerir.ProviderI
 		return providerir.ProviderIR{}, errorList
 	}
 
-	tcpGatewayIR, notificationsAggregator, errs := crds.TCPIngressToGatewayIR(storage.TCPIngresses)
+	tcpGatewayIR, errs := crds.TCPIngressToGatewayIR(c.notify, storage.TCPIngresses)
 	if len(errs) > 0 {
 		errorList = append(errorList, errs...)
 	}
-
-	dispatchNotification(notificationsAggregator)
 
 	if len(errorList) > 0 {
 		return providerir.ProviderIR{}, errorList
@@ -78,7 +79,7 @@ func (c *resourcesToIRConverter) convert(storage *storage) (providerir.ProviderI
 
 	for _, parseFeatureFunc := range c.featureParsers {
 		// Apply the feature parsing function to the gateway resources, one by one.
-		errs = parseFeatureFunc(ingressList, storage.ServicePorts, &ir)
+		errs = parseFeatureFunc(c.notify, ingressList, storage.ServicePorts, &ir)
 		// Append the parsing errors to the error list.
 		errorList = append(errorList, errs...)
 	}

@@ -38,7 +38,7 @@ import (
 //
 // All the values defined for each annotation name, and separated by comma, MUST be ORed.
 // All the annotation names MUST be ANDed, with the respective values.
-func headerMatchingFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func headerMatchingFeature(notify notifications.NotifyFunc, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	ruleGroups := common.GetRuleGroups(ingresses)
 	for _, rg := range ruleGroups {
 		for _, rule := range rg.Rules {
@@ -49,14 +49,14 @@ func headerMatchingFeature(ingresses []networkingv1.Ingress, _ map[types.Namespa
 				return field.ErrorList{field.InternalError(nil, fmt.Errorf("HTTPRoute does not exist - this should never happen"))}
 			}
 
-			patchHTTPRouteHeaderMatching(&httpRouteContext.HTTPRoute, headerskeys, headersValues)
+			patchHTTPRouteHeaderMatching(notify, &httpRouteContext.HTTPRoute, headerskeys, headersValues)
 		}
 
 	}
 	return nil
 }
 
-func patchHTTPRouteHeaderMatching(httpRoute *gatewayv1.HTTPRoute, headerNames []string, headerValues [][]string) {
+func patchHTTPRouteHeaderMatching(notify notifications.NotifyFunc, httpRoute *gatewayv1.HTTPRoute, headerNames []string, headerValues [][]string) {
 	for i := range httpRoute.Spec.Rules {
 		newMatches := []gatewayv1.HTTPRouteMatch{}
 		for _, match := range httpRoute.Spec.Rules[i].Matches {

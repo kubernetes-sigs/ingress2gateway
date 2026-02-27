@@ -40,7 +40,7 @@ type canaryConfig struct {
 }
 
 // parseCanaryConfig extracts canary weight configuration from an Ingress
-func parseCanaryConfig(ingress *networkingv1.Ingress) (canaryConfig, error) {
+func parseCanaryConfig(notify notifications.NotifyFunc, ingress *networkingv1.Ingress) (canaryConfig, error) {
 	config := canaryConfig{
 		weight:      0,
 		weightTotal: 100, // default
@@ -91,7 +91,7 @@ func parseCanaryConfig(ingress *networkingv1.Ingress) (canaryConfig, error) {
 	return config, nil
 }
 
-func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func canaryFeature(notify notifications.NotifyFunc, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	ruleGroups := common.GetRuleGroups(ingresses)
 	var errList field.ErrorList
 
@@ -137,7 +137,7 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 						continue
 					}
 
-					config, err := parseCanaryConfig(source.Ingress)
+					config, err := parseCanaryConfig(notify, source.Ingress)
 					if err != nil {
 						errList = append(errList, field.Invalid(
 							field.NewPath("ingress", source.Ingress.Namespace, source.Ingress.Name, "metadata", "annotations"),

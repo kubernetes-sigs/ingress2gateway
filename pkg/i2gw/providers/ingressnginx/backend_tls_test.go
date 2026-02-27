@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -349,7 +350,7 @@ func TestBackendTLSFeature(t *testing.T) {
 				},
 			}
 
-			errs := backendTLSFeature([]networkingv1.Ingress{tc.ingress}, nil, &ir)
+			errs := backendTLSFeature(notifications.NoopNotify, []networkingv1.Ingress{tc.ingress}, nil, &ir)
 			if len(errs) > 0 {
 				t.Fatalf("Expected no errors, got %v", errs)
 			}
@@ -623,7 +624,7 @@ func TestBackendTLSFeatureExtended(t *testing.T) {
 				}
 			}
 
-			errs := backendTLSFeature(tc.ingresses, nil, &ir)
+			errs := backendTLSFeature(notifications.NoopNotify, tc.ingresses, nil, &ir)
 			if len(errs) > 0 {
 				t.Fatalf("Expected no errors, got %v", errs)
 			}

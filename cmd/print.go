@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/samber/lo"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -41,9 +42,6 @@ import (
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/nginx"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/openapi3"
-
-	// Call init for notifications
-	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 
 	// Call init for emitters
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/envoygateway"
@@ -117,7 +115,7 @@ func (pr *PrintRunner) PrintGatewayAPIObjects(cmd *cobra.Command, _ []string) er
 		allFiles = append(allFiles, path)
 	}
 	var gatewayResources []i2gw.GatewayResources
-	var notificationTablesMap map[string]string
+	var report *notifications.Report
 
 	var inputReader io.Reader
 
@@ -152,13 +150,13 @@ func (pr *PrintRunner) PrintGatewayAPIObjects(cmd *cobra.Command, _ []string) er
 		}
 	}
 
-	gatewayResources, notificationTablesMap, err = i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, inputReader, pr.providers, pr.emitter, pr.getProviderSpecificFlags(), pr.allowExperimentalGatewayAPI)
+	gatewayResources, report, err = i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, inputReader, pr.providers, pr.emitter, pr.getProviderSpecificFlags(), pr.allowExperimentalGatewayAPI)
 
 	if err != nil {
 		return err
 	}
 
-	for _, table := range notificationTablesMap {
+	for _, table := range report.Render() {
 		fmt.Fprintln(os.Stderr, table)
 	}
 

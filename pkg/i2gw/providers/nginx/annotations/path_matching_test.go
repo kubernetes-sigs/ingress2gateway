@@ -25,6 +25,7 @@ import (
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
@@ -176,7 +177,7 @@ func TestPathRegex(t *testing.T) {
 				HTTPRoute: httpRoute,
 			}
 
-			errs := PathRegexFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+			errs := PathRegexFeature(notifications.NoopNotify, []networkingv1.Ingress{ingress}, nil, &ir)
 			if len(errs) > 0 {
 				t.Fatalf("Unexpected errors: %v", errs)
 			}
@@ -285,7 +286,7 @@ func TestPathRegexMultipleMatches(t *testing.T) {
 		HTTPRoute: httpRoute,
 	}
 
-	errs := PathRegexFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+	errs := PathRegexFeature(notifications.NoopNotify, []networkingv1.Ingress{ingress}, nil, &ir)
 	if len(errs) > 0 {
 		t.Fatalf("Unexpected errors: %v", errs)
 	}
@@ -375,7 +376,7 @@ func TestPathRegexCaseInsensitiveNotification(t *testing.T) {
 		HTTPRoute: httpRoute,
 	}
 
-	errs := PathRegexFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+	errs := PathRegexFeature(notifications.NoopNotify, []networkingv1.Ingress{ingress}, nil, &ir)
 
 	// Should have no errors since we're using notifications now
 	if len(errs) != 0 {
@@ -462,7 +463,7 @@ func TestPathRegexCaseInsensitiveFlagInjection(t *testing.T) {
 	}
 
 	// Apply path regex feature
-	errs := PathRegexFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+	errs := PathRegexFeature(notifications.NoopNotify, []networkingv1.Ingress{ingress}, nil, &ir)
 	if len(errs) > 0 {
 		t.Fatalf("Unexpected errors: %v", errs)
 	}
@@ -571,7 +572,7 @@ func TestPathRegexCaseInsensitiveFlagNotDuplicated(t *testing.T) {
 	}
 
 	// Apply path regex feature
-	errs := PathRegexFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+	errs := PathRegexFeature(notifications.NoopNotify, []networkingv1.Ingress{ingress}, nil, &ir)
 	if len(errs) > 0 {
 		t.Fatalf("Unexpected errors: %v", errs)
 	}

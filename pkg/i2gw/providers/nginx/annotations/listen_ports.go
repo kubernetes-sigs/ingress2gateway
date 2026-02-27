@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
@@ -37,7 +38,7 @@ type portConfiguration struct {
 }
 
 // ListenPortsFeature processes nginx.org/listen-ports and nginx.org/listen-ports-ssl annotations
-func ListenPortsFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func ListenPortsFeature(_ notifications.NotifyFunc, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 
 	ruleGroups := common.GetRuleGroups(ingresses)
