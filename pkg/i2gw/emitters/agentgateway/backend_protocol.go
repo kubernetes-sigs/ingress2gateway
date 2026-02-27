@@ -36,12 +36,10 @@ func applyBackendProtocolPolicy(
 	httpRouteKey types.NamespacedName,
 	httpRouteCtx emitterir.HTTPRouteContext,
 	backendPolicies map[types.NamespacedName]*agentgatewayv1alpha1.AgentgatewayPolicy,
-) bool {
+) {
 	if pol.BackendProtocol == nil || *pol.BackendProtocol != emitterir.BackendProtocolGRPC {
-		return false
+		return
 	}
-
-	changed := false
 
 	for _, idx := range pol.RuleBackendSources {
 		if idx.Rule >= len(httpRouteCtx.Spec.Rules) {
@@ -96,10 +94,7 @@ func applyBackendProtocolPolicy(
 			ap.Spec.Backend.HTTP = &agentgatewayv1alpha1.BackendHTTP{}
 		}
 		ap.Spec.Backend.HTTP.Version = ptrHTTPVersion(agentgatewayv1alpha1.HTTPVersion2)
-		changed = true
 	}
-
-	return changed
 }
 
 func ptrHTTPVersion(v agentgatewayv1alpha1.HTTPVersion) *agentgatewayv1alpha1.HTTPVersion {
