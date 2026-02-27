@@ -17,10 +17,15 @@ limitations under the License.
 package utils
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
@@ -36,7 +41,6 @@ type uniqueBackendRefsKey struct {
 
 // removeBackendRefsDuplicates removes duplicate backendRefs from a list of backendRefs.
 func removeBackendRefsDuplicates(backendRefs []gatewayv1.HTTPBackendRef) []gatewayv1.HTTPBackendRef {
-
 	uniqueBackendRefs := map[uniqueBackendRefsKey]*gatewayv1.HTTPBackendRef{}
 
 	for _, backendRef := range backendRefs {
@@ -123,4 +127,28 @@ func ToGatewayResources(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.Er
 		gatewayResources.ReferenceGrants[key] = val.ReferenceGrant
 	}
 	return gatewayResources, nil
+}
+
+func LogUnparsedErrors(ir emitterir.EmitterIR, notify func(mType notifications.MessageType, message string, callingObject ...client.Object)) {
+	// currently, we only really have unparsed errors in the HTTPRouteContext, but we can expand this function as needed if we have unparsed errors in other contexts in the future.
+	for _, httpRouteContext := range ir.HTTPRoutes {
+		for _, unparsedExtension := range httpRouteContext.UnparsedExtensions() {
+			if unparsedExtension == nil {
+				continue
+			}
+			source := unparsedExtension.Source()
+			paths := strings.Builder{}
+			for _, p := range unparsedExtension.Paths() {
+				paths.WriteString(p.String())
+				paths.WriteString(", ")
+			}
+
+			message := unparsedExtension.FailureMessage()
+
+			notify(notifications.ErrorNotification,
+				fmt.Sprintf("failed to parse %s from Ingress %s: %s", source, strings.TrimSuffix(paths.String(), ", "), message),
+				&httpRouteContext.HTTPRoute,
+			)
+		}
+	}
 }
