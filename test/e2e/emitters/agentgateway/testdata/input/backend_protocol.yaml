@@ -12,7 +12,7 @@ spec:
       paths:
       - backend:
           service:
-            name: echo-backend
+            name: echo-backend-grpc
             port:
               number: 8080
         path: /

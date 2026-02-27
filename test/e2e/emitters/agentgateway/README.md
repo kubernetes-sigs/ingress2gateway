@@ -123,8 +123,12 @@ KEEP_KIND_CLUSTER=false go test ./test/e2e/emitters/agentgateway -v -run TestIng
 | Variable | Default | Description |
 |---|---:|---|
 | `ECHO_IMAGE` | `gcr.io/k8s-staging-gateway-api/echo-basic:...` | backend echo server image |
+| `GRPC_ECHO_IMAGE` | `gcr.io/k8s-staging-gateway-api/echo-basic:v20240412-v1.0.0-394-g40c666fd` | gRPC backend image for `TestBackendProtocol` |
 
-**Note:** HTTP requests are made directly from test code, so no curl client pod image is needed.
+**Notes:**
+- HTTP requests are made directly from test code, so no curl client pod image is needed.
+- The shared `echo-backend` stays in HTTP mode for general test coverage.
+- `TestBackendProtocol` creates a dedicated `echo-backend-grpc` deployment/service with `GRPC_ECHO_SERVER=true` so gRPC validation does not alter other HTTP-focused cases.
 
 Example override:
 

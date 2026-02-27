@@ -26,7 +26,7 @@ spec:
   - name: nginx
   rules:
   - backendRefs:
-    - name: echo-backend
+    - name: echo-backend-grpc
       port: 8080
     matches:
     - path:
@@ -38,7 +38,7 @@ status:
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayPolicy
 metadata:
-  name: echo-backend-backend-http-version
+  name: echo-backend-grpc-backend-http-version
 spec:
   backend:
     http:
@@ -46,6 +46,6 @@ spec:
   targetRefs:
   - group: ""
     kind: Service
-    name: echo-backend
+    name: echo-backend-grpc
 status:
   ancestors: null
