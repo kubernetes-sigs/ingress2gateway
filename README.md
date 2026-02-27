@@ -17,7 +17,21 @@ translated to [Gateway API](https://gateway-api.sigs.k8s.io/) directly.
 > **Note:** Ingress2gateway is not intended to copy annotations from Ingress to Gateway
 API.
 
-## Supported providers
+## Providers vs Emitters
+
+Ingress2gateway has two main components: **providers** and **emitters**.
+
+- **Providers** read Ingress resources and provider-specific CRDs, then convert
+  them into a generic intermediate representation (IR).
+- **Emitters** take that IR and produce the final Gateway API output. The default
+  `standard` emitter outputs core Gateway API resources (like `Gateway` and
+  `HTTPRoute`), while other emitters can additionally output resources tailored to
+  a specific Gateway API project (e.g. `EnvoyGateway` `BackendTrafficPolicy`
+  or `GKE` `HealthCheckPolicy`).
+
+For a detailed look at the architecture, see [docs/emitters.md](docs/emitters.md).
+
+### Supported Providers
 
 * [apisix](pkg/i2gw/providers/apisix/README.md)
 * [cilium](pkg/i2gw/providers/cilium/README.md)
@@ -32,6 +46,12 @@ If your provider, or a specific feature, is not currently supported, please open
 an issue and describe your use case.
 
 To contribute a new provider support - please read [PROVIDER.md](PROVIDER.md).
+
+### Supported Emitters
+* [standard](https://gateway-api.sigs.k8s.io/) (default)
+* [envoy-gateway](https://gateway.envoyproxy.io/)
+* [gce](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/gateway-api)
+* [kgateway](https://kgateway.dev/)
 
 ## Installation
 
@@ -103,6 +123,7 @@ The above command will:
 | openapi3-backend     |                         | No       | Provider-specific: openapi3. The name of the backend service to use in the HTTPRoutes. |
 | openapi3-gateway-class-name     |                         | No       | Provider-specific: openapi3. The name of the gateway class to use in the Gateways. |
 | openapi3-gateway-tls-secret     |                         | No       | Provider-specific: openapi3. The name of the secret for the TLS certificate references in the Gateways. |
+| emitter        | standard                | No       | The emitter to use for generating Gateway API resources. |
 | output         | yaml                    | No       | The output format, either yaml or json.                       |
 | providers      |  | Yes       | Comma-separated list of providers. |
 | kubeconfig     |                         | No       | The kubeconfig file to use when talking to the cluster. If the flag is not set, a set of standard locations can be searched for an existing kubeconfig file. |
