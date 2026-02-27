@@ -53,7 +53,7 @@ func ToEmitterIR(pIR ProviderIR) emitterir.EmitterIR {
 		eIR.UDPRoutes[k] = emitterir.UDPRouteContext{UDPRoute: v}
 	}
 	for k, v := range pIR.GRPCRoutes {
-		eIR.GRPCRoutes[k] = emitterir.GRPCRouteContext{GRPCRoute: v}
+		eIR.GRPCRoutes[k] = emitterir.GRPCRouteContext{GRPCRoute: v.GRPCRoute}
 	}
 	for k, v := range pIR.BackendTLSPolicies {
 		eIR.BackendTLSPolicies[k] = emitterir.BackendTLSPolicyContext{BackendTLSPolicy: v}
