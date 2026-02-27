@@ -29,6 +29,15 @@ const (
 	// Rewrite annotations
 	RewriteTargetAnnotation = "nginx.ingress.kubernetes.io/rewrite-target"
 
+	// Redirect annotations
+	PermanentRedirectAnnotation     = "nginx.ingress.kubernetes.io/permanent-redirect"
+	PermanentRedirectCodeAnnotation = "nginx.ingress.kubernetes.io/permanent-redirect-code"
+	TemporalRedirectAnnotation      = "nginx.ingress.kubernetes.io/temporal-redirect"
+	TemporalRedirectCodeAnnotation  = "nginx.ingress.kubernetes.io/temporal-redirect-code"
+	FromToWWWRedirectAnnotation     = "nginx.ingress.kubernetes.io/from-to-www-redirect"
+	ProxyRedirectFromAnnotation     = "nginx.ingress.kubernetes.io/proxy-redirect-from"
+	ProxyRedirectToAnnotation       = "nginx.ingress.kubernetes.io/proxy-redirect-to"
+
 	// Header annotations
 	XForwardedPrefixAnnotation      = "nginx.ingress.kubernetes.io/x-forwarded-prefix"
 	UpstreamVhostAnnotation         = "nginx.ingress.kubernetes.io/upstream-vhost"
@@ -66,6 +75,14 @@ const (
 	// IP Range Control annotations
 	WhiteListSourceRangeAnnotation = "nginx.ingress.kubernetes.io/whitelist-source-range"
 	DenyListSourceRangeAnnotation  = "nginx.ingress.kubernetes.io/denylist-source-range"
+
+	// Backend TLS annotations
+	ProxySSLVerifyAnnotation      = "nginx.ingress.kubernetes.io/proxy-ssl-verify"
+	ProxySSLSecretAnnotation      = "nginx.ingress.kubernetes.io/proxy-ssl-secret" //nolint:gosec // This is an annotation key, not a secret
+	ProxySSLNameAnnotation        = "nginx.ingress.kubernetes.io/proxy-ssl-name"
+	ProxySSLServerNameAnnotation  = "nginx.ingress.kubernetes.io/proxy-ssl-server-name"
+	ProxySSLVerifyDepthAnnotation = "nginx.ingress.kubernetes.io/proxy-ssl-verify-depth"
+	ProxySSLProtocolsAnnotation   = "nginx.ingress.kubernetes.io/proxy-ssl-protocols"
 )
 
 const ingressNGINXAnnotationsPrefix = "nginx.ingress.kubernetes.io/"
