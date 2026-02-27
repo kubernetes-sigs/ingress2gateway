@@ -61,7 +61,6 @@ const (
 
 	// SSL Redirect annotation
 	SSLRedirectAnnotation = "nginx.ingress.kubernetes.io/ssl-redirect"
-
 	// CORS annotations
 	EnableCorsAnnotation       = "nginx.ingress.kubernetes.io/enable-cors"
 	CorsAllowOriginAnnotation  = "nginx.ingress.kubernetes.io/cors-allow-origin"
@@ -83,6 +82,12 @@ const (
 	ProxySSLServerNameAnnotation  = "nginx.ingress.kubernetes.io/proxy-ssl-server-name"
 	ProxySSLVerifyDepthAnnotation = "nginx.ingress.kubernetes.io/proxy-ssl-verify-depth"
 	ProxySSLProtocolsAnnotation   = "nginx.ingress.kubernetes.io/proxy-ssl-protocols"
+
+	// Affinity annotations
+	AffinityAnnotation             = "nginx.ingress.kubernetes.io/affinity"
+	AffinityModeAnnotation         = "nginx.ingress.kubernetes.io/affinity-mode"
+	SessionCookieExpiresAnnotation = "nginx.ingress.kubernetes.io/session-cookie-expires"
+	SessionCookieNameAnnotation    = "nginx.ingress.kubernetes.io/session-cookie-name"
 )
 
 const ingressNGINXAnnotationsPrefix = "nginx.ingress.kubernetes.io/"
@@ -117,4 +122,8 @@ var parsedAnnotations = map[string]struct{}{
 	CorsAllowCredentialsAnnotation:  {},
 	CorsExposeHeadersAnnotation:     {},
 	CorsMaxAgeAnnotation:            {},
+	AffinityAnnotation:              {},
+	AffinityModeAnnotation:          {},
+	SessionCookieExpiresAnnotation:  {},
+	SessionCookieNameAnnotation:     {},
 }
