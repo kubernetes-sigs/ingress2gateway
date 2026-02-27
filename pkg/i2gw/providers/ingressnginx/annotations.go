@@ -29,6 +29,15 @@ const (
 	// Rewrite annotations
 	RewriteTargetAnnotation = "nginx.ingress.kubernetes.io/rewrite-target"
 
+	// Redirect annotations
+	PermanentRedirectAnnotation     = "nginx.ingress.kubernetes.io/permanent-redirect"
+	PermanentRedirectCodeAnnotation = "nginx.ingress.kubernetes.io/permanent-redirect-code"
+	TemporalRedirectAnnotation      = "nginx.ingress.kubernetes.io/temporal-redirect"
+	TemporalRedirectCodeAnnotation  = "nginx.ingress.kubernetes.io/temporal-redirect-code"
+	FromToWWWRedirectAnnotation     = "nginx.ingress.kubernetes.io/from-to-www-redirect"
+	ProxyRedirectFromAnnotation     = "nginx.ingress.kubernetes.io/proxy-redirect-from"
+	ProxyRedirectToAnnotation       = "nginx.ingress.kubernetes.io/proxy-redirect-to"
+
 	// Header annotations
 	XForwardedPrefixAnnotation      = "nginx.ingress.kubernetes.io/x-forwarded-prefix"
 	UpstreamVhostAnnotation         = "nginx.ingress.kubernetes.io/upstream-vhost"
