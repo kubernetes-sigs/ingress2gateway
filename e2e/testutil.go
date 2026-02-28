@@ -292,6 +292,11 @@ func deployGatewayImplementation(
 		r = globalResourceManager.acquire(kgatewayName, func() (cleanupFunc, error) {
 			return deployGatewayAPIKgateway(ctx, t, k8sClient, kubeconfig, ns, skipCleanup)
 		})
+	case envoyGatewayName:
+		ns := fmt.Sprintf("%s-envoy-gateway-system", e2ePrefix)
+		r = globalResourceManager.acquire(envoyGatewayName, func() (cleanupFunc, error) {
+			return deployGatewayAPIEnvoyGateway(ctx, t, k8sClient, gwClient, kubeconfig, ns, skipCleanup)
+		})
 	default:
 		t.Fatalf("Unknown gateway implementation: %s", gwImpl)
 	}
