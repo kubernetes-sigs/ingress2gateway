@@ -85,7 +85,7 @@ type PrintRunner struct {
 	// Defaults to "standard".
 	emitter string
 
-	// allowExperimentalGatewayAPI indicates whether Experimental Gateway API features (like CORS, URLRewrite) should be included in the output.
+	// allowExperimentalGatewayAPI indicates whether Experimental Gateway API features (like URLRewrite) should be included in the output.
 	allowExperimentalGatewayAPI bool
 }
 
@@ -421,7 +421,7 @@ if specified with --namespace.`)
 	cmd.Flags().StringSliceVar(&pr.providers, "providers", []string{},
 		fmt.Sprintf("If present, the tool will try to convert only resources related to the specified providers, supported values are %v.", i2gw.GetSupportedProviders()))
 
-	cmd.Flags().BoolVar(&pr.allowExperimentalGatewayAPI, "allow-experimental-gw-api", false, "If present, the tool will include Experimental Gateway API fields (e.g. CORS, URLRewrite) in the output. Default is false.")
+	cmd.Flags().BoolVar(&pr.allowExperimentalGatewayAPI, "allow-experimental-gw-api", false, "If present, the tool will include Experimental Gateway API fields (e.g. URLRewrite) in the output. Default is false.")
 
 	pr.providerSpecificFlags = make(map[string]*string)
 	for provider, flags := range i2gw.GetProviderSpecificFlagDefinitions() {
