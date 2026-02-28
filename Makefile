@@ -105,7 +105,7 @@ ensure-kind:
 .PHONY: kind
 kind: ensure-kind
 	@if ! $(KIND) get clusters | grep -q i2gw-e2e; then \
-		$(KIND) create cluster -n i2gw-e2e --kubeconfig $(REPO_ROOT)/kind-kubeconfig; \
+		$(KIND) create cluster -n i2gw-e2e --kubeconfig $(REPO_ROOT)/kind-kubeconfig --config ./e2e/kind.yaml; \
 	else \
 		echo "Cluster i2gw-e2e already exists. Reusing it."; \
 		$(KIND) get kubeconfig --name i2gw-e2e > $(REPO_ROOT)/kind-kubeconfig; \

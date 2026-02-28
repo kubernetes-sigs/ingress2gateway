@@ -36,16 +36,26 @@ func TestApplyRewriteTargetToEmitterIR_SetsRewriteHeadersAndRegex(t *testing.T) 
 			Namespace: "default",
 			Name:      "ing",
 			Annotations: map[string]string{
-				RewriteTargetAnnotation:    "/rewritten",
+				RewriteTargetAnnotation:    "/rewritten/\\$1",
 				XForwardedPrefixAnnotation: "/prefix",
 				UseRegexAnnotation:         "true",
 			},
+		},
+		Spec: networkingv1.IngressSpec{
+			Rules: []networkingv1.IngressRule{{
+				Host: "example.com",
+			}},
 		},
 	}
 
 	pIR := providerir.ProviderIR{
 		HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 			key: {
+				HTTPRoute: gatewayv1.HTTPRoute{
+					Spec: gatewayv1.HTTPRouteSpec{
+						Hostnames: []gatewayv1.Hostname{"example.com"},
+					},
+				},
 				RuleBackendSources: [][]providerir.BackendSource{{{Ingress: &ing}}},
 			},
 		},
@@ -59,17 +69,17 @@ func TestApplyRewriteTargetToEmitterIR_SetsRewriteHeadersAndRegex(t *testing.T) 
 		},
 	}
 
-	applyRewriteTargetToEmitterIR(pIR, &eIR)
+	applyRewriteTargetToEmitterIR([]networkingv1.Ingress{ing}, pIR, &eIR)
 
 	got := eIR.HTTPRoutes[key].PathRewriteByRuleIdx[0]
 	if got == nil {
 		t.Fatalf("expected PathRewriteByRuleIdx[0] to be set")
 	}
-	if got.ReplaceFullPath != "/rewritten" {
-		t.Fatalf("expected ReplaceFullPath=/rewritten, got %q", got.ReplaceFullPath)
+	if got.ReplaceFullPath != "/rewritten/\\$1" {
+		t.Fatalf("expected ReplaceFullPath=/rewritten/\\$1, got %q", got.ReplaceFullPath)
 	}
-	if got.Regex != true {
-		t.Fatalf("expected Regex=true, got %v", got.Regex)
+	if got.RegexCaptureGroupReferences != true {
+		t.Fatalf("expected Regex=true, got %v", got.RegexCaptureGroupReferences)
 	}
 	wantHeaders := map[string]string{"X-Forwarded-Prefix": "/prefix"}
 	if !reflect.DeepEqual(got.Headers, wantHeaders) {
@@ -120,7 +130,7 @@ func TestApplyRewriteTargetToEmitterIR_PrefersNonCanaryIngressSource(t *testing.
 		},
 	}
 
-	applyRewriteTargetToEmitterIR(pIR, &eIR)
+	applyRewriteTargetToEmitterIR([]networkingv1.Ingress{canary, main}, pIR, &eIR)
 
 	got := eIR.HTTPRoutes[key].PathRewriteByRuleIdx[0]
 	if got == nil {

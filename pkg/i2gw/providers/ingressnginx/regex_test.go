@@ -76,7 +76,7 @@ func TestRegexFeature(t *testing.T) {
 				{
 					Path: &gatewayv1.HTTPPathMatch{
 						Type:  &regexType,
-						Value: ptr.To("/users/.*/profile"),
+						Value: ptr.To("(?i)/users/.*/profile.*"),
 					},
 				},
 			},
@@ -121,6 +121,49 @@ func TestRegexFeature(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Should map to RegularExpression when rewrite-target annotation is set",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "rewrite-regex-ingress",
+					Namespace: "default",
+					Annotations: map[string]string{
+						RewriteTargetAnnotation: "/$1",
+					},
+				},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{
+						{
+							Host: "example.com",
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{
+										{
+											Path:     "/products/(.+)",
+											PathType: ptr.To(networkingv1.PathTypeImplementationSpecific),
+											Backend: networkingv1.IngressBackend{
+												Service: &networkingv1.IngressServiceBackend{
+													Name: "service1",
+													Port: networkingv1.ServiceBackendPort{Number: 80},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: []gatewayv1.HTTPRouteMatch{
+				{
+					Path: &gatewayv1.HTTPPathMatch{
+						Type:  &regexType,
+						Value: ptr.To("(?i)/products/(.+).*"),
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -153,6 +196,7 @@ func TestRegexFeature(t *testing.T) {
 					Name:      key.Name,
 				},
 				Spec: gatewayv1.HTTPRouteSpec{
+					Hostnames: []gatewayv1.Hostname{"example.com"},
 					Rules: []gatewayv1.HTTPRouteRule{
 						{
 							Matches: []gatewayv1.HTTPRouteMatch{
