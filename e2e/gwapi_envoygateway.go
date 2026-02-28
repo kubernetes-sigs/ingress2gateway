@@ -52,6 +52,21 @@ func deployGatewayAPIEnvoyGateway(
 	settings := cli.New()
 	settings.KubeConfig = kubeconfigPath
 
+	values := map[string]interface{}{
+		"config": map[string]interface{}{
+			"envoyGateway": map[string]interface{}{
+				"provider": map[string]interface{}{
+					"type": "Kubernetes",
+					"kubernetes": map[string]interface{}{
+						"deploy": map[string]interface{}{
+							"type": "GatewayNamespace",
+						},
+					},
+				},
+			},
+		},
+	}
+
 	if err := installChart(
 		ctx,
 		l,
@@ -62,7 +77,7 @@ func deployGatewayAPIEnvoyGateway(
 		envoyGatewayVersion,
 		namespace,
 		true,
-		nil,
+		values,
 	); err != nil {
 		return nil, fmt.Errorf("installing Envoy Gateway chart: %w", err)
 	}
