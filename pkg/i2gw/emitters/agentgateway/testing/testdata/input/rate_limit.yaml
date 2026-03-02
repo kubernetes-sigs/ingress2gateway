@@ -1,0 +1,63 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/limit-rps: "10"
+  name: ingress-ratelimit-rps
+  namespace: default
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: ratelimit-rps.example.org
+    http:
+      paths:
+      - backend:
+          service:
+            name: myservice
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/limit-rpm: "600"
+  name: ingress-ratelimit-rpm
+  namespace: default
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: ratelimit-rpm.example.org
+    http:
+      paths:
+      - backend:
+          service:
+            name: myservice
+            port:
+              number: 80
+        path: /rpm
+        pathType: Prefix
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/limit-rps: "50"
+    nginx.ingress.kubernetes.io/limit-burst-multiplier: "5"
+  name: ingress-ratelimit-burst
+  namespace: default
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: ratelimit-burst.example.org
+    http:
+      paths:
+      - backend:
+          service:
+            name: myservice
+            port:
+              number: 80
+        path: /
+        pathType: Prefix

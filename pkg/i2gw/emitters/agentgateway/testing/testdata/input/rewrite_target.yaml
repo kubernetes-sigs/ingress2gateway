@@ -1,0 +1,40 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /rewritten
+  name: ingress-myservicea1
+  namespace: default
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: myservicea.foo.org
+    http:
+      paths:
+      - backend:
+          service:
+            name: myservicea
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+  name: ingress-myserviceb
+  namespace: default
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: myserviceb.foo.org
+    http:
+      paths:
+      - backend:
+          service:
+            name: myserviceb
+            port:
+              number: 80
+        path: /path2
+        pathType: Prefix

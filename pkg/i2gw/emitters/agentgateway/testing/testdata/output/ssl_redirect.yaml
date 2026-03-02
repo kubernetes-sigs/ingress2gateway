@@ -1,0 +1,169 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: nginx
+  namespace: default
+spec:
+  gatewayClassName: agentgateway
+  listeners:
+  - hostname: force-redirect.example
+    name: force-redirect-example-http
+    port: 80
+    protocol: HTTP
+  - hostname: force-redirect.example
+    name: force-redirect-example-https
+    port: 443
+    protocol: HTTPS
+    tls:
+      certificateRefs:
+      - group: null
+        kind: null
+        name: force-redirect-tls
+  - hostname: redirect.example
+    name: redirect-example-http
+    port: 80
+    protocol: HTTP
+  - hostname: redirect.example
+    name: redirect-example-https
+    port: 443
+    protocol: HTTPS
+    tls:
+      certificateRefs:
+      - group: null
+        kind: null
+        name: redirect-tls
+status: {}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: ingress-force-ssl-redirect-force-redirect-example-http-redirect
+  namespace: default
+spec:
+  hostnames:
+  - force-redirect.example
+  parentRefs:
+  - name: nginx
+    sectionName: force-redirect-example-http
+  rules:
+  - filters:
+    - requestRedirect:
+        scheme: https
+        statusCode: 301
+      type: RequestRedirect
+    matches:
+    - path:
+        type: PathPrefix
+        value: /
+status:
+  parents: []
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: ingress-ssl-redirect-redirect-example-http-redirect
+  namespace: default
+spec:
+  hostnames:
+  - redirect.example
+  parentRefs:
+  - name: nginx
+    sectionName: redirect-example-http
+  rules:
+  - filters:
+    - requestRedirect:
+        scheme: https
+        statusCode: 301
+      type: RequestRedirect
+    matches:
+    - path:
+        type: PathPrefix
+        value: /
+  - filters:
+    - requestRedirect:
+        scheme: https
+        statusCode: 301
+      type: RequestRedirect
+    matches:
+    - path:
+        type: PathPrefix
+        value: /api
+  - filters:
+    - requestRedirect:
+        scheme: https
+        statusCode: 301
+      type: RequestRedirect
+    matches:
+    - path:
+        type: PathPrefix
+        value: /web
+status:
+  parents: []
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: ingress-ssl-redirect-redirect-example-https
+  namespace: default
+spec:
+  hostnames:
+  - redirect.example
+  parentRefs:
+  - name: nginx
+    sectionName: redirect-example-https
+  rules:
+  - backendRefs:
+    - name: myservice
+      port: 80
+    matches:
+    - path:
+        type: PathPrefix
+        value: /
+  - backendRefs:
+    - name: myservice
+      port: 80
+    matches:
+    - path:
+        type: PathPrefix
+        value: /api
+  - backendRefs:
+    - name: myservice
+      port: 80
+    matches:
+    - path:
+        type: PathPrefix
+        value: /web
+status:
+  parents: []
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: ingress-force-ssl-redirect-force-redirect-example-https
+  namespace: default
+spec:
+  hostnames:
+  - force-redirect.example
+  parentRefs:
+  - name: nginx
+    sectionName: force-redirect-example-https
+  rules:
+  - backendRefs:
+    - name: myservice2
+      port: 80
+    matches:
+    - path:
+        type: PathPrefix
+        value: /
+status:
+  parents: []

@@ -1,0 +1,50 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: HTTPS
+    nginx.ingress.kubernetes.io/proxy-ssl-secret: default/base-certificate-tls
+    nginx.ingress.kubernetes.io/proxy-ssl-server-name: "on"
+    nginx.ingress.kubernetes.io/proxy-ssl-name: "tls.example.com"
+    nginx.ingress.kubernetes.io/proxy-ssl-verify: "on"
+  name: ingress-backendtls
+  namespace: default
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: tls.example.org
+    http:
+      paths:
+      - backend:
+          service:
+            name: httpbin2
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: HTTPS
+    nginx.ingress.kubernetes.io/proxy-ssl-secret: default/base-certificate-tls
+    nginx.ingress.kubernetes.io/proxy-ssl-server-name: "on"
+    nginx.ingress.kubernetes.io/proxy-ssl-name: "tls.example.com"
+    nginx.ingress.kubernetes.io/proxy-ssl-verify: "off"
+  name: ingress-backendtls-verify-off
+  namespace: default
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: insecure-tls.example.org
+    http:
+      paths:
+      - backend:
+          service:
+            name: httpbin-insecure
+            port:
+              number: 80
+        path: /
+        pathType: Prefix

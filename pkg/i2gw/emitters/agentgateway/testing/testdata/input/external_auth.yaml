@@ -1,0 +1,67 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    # Full FQDN with default path
+    nginx.ingress.kubernetes.io/auth-url: "http://auth.default.svc.cluster.local"
+    nginx.ingress.kubernetes.io/auth-response-headers: "X-Auth-Token, X-User-ID"
+  name: ingress-auth-full-fqdn
+  namespace: default
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: app1.example.org
+    http:
+      paths:
+      - backend:
+          service:
+            name: app1
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    # Service in same namespace, short form
+    nginx.ingress.kubernetes.io/auth-url: "http://auth.svc"
+  name: ingress-auth-same-ns
+  namespace: default
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: app3.example.org
+    http:
+      paths:
+      - backend:
+          service:
+            name: app3
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    # Service in different namespace
+    nginx.ingress.kubernetes.io/auth-url: "https://auth.production.svc.cluster.local:8080/authz"
+  name: ingress-auth-different-ns
+  namespace: default
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: app4.example.org
+    http:
+      paths:
+      - backend:
+          service:
+            name: app4
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+---

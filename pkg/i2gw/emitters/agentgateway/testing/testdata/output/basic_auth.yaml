@@ -1,0 +1,143 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: nginx
+  namespace: default
+spec:
+  gatewayClassName: agentgateway
+  listeners:
+  - hostname: app1.example.org
+    name: app1-example-org-http
+    port: 80
+    protocol: HTTP
+  - hostname: app2.example.org
+    name: app2-example-org-http
+    port: 80
+    protocol: HTTP
+  - hostname: app3.example.org
+    name: app3-example-org-http
+    port: 80
+    protocol: HTTP
+status: {}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: ingress-basic-auth-file-default-app1-example-org
+  namespace: default
+spec:
+  hostnames:
+  - app1.example.org
+  parentRefs:
+  - name: nginx
+  rules:
+  - backendRefs:
+    - name: app1
+      port: 80
+    matches:
+    - path:
+        type: PathPrefix
+        value: /
+status:
+  parents: []
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: ingress-basic-auth-file-explicit-app2-example-org
+  namespace: default
+spec:
+  hostnames:
+  - app2.example.org
+  parentRefs:
+  - name: nginx
+  rules:
+  - backendRefs:
+    - name: app2
+      port: 80
+    matches:
+    - path:
+        type: PathPrefix
+        value: /
+status:
+  parents: []
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: ingress-basic-auth-map-app3-example-org
+  namespace: default
+spec:
+  hostnames:
+  - app3.example.org
+  parentRefs:
+  - name: nginx
+  rules:
+  - backendRefs:
+    - name: app3
+      port: 80
+    matches:
+    - path:
+        type: PathPrefix
+        value: /
+status:
+  parents: []
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: ingress-basic-auth-file-default
+  namespace: default
+spec:
+  targetRefs:
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: ingress-basic-auth-file-default-app1-example-org
+  traffic:
+    basicAuthentication:
+      secretRef:
+        name: basic-auth-secret
+status:
+  ancestors: null
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: ingress-basic-auth-file-explicit
+  namespace: default
+spec:
+  targetRefs:
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: ingress-basic-auth-file-explicit-app2-example-org
+  traffic:
+    basicAuthentication:
+      secretRef:
+        name: basic-auth-secret
+status:
+  ancestors: null
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: ingress-basic-auth-map
+  namespace: default
+spec:
+  targetRefs:
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: ingress-basic-auth-map-app3-example-org
+  traffic:
+    basicAuthentication:
+      secretRef:
+        name: auth-map-secret
+status:
+  ancestors: null

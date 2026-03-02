@@ -1,0 +1,81 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  name: ingress-ssl-redirect
+  namespace: default
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - redirect.example
+    secretName: redirect-tls
+  rules:
+  - host: redirect.example
+    http:
+      paths:
+      - backend:
+          service:
+            name: myservice
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  name: ingress-ssl-redirect-multiple-paths
+  namespace: default
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - redirect.example
+    secretName: redirect-tls
+  rules:
+  - host: redirect.example
+    http:
+      paths:
+      - backend:
+          service:
+            name: myservice
+            port:
+              number: 80
+        path: /api
+        pathType: Prefix
+      - backend:
+          service:
+            name: myservice
+            port:
+              number: 80
+        path: /web
+        pathType: Prefix
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+  name: ingress-force-ssl-redirect
+  namespace: default
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - force-redirect.example
+    secretName: force-redirect-tls
+  rules:
+  - host: force-redirect.example
+    http:
+      paths:
+      - backend:
+          service:
+            name: myservice2
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
