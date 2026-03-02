@@ -33,23 +33,23 @@ var nginxSizeRegex = regexp.MustCompile(`^(?i)(\d+)([bkmg]?)$`)
 
 // convertNginxSizeToK8sQuantity converts nginx size format to Kubernetes resource.Quantity format.
 //
-// nginx uses lowercase suffixes for byte sizes:
+// nginx uses suffixes for byte sizes:
 //   - b = bytes
 //   - k = kilobytes (10^3)
 //   - m = megabytes (10^6)
 //   - g = gigabytes (10^9)
 //
 // Kubernetes resource.Quantity uses different suffixes:
-//   - m = milli (10^-3)
-//   - k = kilo (10^3)
-//   - M = mega (10^6)
-//   - G = giga (10^9)
+//   - B = byte (10^3)
+//   - Ki = kilo (10^3)
+//   - Mi = mega (10^6)
+//   - Gi = giga (10^9)
 //
 // This function converts nginx format to K8s format:
 //   - "10b" -> "10" (10 bytes)
-//   - "10k" -> "10k" (10 kilobytes, same)
-//   - "10m" -> "10M" (10 megabytes)
-//   - "10g" -> "10G" (10 gigabytes)
+//   - "10k" -> "10Ki" (10 kilobytes, same)
+//   - "10m" -> "10Mi" (10 megabytes)
+//   - "10g" -> "10Gi" (10 gigabytes)
 //   - "100" -> "100" (no unit, same)
 func convertNginxSizeToK8sQuantity(nginxSize string) (string, error) {
 	nginxSize = strings.TrimSpace(nginxSize)
@@ -63,15 +63,15 @@ func convertNginxSizeToK8sQuantity(nginxSize string) (string, error) {
 	unit := matches[2]
 
 	// Convert nginx unit to K8s Quantity unit
-	switch unit {
+	switch strings.ToLower(unit) {
 	case "b", "":
 		return number, nil
 	case "k":
-		return number + "k", nil
+		return number + "Ki", nil
 	case "m":
-		return number + "M", nil
+		return number + "Mi", nil
 	case "g":
-		return number + "G", nil
+		return number + "Gi", nil
 	default:
 		return "", fmt.Errorf("unsupported nginx size unit: %q", unit)
 	}
