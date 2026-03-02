@@ -25,7 +25,6 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/e2e/implementation"
 	"github.com/kubernetes-sigs/ingress2gateway/e2e/provider"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/kubernetes"
@@ -60,7 +59,10 @@ func deployProviders(
 			})
 		case kong.Name:
 			ns := fmt.Sprintf("%s-kong", framework.E2EPrefix)
-			r = framework.GlobalResourceManager.Acquire(kong.Name, func() (framework.CleanupFunc, error) {
+			// We use implementation.KongName as the acquire key so that Kong is deployed at most
+			// once, regardless of whether it appears as an ingress provider, a gateway
+			// implementation or both. ResourceManager.Acquire deduplicates by key.
+			r = framework.GlobalResourceManager.Acquire(implementation.KongName, func() (framework.CleanupFunc, error) {
 				return provider.DeployKong(ctx, t, k8sClient, gwClient, kubeconfig, ns, skipCleanup)
 			})
 		default:
@@ -85,14 +87,14 @@ func deployGatewayImplementation(
 	var r framework.Resource
 
 	switch gwImpl {
-	case istio.ProviderName:
+	case implementation.IstioName:
 		ns := fmt.Sprintf("%s-istio-system", framework.E2EPrefix)
-		r = framework.GlobalResourceManager.Acquire(istio.ProviderName, func() (framework.CleanupFunc, error) {
+		r = framework.GlobalResourceManager.Acquire(implementation.IstioName, func() (framework.CleanupFunc, error) {
 			return implementation.DeployIstio(ctx, t, k8sClient, kubeconfig, ns, skipCleanup)
 		})
-	case kong.Name:
+	case implementation.KongName:
 		ns := fmt.Sprintf("%s-kong", framework.E2EPrefix)
-		r = framework.GlobalResourceManager.Acquire(kong.Name, func() (framework.CleanupFunc, error) {
+		r = framework.GlobalResourceManager.Acquire(implementation.KongName, func() (framework.CleanupFunc, error) {
 			return implementation.DeployKong(ctx, t, k8sClient, gwClient, kubeconfig, ns, skipCleanup)
 		})
 	case implementation.KgatewayName:

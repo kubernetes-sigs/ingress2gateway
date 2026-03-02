@@ -32,6 +32,8 @@ import (
 )
 
 const (
+	// KongName is the name used to identify the Kong implementation.
+	KongName           = "kong"
 	kongChartVersion   = "3.0.2"
 	kongChartRepo      = "https://charts.konghq.com"
 	kongGatewayClass   = "kong"
