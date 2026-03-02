@@ -230,6 +230,108 @@ func Test_ToIR(t *testing.T) {
 			expectedErrors: field.ErrorList{},
 		},
 		{
+			name: "ingress with duplicate TLS secret names deduplicates CertificateRefs",
+			ingresses: []networkingv1.Ingress{{
+				ObjectMeta: metav1.ObjectMeta{Name: "dup-tls", Namespace: "test"},
+				Spec: networkingv1.IngressSpec{
+					TLS: []networkingv1.IngressTLS{
+						{
+							Hosts:      []string{"foo.example.com"},
+							SecretName: "shared-cert",
+						},
+						{
+							Hosts:      []string{"bar.example.com"},
+							SecretName: "shared-cert",
+						},
+					},
+					Rules: []networkingv1.IngressRule{{
+						Host: "foo.example.com",
+						IngressRuleValue: networkingv1.IngressRuleValue{
+							HTTP: &networkingv1.HTTPIngressRuleValue{
+								Paths: []networkingv1.HTTPIngressPath{{
+									Path:     "/",
+									PathType: &iPrefix,
+									Backend: networkingv1.IngressBackend{
+										Service: &networkingv1.IngressServiceBackend{
+											Name: "foo-svc",
+											Port: networkingv1.ServiceBackendPort{
+												Number: 80,
+											},
+										},
+									},
+								}},
+							},
+						},
+					}},
+					IngressClassName: PtrTo("dup-tls"),
+				},
+			}},
+			servicePorts: map[types.NamespacedName]map[string]int32{},
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
+					{Namespace: "test", Name: "dup-tls"}: {
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: "dup-tls", Namespace: "test"},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: "dup-tls",
+								Listeners: []gatewayv1.Listener{{
+									Name:     "foo-example-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: PtrTo(gatewayv1.Hostname("foo.example.com")),
+								}, {
+									Name:     "foo-example-com-https",
+									Port:     443,
+									Protocol: gatewayv1.HTTPSProtocolType,
+									Hostname: PtrTo(gatewayv1.Hostname("foo.example.com")),
+									TLS: &gatewayv1.ListenerTLSConfig{
+										CertificateRefs: []gatewayv1.SecretObjectReference{{
+											Group: ptr.To(gatewayv1.Group("")),
+											Kind:  ptr.To(gatewayv1.Kind("Secret")),
+											Name:  "shared-cert",
+										}},
+									},
+								}},
+							},
+						},
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
+					{Namespace: "test", Name: "dup-tls-foo-example-com"}: {
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: "dup-tls-foo-example-com", Namespace: "test"},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: "dup-tls",
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{"foo.example.com"},
+								Rules: []gatewayv1.HTTPRouteRule{{
+									Name: ptr.To(gatewayv1.SectionName("rule-0")),
+									Matches: []gatewayv1.HTTPRouteMatch{{
+										Path: &gatewayv1.HTTPPathMatch{
+											Type:  &gPathPrefix,
+											Value: PtrTo("/"),
+										},
+									}},
+									BackendRefs: []gatewayv1.HTTPBackendRef{{
+										BackendRef: gatewayv1.BackendRef{
+											BackendObjectReference: gatewayv1.BackendObjectReference{
+												Name: "foo-svc",
+												Port: PtrTo(gatewayv1.PortNumber(80)),
+											},
+										},
+									}},
+								}},
+							},
+						},
+					},
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
+		{
 			name: "ingress with custom and default backend",
 			ingresses: []networkingv1.Ingress{{
 				ObjectMeta: metav1.ObjectMeta{Name: "net", Namespace: "different"},
