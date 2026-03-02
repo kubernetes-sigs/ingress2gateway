@@ -131,17 +131,20 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 						}
 						canaryBackendCopy := canaryBackend
 						canaryBackendCopy.Weight = nil
-						newRule := gatewayv1.HTTPRouteRule{
-							Matches: []gatewayv1.HTTPRouteMatch{
+						headerMatch := gatewayv1.HTTPRouteMatch{
+							Headers: []gatewayv1.HTTPHeaderMatch{
 								{
-									Headers: []gatewayv1.HTTPHeaderMatch{
-										{
-											Name:  gatewayv1.HTTPHeaderName(config.header),
-											Value: header,
-										},
-									},
+									Name:  gatewayv1.HTTPHeaderName(config.header),
+									Value: header,
 								},
 							},
+						}
+						existingMatches := httpRouteContext.HTTPRoute.Spec.Rules[ruleIdx].Matches
+						if len(existingMatches) > 0 && existingMatches[0].Path != nil {
+							headerMatch.Path = existingMatches[0].Path
+						}
+						newRule := gatewayv1.HTTPRouteRule{
+							Matches:     []gatewayv1.HTTPRouteMatch{headerMatch},
 							BackendRefs: []gatewayv1.HTTPBackendRef{canaryBackendCopy},
 						}
 						rulesToAdd = append(rulesToAdd, newRule)
@@ -150,17 +153,19 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 						if config.headerValue == "" {
 							nonCanaryBackendCopy := nonCanaryBackend
 							nonCanaryBackendCopy.Weight = nil
-							neverRule := gatewayv1.HTTPRouteRule{
-								Matches: []gatewayv1.HTTPRouteMatch{
+							neverMatch := gatewayv1.HTTPRouteMatch{
+								Headers: []gatewayv1.HTTPHeaderMatch{
 									{
-										Headers: []gatewayv1.HTTPHeaderMatch{
-											{
-												Name:  gatewayv1.HTTPHeaderName(config.header),
-												Value: "never",
-											},
-										},
+										Name:  gatewayv1.HTTPHeaderName(config.header),
+										Value: "never",
 									},
 								},
+							}
+							if len(existingMatches) > 0 && existingMatches[0].Path != nil {
+								neverMatch.Path = existingMatches[0].Path
+							}
+							neverRule := gatewayv1.HTTPRouteRule{
+								Matches:     []gatewayv1.HTTPRouteMatch{neverMatch},
 								BackendRefs: []gatewayv1.HTTPBackendRef{nonCanaryBackendCopy},
 							}
 							rulesToAdd = append(rulesToAdd, neverRule)
