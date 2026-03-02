@@ -33,24 +33,7 @@ var nginxSizeRegex = regexp.MustCompile(`^(?i)(\d+)([bkmg]?)$`)
 
 // convertNginxSizeToK8sQuantity converts nginx size format to Kubernetes resource.Quantity format.
 //
-// nginx uses suffixes for byte sizes:
-//   - b = bytes
-//   - k = kilobytes (10^3)
-//   - m = megabytes (10^6)
-//   - g = gigabytes (10^9)
-//
-// Kubernetes resource.Quantity uses different suffixes:
-//   - B = byte (10^3)
-//   - Ki = kilo (10^3)
-//   - Mi = mega (10^6)
-//   - Gi = giga (10^9)
-//
-// This function converts nginx format to K8s format:
-//   - "10b" -> "10" (10 bytes)
-//   - "10k" -> "10Ki" (10 kilobytes, same)
-//   - "10m" -> "10Mi" (10 megabytes)
-//   - "10g" -> "10Gi" (10 gigabytes)
-//   - "100" -> "100" (no unit, same)
+// NGINX uses binary units (e.g. k = 2^10) while in Kubernetes, k = 1000 and Ki = 2^10.
 func convertNginxSizeToK8sQuantity(nginxSize string) (string, error) {
 	nginxSize = strings.TrimSpace(nginxSize)
 
