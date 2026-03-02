@@ -72,9 +72,6 @@ func applyPathRewrites(ir *emitterir.EmitterIR) {
 }
 
 func (e *Emitter) applyCorsPolicies(ir *emitterir.EmitterIR) {
-	if e.conf != nil && !e.conf.AllowExperimentalGatewayAPI {
-		return
-	}
 	for key, routeCtx := range ir.HTTPRoutes {
 		for ruleIdx, policy := range routeCtx.CorsPolicyByRuleIdx {
 			if policy == nil {
