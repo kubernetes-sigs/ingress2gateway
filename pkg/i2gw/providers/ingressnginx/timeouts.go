@@ -30,8 +30,6 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-const timeoutMultiplier = 10
-
 func parseIngressNginxTimeout(val string) (time.Duration, error) {
 	if val == "" {
 		return 0, fmt.Errorf("empty timeout")
@@ -86,8 +84,6 @@ func applyTimeoutsToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterI
 				Write:   write,
 			}
 
-			notify(notifications.InfoNotification, fmt.Sprintf("parsed ingress-nginx proxy timeouts (x%d) from %s/%s for HTTPRoute %s/%s rule %d (timeouts.request): %s",
-				timeoutMultiplier, ingress.Namespace, ingress.Name, key.Namespace, key.Name, ruleIdx, formatTCPTimeouts(connect, read, write)), &httpRouteContext.HTTPRoute)
 			notify(
 				notifications.WarningNotification,
 				"ingress-nginx only supports TCP-level timeouts; i2gw has made a best-effort translation to Gateway API timeouts.request."+
