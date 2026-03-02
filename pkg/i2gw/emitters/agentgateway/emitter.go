@@ -17,11 +17,19 @@ limitations under the License.
 package agentgateway
 
 import (
-	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	"fmt"
+	"math"
+	"sort"
 
+	agentgatewayv1alpha1 "github.com/kgateway-dev/kgateway/v2/api/v1alpha1/agentgateway"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/utils"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 const (
@@ -33,32 +41,139 @@ func init() {
 	i2gw.EmitterConstructorByName[emitterName] = NewEmitter
 }
 
-type Emitter struct{}
-
-// NewEmitter returns a new instance of the Agentgateway emitter.
-func NewEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
-	return &Emitter{}
+type Emitter struct {
+	builderMap *BuilderMap
 }
 
-// Emit converts EmitterIR to Gateway API resources.
-//
-// Today, the agentgateway emitter is intentionally minimal:
-//   - it emits the standard Gateway API resources
-//   - it sets GatewayClassName="agentgateway" on all Gateways
-//
-// As upstream EmitterIR grows new provider-neutral intents, this emitter can be
-// extended to emit agentgateway-specific extensions.
+// NewEmitter returns a new instance of AgentgatewayEmitter.
+func NewEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
+	return &Emitter{builderMap: NewBuilderMap()}
+}
+
+// Emit converts EmitterIR to Gateway API resources plus agentgateway-specific extensions.
 func (e *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.ErrorList) {
-	gwResources, errs := utils.ToGatewayResources(ir)
-	if errs != nil {
-		return gwResources, errs
+	gatewayResources, errs := utils.ToGatewayResources(ir)
+	if len(errs) != 0 {
+		return gatewayResources, errs
 	}
 
-	// Set GatewayClassName to "agentgateway" for all Gateways.
-	for key, gw := range gwResources.Gateways {
+	for key := range gatewayResources.Gateways {
+		gw := gatewayResources.Gateways[key]
 		gw.Spec.GatewayClassName = gatewayClassName
-		gwResources.Gateways[key] = gw
+		gatewayResources.Gateways[key] = gw
 	}
 
-	return gwResources, nil
+	e.EmitBuffer(ir)
+
+	var agentgatewayObjs []client.Object
+	for _, policy := range e.builderMap.Policies {
+		agentgatewayObjs = append(agentgatewayObjs, policy)
+	}
+
+	sort.SliceStable(agentgatewayObjs, func(i, j int) bool {
+		oi, oj := agentgatewayObjs[i], agentgatewayObjs[j]
+		gvkI := oi.GetObjectKind().GroupVersionKind()
+		gvkJ := oj.GetObjectKind().GroupVersionKind()
+
+		if gvkI.Kind != gvkJ.Kind {
+			return gvkI.Kind < gvkJ.Kind
+		}
+		if oi.GetNamespace() != oj.GetNamespace() {
+			return oi.GetNamespace() < oj.GetNamespace()
+		}
+		return oi.GetName() < oj.GetName()
+	})
+
+	for _, obj := range agentgatewayObjs {
+		u, err := i2gw.CastToUnstructured(obj)
+		if err != nil {
+			errs = append(errs, field.Invalid(field.NewPath("emitter", emitterName, "AgentgatewayPolicy"), obj.GetName(), err.Error()))
+			continue
+		}
+		gatewayResources.GatewayExtensions = append(gatewayResources.GatewayExtensions, *u)
+	}
+
+	return gatewayResources, errs
+}
+
+// EmitBuffer converts BodySize intent from the emitter IR into AgentgatewayPolicy frontend buffer limits.
+func (e *Emitter) EmitBuffer(ir emitterir.EmitterIR) {
+	for _, ctx := range ir.HTTPRoutes {
+		for idx, bs := range ctx.BodySizeByRuleIdx {
+			if bs == nil {
+				continue
+			}
+
+			sectionName := e.getSectionName(ctx, idx)
+			policy := e.getOrBuildPolicy(ctx, sectionName, idx)
+			bufferQty := e.selectBufferValue(bs, &ctx.HTTPRoute)
+			if bufferQty == nil {
+				continue
+			}
+
+			bufferSize := e.quantityToInt32(bufferQty, &ctx.HTTPRoute)
+			if bufferSize == nil {
+				continue
+			}
+
+			if policy.Spec.Frontend == nil {
+				policy.Spec.Frontend = &agentgatewayv1alpha1.Frontend{}
+			}
+			if policy.Spec.Frontend.HTTP == nil {
+				policy.Spec.Frontend.HTTP = &agentgatewayv1alpha1.FrontendHTTP{}
+			}
+			policy.Spec.Frontend.HTTP.MaxBufferSize = bufferSize
+
+			notify(notifications.InfoNotification, fmt.Sprintf("applied buffer policy for HTTPRoute%s", e.formatRuleInfo(sectionName)), &ctx.HTTPRoute)
+		}
+	}
+}
+
+func (e *Emitter) getSectionName(ctx emitterir.HTTPRouteContext, idx int) *gatewayv1.SectionName {
+	if idx != RouteRuleAllIndex && idx < len(ctx.Spec.Rules) {
+		return ctx.Spec.Rules[idx].Name
+	}
+	return nil
+}
+
+func (e *Emitter) selectBufferValue(bs *emitterir.BodySize, httpRoute *gatewayv1.HTTPRoute) *resource.Quantity {
+	if bs.MaxSize != nil {
+		if bs.BufferSize != nil {
+			notify(
+				notifications.WarningNotification,
+				fmt.Sprintf("body max size (%s) takes precedence; buffer size (%s) will be ignored", bs.MaxSize.String(), bs.BufferSize.String()),
+				httpRoute,
+			)
+		}
+		return bs.MaxSize
+	}
+	return bs.BufferSize
+}
+
+func (e *Emitter) formatRuleInfo(sectionName *gatewayv1.SectionName) string {
+	if sectionName != nil {
+		return fmt.Sprintf(" rule %s", *sectionName)
+	}
+	return ""
+}
+
+func (e *Emitter) quantityToInt32(q *resource.Quantity, httpRoute *gatewayv1.HTTPRoute) *int32 {
+	if q == nil {
+		return nil
+	}
+	val := q.Value()
+	if val <= 0 {
+		return nil
+	}
+	if val > math.MaxInt32 {
+		notify(notifications.WarningNotification, fmt.Sprintf("buffer value %s exceeds max (%d); using %d", q.String(), math.MaxInt32, math.MaxInt32), httpRoute)
+		val = math.MaxInt32
+	}
+	v := int32(val)
+	return &v
+}
+
+func notify(mType notifications.MessageType, message string, callingObject ...client.Object) {
+	newNotification := notifications.NewNotification(mType, message, callingObject...)
+	notifications.NotificationAggr.DispatchNotification(newNotification, emitterName)
 }
