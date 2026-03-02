@@ -18,66 +18,25 @@ package provider
 
 import (
 	"context"
-	"fmt"
-	"log"
-	"time"
 
 	"github.com/kubernetes-sigs/ingress2gateway/e2e/framework"
-	"helm.sh/helm/v4/pkg/cli"
+	"github.com/kubernetes-sigs/ingress2gateway/e2e/implementation"
 	"k8s.io/client-go/kubernetes"
+	gwclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 )
 
-const (
-	kongChartVersion = "2.42.0"
-	kongChartRepo    = "https://charts.konghq.com"
-)
-
-// DeployKongIngress deploys the Kong Ingress Controller via Helm and returns a cleanup function.
-func DeployKongIngress(
+// DeployKong deploys Kong via Helm. Kong is unique in that it serves as both an ingress provider
+// and a Gateway API implementation. The canonical deploy logic lives in the implementation
+// package: this wrapper re-exports it so callers can use provider.DeployKong for consistency with
+// other providers.
+func DeployKong(
 	ctx context.Context,
 	l framework.Logger,
 	client *kubernetes.Clientset,
+	gwClient *gwclientset.Clientset,
 	kubeconfigPath string,
 	namespace string,
 	skipCleanup bool,
 ) (func(), error) {
-	l.Logf("Deploying Kong Ingress Controller %s", kongChartVersion)
-
-	settings := cli.New()
-	settings.KubeConfig = kubeconfigPath
-
-	if err := framework.InstallChart(
-		ctx,
-		l,
-		settings,
-		kongChartRepo,
-		"kong",
-		"kong",
-		kongChartVersion,
-		namespace,
-		true,
-		nil,
-	); err != nil {
-		return nil, fmt.Errorf("installing Kong Ingress chart: %w", err)
-	}
-
-	//nolint:contextcheck // Intentional background context in cleanup function
-	return func() {
-		if skipCleanup {
-			log.Printf("Skipping cleanup of Kong Ingress Controller")
-			return
-		}
-
-		cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		defer cancel()
-
-		log.Printf("Cleaning up Kong Ingress Controller")
-		if err := framework.UninstallChart(cleanupCtx, settings, "kong", namespace); err != nil {
-			log.Printf("Uninstalling Kong Ingress chart: %v", err)
-		}
-
-		if err := framework.DeleteNamespaceAndWait(cleanupCtx, client, namespace); err != nil {
-			log.Printf("Deleting namespace: %v", err)
-		}
-	}, nil
+	return implementation.DeployKong(ctx, l, client, gwClient, kubeconfigPath, namespace, skipCleanup)
 }
