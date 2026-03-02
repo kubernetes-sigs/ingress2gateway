@@ -104,7 +104,7 @@ func applyTCPTimeouts(ir *emitterir.EmitterIR) field.ErrorList {
 	var errs field.ErrorList
 	for i, httpRouteContext := range ir.HTTPRoutes {
 		if httpRouteContext.TCPTimeoutsByRuleIdx == nil {
-			return nil
+			continue
 		}
 
 		for ruleIdx, timeouts := range httpRouteContext.TCPTimeoutsByRuleIdx {
