@@ -32,17 +32,14 @@ import (
 )
 
 const (
-	// KongName is the name used to identify the Kong implementation.
-	KongName           = "kong"
 	kongChartVersion   = "3.0.2"
 	kongChartRepo      = "https://charts.konghq.com"
 	kongGatewayClass   = "kong"
 	kongControllerName = "konghq.com/kic-gateway-controller"
 )
 
-// DeployGatewayAPIKong deploys Kong as a Gateway API implementation via Helm and returns a cleanup
-// function.
-func DeployGatewayAPIKong(
+// DeployKong deploys Kong via Helm and returns a cleanup function.
+func DeployKong(
 	ctx context.Context,
 	l framework.Logger,
 	client *kubernetes.Clientset,
