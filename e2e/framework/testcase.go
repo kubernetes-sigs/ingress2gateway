@@ -77,6 +77,7 @@ type DeployProvidersFunc func(
 	ctx context.Context,
 	t *testing.T,
 	k8sClient *kubernetes.Clientset,
+	gwClient *gwclientset.Clientset,
 	kubeconfig string,
 	providers []string,
 	gwImpl string,
@@ -150,7 +151,7 @@ func RunTestCase(t *testing.T, tc *TestCase, deployProviders DeployProvidersFunc
 	})
 	require.NoError(t, crdResource.Wait(), "Gateway API CRDs installation failed")
 
-	providers := deployProviders(ctx, t, k8sClient, kubeconfig, tc.Providers, tc.GatewayImplementation, skipCleanup)
+	providers := deployProviders(ctx, t, k8sClient, gwClient, kubeconfig, tc.Providers, tc.GatewayImplementation, skipCleanup)
 	gwImpl := deployGWImpl(ctx, t, k8sClient, apiextensionsClient, gwClient, kubeconfig, tc.GatewayImplementation, skipCleanup)
 
 	resources := append(providers, gwImpl)
@@ -334,7 +335,7 @@ func setUpGatewayPortForwarding(
 		// proxy service in the Kong namespace.
 		var svc *corev1.Service
 		var err error
-		if gwImpl == kong.Name {
+		if gwImpl == "kong" { // Avoiding const to prevent import cycle
 			kongNS := fmt.Sprintf("%s-kong", E2EPrefix)
 			svc, err = findIngressControllerService(ctx, k8sClient, kongNS, kong.Name)
 		} else {

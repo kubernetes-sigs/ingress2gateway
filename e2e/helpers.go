@@ -42,6 +42,7 @@ func deployProviders(
 	ctx context.Context,
 	t *testing.T,
 	k8sClient *kubernetes.Clientset,
+	gwClient *gwclientset.Clientset,
 	kubeconfig string,
 	providers []string,
 	gwImpl string,
@@ -58,14 +59,9 @@ func deployProviders(
 				return provider.DeployIngressNginx(ctx, t, k8sClient, kubeconfig, ns, skipCleanup)
 			})
 		case kong.Name:
-			// If Kong is both the provider and the gateway implementation, skip deploying the Kong
-			// provider separately. The gateway deployment handles both ingress and Gateway API.
-			if gwImpl == kong.Name {
-				continue
-			}
 			ns := fmt.Sprintf("%s-kong", framework.E2EPrefix)
 			r = framework.GlobalResourceManager.Acquire(kong.Name, func() (framework.CleanupFunc, error) {
-				return provider.DeployKongIngress(ctx, t, k8sClient, kubeconfig, ns, skipCleanup)
+				return provider.DeployKong(ctx, t, k8sClient, gwClient, kubeconfig, ns, skipCleanup)
 			})
 		default:
 			t.Fatalf("Unknown ingress provider: %s", p)

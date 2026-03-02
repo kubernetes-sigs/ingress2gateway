@@ -32,15 +32,16 @@ import (
 )
 
 const (
-	// KongName is the name used to identify the Kong implementation.
-	KongName           = "kong"
 	kongChartVersion   = "3.0.2"
 	kongChartRepo      = "https://charts.konghq.com"
 	kongGatewayClass   = "kong"
 	kongControllerName = "konghq.com/kic-gateway-controller"
 )
 
-// DeployKong deploys Kong as a Gateway API implementation via Helm and returns a cleanup function.
+// DeployKong deploys Kong via Helm and returns a cleanup function. Kong is unique in that it
+// serves as both an ingress provider and a Gateway API implementation. This function is called
+// by provider.DeployKong, which re-exports it so callers can use provider.DeployKong for
+// consistency with other providers.
 func DeployKong(
 	ctx context.Context,
 	l framework.Logger,
