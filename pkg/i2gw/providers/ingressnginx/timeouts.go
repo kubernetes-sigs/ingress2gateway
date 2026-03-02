@@ -19,7 +19,6 @@ package ingressnginx
 import (
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
@@ -116,21 +115,4 @@ func parseIngressNginxTimeoutAnnotation(ingress *networkingv1.Ingress, annotatio
 	}
 	gwDur := gatewayv1.Duration(d.String())
 	return &gwDur, nil
-}
-
-func formatTCPTimeouts(connect, read, write *gatewayv1.Duration) string {
-	parts := []string{}
-	if connect != nil {
-		parts = append(parts, fmt.Sprintf("connect=%s", *connect))
-	}
-	if read != nil {
-		parts = append(parts, fmt.Sprintf("read=%s", *read))
-	}
-	if write != nil {
-		parts = append(parts, fmt.Sprintf("write=%s", *write))
-	}
-	if len(parts) == 0 {
-		return "none"
-	}
-	return strings.Join(parts, ", ")
 }
