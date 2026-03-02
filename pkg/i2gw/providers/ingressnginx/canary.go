@@ -188,8 +188,13 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 							httpRouteContext.HTTPRoute.Spec.Rules[ruleIdx].BackendRefs = filteredBackendRefs
 							httpRouteContext.RuleBackendSources[ruleIdx] = filteredBackendSources
 						}
-						notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set header \"%s\" with value \"%s\"",
-							canarySourceIngress.Namespace, canarySourceIngress.Name, config.header, config.headerValue), &httpRouteContext.HTTPRoute)
+						if config.headerValue != "" {
+							notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set header \"%s\" with value \"%s\" for canary backend",
+								canarySourceIngress.Namespace, canarySourceIngress.Name, config.header, config.headerValue), &httpRouteContext.HTTPRoute)
+						} else {
+							notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set header \"%s\" with value \"always\" for canary backend",
+								canarySourceIngress.Namespace, canarySourceIngress.Name, config.header), &httpRouteContext.HTTPRoute)
+						}
 					}
 				}
 			}
