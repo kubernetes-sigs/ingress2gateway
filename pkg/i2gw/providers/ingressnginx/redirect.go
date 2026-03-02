@@ -33,38 +33,64 @@ import (
 // Ingress NGINX has some quirky behaviors around SSL redirect.
 // The formula we follow is that if an ingress has certs configured, and it does not have the
 // "nginx.ingress.kubernetes.io/ssl-redirect" annotation set to "false" (or "0", etc), then we
-// enable SSL redirect for that host.
+// enable SSL redirect for that path. This is evaluated per-rule to match ingress-nginx's
+// per-location redirect semantics.
 func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR) field.ErrorList {
 	for key, httpRouteContext := range pir.HTTPRoutes {
-		hasSecrets := false
-		enableRedirect := true
+		eRouteCtx, ok := eir.HTTPRoutes[key]
+		if !ok {
+			continue
+		}
 
-		for _, sources := range httpRouteContext.RuleBackendSources {
+		var redirectRules []gatewayv1.HTTPRouteRule
+		var nonRedirectRules []gatewayv1.HTTPRouteRule
+		for ruleIdx, sources := range httpRouteContext.RuleBackendSources {
 			ingress := getNonCanaryIngress(sources)
 			if ingress == nil {
 				continue
 			}
 
-			// Check if the ingress has TLS secrets.
-			if len(ingress.Spec.TLS) > 0 {
-				hasSecrets = true
+			if ruleIdx >= len(eRouteCtx.Spec.Rules) {
+				continue
 			}
 
-			// Check the ssl-redirect annotation.
+			if len(ingress.Spec.TLS) == 0 {
+				continue
+			}
+
+			enableRedirect := true
 			if val, ok := ingress.Annotations[SSLRedirectAnnotation]; ok {
 				parsed, err := strconv.ParseBool(val)
 				if err != nil {
 					return field.ErrorList{field.Invalid(
 						field.NewPath("ingress", ingress.Namespace, ingress.Name, "metadata", "annotations"),
 						ingress.Annotations,
-						fmt.Sprintf("failed to parse canary configuration: %v", err),
+						fmt.Sprintf("failed to parse redirect configuration: %v", err),
 					)}
 				}
 				enableRedirect = parsed
 			}
+
+			if enableRedirect {
+				rule := gatewayv1.HTTPRouteRule{
+					Matches: eRouteCtx.Spec.Rules[ruleIdx].DeepCopy().Matches,
+					Filters: []gatewayv1.HTTPRouteFilter{
+						{
+							Type: gatewayv1.HTTPRouteFilterRequestRedirect,
+							RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
+								Scheme:     ptr.To("https"),
+								StatusCode: ptr.To(308),
+							},
+						},
+					},
+				}
+				redirectRules = append(redirectRules, rule)
+			} else {
+				nonRedirectRules = append(nonRedirectRules, *eRouteCtx.Spec.Rules[ruleIdx].DeepCopy())
+			}
 		}
 
-		if !hasSecrets || !enableRedirect {
+		if len(redirectRules) == 0 {
 			continue
 		}
 
@@ -76,19 +102,7 @@ func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR)
 			},
 			Spec: gatewayv1.HTTPRouteSpec{
 				Hostnames: httpRouteContext.HTTPRoute.Spec.DeepCopy().Hostnames,
-				Rules: []gatewayv1.HTTPRouteRule{
-					{
-						Filters: []gatewayv1.HTTPRouteFilter{
-							{
-								Type: gatewayv1.HTTPRouteFilterRequestRedirect,
-								RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
-									Scheme:     ptr.To("https"),
-									StatusCode: ptr.To(308),
-								},
-							},
-						},
-					},
-				},
+				Rules:     redirectRules,
 			},
 		}
 		// add parentrefs
@@ -103,12 +117,38 @@ func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR)
 		}] = emitterir.HTTPRouteContext{
 			HTTPRoute: redirectRoute,
 		}
-		// bind this to port 443
-		eHTTPRouteContext := eir.HTTPRoutes[key]
-		for i := range eHTTPRouteContext.Spec.ParentRefs {
-			eHTTPRouteContext.Spec.ParentRefs[i].Port = ptr.To[int32](443)
+
+		// bind original route to port 443
+		for i := range eRouteCtx.Spec.ParentRefs {
+			eRouteCtx.Spec.ParentRefs[i].Port = ptr.To[int32](443)
 		}
-		eir.HTTPRoutes[key] = eHTTPRouteContext
+		eir.HTTPRoutes[key] = eRouteCtx
+
+		// If some rules don't redirect, they still need to be reachable on port 80.
+		// Create a passthrough route on port 80 for those paths.
+		if len(nonRedirectRules) > 0 {
+			httpRoute := gatewayv1.HTTPRoute{
+				TypeMeta: httpRouteContext.HTTPRoute.TypeMeta,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("%s-http", httpRouteContext.HTTPRoute.Name),
+					Namespace: httpRouteContext.HTTPRoute.Namespace,
+				},
+				Spec: gatewayv1.HTTPRouteSpec{
+					Hostnames: httpRouteContext.HTTPRoute.Spec.DeepCopy().Hostnames,
+					Rules:     nonRedirectRules,
+				},
+			}
+			httpRoute.Spec.ParentRefs = httpRouteContext.HTTPRoute.Spec.DeepCopy().ParentRefs
+			for i := range httpRoute.Spec.ParentRefs {
+				httpRoute.Spec.ParentRefs[i].Port = ptr.To[int32](80)
+			}
+			eir.HTTPRoutes[types.NamespacedName{
+				Namespace: httpRoute.Namespace,
+				Name:      httpRoute.Name,
+			}] = emitterir.HTTPRouteContext{
+				HTTPRoute: httpRoute,
+			}
+		}
 	}
 	return nil
 }

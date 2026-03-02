@@ -82,6 +82,82 @@ func TestIngressNGINXTLS(t *testing.T) {
 				},
 			})
 		})
+		t.Run("conflicting ssl-redirect disabled wins", func(t *testing.T) {
+			suffix, err := randString()
+			require.NoError(t, err, "creating host suffix")
+			host := "tls-conflict-" + suffix + ".example.com"
+			tlsSecret, err := generateSelfSignedTLSSecret("tls-conflict-"+suffix, "", host, []string{host})
+			if err != nil {
+				t.Fatalf("creating TLS secret: %v", err)
+			}
+			runTestCase(t, &testCase{
+				gatewayImplementation: istio.ProviderName,
+				providers:             []string{ingressnginx.Name},
+				providerFlags: map[string]map[string]string{
+					ingressnginx.Name: {
+						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
+					},
+				},
+				secrets: []*corev1.Secret{tlsSecret.Secret},
+				ingresses: []*networkingv1.Ingress{
+					basicIngress().
+						withName("redirect-enabled").
+						withHost(host).
+						withPath("/a").
+						withIngressClass(ingressnginx.NginxIngressClass).
+						withAnnotation("nginx.ingress.kubernetes.io/ssl-redirect", "true").
+						withTLSSecret(tlsSecret.Secret.Name, host).
+						build(),
+					basicIngress().
+						withName("redirect-disabled").
+						withHost(host).
+						withPath("/b").
+						withIngressClass(ingressnginx.NginxIngressClass).
+						withAnnotation("nginx.ingress.kubernetes.io/ssl-redirect", "false").
+						withTLSSecret(tlsSecret.Secret.Name, host).
+						build(),
+				},
+				verifiers: map[string][]verifier{
+					"redirect-enabled": {
+						&httpRequestVerifier{
+							host:      host,
+							path:      "/a",
+							useTLS:    true,
+							caCertPEM: tlsSecret.CACert,
+						},
+						// /a should redirect because its source ingress has ssl-redirect=true.
+						&httpRequestVerifier{
+							host:         host,
+							path:         "/a",
+							allowedCodes: []int{308},
+							useTLS:       false,
+							headerMatches: []headerMatch{
+								{
+									name: "Location",
+									patterns: []*maybeNegativePattern{
+										{pattern: regexp.MustCompile("^https://")},
+									},
+								},
+							},
+						},
+					},
+					"redirect-disabled": {
+						&httpRequestVerifier{
+							host:      host,
+							path:      "/b",
+							useTLS:    true,
+							caCertPEM: tlsSecret.CACert,
+						},
+						// /b should NOT redirect because its source ingress has ssl-redirect=false.
+						&httpRequestVerifier{
+							host:   host,
+							path:   "/b",
+							useTLS: false,
+						},
+					},
+				},
+			})
+		})
 		t.Run("ssl-redirect annotation", func(t *testing.T) {
 			suffix, err := randString()
 			require.NoError(t, err, "creating host suffix")

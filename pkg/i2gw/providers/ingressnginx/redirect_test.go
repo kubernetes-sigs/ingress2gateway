@@ -51,6 +51,9 @@ func TestAddDefaultSSLRedirect_enabled(t *testing.T) {
 				ParentRefs: append([]gatewayv1.ParentReference(nil), parentRefs...),
 			},
 			Hostnames: []gatewayv1.Hostname{"example.com"},
+			Rules: []gatewayv1.HTTPRouteRule{
+				{Matches: []gatewayv1.HTTPRouteMatch{{}}},
+			},
 		},
 	}
 
@@ -148,6 +151,105 @@ func TestAddDefaultSSLRedirect_disabledByAnnotation(t *testing.T) {
 	}
 	if origCtx.Spec.ParentRefs[0].Port != nil {
 		t.Fatalf("expected original route parentRef port to remain nil, got %#v", origCtx.Spec.ParentRefs[0].Port)
+	}
+}
+
+func TestAddDefaultSSLRedirect_conflictingAnnotations(t *testing.T) {
+	key := types.NamespacedName{Namespace: "default", Name: "route"}
+	parentRefs := []gatewayv1.ParentReference{{Name: gatewayv1.ObjectName("gw")}}
+
+	ingEnabled := networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: key.Namespace,
+			Name:      "ing-enabled",
+			Annotations: map[string]string{
+				SSLRedirectAnnotation: "true",
+			},
+		},
+		Spec: networkingv1.IngressSpec{
+			TLS: []networkingv1.IngressTLS{{SecretName: "secret"}},
+		},
+	}
+
+	ingDisabled := networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: key.Namespace,
+			Name:      "ing-disabled",
+			Annotations: map[string]string{
+				SSLRedirectAnnotation: "false",
+			},
+		},
+		Spec: networkingv1.IngressSpec{
+			TLS: []networkingv1.IngressTLS{{SecretName: "secret"}},
+		},
+	}
+
+	pathA := "/a"
+	pathB := "/b"
+	route := gatewayv1.HTTPRoute{
+		ObjectMeta: metav1.ObjectMeta{Namespace: key.Namespace, Name: key.Name},
+		Spec: gatewayv1.HTTPRouteSpec{
+			CommonRouteSpec: gatewayv1.CommonRouteSpec{
+				ParentRefs: append([]gatewayv1.ParentReference(nil), parentRefs...),
+			},
+			Hostnames: []gatewayv1.Hostname{"example.com"},
+			Rules: []gatewayv1.HTTPRouteRule{
+				{Matches: []gatewayv1.HTTPRouteMatch{{Path: &gatewayv1.HTTPPathMatch{Value: &pathA}}}},
+				{Matches: []gatewayv1.HTTPRouteMatch{{Path: &gatewayv1.HTTPPathMatch{Value: &pathB}}}},
+			},
+		},
+	}
+
+	// Two rules, each from a different ingress with conflicting ssl-redirect values.
+	// Per-rule semantics: only the rule from ingEnabled should get a redirect.
+	pIR := providerir.ProviderIR{HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{}}
+	pIR.HTTPRoutes[key] = providerir.HTTPRouteContext{
+		HTTPRoute: route,
+		RuleBackendSources: [][]providerir.BackendSource{
+			{{Ingress: &ingEnabled}},
+			{{Ingress: &ingDisabled}},
+		},
+	}
+
+	eIR := emitterir.EmitterIR{HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{}}
+	eIR.HTTPRoutes[key] = emitterir.HTTPRouteContext{HTTPRoute: route}
+
+	addDefaultSSLRedirect(&pIR, &eIR)
+
+	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-ssl-redirect"}
+	redirectCtx, ok := eIR.HTTPRoutes[redirectKey]
+	if !ok {
+		t.Fatalf("expected redirect route %v to be created for the enabled rule", redirectKey)
+	}
+
+	// Only one redirect rule (for /a), not two.
+	if len(redirectCtx.Spec.Rules) != 1 {
+		t.Fatalf("expected 1 redirect rule, got %d", len(redirectCtx.Spec.Rules))
+	}
+
+	if len(redirectCtx.Spec.Rules[0].Matches) != 1 || *redirectCtx.Spec.Rules[0].Matches[0].Path.Value != "/a" {
+		t.Fatalf("expected redirect rule to match /a, got %#v", redirectCtx.Spec.Rules[0].Matches)
+	}
+
+	// A passthrough route should be created on port 80 for /b.
+	httpKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
+	httpCtx, ok := eIR.HTTPRoutes[httpKey]
+	if !ok {
+		t.Fatalf("expected passthrough route %v to be created for non-redirect paths", httpKey)
+	}
+	if len(httpCtx.Spec.Rules) != 1 {
+		t.Fatalf("expected 1 passthrough rule, got %d", len(httpCtx.Spec.Rules))
+	}
+	if len(httpCtx.Spec.Rules[0].Matches) != 1 || *httpCtx.Spec.Rules[0].Matches[0].Path.Value != "/b" {
+		t.Fatalf("expected passthrough rule to match /b, got %#v", httpCtx.Spec.Rules[0].Matches)
+	}
+	if len(httpCtx.Spec.ParentRefs) != 1 || httpCtx.Spec.ParentRefs[0].Port == nil || *httpCtx.Spec.ParentRefs[0].Port != 80 {
+		t.Fatalf("expected passthrough route parentRef port 80, got %#v", httpCtx.Spec.ParentRefs)
+	}
+
+	origCtx := eIR.HTTPRoutes[key]
+	if len(origCtx.Spec.ParentRefs) != 1 || origCtx.Spec.ParentRefs[0].Port == nil || *origCtx.Spec.ParentRefs[0].Port != 443 {
+		t.Fatalf("expected original route parentRef port 443, got %#v", origCtx.Spec.ParentRefs)
 	}
 }
 
