@@ -258,12 +258,16 @@ func (a *ingressAggregator) toRoutesAndGateways(options i2gw.ProviderImplementat
 		if len(rg.tls) > 0 {
 			listener.TLS = &gatewayv1.ListenerTLSConfig{}
 		}
+		certNames := map[string]struct{}{}
 		for _, tls := range rg.tls {
+			certNames[tls.SecretName] = struct{}{}
+		}
+		for certName := range certNames {
 			listener.TLS.CertificateRefs = append(listener.TLS.CertificateRefs,
 				gatewayv1.SecretObjectReference{
 					Group: ptr.To(gatewayv1.Group("")),
 					Kind:  ptr.To(gatewayv1.Kind("Secret")),
-					Name:  gatewayv1.ObjectName(tls.SecretName),
+					Name:  gatewayv1.ObjectName(certName),
 				})
 		}
 		gwKey := fmt.Sprintf("%s/%s", rg.namespace, rg.ingressClass)
