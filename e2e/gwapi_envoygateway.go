@@ -79,7 +79,7 @@ func deployGatewayAPIEnvoyGateway(
 		},
 	}
 
-	if err := installChart(
+	if err = installChart(
 		ctx,
 		l,
 		settings,
