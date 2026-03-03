@@ -444,7 +444,7 @@ func TestBackendTLSFeatureExtended(t *testing.T) {
 							Hostname: gatewayv1.PreciseHostname("strict.internal.com"),
 							CACertificateRefs: []gatewayv1.LocalObjectReference{{
 								Group: "",
-								Kind:  "Secret",
+								Kind:  "ConfigMap",
 								Name:  "my-ca-secret",
 							}},
 						},
@@ -575,7 +575,7 @@ func TestBackendTLSFeatureExtended(t *testing.T) {
 							Hostname: gatewayv1.PreciseHostname("first.com"), // Expect first one
 							CACertificateRefs: []gatewayv1.LocalObjectReference{{
 								Group: "",
-								Kind:  "Secret",
+								Kind:  "ConfigMap",
 								Name:  "my-ca-secret",
 							}},
 						},

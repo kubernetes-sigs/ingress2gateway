@@ -152,17 +152,22 @@ func backendTLSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedN
 				// We know proxySSLName is not empty due to strict validation above
 				policy.Spec.Validation.Hostname = gatewayv1.PreciseHostname(proxySSLName)
 
-				// Handle CA Certificates
-				secretName := proxySSLSecret
-				if strings.Contains(secretName, "/") {
-					parts := strings.SplitN(secretName, "/", 2)
+				// Handle CA Certificates.
+				// The NGINX proxy-ssl-secret annotation references a Kubernetes Secret, but
+				// Gateway API BackendTLSPolicy uses caCertificateRefs which conventionally
+				// references a ConfigMap (the kind supported by major implementations like
+				// Istio). The converter outputs kind: ConfigMap so that the CA certificate
+				// data must be placed in a ConfigMap with a "ca.crt" key.
+				caRefName := proxySSLSecret
+				if strings.Contains(caRefName, "/") {
+					parts := strings.SplitN(caRefName, "/", 2)
 					if len(parts) == 2 {
 						secretNamespace := parts[0]
-						secretName = parts[1]
+						caRefName = parts[1]
 
 						if secretNamespace != namespace {
 							notify(notifications.ErrorNotification,
-								fmt.Sprintf("Ingress %s/%s specifies backend TLS secret %s in a different namespace. BackendTLSPolicy only supports local Secrets. Policy will not be generated.",
+								fmt.Sprintf("Ingress %s/%s specifies backend TLS secret %s in a different namespace. BackendTLSPolicy only supports local references. Policy will not be generated.",
 									primaryIngress.Namespace, primaryIngress.Name, proxySSLSecret),
 								primaryIngress,
 							)
@@ -172,10 +177,13 @@ func backendTLSFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedN
 				}
 
 				// We know proxySSLVerify is "on" and proxySSLSecret is not empty due to strict validation above.
+				// Use ConfigMap kind since it is the standard reference kind for caCertificateRefs
+				// supported by Gateway API implementations (e.g., Istio). The ConfigMap must
+				// contain the CA certificate PEM data under the "ca.crt" key.
 				policy.Spec.Validation.CACertificateRefs = []gatewayv1.LocalObjectReference{{
 					Group: "",
-					Kind:  "Secret",
-					Name:  gatewayv1.ObjectName(secretName),
+					Kind:  "ConfigMap",
+					Name:  gatewayv1.ObjectName(caRefName),
 				}}
 				policy.Spec.Validation.WellKnownCACertificates = nil
 
