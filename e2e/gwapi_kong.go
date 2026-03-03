@@ -71,6 +71,7 @@ func deployGatewayAPIKong(
 		kongChartVersion,
 		namespace,
 		true,
+		false,
 		values,
 	); err != nil {
 		return nil, fmt.Errorf("installing Kong chart: %w", err)

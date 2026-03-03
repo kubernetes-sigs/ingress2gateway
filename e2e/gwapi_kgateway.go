@@ -59,6 +59,7 @@ func deployGatewayAPIKgateway(
 		kgatewayVersion,
 		namespace,
 		true,
+		false,
 		nil,
 	); err != nil {
 		return nil, fmt.Errorf("installing kgateway CRDs chart: %w", err)
@@ -73,6 +74,7 @@ func deployGatewayAPIKgateway(
 		kgatewayChart,
 		kgatewayVersion,
 		namespace,
+		false,
 		false,
 		nil,
 	); err != nil {

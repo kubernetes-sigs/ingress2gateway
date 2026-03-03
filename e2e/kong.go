@@ -49,6 +49,7 @@ func deployKongIngress(
 		kongChartVersion,
 		namespace,
 		true,
+		false,
 		nil,
 	); err != nil {
 		return nil, fmt.Errorf("installing Kong Ingress chart: %w", err)

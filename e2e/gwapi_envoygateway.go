@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"helm.sh/helm/v4/pkg/cli"
+	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -32,7 +33,8 @@ import (
 
 const (
 	envoyGatewayName          = "envoy-gateway"
-	envoyGatewayVersion       = "v0.0.0-latest"
+	envoyGatewayVersion       = "v1.7.0"
+	envoyGatewayCRDInstallURL = "https://github.com/envoyproxy/gateway/releases/download/" + envoyGatewayVersion + "/envoy-gateway-crds.yaml"
 	envoyGatewayChart         = "oci://docker.io/envoyproxy/gateway-helm"
 	envoyGatewayReleaseName   = "envoy-gateway"
 	envoyGatewayContrllerName = "gateway.envoyproxy.io/gatewayclass-controller"
@@ -42,6 +44,7 @@ func deployGatewayAPIEnvoyGateway(
 	ctx context.Context,
 	l logger,
 	client *kubernetes.Clientset,
+	apiextClient *apiextensionsclientset.Clientset,
 	gwClient *gwclientset.Clientset,
 	kubeconfigPath string,
 	namespace string,
@@ -49,16 +52,25 @@ func deployGatewayAPIEnvoyGateway(
 ) (func(), error) {
 	l.Logf("Deploying Envoy Gateway %s", envoyGatewayVersion)
 
+	// Install Envoy Gateway CRDs via server-side apply.
+	// helm install cannot be used here due to a known Helm limitation where large CRDs
+	// in the templates/ directory cause the release Secret to exceed the 1MB size limit.
+	// See: https://gateway.envoyproxy.io/v1.7/install/install-helm/#installing-crds-separately
+	cleanupCRDs, err := deployCRDs(ctx, l, apiextClient, envoyGatewayCRDInstallURL, skipCleanup)
+	if err != nil {
+		return nil, fmt.Errorf("installing Envoy Gateway CRDs: %w", err)
+	}
+
 	settings := cli.New()
 	settings.KubeConfig = kubeconfigPath
 
-	values := map[string]interface{}{
-		"config": map[string]interface{}{
-			"envoyGateway": map[string]interface{}{
-				"provider": map[string]interface{}{
+	values := map[string]any{
+		"config": map[string]any{
+			"envoyGateway": map[string]any{
+				"provider": map[string]any{
 					"type": "Kubernetes",
-					"kubernetes": map[string]interface{}{
-						"deploy": map[string]interface{}{
+					"kubernetes": map[string]any{
+						"deploy": map[string]any{
 							"type": "GatewayNamespace",
 						},
 					},
@@ -77,8 +89,10 @@ func deployGatewayAPIEnvoyGateway(
 		envoyGatewayVersion,
 		namespace,
 		true,
+		true,
 		values,
 	); err != nil {
+		cleanupCRDs()
 		return nil, fmt.Errorf("installing Envoy Gateway chart: %w", err)
 	}
 
@@ -93,11 +107,12 @@ func deployGatewayAPIEnvoyGateway(
 	}
 
 	l.Logf("Creating GatewayClass %s", envoyGatewayName)
-	_, err := gwClient.GatewayV1().GatewayClasses().Create(ctx, gc, metav1.CreateOptions{})
+	_, err = gwClient.GatewayV1().GatewayClasses().Create(ctx, gc, metav1.CreateOptions{})
 	if errors.IsAlreadyExists(err) {
 		_, err = gwClient.GatewayV1().GatewayClasses().Update(ctx, gc, metav1.UpdateOptions{})
 	}
 	if err != nil {
+		cleanupCRDs()
 		return nil, fmt.Errorf("creating GatewayClass: %w", err)
 	}
 
@@ -122,6 +137,8 @@ func deployGatewayAPIEnvoyGateway(
 		if err := uninstallChart(cleanupCtx, settings, envoyGatewayReleaseName, namespace); err != nil {
 			log.Printf("Uninstalling Envoy Gateway chart: %v", err)
 		}
+
+		cleanupCRDs()
 
 		if err := deleteNamespaceAndWait(cleanupCtx, client, namespace); err != nil {
 			log.Printf("Deleting namespace: %v", err)
