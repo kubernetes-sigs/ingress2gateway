@@ -17,8 +17,8 @@ limitations under the License.
 package ingressnginx
 
 import (
-	"strings"
 	"fmt"
+	"strings"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"

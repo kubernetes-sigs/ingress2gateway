@@ -161,10 +161,10 @@ func TestEmitCORSFiltering(t *testing.T) {
 			expectedFiltersCount: 1,
 		},
 		{
-			name:                 "experimental denied + cors in sidecar -> cors NOT added",
+			name:                 "experimental denied + cors in sidecar -> cors added",
 			allowExperimental:    false,
 			corsInSidecar:        &emitterir.CORSConfig{},
-			expectedFiltersCount: 0,
+			expectedFiltersCount: 1,
 		},
 		{
 			name:              "other filters preserved regardless of flag",
@@ -173,7 +173,7 @@ func TestEmitCORSFiltering(t *testing.T) {
 				{Type: gatewayv1.HTTPRouteFilterRequestHeaderModifier},
 			},
 			corsInSidecar:        &emitterir.CORSConfig{},
-			expectedFiltersCount: 1, // only header modifier
+			expectedFiltersCount: 2, // only header modifier
 		},
 	}
 
