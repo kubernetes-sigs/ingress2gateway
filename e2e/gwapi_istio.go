@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	istioVersion   = "1.28.2"
+	istioVersion   = "1.29.0"
 	istioChartRepo = "https://istio-release.storage.googleapis.com/charts"
 )
 

@@ -17,6 +17,8 @@ limitations under the License.
 package ingressnginx
 
 import (
+	"strconv"
+
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
 )
@@ -26,7 +28,9 @@ import (
 // This is used to prioritize the "main" Ingress for reading common annotations.
 func getNonCanaryIngress(sources []providerir.BackendSource) *networkingv1.Ingress {
 	for _, source := range sources {
-		if _, ok := source.Ingress.Annotations[CanaryAnnotation]; !ok {
+		val := source.Ingress.Annotations[CanaryAnnotation]
+		parsedVal, _ := strconv.ParseBool(val)
+		if !parsedVal {
 			return source.Ingress
 		}
 	}

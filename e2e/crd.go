@@ -37,9 +37,8 @@ import (
 )
 
 const (
-	// gatewayAPIVersion    = "v1.4.1"
-	// gatewayAPIInstallURL = "https://github.com/kubernetes-sigs/gateway-api/releases/download/" + gatewayAPIVersion + "/experimental-install.yaml"
-	gatewayAPIInstallURL = "https://github.com/kubernetes-sigs/gateway-api/releases/download/monthly-2026.01/monthly-2026.01-install.yaml"
+	gatewayAPIVersion    = "v1.5.0"
+	gatewayAPIInstallURL = "https://github.com/kubernetes-sigs/gateway-api/releases/download/" + gatewayAPIVersion + "/experimental-install.yaml"
 )
 
 func deployCRDs(ctx context.Context, l logger, client *apiextensionsclientset.Clientset, skipCleanup bool) (func(), error) {
@@ -101,6 +100,10 @@ func decodeCRDs(yamlData []byte) ([]apiextensionsv1.CustomResourceDefinition, er
 	var out []apiextensionsv1.CustomResourceDefinition
 
 	for _, obj := range objs {
+		if obj.GetKind() != "CustomResourceDefinition" {
+			continue
+		}
+
 		var crd apiextensionsv1.CustomResourceDefinition
 		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, &crd); err != nil {
 			return nil, fmt.Errorf("converting object: %w", err)

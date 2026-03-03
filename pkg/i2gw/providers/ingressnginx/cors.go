@@ -59,10 +59,10 @@ func applyCorsToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) f
 			}
 
 			if eRouteCtx.CorsPolicyByRuleIdx == nil {
-				eRouteCtx.CorsPolicyByRuleIdx = make(map[int]*gatewayv1.HTTPCORSFilter)
+				eRouteCtx.CorsPolicyByRuleIdx = make(map[int]*emitterir.CORSConfig)
 			}
 
-			corsFilter := &gatewayv1.HTTPCORSFilter{}
+			corsFilter := &emitterir.CORSConfig{}
 
 			// Allow Origin
 			if origin, ok := ing.Annotations[CorsAllowOriginAnnotation]; ok && origin != "" {

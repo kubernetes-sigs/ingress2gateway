@@ -105,9 +105,11 @@ func applyBodySizeToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterI
 				maxSize    *resource.Quantity
 				bufferSize *resource.Quantity
 			)
+			parsedAnnotations := make([]string, 0, 2)
 
 			// handle proxy-body-size
 			if val, ok := ing.Annotations[ProxyBodySizeAnnotation]; ok && val != "" {
+				parsedAnnotations = append(parsedAnnotations, ProxyBodySizeAnnotation)
 				k8sSize, err := convertNginxSizeToK8sQuantity(val)
 				if err != nil {
 					errs = append(errs, field.Invalid(
@@ -132,6 +134,7 @@ func applyBodySizeToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterI
 
 			// handle client-body-buffer-size
 			if val, ok := ing.Annotations[ClientBodyBufferSizeAnnotation]; ok && val != "" {
+				parsedAnnotations = append(parsedAnnotations, ClientBodyBufferSizeAnnotation)
 				k8sSize, err := convertNginxSizeToK8sQuantity(val)
 				if err != nil {
 					errs = append(errs, field.Invalid(
@@ -163,6 +166,20 @@ func applyBodySizeToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterI
 			}
 
 			bodySizeIR := emitterir.BodySize{}
+			{
+				source := fmt.Sprintf("%s/%s", ing.Namespace, ing.Name)
+				message := "Most Gateway API implementations have reasonable body size and buffering defaults"
+				paths := make([]*field.Path, len(parsedAnnotations))
+				for i, ann := range parsedAnnotations {
+					paths[i] = field.NewPath("ingress", ing.Namespace, ing.Name, "metadata", "annotations", ann)
+				}
+				bodySizeIR.Metadata = emitterir.NewExtensionFeatureMetadata(
+					source,
+					paths,
+					message,
+				)
+			}
+
 			if maxSize != nil {
 				bodySizeIR.MaxSize = maxSize
 				notify(notifications.InfoNotification, fmt.Sprintf("parsed proxy-body-size annotation of ingress %s/%s and set %s to HTTPRoute rule index %d",

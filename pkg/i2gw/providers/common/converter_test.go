@@ -42,6 +42,7 @@ func Test_ToIR(t *testing.T) {
 	testCases := []struct {
 		name           string
 		ingresses      []networkingv1.Ingress
+		grpcIngresses  []networkingv1.Ingress
 		servicePorts   map[types.NamespacedName]map[string]int32
 		expectedIR     providerir.ProviderIR
 		expectedErrors field.ErrorList
@@ -218,6 +219,108 @@ func Test_ToIR(t *testing.T) {
 											BackendObjectReference: gatewayv1.BackendObjectReference{
 												Name: "example",
 												Port: PtrTo(gatewayv1.PortNumber(3000)),
+											},
+										},
+									}},
+								}},
+							},
+						},
+					},
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
+		{
+			name: "ingress with duplicate TLS secret names deduplicates CertificateRefs",
+			ingresses: []networkingv1.Ingress{{
+				ObjectMeta: metav1.ObjectMeta{Name: "dup-tls", Namespace: "test"},
+				Spec: networkingv1.IngressSpec{
+					TLS: []networkingv1.IngressTLS{
+						{
+							Hosts:      []string{"foo.example.com"},
+							SecretName: "shared-cert",
+						},
+						{
+							Hosts:      []string{"bar.example.com"},
+							SecretName: "shared-cert",
+						},
+					},
+					Rules: []networkingv1.IngressRule{{
+						Host: "foo.example.com",
+						IngressRuleValue: networkingv1.IngressRuleValue{
+							HTTP: &networkingv1.HTTPIngressRuleValue{
+								Paths: []networkingv1.HTTPIngressPath{{
+									Path:     "/",
+									PathType: &iPrefix,
+									Backend: networkingv1.IngressBackend{
+										Service: &networkingv1.IngressServiceBackend{
+											Name: "foo-svc",
+											Port: networkingv1.ServiceBackendPort{
+												Number: 80,
+											},
+										},
+									},
+								}},
+							},
+						},
+					}},
+					IngressClassName: PtrTo("dup-tls"),
+				},
+			}},
+			servicePorts: map[types.NamespacedName]map[string]int32{},
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
+					{Namespace: "test", Name: "dup-tls"}: {
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: "dup-tls", Namespace: "test"},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: "dup-tls",
+								Listeners: []gatewayv1.Listener{{
+									Name:     "foo-example-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: PtrTo(gatewayv1.Hostname("foo.example.com")),
+								}, {
+									Name:     "foo-example-com-https",
+									Port:     443,
+									Protocol: gatewayv1.HTTPSProtocolType,
+									Hostname: PtrTo(gatewayv1.Hostname("foo.example.com")),
+									TLS: &gatewayv1.ListenerTLSConfig{
+										CertificateRefs: []gatewayv1.SecretObjectReference{{
+											Group: ptr.To(gatewayv1.Group("")),
+											Kind:  ptr.To(gatewayv1.Kind("Secret")),
+											Name:  "shared-cert",
+										}},
+									},
+								}},
+							},
+						},
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
+					{Namespace: "test", Name: "dup-tls-foo-example-com"}: {
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: "dup-tls-foo-example-com", Namespace: "test"},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: "dup-tls",
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{"foo.example.com"},
+								Rules: []gatewayv1.HTTPRouteRule{{
+									Name: ptr.To(gatewayv1.SectionName("rule-0")),
+									Matches: []gatewayv1.HTTPRouteMatch{{
+										Path: &gatewayv1.HTTPPathMatch{
+											Type:  &gPathPrefix,
+											Value: PtrTo("/"),
+										},
+									}},
+									BackendRefs: []gatewayv1.HTTPBackendRef{{
+										BackendRef: gatewayv1.BackendRef{
+											BackendObjectReference: gatewayv1.BackendObjectReference{
+												Name: "foo-svc",
+												Port: PtrTo(gatewayv1.PortNumber(80)),
 											},
 										},
 									}},
@@ -458,12 +561,169 @@ func Test_ToIR(t *testing.T) {
 			},
 			expectedErrors: field.ErrorList{field.Invalid(field.NewPath(""), "", "")},
 		},
+		{
+			name: "simple grpc ingress",
+			grpcIngresses: []networkingv1.Ingress{{
+				ObjectMeta: metav1.ObjectMeta{Name: "grpc", Namespace: "test"},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{{
+						Host: "grpc.example.com",
+						IngressRuleValue: networkingv1.IngressRuleValue{
+							HTTP: &networkingv1.HTTPIngressRuleValue{
+								Paths: []networkingv1.HTTPIngressPath{{
+									Path:     "/grpc.service/Method",
+									PathType: &iPrefix,
+									Backend: networkingv1.IngressBackend{
+										Service: &networkingv1.IngressServiceBackend{
+											Name: "grpc-service",
+											Port: networkingv1.ServiceBackendPort{
+												Number: 50051,
+											},
+										},
+									},
+								}},
+							},
+						},
+					}},
+					IngressClassName: PtrTo("grpc-class"),
+				},
+			}},
+			servicePorts: map[types.NamespacedName]map[string]int32{},
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
+					{Namespace: "test", Name: "grpc-class"}: {
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: "grpc-class", Namespace: "test"},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: "grpc-class",
+								Listeners: []gatewayv1.Listener{{
+									Name:     "grpc-example-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: PtrTo(gatewayv1.Hostname("grpc.example.com")),
+								}},
+							},
+						},
+					},
+				},
+				GRPCRoutes: map[types.NamespacedName]providerir.GRPCRouteContext{
+					{Namespace: "test", Name: "grpc-grpc-example-com"}: {
+						GRPCRoute: gatewayv1.GRPCRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: "grpc-grpc-example-com", Namespace: "test"},
+							Spec: gatewayv1.GRPCRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: "grpc-class",
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{"grpc.example.com"},
+								Rules: []gatewayv1.GRPCRouteRule{{
+									Matches: []gatewayv1.GRPCRouteMatch{{
+										Method: &gatewayv1.GRPCMethodMatch{
+											Service: PtrTo("grpc.service"),
+											Method:  PtrTo("Method"),
+										},
+									}},
+									BackendRefs: []gatewayv1.GRPCBackendRef{{
+										BackendRef: gatewayv1.BackendRef{
+											BackendObjectReference: gatewayv1.BackendObjectReference{
+												Name: "grpc-service",
+												Port: PtrTo(gatewayv1.PortNumber(50051)),
+											},
+										},
+									}},
+								}},
+							},
+						},
+					},
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
+		{
+			name: "grpc ingress with service path",
+			grpcIngresses: []networkingv1.Ingress{{
+				ObjectMeta: metav1.ObjectMeta{Name: "grpcbin", Namespace: "default"},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{{
+						Host: "grpcbin.local",
+						IngressRuleValue: networkingv1.IngressRuleValue{
+							HTTP: &networkingv1.HTTPIngressRuleValue{
+								Paths: []networkingv1.HTTPIngressPath{{
+									Path:     "/hello.HelloService/",
+									PathType: &iPrefix,
+									Backend: networkingv1.IngressBackend{
+										Service: &networkingv1.IngressServiceBackend{
+											Name: "grpcbin",
+											Port: networkingv1.ServiceBackendPort{
+												Number: 9000,
+											},
+										},
+									},
+								}},
+							},
+						},
+					}},
+					IngressClassName: PtrTo("nginx"),
+				},
+			}},
+			servicePorts: map[types.NamespacedName]map[string]int32{},
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
+					{Namespace: "default", Name: "nginx"}: {
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: "nginx", Namespace: "default"},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: "nginx",
+								Listeners: []gatewayv1.Listener{{
+									Name:     "grpcbin-local-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: PtrTo(gatewayv1.Hostname("grpcbin.local")),
+								}},
+							},
+						},
+					},
+				},
+				GRPCRoutes: map[types.NamespacedName]providerir.GRPCRouteContext{
+					{Namespace: "default", Name: "grpcbin-grpcbin-local"}: {
+						GRPCRoute: gatewayv1.GRPCRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: "grpcbin-grpcbin-local", Namespace: "default"},
+							Spec: gatewayv1.GRPCRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: "nginx",
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{"grpcbin.local"},
+								Rules: []gatewayv1.GRPCRouteRule{{
+									Matches: []gatewayv1.GRPCRouteMatch{{
+										Method: &gatewayv1.GRPCMethodMatch{
+											Service: PtrTo("hello.HelloService"),
+										},
+									}},
+									BackendRefs: []gatewayv1.GRPCBackendRef{{
+										BackendRef: gatewayv1.BackendRef{
+											BackendObjectReference: gatewayv1.BackendObjectReference{
+												Name: "grpcbin",
+												Port: PtrTo(gatewayv1.PortNumber(9000)),
+											},
+										},
+									}},
+								}},
+							},
+						},
+					},
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			ir, errs := ToIR(tc.ingresses, tc.servicePorts, i2gw.ProviderImplementationSpecificOptions{})
+			ir, errs := ToIR(tc.ingresses, tc.grpcIngresses, tc.servicePorts, i2gw.ProviderImplementationSpecificOptions{})
 
 			if len(ir.HTTPRoutes) != len(tc.expectedIR.HTTPRoutes) {
 				t.Errorf("Expected %d HTTPRoutes, got %d: %+v",
@@ -475,6 +735,20 @@ func Test_ToIR(t *testing.T) {
 					wantHTTPRouteContext.HTTPRoute.SetGroupVersionKind(HTTPRouteGVK)
 					if !apiequality.Semantic.DeepEqual(gotHTTPRouteContext.HTTPRoute, wantHTTPRouteContext.HTTPRoute) {
 						t.Errorf("Expected HTTPRoute %s to be %+v\n Got: %+v\n Diff: %s", i, wantHTTPRouteContext.HTTPRoute, gotHTTPRouteContext.HTTPRoute, cmp.Diff(wantHTTPRouteContext.HTTPRoute, gotHTTPRouteContext.HTTPRoute))
+					}
+				}
+			}
+
+			if len(ir.GRPCRoutes) != len(tc.expectedIR.GRPCRoutes) {
+				t.Errorf("Expected %d GRPCRoutes, got %d: %+v",
+					len(tc.expectedIR.GRPCRoutes), len(ir.GRPCRoutes), ir.GRPCRoutes)
+			} else {
+				for i, gotGRPCRouteContext := range ir.GRPCRoutes {
+					key := types.NamespacedName{Namespace: gotGRPCRouteContext.GRPCRoute.Namespace, Name: gotGRPCRouteContext.GRPCRoute.Name}
+					wantGRPCRouteContext := tc.expectedIR.GRPCRoutes[key]
+					wantGRPCRouteContext.GRPCRoute.SetGroupVersionKind(GRPCRouteGVK)
+					if !apiequality.Semantic.DeepEqual(gotGRPCRouteContext.GRPCRoute, wantGRPCRouteContext.GRPCRoute) {
+						t.Errorf("Expected GRPCRoute %s to be %+v\n Got: %+v\n Diff: %s", i, wantGRPCRouteContext.GRPCRoute, gotGRPCRouteContext.GRPCRoute, cmp.Diff(wantGRPCRouteContext.GRPCRoute, gotGRPCRouteContext.GRPCRoute))
 					}
 				}
 			}

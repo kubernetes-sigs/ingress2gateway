@@ -29,6 +29,15 @@ const (
 	// Rewrite annotations
 	RewriteTargetAnnotation = "nginx.ingress.kubernetes.io/rewrite-target"
 
+	// Redirect annotations
+	PermanentRedirectAnnotation     = "nginx.ingress.kubernetes.io/permanent-redirect"
+	PermanentRedirectCodeAnnotation = "nginx.ingress.kubernetes.io/permanent-redirect-code"
+	TemporalRedirectAnnotation      = "nginx.ingress.kubernetes.io/temporal-redirect"
+	TemporalRedirectCodeAnnotation  = "nginx.ingress.kubernetes.io/temporal-redirect-code"
+	FromToWWWRedirectAnnotation     = "nginx.ingress.kubernetes.io/from-to-www-redirect"
+	ProxyRedirectFromAnnotation     = "nginx.ingress.kubernetes.io/proxy-redirect-from"
+	ProxyRedirectToAnnotation       = "nginx.ingress.kubernetes.io/proxy-redirect-to"
+
 	// Header annotations
 	XForwardedPrefixAnnotation      = "nginx.ingress.kubernetes.io/x-forwarded-prefix"
 	UpstreamVhostAnnotation         = "nginx.ingress.kubernetes.io/upstream-vhost"
@@ -43,6 +52,9 @@ const (
 	// Body Size annotations
 	ProxyBodySizeAnnotation        = "nginx.ingress.kubernetes.io/proxy-body-size"
 	ClientBodyBufferSizeAnnotation = "nginx.ingress.kubernetes.io/client-body-buffer-size"
+
+	// Backend protocol annotation
+	BackendProtocolAnnotation = "nginx.ingress.kubernetes.io/backend-protocol"
 
 	// Regex
 	UseRegexAnnotation = "nginx.ingress.kubernetes.io/use-regex"
@@ -65,7 +77,6 @@ const (
 	DenyListSourceRangeAnnotation  = "nginx.ingress.kubernetes.io/denylist-source-range"
 
 	// Backend TLS annotations
-	BackendProtocolAnnotation     = "nginx.ingress.kubernetes.io/backend-protocol"
 	ProxySSLVerifyAnnotation      = "nginx.ingress.kubernetes.io/proxy-ssl-verify"
 	ProxySSLSecretAnnotation      = "nginx.ingress.kubernetes.io/proxy-ssl-secret" //nolint:gosec // This is an annotation key, not a secret
 	ProxySSLNameAnnotation        = "nginx.ingress.kubernetes.io/proxy-ssl-name"
@@ -88,6 +99,12 @@ var parsedAnnotations = map[string]struct{}{
 	CanaryByHeaderPattern:           {},
 	CanaryByCookie:                  {},
 	RewriteTargetAnnotation:         {},
+	PermanentRedirectAnnotation:     {},
+	PermanentRedirectCodeAnnotation: {},
+	TemporalRedirectAnnotation:      {},
+	TemporalRedirectCodeAnnotation:  {},
+	ProxyRedirectFromAnnotation:     {},
+	ProxyRedirectToAnnotation:       {},
 	XForwardedPrefixAnnotation:      {},
 	UpstreamVhostAnnotation:         {},
 	ConnectionProxyHeaderAnnotation: {},
@@ -97,6 +114,7 @@ var parsedAnnotations = map[string]struct{}{
 	ProxyReadTimeoutAnnotation:      {},
 	ProxyBodySizeAnnotation:         {},
 	ClientBodyBufferSizeAnnotation:  {},
+	BackendProtocolAnnotation:       {},
 	UseRegexAnnotation:              {},
 	SSLRedirectAnnotation:           {},
 	EnableCorsAnnotation:            {},
@@ -106,4 +124,12 @@ var parsedAnnotations = map[string]struct{}{
 	CorsAllowCredentialsAnnotation:  {},
 	CorsExposeHeadersAnnotation:     {},
 	CorsMaxAgeAnnotation:            {},
+	WhiteListSourceRangeAnnotation:  {},
+	DenyListSourceRangeAnnotation:   {},
+	ProxySSLVerifyAnnotation:        {},
+	ProxySSLSecretAnnotation:        {},
+	ProxySSLNameAnnotation:          {},
+	ProxySSLServerNameAnnotation:    {},
+	ProxySSLVerifyDepthAnnotation:   {},
+	ProxySSLProtocolsAnnotation:     {},
 }
