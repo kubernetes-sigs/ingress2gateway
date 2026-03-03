@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	ingressNginxChartVersion = "4.14.1"
+	ingressNginxChartVersion = "4.14.3"
 	ingressNginxChartRepo    = "https://kubernetes.github.io/ingress-nginx"
 )
 

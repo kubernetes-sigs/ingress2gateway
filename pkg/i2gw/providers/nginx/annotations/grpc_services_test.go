@@ -79,7 +79,7 @@ func TestGRPCServicesRemoveHTTPRoute(t *testing.T) {
 				},
 			},
 		},
-		GRPCRoutes:         make(map[types.NamespacedName]gatewayv1.GRPCRoute),
+		GRPCRoutes:         make(map[types.NamespacedName]providerir.GRPCRouteContext),
 		BackendTLSPolicies: make(map[types.NamespacedName]gatewayv1.BackendTLSPolicy),
 	}
 
@@ -269,7 +269,7 @@ func TestGRPCServicesWithMixedServices(t *testing.T) {
 				},
 			},
 		},
-		GRPCRoutes: make(map[types.NamespacedName]gatewayv1.GRPCRoute),
+		GRPCRoutes: make(map[types.NamespacedName]providerir.GRPCRouteContext),
 	}
 
 	// Execute

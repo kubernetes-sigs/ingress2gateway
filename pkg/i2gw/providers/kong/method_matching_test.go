@@ -184,7 +184,7 @@ func TestMethodMatchingFeature(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			gatewayResources, errs := common.ToIR(tc.ingresses, map[types.NamespacedName]map[string]int32{}, i2gw.ProviderImplementationSpecificOptions{
+			gatewayResources, errs := common.ToIR(tc.ingresses, []networkingv1.Ingress{}, map[types.NamespacedName]map[string]int32{}, i2gw.ProviderImplementationSpecificOptions{
 				ToImplementationSpecificHTTPPathTypeMatch: implementationSpecificHTTPPathTypeMatch,
 			})
 			if len(errs) != 0 {

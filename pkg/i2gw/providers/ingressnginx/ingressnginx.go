@@ -62,7 +62,7 @@ func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 func (p *Provider) ToIR() (emitterir.EmitterIR, field.ErrorList) {
 	pIR, errs := p.resourcesToIRConverter.convert(p.storage)
 	eIR := providerir.ToEmitterIR(pIR)
-	applyRewriteTargetToEmitterIR(pIR, &eIR)
+	applyRewriteTargetToEmitterIR(p.storage.Ingresses.List(), pIR, &eIR)
 	applyIPRangeControlToEmitterIR(pIR, &eIR)
 	errs = append(errs, applyTimeoutsToEmitterIR(pIR, &eIR)...)
 	errs = append(errs, applyCorsToEmitterIR(pIR, &eIR)...)
