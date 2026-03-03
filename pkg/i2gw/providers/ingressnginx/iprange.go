@@ -23,6 +23,7 @@ import (
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 func parseIPSourceRangeAnnotation(annotations map[string]string, key string) []string {
@@ -67,10 +68,28 @@ func applyIPRangeControlToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.Em
 			if eRouteCtx.IPRangeControlByRuleIdx == nil {
 				eRouteCtx.IPRangeControlByRuleIdx = make(map[int]*emitterir.IPRangeControl)
 			}
-			eRouteCtx.IPRangeControlByRuleIdx[ruleIdx] = &emitterir.IPRangeControl{
+
+			ipRangeControl := &emitterir.IPRangeControl{
 				AllowList: allowList,
 				DenyList:  denyList,
 			}
+			{
+				source := fmt.Sprintf("%s/%s", ing.Namespace, ing.Name)
+				message := "IP-based authorization is not supported"
+				paths := make([]*field.Path, 0, 2)
+				if len(allowList) > 0 {
+					paths = append(paths, field.NewPath("ingress", ing.Namespace, ing.Name, "metadata", "annotations", WhiteListSourceRangeAnnotation))
+				}
+				if len(denyList) > 0 {
+					paths = append(paths, field.NewPath("ingress", ing.Namespace, ing.Name, "metadata", "annotations", DenyListSourceRangeAnnotation))
+				}
+				ipRangeControl.Metadata = emitterir.NewExtensionFeatureMetadata(
+					source,
+					paths,
+					message,
+				)
+			}
+			eRouteCtx.IPRangeControlByRuleIdx[ruleIdx] = ipRangeControl
 
 			if len(allowList) > 0 {
 				notify(notifications.InfoNotification, fmt.Sprintf("parsed whitelist-source-range annotation of ingress %s/%s: allowing CIDRs %s for HTTPRoute rule index %d",
