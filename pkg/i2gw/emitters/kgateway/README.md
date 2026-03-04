@@ -199,6 +199,7 @@ Currently supported:
   - When set to `GRPC` or `GRPCS` **and** `service-upstream: "true"` is set for the same backend, the emitter stamps `spec.static.appProtocol: grpc` on the generated `Backend`.
   - When set to `GRPC` or `GRPCS` **without** `service-upstream: "true"`, the emitter emits an **INFO** notification that includes a `kubectl patch service ...`
     command to set `spec.ports[].appProtocol` on the existing Service.
+  - This annotation controls upstream/backend protocol selection only; the emitter keeps generated routes as `HTTPRoute` and does not project `GRPCRoute` from this annotation.
   - `HTTP`, `HTTPS`, and `AUTO_HTTP` are treated as default HTTP/1.x behavior and do not emit additional config. 
 
 ### Summary of Policy Types

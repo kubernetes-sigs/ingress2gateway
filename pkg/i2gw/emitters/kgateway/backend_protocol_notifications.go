@@ -118,6 +118,8 @@ func emitBackendProtocolPatchNotifications(
 		msg := fmt.Sprintf(
 			`Ingress %q uses nginx.ingress.kubernetes.io/backend-protocol=%q for Service %s/%s port %d.
 
+This annotation controls upstream protocol selection only, so ingress2gateway keeps HTTPRoute resources as HTTPRoute (it does not emit a GRPCRoute).
+
 To avoid overwriting existing Service configuration, ingress2gateway does not emit a Service for this annotation.
 Apply the equivalent behavior by patching your existing Service port's appProtocol:
 

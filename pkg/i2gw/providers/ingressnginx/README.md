@@ -105,6 +105,7 @@ The ingress-nginx provider currently supports translating the following annotati
         on the generated `Backend`.
       - Otherwise, the Kgateway emitter does **not** generate Kubernetes `Service` resources. Instead, it emits an **INFO** notification with a `kubectl patch`
         command to set `spec.ports[].appProtocol` on the existing Service.
+      - This annotation is treated as upstream protocol metadata and does not imply `GRPCRoute` projection.
   - **Values treated as default HTTP/1.x (no-op):** `HTTP`, `HTTPS`, `AUTO_HTTP`
   - **Unsupported values (rejected):** `FCGI` (and others)
   - **Safety note:** The provider does not attempt to create or mutate Kubernetes Services; implementation emitters decide how to safely project this intent.
