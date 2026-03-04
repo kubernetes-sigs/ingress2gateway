@@ -177,6 +177,22 @@ If your application intentionally manages CORS by emitting its own CORS headers,
 the agentgateway emitter will suppress those upstream headers. Configure the desired CORS behavior via the Ingress NGINX
 CORS annotations so it is enforced by the gateway.
 
+#### Access Logging
+
+The agentgateway emitter supports projecting access logging behavior via:
+
+- `nginx.ingress.kubernetes.io/enable-access-log`
+
+This is mapped into `AgentgatewayPolicy.spec.frontend.accessLog`:
+
+- `enable-access-log: "true"` → emit `spec.frontend.accessLog` (default access logging behavior)
+- `enable-access-log: "false"` → emit `spec.frontend.accessLog.filter: "false"` (disable access logs)
+
+**Notes:**
+
+- ingress-nginx enables access logs by default when this annotation is absent.
+- The emitter only projects access-log behavior when the annotation is explicitly present on the source Ingress.
+
 #### Basic Authentication
 
 The agentgateway emitter supports projecting Basic Authentication from the following Ingress NGINX annotations:
@@ -384,11 +400,11 @@ This is projected into a **Service-targeted** `AgentgatewayPolicy` by setting:
 
 ## AgentgatewayPolicy Projection
 
-Rate limit, timeout, CORS, rewrite target, etc. annotations are converted into AgentgatewayPolicy resources.
+Rate limit, timeout, CORS, rewrite target, access log, etc. annotations are converted into AgentgatewayPolicy resources.
 The agentgateway emitter emits AgentgatewayPolicy resources in two shapes:
 
 - HTTPRoute-scoped policies for traffic-level behavior (rate limit, request timeouts, CORS, rewrite target,
-  basic auth, ext auth).
+  basic auth, ext auth, access log).
 - Service-scoped policies for backend connection behavior (backend TLS, proxy connect timeout, backend protocol).
 
 ### Naming
