@@ -143,16 +143,19 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 						canaryBackendSource := backendSources[canaryBackendIdx]
 						nonCanaryBackendSource := backendSources[nonCanaryBackendIdx]
 
-						var header = "always"
+						var canaryHeaderValue = "always"
 						if config.headerValue != "" {
-							header = config.headerValue
+							canaryHeaderValue = config.headerValue
 						}
 						canaryBackendCopy := canaryBackend
 						canaryBackendCopy.Weight = nil
 
-						var canaryMatchRule = createHeaderMatchRule(config.header, header, existingMatches, canaryBackendCopy)
+						var canaryMatchRule = createHeaderMatchRule(config.header, canaryHeaderValue, existingMatches, canaryBackendCopy)
 						rulesToAdd = append(rulesToAdd, canaryMatchRule)
 						sourcesToAdd = append(sourcesToAdd, []providerir.BackendSource{canaryBackendSource, nonCanaryBackendSource})
+
+						notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set header \"%s\" with value \"%s\" for canary backend",
+							canarySourceIngress.Namespace, canarySourceIngress.Name, config.header, canaryHeaderValue), &httpRouteContext.HTTPRoute)
 
 						if config.headerValue == "" {
 							nonCanaryBackendCopy := nonCanaryBackend
@@ -177,13 +180,6 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 							}
 							httpRouteContext.HTTPRoute.Spec.Rules[ruleIdx].BackendRefs = filteredBackendRefs
 							httpRouteContext.RuleBackendSources[ruleIdx] = filteredBackendSources
-						}
-						if config.headerValue != "" {
-							notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set header \"%s\" with value \"%s\" for canary backend",
-								canarySourceIngress.Namespace, canarySourceIngress.Name, config.header, config.headerValue), &httpRouteContext.HTTPRoute)
-						} else {
-							notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set header \"%s\" with value \"always\" for canary backend",
-								canarySourceIngress.Namespace, canarySourceIngress.Name, config.header), &httpRouteContext.HTTPRoute)
 						}
 					}
 				}
