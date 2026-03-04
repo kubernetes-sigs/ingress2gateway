@@ -19,6 +19,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
@@ -170,126 +171,90 @@ func TestIngressNGINXBackendTLS(t *testing.T) {
 		// Test 2: Unsupported annotations produce warnings but don't block policy generation.
 		// proxy-ssl-verify-depth and proxy-ssl-protocols should emit warnings but a valid
 		// BackendTLSPolicy should still be produced when all required annotations are present.
-		// t.Run("unsupported annotations emit warnings but policy still generated", func(t *testing.T) {
-		// 	suffix, err := randString()
-		// 	require.NoError(t, err, "creating host suffix")
-		// 	host := "backend-tls-warn-" + suffix + ".example.com"
+		t.Run("unsupported annotations emit warnings but policy still generated", func(t *testing.T) {
+			suffix, err := randString()
+			require.NoError(t, err, "creating host suffix")
+			host := "backend-tls-warn-" + suffix + ".example.com"
 
-		// 	ing := basicIngress().
-		// 		withName("backend-tls-warn").
-		// 		withHost(host).
-		// 		withIngressClass(ingressnginx.NginxIngressClass).
-		// 		withBackend(backendTLSAppName).
-		// 		withBackendPort(443).
-		// 		withAnnotation(ingressnginx.BackendProtocolAnnotation, "HTTPS").
-		// 		withAnnotation(ingressnginx.ProxySSLVerifyAnnotation, "on").
-		// 		withAnnotation(ingressnginx.ProxySSLSecretAnnotation, backendCASecretName).
-		// 		withAnnotation(ingressnginx.ProxySSLServerNameAnnotation, "on").
-		// 		withAnnotation(ingressnginx.ProxySSLNameAnnotation, "placeholder").
-		// 		// These two annotations are unsupported in Gateway API
-		// 		// but should NOT prevent policy generation.
-		// 		withAnnotation(ingressnginx.ProxySSLVerifyDepthAnnotation, "3").
-		// 		withAnnotation(ingressnginx.ProxySSLProtocolsAnnotation, "TLSv1.2 TLSv1.3").
-		// 		build()
+			ing := basicIngress().
+				withName("backend-tls-warn").
+				withHost(host).
+				withIngressClass(ingressnginx.NginxIngressClass).
+				withBackend(backendTLSAppName).
+				withBackendPort(443).
+				withAnnotation(ingressnginx.BackendProtocolAnnotation, "HTTPS").
+				withAnnotation(ingressnginx.ProxySSLVerifyAnnotation, "on").
+				withAnnotation(ingressnginx.ProxySSLSecretAnnotation, backendCASecretName).
+				withAnnotation(ingressnginx.ProxySSLServerNameAnnotation, "on").
+				withAnnotation(ingressnginx.ProxySSLNameAnnotation, "placeholder").
+				// These two annotations are unsupported in Gateway API
+				// but should NOT prevent policy generation.
+				withAnnotation(ingressnginx.ProxySSLVerifyDepthAnnotation, "3").
+				withAnnotation(ingressnginx.ProxySSLProtocolsAnnotation, "TLSv1.2 TLSv1.3").
+				build()
 
-		// 	runTestCase(t, &testCase{
-		// 		gatewayImplementation: istio.ProviderName,
-		// 		providers:             []string{ingressnginx.Name},
-		// 		providerFlags: map[string]map[string]string{
-		// 			ingressnginx.Name: {
-		// 				ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
-		// 			},
-		// 		},
-		// 		setup:     backendTLSSetup(ing),
-		// 		ingresses: []*networkingv1.Ingress{ing},
-		// 		verifiers: map[string][]verifier{
-		// 			"backend-tls-warn": {
-		// 				&httpRequestVerifier{
-		// 					host: host,
-		// 					path: "/",
-		// 				},
-		// 			},
-		// 		},
-		// 	})
-		// })
+			runTestCase(t, &testCase{
+				gatewayImplementation: istio.ProviderName,
+				providers:             []string{ingressnginx.Name},
+				providerFlags: map[string]map[string]string{
+					ingressnginx.Name: {
+						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
+					},
+				},
+				setup:     backendTLSSetup(ing),
+				ingresses: []*networkingv1.Ingress{ing},
+				verifiers: map[string][]verifier{
+					"backend-tls-warn": {
+						&httpRequestVerifier{
+							host: host,
+							path: "/",
+						},
+					},
+				},
+			})
+		})
 
-		// // Test 3: Valid config with body response verification – ensure the request
-		// // actually reaches the backend and we get a real response body.
-		// t.Run("valid backend tls with body verification", func(t *testing.T) {
-		// 	suffix, err := randString()
-		// 	require.NoError(t, err, "creating host suffix")
-		// 	host := "backend-tls-body-" + suffix + ".example.com"
+		// Test 3: Valid config with body response verification – ensure the request
+		// actually reaches the backend and we get a real response body.
+		t.Run("valid backend tls with body verification", func(t *testing.T) {
+			suffix, err := randString()
+			require.NoError(t, err, "creating host suffix")
+			host := "backend-tls-body-" + suffix + ".example.com"
 
-		// 	ing := basicIngress().
-		// 		withName("backend-tls-body").
-		// 		withHost(host).
-		// 		withIngressClass(ingressnginx.NginxIngressClass).
-		// 		withBackend(backendTLSAppName).
-		// 		withBackendPort(443).
-		// 		withAnnotation(ingressnginx.BackendProtocolAnnotation, "HTTPS").
-		// 		withAnnotation(ingressnginx.ProxySSLVerifyAnnotation, "on").
-		// 		withAnnotation(ingressnginx.ProxySSLSecretAnnotation, backendCASecretName).
-		// 		withAnnotation(ingressnginx.ProxySSLServerNameAnnotation, "on").
-		// 		withAnnotation(ingressnginx.ProxySSLNameAnnotation, "placeholder").
-		// 		build()
+			ing := basicIngress().
+				withName("backend-tls-body").
+				withHost(host).
+				withIngressClass(ingressnginx.NginxIngressClass).
+				withBackend(backendTLSAppName).
+				withBackendPort(443).
+				withAnnotation(ingressnginx.BackendProtocolAnnotation, "HTTPS").
+				withAnnotation(ingressnginx.ProxySSLVerifyAnnotation, "on").
+				withAnnotation(ingressnginx.ProxySSLSecretAnnotation, backendCASecretName).
+				withAnnotation(ingressnginx.ProxySSLServerNameAnnotation, "on").
+				withAnnotation(ingressnginx.ProxySSLNameAnnotation, "placeholder").
+				build()
 
-		// 	runTestCase(t, &testCase{
-		// 		gatewayImplementation: istio.ProviderName,
-		// 		providers:             []string{ingressnginx.Name},
-		// 		providerFlags: map[string]map[string]string{
-		// 			ingressnginx.Name: {
-		// 				ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
-		// 			},
-		// 		},
-		// 		setup:     backendTLSSetup(ing),
-		// 		ingresses: []*networkingv1.Ingress{ing},
-		// 		verifiers: map[string][]verifier{
-		// 			"backend-tls-body": {
-		// 				// agnhost netexec echoes back useful info on /hostname
-		// 				&httpRequestVerifier{
-		// 					host:      host,
-		// 					path:      "/hostname",
-		// 					bodyRegex: regexp.MustCompile(`.+`),
-		// 				},
-		// 			},
-		// 		},
-		// 	})
-		// })
-
-		// // Test 4: Non-HTTPS backend protocol – backend TLS feature should be skipped entirely.
-		// // Without backend-protocol: HTTPS (or GRPCS), no BackendTLSPolicy is generated
-		// // regardless of other proxy-ssl annotations. This uses the default HTTP backend.
-		// t.Run("non-HTTPS backend-protocol skips backend tls", func(t *testing.T) {
-		// 	suffix, err := randString()
-		// 	require.NoError(t, err, "creating host suffix")
-		// 	host := "backend-tls-http-" + suffix + ".example.com"
-
-		// 	runTestCase(t, &testCase{
-		// 		gatewayImplementation: istio.ProviderName,
-		// 		providers:             []string{ingressnginx.Name},
-		// 		providerFlags: map[string]map[string]string{
-		// 			ingressnginx.Name: {
-		// 				ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
-		// 			},
-		// 		},
-		// 		ingresses: []*networkingv1.Ingress{
-		// 			basicIngress().
-		// 				withName("backend-tls-http").
-		// 				withHost(host).
-		// 				withIngressClass(ingressnginx.NginxIngressClass).
-		// 				// No backend-protocol annotation → defaults to HTTP.
-		// 				// No proxy-ssl annotations → plain HTTP backend, no BackendTLSPolicy.
-		// 				build(),
-		// 		},
-		// 		verifiers: map[string][]verifier{
-		// 			"backend-tls-http": {
-		// 				&httpRequestVerifier{
-		// 					host: host,
-		// 					path: "/",
-		// 				},
-		// 			},
-		// 		},
-		// 	})
-		// })
+			runTestCase(t, &testCase{
+				gatewayImplementation: istio.ProviderName,
+				providers:             []string{ingressnginx.Name},
+				providerFlags: map[string]map[string]string{
+					ingressnginx.Name: {
+						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
+					},
+				},
+				setup:     backendTLSSetup(ing),
+				ingresses: []*networkingv1.Ingress{ing},
+				verifiers: map[string][]verifier{
+					"backend-tls-body": {
+						// agnhost netexec echoes back useful info on /hostname
+						&httpRequestVerifier{
+							host:      host,
+							path:      "/hostname",
+							bodyRegex: regexp.MustCompile(`.+`),
+						},
+					},
+				},
+			})
+		})
 	})
 }
