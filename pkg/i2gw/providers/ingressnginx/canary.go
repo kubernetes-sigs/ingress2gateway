@@ -94,18 +94,20 @@ func parseCanaryConfig(ingress *networkingv1.Ingress) (canaryConfig, error) {
 	return config, nil
 }
 
-func createHeaderMatchRule(header string, value string, path *gatewayv1.HTTPPathMatch, backend gatewayv1.HTTPBackendRef) gatewayv1.HTTPRouteRule {
-	return gatewayv1.HTTPRouteRule{
-		Matches: []gatewayv1.HTTPRouteMatch{
+func createHeaderMatchRule(header string, value string, existingMatches []gatewayv1.HTTPRouteMatch, backend gatewayv1.HTTPBackendRef) gatewayv1.HTTPRouteRule {
+	headerMatch := gatewayv1.HTTPRouteMatch{
+		Headers: []gatewayv1.HTTPHeaderMatch{
 			{
-				Headers: []gatewayv1.HTTPHeaderMatch{
-					{
-						Name:  gatewayv1.HTTPHeaderName(header),
-						Value: value,
-					},
-				},
-				Path: path,
-			}},
+				Name:  gatewayv1.HTTPHeaderName(header),
+				Value: value,
+			},
+		},
+	}
+	if len(existingMatches) > 0 && existingMatches[0].Path != nil {
+		headerMatch.Path = existingMatches[0].Path
+	}
+	return gatewayv1.HTTPRouteRule{
+		Matches:     []gatewayv1.HTTPRouteMatch{headerMatch},
 		BackendRefs: []gatewayv1.HTTPBackendRef{backend},
 	}
 }
@@ -148,14 +150,14 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 						canaryBackendCopy := canaryBackend
 						canaryBackendCopy.Weight = nil
 
-						var canaryMatchRule = createHeaderMatchRule(config.header, header, existingMatches[0].Path, canaryBackendCopy)
+						var canaryMatchRule = createHeaderMatchRule(config.header, header, existingMatches, canaryBackendCopy)
 						rulesToAdd = append(rulesToAdd, canaryMatchRule)
 						sourcesToAdd = append(sourcesToAdd, []providerir.BackendSource{canaryBackendSource, nonCanaryBackendSource})
 
 						if config.headerValue == "" {
 							nonCanaryBackendCopy := nonCanaryBackend
 							nonCanaryBackendCopy.Weight = nil
-							var nonCanaryMatchRule = createHeaderMatchRule(config.header, "never", existingMatches[0].Path, nonCanaryBackendCopy)
+							var nonCanaryMatchRule = createHeaderMatchRule(config.header, "never", existingMatches, nonCanaryBackendCopy)
 							rulesToAdd = append(rulesToAdd, nonCanaryMatchRule)
 							sourcesToAdd = append(sourcesToAdd, []providerir.BackendSource{nonCanaryBackendSource})
 
