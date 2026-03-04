@@ -2,6 +2,7 @@
 
 ## Table of Contents
 
+- [v1.0.0](#v100-rc1)
 - [v0.5.0](#v050)
 - [v0.5.0-rc1](#v050-rc1)
 - [v0.4.0](#v040)
@@ -13,9 +14,71 @@
 - [v0.1.0](#v010)
 - [v0.1.0-rc1](#v010-rc1)
 
+## v1.0.0-rc1
+
+## Major Themes
+
+### Emitters Framework
+
+New pluggable emitter architecture enabling output to vendor-specific Gateway API
+extensions. Providers now produce an intermediate representation (IR) that is
+transformed by emitters into Gateway API resources with optional vendor-specific
+extensions. Supported emitters: standard, Envoy Gateway, and Kgateway.
+(#265, #273, #305, #320)
+
+### Extensive ingress-nginx Annotation Support
+
+Added translation for many new ingress-nginx annotations covering header
+manipulation, CORS, redirects, timeouts, path rewrite, backend TLS, buffer
+sizing, IP range control, and more.
+
+### E2E Test Framework
+
+Comprehensive end-to-end test suite with real cluster testing across Ingress
+NGINX, Kong, and Istio providers. (#294, #330)
+
+## Changes by Kind
+
+### Feature
+
+- Emitters: pluggable emitter framework with support for standard, Envoy Gateway, kGateway, and GCE targets (#265, #273, #305, #320)
+- GCE infrastructure provider with support for internal/external load balancers, Cloud Armor, SSL policies, and health checks (#336)
+- Read resources from multiple input files via the `--input-file` flag (#258)
+- Upgraded Gateway API to v1.5 (#367)
+- ingress-nginx: header manipulation support for upstream-vhost, x-forwarded-prefix, connection-proxy-header, and custom-headers (#283)
+- ingress-nginx: backend protocol annotation (HTTP, HTTPS, GRPC, GRPCS) (#286)
+- ingress-nginx: extended canary support with header-based and cookie-based routing (#287, #374)
+- ingress-nginx: path rewrite via rewrite-target annotation (#288)
+- ingress-nginx: timeout annotations (proxy-connect-timeout, proxy-send-timeout, proxy-read-timeout) (#289, #353, #376, #377)
+- ingress-nginx: SSL redirect annotation (#290)
+- ingress-nginx: permanent and temporal redirect annotations with configurable status codes (#299)
+- ingress-nginx: route rule name support (#298)
+- ingress-nginx: full CORS configuration (allow-origin, methods, headers, credentials, expose-headers, max-age) (#303, #371)
+- ingress-nginx: use-regex annotation support (#307, #344)
+- ingress-nginx: backend TLS support via BackendTLSPolicy from proxy-ssl-* annotations (#308)
+- ingress-nginx: buffer annotations (proxy-body-size, client-body-buffer-size) (#305)
+- ingress-nginx: IP range control via whitelist-source-range and denylist-source-range (#345)
+- ingress-nginx: parsed annotations tracking with notifications for unsupported/unparsed annotations (#370, #359)
+- Log unparsed annotations (#361)
+
+### Bug or Regression
+
+- Fix deduplicate TLS CertificateRefs in gateway listeners (#378)
+- Fix applyTCPTimeouts loop using continue instead of return (#377)
+- Fix canary annotation value parsed as bool instead of checking presence (#374)
+- Fix reading ingresses from cluster (#357)
+- Fix setting proper secret group and kind in certificateRefs (#302)
+- Fix data race in NotificationAggregator (#292)
+
+### Other (Cleanup or Flake)
+
+- Migrate to golangci-lint v2 (#323)
+- Bump Kong chart to v3.0.2 (#349)
+- Resolve hosts outside verifiers (#351)
+
 ## v0.5.0
 
-No changes since [v0.5.0-rc1](#v040-rc1)
+No changes since [v0.5.0-rc1](#v050-rc1)
 
 ## v0.5.0-rc1
 
