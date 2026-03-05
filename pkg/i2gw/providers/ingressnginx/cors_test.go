@@ -242,9 +242,9 @@ func TestApplyCorsToEmitterIR(t *testing.T) {
 
 func TestCorsMaxAgeParsing(t *testing.T) {
 	testCases := []struct {
-		name        string
+		name          string
 		annotationVal string
-		expectedVal int32
+		expectedVal   int32
 	}{
 		{
 			name:          "valid integer",
