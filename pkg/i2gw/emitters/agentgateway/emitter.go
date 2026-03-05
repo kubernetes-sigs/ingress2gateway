@@ -176,14 +176,16 @@ func (e *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.Err
 				)
 			}
 
-			// Buffer policy currently has no equivalent in AgentgatewayPolicy (see README for limitations).
-			if pol.ProxyBodySize != nil || pol.ClientBodyBufferSize != nil {
-				errs = append(errs, field.Invalid(
-					field.NewPath("emitter", "agentgateway", "AgentgatewayPolicy"),
-					polSourceIngressName,
-					"buffer policy (nginx.ingress.kubernetes.io/proxy-body-size/nginx.ingress.kubernetes.io/client-body-buffer-size) "+
-						"is not supported by the agentgateway emitter",
-				))
+			// Buffer policy maps to AgentgatewayPolicy.spec.frontend.http.maxBufferSize.
+			if bufferTouched, bufferErr := applyBufferPolicy(
+				pol,
+				polSourceIngressName,
+				httpRouteKey.Namespace,
+				agentgatewayPolicies,
+			); bufferErr != nil {
+				errs = append(errs, bufferErr)
+			} else if bufferTouched {
+				touched = true
 			}
 
 			// Attach the resulting AgentgatewayPolicy to the HTTPRoute, but only if the policy fully covers the route.
