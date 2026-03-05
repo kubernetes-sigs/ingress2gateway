@@ -19,6 +19,7 @@ package ingressnginx
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
@@ -61,7 +62,8 @@ func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
 func (p *Provider) ToIR() (emitterir.EmitterIR, field.ErrorList) {
 	pIR, errs := p.resourcesToIRConverter.convert(p.storage)
 	eIR := providerir.ToEmitterIR(pIR)
-	applyRewriteTargetToEmitterIR(pIR, &eIR)
+	applyRewriteTargetToEmitterIR(p.storage.Ingresses.List(), pIR, &eIR)
+	applyIPRangeControlToEmitterIR(pIR, &eIR)
 	errs = append(errs, applyTimeoutsToEmitterIR(pIR, &eIR)...)
 	errs = append(errs, applyCorsToEmitterIR(pIR, &eIR)...)
 	errs = append(errs, addDefaultSSLRedirect(&pIR, &eIR)...)
@@ -80,8 +82,8 @@ func (p *Provider) ReadResourcesFromCluster(ctx context.Context) error {
 	return nil
 }
 
-func (p *Provider) ReadResourcesFromFile(_ context.Context, filename string) error {
-	storage, err := p.resourceReader.readResourcesFromFile(filename)
+func (p *Provider) ReadResourcesFromFile(_ context.Context, reader io.Reader) error {
+	storage, err := p.resourceReader.readResourcesFromFile(reader)
 	if err != nil {
 		return fmt.Errorf("failed to read resources from file: %w", err)
 	}

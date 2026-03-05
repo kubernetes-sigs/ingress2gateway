@@ -52,7 +52,12 @@ func TestFileConversion(t *testing.T) {
 
 		istioProvider := NewProvider(&i2gw.ProviderConf{})
 
-		err = istioProvider.ReadResourcesFromFile(ctx, path)
+		data, err := os.ReadFile(filepath.Clean(path))
+		if err != nil {
+			t.Fatalf("Failed to read input file %v: %v", d.Name(), err)
+		}
+
+		err = istioProvider.ReadResourcesFromFile(ctx, bytes.NewReader(data))
 		if err != nil {
 			t.Fatalf("Failed to read input from file %v: %v", d.Name(), err.Error())
 		}

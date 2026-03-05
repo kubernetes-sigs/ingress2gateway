@@ -41,7 +41,7 @@ func NewEmitter(conf *EmitterConf) *Emitter {
 func applyPathRewrites(ir *emitterir.EmitterIR) {
 	for key, routeCtx := range ir.HTTPRoutes {
 		for ruleIdx, rewrite := range routeCtx.PathRewriteByRuleIdx {
-			if rewrite == nil || rewrite.Regex {
+			if rewrite == nil || rewrite.RegexCaptureGroupReferences {
 				continue
 			}
 			fullPath := rewrite.ReplaceFullPath
@@ -72,9 +72,6 @@ func applyPathRewrites(ir *emitterir.EmitterIR) {
 }
 
 func (e *Emitter) applyCorsPolicies(ir *emitterir.EmitterIR) {
-	if e.conf != nil && !e.conf.AllowExperimentalGatewayAPI {
-		return
-	}
 	for key, routeCtx := range ir.HTTPRoutes {
 		for ruleIdx, policy := range routeCtx.CorsPolicyByRuleIdx {
 			if policy == nil {
@@ -82,7 +79,7 @@ func (e *Emitter) applyCorsPolicies(ir *emitterir.EmitterIR) {
 			}
 			routeCtx.Spec.Rules[ruleIdx].Filters = append(routeCtx.Spec.Rules[ruleIdx].Filters, gatewayv1.HTTPRouteFilter{
 				Type: gatewayv1.HTTPRouteFilterCORS,
-				CORS: policy,
+				CORS: &policy.HTTPCORSFilter,
 			})
 			routeCtx.CorsPolicyByRuleIdx[ruleIdx] = nil
 		}
@@ -104,7 +101,7 @@ func applyTCPTimeouts(ir *emitterir.EmitterIR) field.ErrorList {
 	var errs field.ErrorList
 	for i, httpRouteContext := range ir.HTTPRoutes {
 		if httpRouteContext.TCPTimeoutsByRuleIdx == nil {
-			return nil
+			continue
 		}
 
 		for ruleIdx, timeouts := range httpRouteContext.TCPTimeoutsByRuleIdx {

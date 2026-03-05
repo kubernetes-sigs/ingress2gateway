@@ -37,5 +37,6 @@ func NewEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
 
 // Emit converts the provider intermediate representation to Gateway API resources.
 func (e *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.ErrorList) {
+	utils.LogUnparsedErrors(ir, notify)
 	return utils.ToGatewayResources(ir)
 }

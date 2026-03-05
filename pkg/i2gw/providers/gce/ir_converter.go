@@ -75,12 +75,23 @@ func (c *resourcesToIRConverter) convertToIR(storage *storage) (providerir.Provi
 
 	// Convert plain ingress resources to gateway resources, ignoring all
 	// provider-specific features.
-	ir, errs := common.ToIR(ingressList, storage.ServicePorts, c.implementationSpecificOptions)
+	ir, errs := common.ToIR(ingressList, []networkingv1.Ingress{}, storage.ServicePorts, c.implementationSpecificOptions)
 	if len(errs) > 0 {
 		return providerir.ProviderIR{}, errs
 	}
 
-	errs = setGCEGatewayClasses(ingressList, ir.Gateways)
+	// Extract gatewayClassName from provider-specific flags
+	var gatewayClassName string
+	if c.conf != nil && c.conf.ProviderSpecificFlags != nil {
+		gatewayClassName = c.conf.ProviderSpecificFlags["gce"][GatewayClassNameFlag]
+	}
+
+	if gatewayClassName != "" && !SupportedGKEGatewayClasses[gatewayClassName] {
+		errs = append(errs, field.Invalid(field.NewPath("provider-specific-flags"), gatewayClassName, "invalid GCE gateway class name"))
+		return providerir.ProviderIR{}, errs
+	}
+
+	errs = setGCEGatewayClasses(ingressList, ir.Gateways, gatewayClassName)
 	if len(errs) > 0 {
 		return providerir.ProviderIR{}, errs
 	}

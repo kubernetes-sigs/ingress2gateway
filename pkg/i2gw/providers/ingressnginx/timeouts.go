@@ -19,7 +19,6 @@ package ingressnginx
 import (
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
@@ -29,8 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
-
-const timeoutMultiplier = 10
 
 func parseIngressNginxTimeout(val string) (time.Duration, error) {
 	if val == "" {
@@ -86,8 +83,6 @@ func applyTimeoutsToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterI
 				Write:   write,
 			}
 
-			notify(notifications.InfoNotification, fmt.Sprintf("parsed ingress-nginx proxy timeouts (x%d) from %s/%s for HTTPRoute %s/%s rule %d (timeouts.request): %s",
-				timeoutMultiplier, ingress.Namespace, ingress.Name, key.Namespace, key.Name, ruleIdx, formatTCPTimeouts(connect, read, write)), &httpRouteContext.HTTPRoute)
 			notify(
 				notifications.WarningNotification,
 				"ingress-nginx only supports TCP-level timeouts; i2gw has made a best-effort translation to Gateway API timeouts.request."+
@@ -120,21 +115,4 @@ func parseIngressNginxTimeoutAnnotation(ingress *networkingv1.Ingress, annotatio
 	}
 	gwDur := gatewayv1.Duration(d.String())
 	return &gwDur, nil
-}
-
-func formatTCPTimeouts(connect, read, write *gatewayv1.Duration) string {
-	parts := []string{}
-	if connect != nil {
-		parts = append(parts, fmt.Sprintf("connect=%s", *connect))
-	}
-	if read != nil {
-		parts = append(parts, fmt.Sprintf("read=%s", *read))
-	}
-	if write != nil {
-		parts = append(parts, fmt.Sprintf("write=%s", *write))
-	}
-	if len(parts) == 0 {
-		return "none"
-	}
-	return strings.Join(parts, ", ")
 }

@@ -17,8 +17,14 @@ limitations under the License.
 package ingressnginx
 
 import (
+	"fmt"
+	"strings"
+
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
+	networkingv1 "k8s.io/api/networking/v1"
+
+	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 // applyRewriteTargetToEmitterIR is a temporary bridge until we decide how rewrite
@@ -27,8 +33,19 @@ import (
 // It reads ingress-nginx rewrite annotations from ProviderIR sources and stores
 // provider-neutral rewrite intent into EmitterIR, which will later be converted
 // to Gateway API URLRewrite filters by the common emitter.
-func applyRewriteTargetToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) {
+func applyRewriteTargetToEmitterIR(ingresses []networkingv1.Ingress,
+	pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) {
+	hostsWithRegex := regexHosts(ingresses)
+
 	for key, pRouteCtx := range pIR.HTTPRoutes {
+		hasRegex := false
+		for _, host := range pRouteCtx.Spec.Hostnames {
+			if _, val := hostsWithRegex[string(host)]; val {
+				hasRegex = true
+				break
+			}
+		}
+
 		eRouteCtx, ok := eIR.HTTPRoutes[key]
 		if !ok {
 			continue
@@ -58,8 +75,27 @@ func applyRewriteTargetToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.Emi
 				pathRewriteIR.Headers["X-Forwarded-Prefix"] = val
 			}
 
-			if val, ok := ing.Annotations[UseRegexAnnotation]; ok && val == "true" {
-				pathRewriteIR.Regex = true
+			if hasRegex && strings.Contains(rewriteTarget, "\\$") {
+				pathRewriteIR.RegexCaptureGroupReferences = true
+			}
+
+			source := fmt.Sprintf("%s/%s", ing.Namespace, ing.Name)
+			paths := []*field.Path{field.NewPath("metadata", "annotations", RewriteTargetAnnotation)}
+			if hasRegex && strings.Contains(rewriteTarget, "\\$") {
+				// Otherwise, rewrites without capture group references work.
+				pathRewriteIR.RegexCaptureGroupReferences = true
+
+				pathRewriteIR.Metadata = emitterir.NewExtensionFeatureMetadata(
+					source,
+					paths,
+					"Path rewrites with capture group references are not supported",
+				)
+			} else {
+				pathRewriteIR.Metadata = emitterir.NewExtensionFeatureMetadata(
+					source,
+					paths,
+					"Could not apply rewrite-target annotation",
+				)
 			}
 
 			eRouteCtx.PathRewriteByRuleIdx[ruleIdx] = &pathRewriteIR
