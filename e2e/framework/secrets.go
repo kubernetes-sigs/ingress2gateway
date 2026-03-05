@@ -51,7 +51,7 @@ type BackendTLSSecrets struct {
 }
 
 // GenerateSelfSignedTLSSecret creates a self-signed TLS secret for testing.
-func generateSelfSignedTLSSecret(name, namespace, commonName string, hosts []string) (*TLSTestSecret, error) {
+func GenerateSelfSignedTLSSecret(name, namespace, commonName string, hosts []string) (*TLSTestSecret, error) {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, fmt.Errorf("generating key: %w", err)
@@ -148,13 +148,13 @@ func createSecrets(ctx context.Context, l Logger, client *kubernetes.Clientset, 
 	}, nil
 }
 
-// generateBackendTLSSecrets creates a CA and a server certificate signed by that CA.
+// GenerateBackendTLSSecrets creates a CA and a server certificate signed by that CA.
 // It returns:
 //   - ServerSecret: a TLS secret (tls.crt + tls.key) to mount in the HTTPS backend pod
 //   - CASecret: an Opaque secret with ca.crt for the proxy-ssl-secret annotation / BackendTLSPolicy
 //
 // The serverHostname is the DNS name the server cert is valid for (used as SAN and for proxy-ssl-name).
-func generateBackendTLSSecrets(serverSecretName, caSecretName, namespace, serverHostname string) (*BackendTLSSecrets, error) {
+func GenerateBackendTLSSecrets(serverSecretName, caSecretName, namespace, serverHostname string) (*BackendTLSSecrets, error) {
 	// Generate CA key and self-signed CA cert.
 	caKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {

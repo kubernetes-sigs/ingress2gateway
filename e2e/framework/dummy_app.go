@@ -166,7 +166,7 @@ func waitForDummyApp(ctx context.Context, l Logger, client *kubernetes.Clientset
 // deployDummyTLSApp deploys an agnhost netexec app that serves HTTPS using the provided TLS
 // secret. The secret must contain tls.crt and tls.key. The service exposes port 443 targeting
 // the container's HTTPS port (8443).
-func deployDummyTLSApp(ctx context.Context, l logger, client *kubernetes.Clientset, name, namespace, tlsSecretName string, skipCleanup bool) (func(), error) {
+func DeployDummyTLSApp(ctx context.Context, l Logger, client *kubernetes.Clientset, name, namespace, tlsSecretName string, skipCleanup bool) (func(), error) {
 	if err := createDummyTLSAppDeployment(ctx, l, client, name, namespace, tlsSecretName); err != nil {
 		return nil, fmt.Errorf("creating TLS deployment: %w", err)
 	}
@@ -202,7 +202,7 @@ func deployDummyTLSApp(ctx context.Context, l logger, client *kubernetes.Clients
 	}, nil
 }
 
-func createDummyTLSAppDeployment(ctx context.Context, l logger, client *kubernetes.Clientset, name, namespace, tlsSecretName string) error {
+func createDummyTLSAppDeployment(ctx context.Context, l Logger, client *kubernetes.Clientset, name, namespace, tlsSecretName string) error {
 	labels := map[string]string{"app": name}
 
 	l.Logf("Creating TLS dummy app %s", name)
