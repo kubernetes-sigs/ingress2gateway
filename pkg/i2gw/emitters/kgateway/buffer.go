@@ -50,7 +50,6 @@ func (e *Emitter) EmitBuffer(ir emitterir.EmitterIR) {
 			}
 
 			ruleInfo := e.formatRuleInfo(sectionName)
-			e.notify(notifications.InfoNotification, fmt.Sprintf("applied Buffer feature for HTTPRoute%s", ruleInfo), &ctx.HTTPRoute)
 		}
 	}
 }

@@ -133,8 +133,6 @@ func canaryFeature(notify notifications.NotifyFunc, ingresses []networkingv1.Ing
 					if config.isWeight || !config.isHeader {
 						httpRouteContext.HTTPRoute.Spec.Rules[ruleIdx].BackendRefs[canaryBackendIdx].Weight = &canaryWeight
 						httpRouteContext.HTTPRoute.Spec.Rules[ruleIdx].BackendRefs[nonCanaryBackendIdx].Weight = &nonCanaryWeight
-						notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set weights (canary: %d, non-canary: %d, total: %d)",
-							canarySourceIngress.Namespace, canarySourceIngress.Name, canaryWeight, nonCanaryWeight, config.weightTotal), &httpRouteContext.HTTPRoute)
 					}
 
 					if config.isHeader {
@@ -154,18 +152,12 @@ func canaryFeature(notify notifications.NotifyFunc, ingresses []networkingv1.Ing
 						rulesToAdd = append(rulesToAdd, canaryMatchRule)
 						sourcesToAdd = append(sourcesToAdd, []providerir.BackendSource{canaryBackendSource, nonCanaryBackendSource})
 
-						notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set header \"%s\" with value \"%s\" for canary backend",
-							canarySourceIngress.Namespace, canarySourceIngress.Name, config.header, canaryHeaderValue), &httpRouteContext.HTTPRoute)
-
 						if config.headerValue == "" {
 							nonCanaryBackendCopy := nonCanaryBackend
 							nonCanaryBackendCopy.Weight = nil
 							var nonCanaryMatchRule = createHeaderMatchRule(config.header, "never", existingMatches, nonCanaryBackendCopy)
 							rulesToAdd = append(rulesToAdd, nonCanaryMatchRule)
 							sourcesToAdd = append(sourcesToAdd, []providerir.BackendSource{nonCanaryBackendSource})
-
-							notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set header \"%s\" with value \"never\" for non-canary backend",
-								canarySourceIngress.Namespace, canarySourceIngress.Name, config.header), &httpRouteContext.HTTPRoute)
 						}
 
 						if !config.isWeight {
@@ -204,8 +196,6 @@ func canaryFeature(notify notifications.NotifyFunc, ingresses []networkingv1.Ing
 				if canaryBackendIdx != -1 && nonCanaryBackendIdx != -1 {
 					grpcRouteContext.GRPCRoute.Spec.Rules[ruleIdx].BackendRefs[canaryBackendIdx].Weight = &canaryWeight
 					grpcRouteContext.GRPCRoute.Spec.Rules[ruleIdx].BackendRefs[nonCanaryBackendIdx].Weight = &nonCanaryWeight
-					notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set weights (canary: %d, non-canary: %d, total: %d)",
-						canarySourceIngress.Namespace, canarySourceIngress.Name, canaryWeight, nonCanaryWeight, config.weightTotal), &grpcRouteContext.GRPCRoute)
 				}
 			}
 		}

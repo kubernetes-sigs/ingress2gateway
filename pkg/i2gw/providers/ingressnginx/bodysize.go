@@ -182,13 +182,9 @@ func applyBodySizeToEmitterIR(notify notifications.NotifyFunc, pIR providerir.Pr
 
 			if maxSize != nil {
 				bodySizeIR.MaxSize = maxSize
-				notify(notifications.InfoNotification, fmt.Sprintf("parsed proxy-body-size annotation of ingress %s/%s and set %s to HTTPRoute rule index %d",
-					ing.Namespace, ing.Name, maxSize.String(), ruleIdx), &eRouteCtx.HTTPRoute)
 			}
 			if bufferSize != nil {
 				bodySizeIR.BufferSize = bufferSize
-				notify(notifications.InfoNotification, fmt.Sprintf("parsed client-body-buffer-size annotation of ingress %s/%s and set %s to HTTPRoute rule index %d",
-					ing.Namespace, ing.Name, bufferSize.String(), ruleIdx), &eRouteCtx.HTTPRoute)
 			}
 
 			eRouteCtx.BodySizeByRuleIdx[ruleIdx] = &bodySizeIR

@@ -37,7 +37,6 @@ func headerModifierFeature(notify notifications.NotifyFunc, _ []networkingv1.Ing
 
 			ingress := getNonCanaryIngress(sources)
 			if ingress == nil {
-				notify(notifications.InfoNotification, "Found canary ingress rule without non-canary ingress rule", &httpRouteContext.HTTPRoute)
 				continue
 			}
 
@@ -94,6 +93,5 @@ func applyHeaderModifiers(notify notifications.NotifyFunc, httpRoute *gatewayv1.
 			Name:  gatewayv1.HTTPHeaderName(name),
 			Value: value,
 		})
-		notify(notifications.InfoNotification, fmt.Sprintf("Applied header modifier %s: %s to rule %d of route %s/%s", name, value, ruleIndex, httpRoute.Namespace, httpRoute.Name), httpRoute)
 	}
 }

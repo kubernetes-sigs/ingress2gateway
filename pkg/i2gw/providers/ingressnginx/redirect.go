@@ -204,11 +204,6 @@ func redirectFeature(notify notifications.NotifyFunc, ingresses []networkingv1.I
 
 			// Clear backend refs as redirects don't route to backends
 			httpRouteContext.HTTPRoute.Spec.Rules[ruleIndex].BackendRefs = nil
-
-			notify(notifications.InfoNotification,
-				fmt.Sprintf("parsed %q annotation of ingress %s/%s with redirect to %q (status code: %d). ",
-					annotationUsed, ingress.Namespace, ingress.Name, redirectURL, statusCode),
-				&httpRouteContext.HTTPRoute)
 		}
 
 		// Save the updated context back to the IR

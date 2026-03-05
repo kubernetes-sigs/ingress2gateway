@@ -90,15 +90,6 @@ func applyIPRangeControlToEmitterIR(notify notifications.NotifyFunc, pIR provide
 				)
 			}
 			eRouteCtx.IPRangeControlByRuleIdx[ruleIdx] = ipRangeControl
-
-			if len(allowList) > 0 {
-				notify(notifications.InfoNotification, fmt.Sprintf("parsed whitelist-source-range annotation of ingress %s/%s: allowing CIDRs %s for HTTPRoute rule index %d",
-					ing.Namespace, ing.Name, strings.Join(allowList, ", "), ruleIdx), &eRouteCtx.HTTPRoute)
-			}
-			if len(denyList) > 0 {
-				notify(notifications.InfoNotification, fmt.Sprintf("parsed denylist-source-range annotation of ingress %s/%s: denying CIDRs %s for HTTPRoute rule index %d",
-					ing.Namespace, ing.Name, strings.Join(denyList, ", "), ruleIdx), &eRouteCtx.HTTPRoute)
-			}
 		}
 		eIR.HTTPRoutes[key] = eRouteCtx
 	}
