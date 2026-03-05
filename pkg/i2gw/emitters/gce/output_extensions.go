@@ -22,13 +22,28 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
 )
 
-func BuildGCPBackendPolicySessionAffinityConfig(gceServiceIR gce.ServiceIR) *gkegatewayv1.SessionAffinityConfig {
-	affinityType := gceServiceIR.SessionAffinity.AffinityType
+func BuildGCPBackendPolicySessionAffinityConfig(genericServiceIR *emitterir.ServiceContext, gceServiceIR *gce.ServiceIR) *gkegatewayv1.SessionAffinityConfig {
+	var affinityType string
+	var cookieTTL *int64
+
+	if genericServiceIR != nil && genericServiceIR.SessionAffinity != nil {
+		affinityType = genericServiceIR.SessionAffinity.Type
+		if affinityType == "Cookie" {
+			affinityType = "GENERATED_COOKIE"
+		}
+		cookieTTL = genericServiceIR.SessionAffinity.CookieTTLSec
+	} else if gceServiceIR != nil && gceServiceIR.SessionAffinity != nil {
+		affinityType = gceServiceIR.SessionAffinity.AffinityType
+		cookieTTL = gceServiceIR.SessionAffinity.CookieTTLSec
+	} else {
+		return nil
+	}
+
 	saConfig := gkegatewayv1.SessionAffinityConfig{
 		Type: &affinityType,
 	}
 	if affinityType == "GENERATED_COOKIE" {
-		saConfig.CookieTTLSec = gceServiceIR.SessionAffinity.CookieTTLSec
+		saConfig.CookieTTLSec = cookieTTL
 	}
 	return &saConfig
 }

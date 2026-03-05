@@ -17,6 +17,7 @@ limitations under the License.
 package providerir
 
 import (
+	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -89,7 +90,8 @@ type GRPCRouteContext struct {
 // ServiceIR contains a dedicated field for each provider to specify their
 // extension features on Service.
 type ProviderSpecificServiceIR struct {
-	Gce *gce.ServiceIR
+	SessionAffinity *emitterir.SessionAffinity
+	Gce             *gce.ServiceIR
 }
 
 // BackendSource tracks the source Ingress resource that contributed
