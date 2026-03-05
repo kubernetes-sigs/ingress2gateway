@@ -65,6 +65,10 @@ type testCase struct {
 	allowExperimentalGWAPI bool
 	emitter                string
 	verifiers              map[string][]verifier
+	// setup is an optional callback that runs after secrets are created and before ingresses.
+	// It receives the app namespace, k8s client, and skipCleanup flag. Returned cleanup func
+	// is registered via t.Cleanup.
+	setup func(ctx context.Context, t *testing.T, client *kubernetes.Clientset, namespace string, skipCleanup bool)
 }
 
 func runTestCase(t *testing.T, tc *testCase) {
@@ -159,6 +163,10 @@ func runTestCase(t *testing.T, tc *testCase) {
 		cleanupSecrets, secretsErr := createSecrets(ctx, t, k8sClient, appNS, tc.secrets, skipCleanup)
 		require.NoError(t, secretsErr, "creating secrets")
 		t.Cleanup(cleanupSecrets)
+	}
+
+	if tc.setup != nil {
+		tc.setup(ctx, t, k8sClient, appNS, skipCleanup)
 	}
 
 	cleanupIngresses, err := createIngresses(ctx, t, k8sClient, appNS, tc.ingresses, skipCleanup)
@@ -694,6 +702,19 @@ func (b *ingressBuilder) withBackend(svc string) *ingressBuilder {
 		for j := range b.Spec.Rules[i].IngressRuleValue.HTTP.Paths {
 			path := rule.IngressRuleValue.HTTP.Paths[j]
 			path.Backend.Service.Name = svc
+			rule.IngressRuleValue.HTTP.Paths[j] = path
+		}
+		b.Spec.Rules[i] = rule
+	}
+	return b
+}
+
+func (b *ingressBuilder) withBackendPort(port int32) *ingressBuilder {
+	for i := range b.Spec.Rules {
+		rule := b.Spec.Rules[i]
+		for j := range b.Spec.Rules[i].IngressRuleValue.HTTP.Paths {
+			path := rule.IngressRuleValue.HTTP.Paths[j]
+			path.Backend.Service.Port = networkingv1.ServiceBackendPort{Number: port}
 			rule.IngressRuleValue.HTTP.Paths[j] = path
 		}
 		b.Spec.Rules[i] = rule

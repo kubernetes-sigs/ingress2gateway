@@ -152,17 +152,17 @@ func backendTLSFeature(notify notifications.NotifyFunc, ingresses []networkingv1
 				// We know proxySSLName is not empty due to strict validation above
 				policy.Spec.Validation.Hostname = gatewayv1.PreciseHostname(proxySSLName)
 
-				// Handle CA Certificates
-				secretName := proxySSLSecret
-				if strings.Contains(secretName, "/") {
-					parts := strings.SplitN(secretName, "/", 2)
+				// Handle CA Certificates.
+				caRefName := proxySSLSecret
+				if strings.Contains(caRefName, "/") {
+					parts := strings.SplitN(caRefName, "/", 2)
 					if len(parts) == 2 {
 						secretNamespace := parts[0]
-						secretName = parts[1]
+						caRefName = parts[1]
 
 						if secretNamespace != namespace {
 							notify(notifications.ErrorNotification,
-								fmt.Sprintf("Ingress %s/%s specifies backend TLS secret %s in a different namespace. BackendTLSPolicy only supports local Secrets. Policy will not be generated.",
+								fmt.Sprintf("Ingress %s/%s specifies backend TLS secret %s in a different namespace. BackendTLSPolicy only supports local references. Policy will not be generated.",
 									primaryIngress.Namespace, primaryIngress.Name, proxySSLSecret),
 								primaryIngress,
 							)
@@ -174,8 +174,8 @@ func backendTLSFeature(notify notifications.NotifyFunc, ingresses []networkingv1
 				// We know proxySSLVerify is "on" and proxySSLSecret is not empty due to strict validation above.
 				policy.Spec.Validation.CACertificateRefs = []gatewayv1.LocalObjectReference{{
 					Group: "",
-					Kind:  "Secret",
-					Name:  gatewayv1.ObjectName(secretName),
+					Kind:  "ConfigMap",
+					Name:  gatewayv1.ObjectName(caRefName),
 				}}
 				policy.Spec.Validation.WellKnownCACertificates = nil
 
