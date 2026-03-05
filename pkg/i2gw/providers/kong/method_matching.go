@@ -37,7 +37,7 @@ import (
 // konghq.com/methods: "GET,POST"
 //
 // All the values defined and separated by comma, MUST be ORed.
-func methodMatchingFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func methodMatchingFeature(notify notifications.NotifyFunc, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	ruleGroups := common.GetRuleGroups(ingresses)
 	for _, rg := range ruleGroups {
 		for _, rule := range rg.Rules {
@@ -50,13 +50,13 @@ func methodMatchingFeature(ingresses []networkingv1.Ingress, _ map[types.Namespa
 			if len(errs) != 0 {
 				return errs
 			}
-			patchHTTPRouteMethodMatching(&httpRouteContext.HTTPRoute, methods)
+			patchHTTPRouteMethodMatching(notify, &httpRouteContext.HTTPRoute, methods)
 		}
 	}
 	return nil
 }
 
-func patchHTTPRouteMethodMatching(httpRoute *gatewayv1.HTTPRoute, methods []gatewayv1.HTTPMethod) {
+func patchHTTPRouteMethodMatching(notify notifications.NotifyFunc, httpRoute *gatewayv1.HTTPRoute, methods []gatewayv1.HTTPMethod) {
 	for i, rule := range httpRoute.Spec.Rules {
 		matches := []gatewayv1.HTTPRouteMatch{}
 		for _, match := range rule.Matches {

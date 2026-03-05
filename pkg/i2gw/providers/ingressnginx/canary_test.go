@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -388,7 +389,7 @@ func Test_parseCanaryConfig(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			config, err := parseCanaryConfig(&tc.ingress)
+			config, err := parseCanaryConfig(notifications.NoopNotify, &tc.ingress)
 
 			if tc.expectError {
 				if err == nil {
@@ -506,7 +507,7 @@ func Test_canaryFeature_GRPC(t *testing.T) {
 		},
 	}
 
-	errs := canaryFeature([]networkingv1.Ingress{*ingress1, *ingress2}, nil, ir)
+	errs := canaryFeature(notifications.NoopNotify, []networkingv1.Ingress{*ingress1, *ingress2}, nil, ir)
 	if len(errs) > 0 {
 		t.Fatalf("unexpected errors: %v", errs)
 	}
@@ -630,7 +631,7 @@ func Test_canaryFeature_GRPC_ByWeight(t *testing.T) {
 		},
 	}
 
-	errs := canaryFeature([]networkingv1.Ingress{*ingress1, *ingress2}, nil, ir)
+	errs := canaryFeature(notifications.NoopNotify, []networkingv1.Ingress{*ingress1, *ingress2}, nil, ir)
 	if len(errs) > 0 {
 		t.Fatalf("unexpected errors: %v", errs)
 	}

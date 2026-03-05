@@ -25,6 +25,7 @@ import (
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 )
@@ -151,7 +152,7 @@ func TestSSLRedirectFeature(t *testing.T) {
 			}
 
 			// Execute
-			errs := SSLRedirectFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+			errs := SSLRedirectFeature(notifications.NoopNotify, []networkingv1.Ingress{ingress}, nil, &ir)
 			if len(errs) > 0 {
 				t.Errorf("Unexpected errors: %v", errs)
 				return

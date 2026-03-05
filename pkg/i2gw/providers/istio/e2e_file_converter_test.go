@@ -66,7 +66,7 @@ func TestFileConversion(t *testing.T) {
 		if len(errList) > 0 {
 			t.Fatalf("unexpected errors during input conversion to ir for file %v: %v", d.Name(), errList.ToAggregate().Error())
 		}
-		emitter := standard_emitter.NewEmitter(nil)
+		emitter := standard_emitter.NewEmitter(&i2gw.EmitterConf{})
 		gotGatewayResources, errList := emitter.Emit(ir)
 		if len(errList) > 0 {
 			t.Fatalf("unexpected errors during ir conversion to Gateway for file %v: %v", d.Name(), errList.ToAggregate().Error())

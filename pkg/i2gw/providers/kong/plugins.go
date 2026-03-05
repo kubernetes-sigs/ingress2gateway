@@ -36,7 +36,7 @@ import (
 // a comma-separated list.
 //
 // Example: konghq.com/plugins: "plugin1,plugin2"
-func pluginsFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func pluginsFeature(notify notifications.NotifyFunc, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	ruleGroups := common.GetRuleGroups(ingresses)
 	for _, rg := range ruleGroups {
 		for _, rule := range rg.Rules {
@@ -46,7 +46,7 @@ func pluginsFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName
 				return field.ErrorList{field.InternalError(nil, errors.New("HTTPRoute does not exist - this should never happen"))}
 			}
 			filters := parsePluginsAnnotation(rule.Ingress.Annotations)
-			patchHTTPRoutePlugins(&httpRouteContext.HTTPRoute, filters)
+			patchHTTPRoutePlugins(notify, &httpRouteContext.HTTPRoute, filters)
 		}
 	}
 	return nil
@@ -76,7 +76,7 @@ func parsePluginsAnnotation(annotations map[string]string) []gatewayv1.HTTPRoute
 	return filters
 }
 
-func patchHTTPRoutePlugins(httpRoute *gatewayv1.HTTPRoute, extensionRefs []gatewayv1.HTTPRouteFilter) {
+func patchHTTPRoutePlugins(notify notifications.NotifyFunc, httpRoute *gatewayv1.HTTPRoute, extensionRefs []gatewayv1.HTTPRouteFilter) {
 	for i := range httpRoute.Spec.Rules {
 		if httpRoute.Spec.Rules[i].Filters == nil {
 			httpRoute.Spec.Rules[i].Filters = make([]gatewayv1.HTTPRouteFilter, 0)

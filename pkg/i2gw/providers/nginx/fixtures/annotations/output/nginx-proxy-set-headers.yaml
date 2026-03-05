@@ -2,8 +2,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   annotations:
-    gateway.networking.k8s.io/generator: ingress2gateway-dev
-  creationTimestamp: null
+    gateway.networking.k8s.io/generator: ingress2gateway-v0.5.0-rc1-53-g7c171dc
   name: nginx
   namespace: default
 spec:
@@ -13,14 +12,12 @@ spec:
     name: set-headers-example-com-http
     port: 80
     protocol: HTTP
-status: {}
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   annotations:
-    gateway.networking.k8s.io/generator: ingress2gateway-dev
-  creationTimestamp: null
+    gateway.networking.k8s.io/generator: ingress2gateway-v0.5.0-rc1-53-g7c171dc
   name: proxy-set-headers-test-set-headers-example-com
   namespace: default
 spec:
@@ -44,5 +41,6 @@ spec:
     - path:
         type: PathPrefix
         value: /echo
+    name: rule-0
 status:
   parents: []

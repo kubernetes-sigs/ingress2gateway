@@ -31,6 +31,8 @@ import (
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
+const emitterName = "gce"
+
 var (
 	GCPBackendPolicyGVK = schema.GroupVersionKind{
 		Group:   "networking.gke.io",
@@ -52,13 +54,17 @@ var (
 )
 
 func init() {
-	i2gw.EmitterConstructorByName["gce"] = NewEmitter
+	i2gw.EmitterConstructorByName[emitterName] = NewEmitter
 }
 
-type Emitter struct{}
+type Emitter struct {
+	notify notifications.NotifyFunc
+}
 
-func NewEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
-	return &Emitter{}
+func NewEmitter(conf *i2gw.EmitterConf) i2gw.Emitter {
+	return &Emitter{
+		notify: conf.Report.Notifier(emitterName),
+	}
 }
 
 func (c *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.ErrorList) {
@@ -66,12 +72,12 @@ func (c *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.Err
 	if len(errs) != 0 {
 		return i2gw.GatewayResources{}, errs
 	}
-	buildGceGatewayExtensions(ir, &gatewayResources)
-	buildGceServiceExtensions(ir, &gatewayResources)
+	buildGceGatewayExtensions(c.notify, ir, &gatewayResources)
+	buildGceServiceExtensions(c.notify, ir, &gatewayResources)
 	return gatewayResources, nil
 }
 
-func buildGceGatewayExtensions(ir emitterir.EmitterIR, gatewayResources *i2gw.GatewayResources) {
+func buildGceGatewayExtensions(notify notifications.NotifyFunc, ir emitterir.EmitterIR, gatewayResources *i2gw.GatewayResources) {
 	for gwyKey, gatewayContext := range ir.Gateways {
 		gwyPolicy := addGatewayPolicyIfConfigured(gwyKey, &gatewayContext)
 		if gwyPolicy == nil {
@@ -115,7 +121,7 @@ func addGatewayPolicyIfConfigured(gatewayNamespacedName types.NamespacedName, ga
 	return &gcpGatewayPolicy
 }
 
-func buildGceServiceExtensions(ir emitterir.EmitterIR, gatewayResources *i2gw.GatewayResources) {
+func buildGceServiceExtensions(notify notifications.NotifyFunc, ir emitterir.EmitterIR, gatewayResources *i2gw.GatewayResources) {
 	for svcKey, gceServiceIR := range ir.GceServices {
 		bePolicy := addGCPBackendPolicyIfConfigured(svcKey, gceServiceIR)
 		if bePolicy != nil {
