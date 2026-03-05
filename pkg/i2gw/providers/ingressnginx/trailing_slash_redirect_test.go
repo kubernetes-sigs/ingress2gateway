@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -31,31 +32,39 @@ func TestApplyTrailingSlashPathRedirectsToEmitterIR(t *testing.T) {
 	exact := gatewayv1.PathMatchExact
 	key := types.NamespacedName{Namespace: "default", Name: "route"}
 
-	ir := emitterir.EmitterIR{
-		HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{
-			key: {
-				HTTPRoute: gatewayv1.HTTPRoute{
-					ObjectMeta: metav1.ObjectMeta{Name: key.Name, Namespace: key.Namespace},
-					Spec: gatewayv1.HTTPRouteSpec{
-						Rules: []gatewayv1.HTTPRouteRule{
-							{
-								Matches: []gatewayv1.HTTPRouteMatch{{
-									Path: &gatewayv1.HTTPPathMatch{
-										Type:  &prefix,
-										Value: ptr.To("/foo/"),
-									},
-								}},
-							},
+	baseRoute := gatewayv1.HTTPRoute{
+		ObjectMeta: metav1.ObjectMeta{Name: key.Name, Namespace: key.Namespace},
+		Spec: gatewayv1.HTTPRouteSpec{
+			Rules: []gatewayv1.HTTPRouteRule{
+				{
+					Matches: []gatewayv1.HTTPRouteMatch{{
+						Path: &gatewayv1.HTTPPathMatch{
+							Type:  &prefix,
+							Value: ptr.To("/foo/"),
 						},
-					},
+					}},
 				},
 			},
 		},
 	}
 
-	applyTrailingSlashPathRedirectsToEmitterIR(&ir)
+	eIR := emitterir.EmitterIR{
+		HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{
+			key: {HTTPRoute: *baseRoute.DeepCopy()},
+		},
+	}
+	pIR := providerir.ProviderIR{
+		HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
+			key: {
+				HTTPRoute:          *baseRoute.DeepCopy(),
+				RuleBackendSources: [][]providerir.BackendSource{{}},
+			},
+		},
+	}
 
-	got := ir.HTTPRoutes[key].Spec.Rules
+	applyTrailingSlashPathRedirectsToEmitterIR(&pIR, &eIR)
+
+	got := eIR.HTTPRoutes[key].Spec.Rules
 	if len(got) != 2 {
 		t.Fatalf("expected 2 rules (original + redirect), got %d", len(got))
 	}
@@ -77,29 +86,32 @@ func TestApplyTrailingSlashPathRedirectsToEmitterIR(t *testing.T) {
 		t.Fatalf("expected redirect target /foo/, got %#v", redirect.Filters[0].RequestRedirect.Path)
 	}
 
+	// Verify ProviderIR RuleBackendSources stays in sync.
+	pSources := pIR.HTTPRoutes[key].RuleBackendSources
+	if len(pSources) != len(got) {
+		t.Fatalf("expected RuleBackendSources length %d to match rules length %d", len(pSources), len(got))
+	}
+	if len(pSources[1]) != 0 {
+		t.Fatalf("expected empty BackendSource slice for redirect rule, got %d entries", len(pSources[1]))
+	}
+
 	// If an exact /foo rule exists, no redirect rule should be added.
-	ir2 := emitterir.EmitterIR{
-		HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{
-			key: {
-				HTTPRoute: gatewayv1.HTTPRoute{
-					ObjectMeta: metav1.ObjectMeta{Name: key.Name, Namespace: key.Namespace},
-					Spec: gatewayv1.HTTPRouteSpec{
-						Rules: []gatewayv1.HTTPRouteRule{
-							{
-								Matches: []gatewayv1.HTTPRouteMatch{
-									{
-										Path: &gatewayv1.HTTPPathMatch{
-											Type:  &exact,
-											Value: ptr.To("/foo"),
-										},
-									},
-									{
-										Path: &gatewayv1.HTTPPathMatch{
-											Type:  &prefix,
-											Value: ptr.To("/foo/"),
-										},
-									},
-								},
+	noRedirectRoute := gatewayv1.HTTPRoute{
+		ObjectMeta: metav1.ObjectMeta{Name: key.Name, Namespace: key.Namespace},
+		Spec: gatewayv1.HTTPRouteSpec{
+			Rules: []gatewayv1.HTTPRouteRule{
+				{
+					Matches: []gatewayv1.HTTPRouteMatch{
+						{
+							Path: &gatewayv1.HTTPPathMatch{
+								Type:  &exact,
+								Value: ptr.To("/foo"),
+							},
+						},
+						{
+							Path: &gatewayv1.HTTPPathMatch{
+								Type:  &prefix,
+								Value: ptr.To("/foo/"),
 							},
 						},
 					},
@@ -107,34 +119,44 @@ func TestApplyTrailingSlashPathRedirectsToEmitterIR(t *testing.T) {
 			},
 		},
 	}
-	applyTrailingSlashPathRedirectsToEmitterIR(&ir2)
-	if len(ir2.HTTPRoutes[key].Spec.Rules) != 1 {
-		t.Fatalf("expected no extra redirect rule when exact /foo exists, got %d rules", len(ir2.HTTPRoutes[key].Spec.Rules))
+	eIR2 := emitterir.EmitterIR{
+		HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{
+			key: {HTTPRoute: *noRedirectRoute.DeepCopy()},
+		},
+	}
+	pIR2 := providerir.ProviderIR{
+		HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
+			key: {
+				HTTPRoute:          *noRedirectRoute.DeepCopy(),
+				RuleBackendSources: [][]providerir.BackendSource{{}},
+			},
+		},
+	}
+	applyTrailingSlashPathRedirectsToEmitterIR(&pIR2, &eIR2)
+	if len(eIR2.HTTPRoutes[key].Spec.Rules) != 1 {
+		t.Fatalf("expected no extra redirect rule when exact /foo exists, got %d rules", len(eIR2.HTTPRoutes[key].Spec.Rules))
+	}
+	if len(pIR2.HTTPRoutes[key].RuleBackendSources) != 1 {
+		t.Fatalf("expected RuleBackendSources length 1 (unchanged), got %d", len(pIR2.HTTPRoutes[key].RuleBackendSources))
 	}
 
 	// If a prefix /foo rule exists, no redirect rule should be added either.
-	ir3 := emitterir.EmitterIR{
-		HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{
-			key: {
-				HTTPRoute: gatewayv1.HTTPRoute{
-					ObjectMeta: metav1.ObjectMeta{Name: key.Name, Namespace: key.Namespace},
-					Spec: gatewayv1.HTTPRouteSpec{
-						Rules: []gatewayv1.HTTPRouteRule{
-							{
-								Matches: []gatewayv1.HTTPRouteMatch{
-									{
-										Path: &gatewayv1.HTTPPathMatch{
-											Type:  &prefix,
-											Value: ptr.To("/foo"),
-										},
-									},
-									{
-										Path: &gatewayv1.HTTPPathMatch{
-											Type:  &prefix,
-											Value: ptr.To("/foo/"),
-										},
-									},
-								},
+	noRedirectRoute2 := gatewayv1.HTTPRoute{
+		ObjectMeta: metav1.ObjectMeta{Name: key.Name, Namespace: key.Namespace},
+		Spec: gatewayv1.HTTPRouteSpec{
+			Rules: []gatewayv1.HTTPRouteRule{
+				{
+					Matches: []gatewayv1.HTTPRouteMatch{
+						{
+							Path: &gatewayv1.HTTPPathMatch{
+								Type:  &prefix,
+								Value: ptr.To("/foo"),
+							},
+						},
+						{
+							Path: &gatewayv1.HTTPPathMatch{
+								Type:  &prefix,
+								Value: ptr.To("/foo/"),
 							},
 						},
 					},
@@ -142,8 +164,24 @@ func TestApplyTrailingSlashPathRedirectsToEmitterIR(t *testing.T) {
 			},
 		},
 	}
-	applyTrailingSlashPathRedirectsToEmitterIR(&ir3)
-	if len(ir3.HTTPRoutes[key].Spec.Rules) != 1 {
-		t.Fatalf("expected no extra redirect rule when prefix /foo exists, got %d rules", len(ir3.HTTPRoutes[key].Spec.Rules))
+	eIR3 := emitterir.EmitterIR{
+		HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{
+			key: {HTTPRoute: *noRedirectRoute2.DeepCopy()},
+		},
+	}
+	pIR3 := providerir.ProviderIR{
+		HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
+			key: {
+				HTTPRoute:          *noRedirectRoute2.DeepCopy(),
+				RuleBackendSources: [][]providerir.BackendSource{{}},
+			},
+		},
+	}
+	applyTrailingSlashPathRedirectsToEmitterIR(&pIR3, &eIR3)
+	if len(eIR3.HTTPRoutes[key].Spec.Rules) != 1 {
+		t.Fatalf("expected no extra redirect rule when prefix /foo exists, got %d rules", len(eIR3.HTTPRoutes[key].Spec.Rules))
+	}
+	if len(pIR3.HTTPRoutes[key].RuleBackendSources) != 1 {
+		t.Fatalf("expected RuleBackendSources length 1 (unchanged), got %d", len(pIR3.HTTPRoutes[key].RuleBackendSources))
 	}
 }

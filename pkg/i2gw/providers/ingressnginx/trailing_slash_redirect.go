@@ -20,11 +20,12 @@ import (
 	"strings"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-func applyTrailingSlashPathRedirectsToEmitterIR(eir *emitterir.EmitterIR) {
+func applyTrailingSlashPathRedirectsToEmitterIR(pIR *providerir.ProviderIR, eir *emitterir.EmitterIR) {
 	for key, routeCtx := range eir.HTTPRoutes {
 		rules := routeCtx.Spec.Rules
 		sourcePathAlreadyMatched := make(map[string]struct{})
@@ -38,6 +39,8 @@ func applyTrailingSlashPathRedirectsToEmitterIR(eir *emitterir.EmitterIR) {
 				}
 			}
 		}
+
+		pRouteCtx := pIR.HTTPRoutes[key]
 
 		redirectAdded := make(map[string]struct{})
 		for _, rule := range rules {
@@ -91,10 +94,15 @@ func applyTrailingSlashPathRedirectsToEmitterIR(eir *emitterir.EmitterIR) {
 					},
 				})
 
+				// Keep ProviderIR RuleBackendSources in sync with the new rule.
+				// Redirect-only rules have no backends, so the source slice is empty.
+				pRouteCtx.RuleBackendSources = append(pRouteCtx.RuleBackendSources, []providerir.BackendSource{})
+
 				redirectAdded[redirectSource] = struct{}{}
 			}
 		}
 
 		eir.HTTPRoutes[key] = routeCtx
+		pIR.HTTPRoutes[key] = pRouteCtx
 	}
 }
