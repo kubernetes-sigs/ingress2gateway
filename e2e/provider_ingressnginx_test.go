@@ -1209,3 +1209,130 @@ func TestIngressNGINXRegex(t *testing.T) {
 		})
 	})
 }
+
+func TestIngressNGINXTrailingSlashRedirect(t *testing.T) {
+	t.Parallel()
+
+	providerFlags := map[string]map[string]string{
+		ingressnginx.Name: {
+			ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
+		},
+	}
+	prefixPathType := networkingv1.PathTypePrefix
+	exactPathType := networkingv1.PathTypeExact
+
+	t.Run("prefix path with trailing slash", func(t *testing.T) {
+		suffix, err := framework.RandString()
+		require.NoError(t, err)
+		host := "trailing-prefix-" + suffix + ".example.com"
+
+		ing := framework.BasicIngress().
+			WithName("prefix-slash").
+			WithHost(host).
+			WithIngressClass(ingressnginx.NginxIngressClass).
+			WithPath("/hostname/").
+			Build()
+		ing.Spec.Rules[0].HTTP.Paths[0].PathType = &prefixPathType
+
+		runTestCase(t, &framework.TestCase{
+			GatewayImplementation: istio.ProviderName,
+			Providers:             []string{ingressnginx.Name},
+			ProviderFlags:         providerFlags,
+			Ingresses:             []*networkingv1.Ingress{ing},
+			Verifiers: map[string][]framework.Verifier{
+				"prefix-slash": {
+					// /hostname should get a 301 redirect to /hostname/
+					&framework.HTTPRequestVerifier{
+						Host:         host,
+						Path:         "/hostname",
+						AllowedCodes: []int{301},
+						HeaderMatches: []framework.HeaderMatch{{
+							Name: "Location",
+							Patterns: []*framework.MaybeNegativePattern{
+								{Pattern: regexp.MustCompile(`/hostname/$`)},
+							},
+						}},
+					},
+					// /hostname/ should return 200
+					&framework.HTTPRequestVerifier{
+						Host: host,
+						Path: "/hostname/",
+					},
+				},
+			},
+		})
+	})
+
+	t.Run("exact path with trailing slash", func(t *testing.T) {
+		suffix, err := framework.RandString()
+		require.NoError(t, err)
+		host := "trailing-exact-" + suffix + ".example.com"
+
+		ing := framework.BasicIngress().
+			WithName("exact-slash").
+			WithHost(host).
+			WithIngressClass(ingressnginx.NginxIngressClass).
+			WithPath("/hostname/").
+			Build()
+		ing.Spec.Rules[0].HTTP.Paths[0].PathType = &exactPathType
+
+		runTestCase(t, &framework.TestCase{
+			GatewayImplementation: istio.ProviderName,
+			Providers:             []string{ingressnginx.Name},
+			ProviderFlags:         providerFlags,
+			Ingresses:             []*networkingv1.Ingress{ing},
+			Verifiers: map[string][]framework.Verifier{
+				"exact-slash": {
+					// /hostname should get a 301 redirect to /hostname/
+					&framework.HTTPRequestVerifier{
+						Host:         host,
+						Path:         "/hostname",
+						AllowedCodes: []int{301},
+						HeaderMatches: []framework.HeaderMatch{{
+							Name: "Location",
+							Patterns: []*framework.MaybeNegativePattern{
+								{Pattern: regexp.MustCompile(`/hostname/$`)},
+							},
+						}},
+					},
+					// /hostname/ should return 200
+					&framework.HTTPRequestVerifier{
+						Host: host,
+						Path: "/hostname/",
+					},
+				},
+			},
+		})
+	})
+
+	t.Run("no redirect for path without trailing slash", func(t *testing.T) {
+		suffix, err := framework.RandString()
+		require.NoError(t, err)
+		host := "trailing-none-" + suffix + ".example.com"
+
+		ing := framework.BasicIngress().
+			WithName("no-slash").
+			WithHost(host).
+			WithIngressClass(ingressnginx.NginxIngressClass).
+			WithPath("/hostname").
+			Build()
+		ing.Spec.Rules[0].HTTP.Paths[0].PathType = &prefixPathType
+
+		runTestCase(t, &framework.TestCase{
+			GatewayImplementation: istio.ProviderName,
+			Providers:             []string{ingressnginx.Name},
+			ProviderFlags:         providerFlags,
+			Ingresses:             []*networkingv1.Ingress{ing},
+			Verifiers: map[string][]framework.Verifier{
+				"no-slash": {
+					// /hostname should return 200 with no redirect (path has no trailing slash)
+					&framework.HTTPRequestVerifier{
+						Host:         host,
+						Path:         "/hostname",
+						HeaderAbsent: []string{"Location"},
+					},
+				},
+			},
+		})
+	})
+}
