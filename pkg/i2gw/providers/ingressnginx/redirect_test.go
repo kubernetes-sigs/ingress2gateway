@@ -529,7 +529,7 @@ func Test_redirectFeature_emptyURL(t *testing.T) {
 
 	errs := redirectFeature(notifications.NoopNotify, []networkingv1.Ingress{ingress}, nil, &ir)
 
-	if len(errs) == 0 {
-		t.Errorf("Expected error for empty redirect URL")
+	if len(errs) != 0 {
+		t.Errorf("Expected no errors for empty redirect URL (should be a notification), got %v", errs)
 	}
 }

@@ -42,8 +42,33 @@ func NewEmitter(conf *i2gw.EmitterConf) i2gw.Emitter {
 	}
 }
 
+func (e *Emitter) regexWarnings(gwResources *i2gw.GatewayResources) {
+	for _, route := range gwResources.HTTPRoutes {
+		hasRegex := false
+		hasNonRegex := false
+		for _, rule := range route.Spec.Rules {
+			if len(rule.Matches) == 0 {
+				hasNonRegex = true
+			}
+			for _, match := range rule.Matches {
+				if match.Path != nil && match.Path.Type != nil && *match.Path.Type == "RegularExpression" {
+					hasRegex = true
+				} else {
+					hasNonRegex = true
+				}
+			}
+		}
+		if hasRegex && hasNonRegex {
+			e.notify(notifications.WarningNotification, "HTTPRoute contains both regex and non-regex path matches, which have implementation-specific priorities", &route)
+		}
+	}
+
+}
+
 // Emit converts the provider intermediate representation to Gateway API resources.
 func (e *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.ErrorList) {
 	utils.LogUnparsedErrors(ir, e.notify)
-	return utils.ToGatewayResources(ir)
+	resources, err := utils.ToGatewayResources(ir)
+	e.regexWarnings(&resources)
+	return resources, err
 }

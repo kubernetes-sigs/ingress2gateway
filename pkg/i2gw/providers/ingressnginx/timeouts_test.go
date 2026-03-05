@@ -36,7 +36,6 @@ func TestTimeoutFeature(t *testing.T) {
 		name         string
 		annotations  map[string]string
 		wantTimeouts *emitterir.TCPTimeouts
-		wantErr      bool
 	}{
 		{
 			name:         "no timeouts",
@@ -64,11 +63,11 @@ func TestTimeoutFeature(t *testing.T) {
 			},
 		},
 		{
-			name: "rejects duration strings",
+			name: "skips invalid duration strings",
 			annotations: map[string]string{
 				ProxyReadTimeoutAnnotation: "1s",
 			},
-			wantErr: true,
+			wantTimeouts: nil,
 		},
 	}
 
@@ -109,16 +108,7 @@ func TestTimeoutFeature(t *testing.T) {
 
 			eir := providerir.ToEmitterIR(ir)
 
-			errs := applyTimeoutsToEmitterIR(notifications.NoopNotify, ir, &eir)
-			if tc.wantErr {
-				if len(errs) == 0 {
-					t.Fatalf("expected error")
-				}
-				return
-			}
-			if len(errs) > 0 {
-				t.Fatalf("expected no errors, got %v", errs)
-			}
+			applyTimeoutsToEmitterIR(notifications.NoopNotify, ir, &eir)
 
 			// Timeout feature should populate IR, not mutate the HTTPRoute directly.
 			if got := ir.HTTPRoutes[key].HTTPRoute.Spec.Rules[0].Timeouts; got != nil {

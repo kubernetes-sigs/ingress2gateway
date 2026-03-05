@@ -83,8 +83,7 @@ func convertNginxSizeToK8sQuantity(nginxSize string) (string, error) {
 // Currently supported annotations are:
 // - nginx.ingress.kubernetes.io/proxy-body-size
 // - nginx.ingress.kubernetes.io/client-body-buffer-size
-func applyBodySizeToEmitterIR(notify notifications.NotifyFunc, pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) field.ErrorList {
-	var errs field.ErrorList
+func applyBodySizeToEmitterIR(notify notifications.NotifyFunc, pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) {
 
 	for key, pRouteCtx := range pIR.HTTPRoutes {
 		eRouteCtx, ok := eIR.HTTPRoutes[key]
@@ -112,21 +111,15 @@ func applyBodySizeToEmitterIR(notify notifications.NotifyFunc, pIR providerir.Pr
 				parsedAnnotations = append(parsedAnnotations, ProxyBodySizeAnnotation)
 				k8sSize, err := convertNginxSizeToK8sQuantity(val)
 				if err != nil {
-					errs = append(errs, field.Invalid(
-						field.NewPath("ingress", ing.Namespace, ing.Name, "metadata", "annotations"),
-						ing.Annotations,
-						fmt.Sprintf("failed to parse proxy-body-size configuration: %v", err),
-					))
+					notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s has invalid proxy-body-size annotation %q: %v, skipping body size",
+						ing.Namespace, ing.Name, val, err), ing)
 					continue
 				}
 
 				quantity, err := resource.ParseQuantity(k8sSize)
 				if err != nil {
-					errs = append(errs, field.Invalid(
-						field.NewPath("ingress", ing.Namespace, ing.Name, "metadata", "annotations"),
-						ing.Annotations,
-						fmt.Sprintf("failed to parse proxy-body-size configuration: %v", err),
-					))
+					notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s has invalid proxy-body-size annotation %q: %v, skipping body size",
+						ing.Namespace, ing.Name, val, err), ing)
 					continue
 				}
 				maxSize = &quantity
@@ -137,21 +130,15 @@ func applyBodySizeToEmitterIR(notify notifications.NotifyFunc, pIR providerir.Pr
 				parsedAnnotations = append(parsedAnnotations, ClientBodyBufferSizeAnnotation)
 				k8sSize, err := convertNginxSizeToK8sQuantity(val)
 				if err != nil {
-					errs = append(errs, field.Invalid(
-						field.NewPath("ingress", ing.Namespace, ing.Name, "metadata", "annotations"),
-						ing.Annotations,
-						fmt.Sprintf("failed to parse client-body-buffer-size configuration: %v", err),
-					))
+					notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s has invalid client-body-buffer-size annotation %q: %v, skipping buffer size",
+						ing.Namespace, ing.Name, val, err), ing)
 					continue
 				}
 
 				quantity, err := resource.ParseQuantity(k8sSize)
 				if err != nil {
-					errs = append(errs, field.Invalid(
-						field.NewPath("ingress", ing.Namespace, ing.Name, "metadata", "annotations"),
-						ing.Annotations,
-						fmt.Sprintf("failed to parse client-body-buffer-size configuration: %v", err),
-					))
+					notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s has invalid client-body-buffer-size annotation %q: %v, skipping buffer size",
+						ing.Namespace, ing.Name, val, err), ing)
 					continue
 				}
 				bufferSize = &quantity
@@ -196,5 +183,4 @@ func applyBodySizeToEmitterIR(notify notifications.NotifyFunc, pIR providerir.Pr
 
 		eIR.HTTPRoutes[key] = eRouteCtx
 	}
-	return errs
 }

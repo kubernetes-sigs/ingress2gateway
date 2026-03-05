@@ -39,8 +39,10 @@ type canaryConfig struct {
 	weightTotal int32
 }
 
-// parseCanaryConfig extracts canary weight configuration from an Ingress
-func parseCanaryConfig(notify notifications.NotifyFunc, ingress *networkingv1.Ingress) (canaryConfig, error) {
+// parseCanaryConfig extracts canary weight configuration from an Ingress.
+// Invalid annotation values are reported as notifications and fall back to defaults
+// rather than returning errors.
+func parseCanaryConfig(notify notifications.NotifyFunc, ingress *networkingv1.Ingress) canaryConfig {
 	config := canaryConfig{
 		weight:      0,
 		weightTotal: 100, // default
@@ -68,30 +70,38 @@ func parseCanaryConfig(notify notifications.NotifyFunc, ingress *networkingv1.In
 		config.isWeight = true
 		w, err := strconv.ParseInt(weight, 10, 32)
 		if err != nil {
-			return config, fmt.Errorf("invalid canary-weight annotation %q: %w", weight, err)
+			notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s has invalid canary-weight annotation %q, defaulting to 0: %v",
+				ingress.Namespace, ingress.Name, weight, err), ingress)
+			config.isWeight = false
+		} else if w < 0 {
+			notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s has negative canary-weight %d, defaulting to 0",
+				ingress.Namespace, ingress.Name, w), ingress)
+			config.isWeight = false
+		} else {
+			config.weight = int32(w)
 		}
-		if w < 0 {
-			return config, fmt.Errorf("canary-weight must be non-negative, got %d", w)
-		}
-		config.weight = int32(w)
 	}
 
 	if total := ingress.Annotations[CanaryWeightTotalAnnotation]; total != "" {
 		wt, err := strconv.ParseInt(total, 10, 32)
 		if err != nil {
-			return config, fmt.Errorf("invalid canary-weight-total annotation %q: %w", total, err)
+			notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s has invalid canary-weight-total annotation %q, defaulting to 100: %v",
+				ingress.Namespace, ingress.Name, total, err), ingress)
+		} else if wt <= 0 {
+			notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s has non-positive canary-weight-total %d, defaulting to 100",
+				ingress.Namespace, ingress.Name, wt), ingress)
+		} else {
+			config.weightTotal = int32(wt)
 		}
-		if wt <= 0 {
-			return config, fmt.Errorf("canary-weight-total must be positive, got %d", wt)
-		}
-		config.weightTotal = int32(wt)
 	}
 
 	if config.weight > config.weightTotal {
-		return config, fmt.Errorf("canary-weight (%d) exceeds canary-weight-total (%d)", config.weight, config.weightTotal)
+		notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s has canary-weight (%d) exceeding canary-weight-total (%d), capping weight to %d",
+			ingress.Namespace, ingress.Name, config.weight, config.weightTotal, config.weightTotal), ingress)
+		config.weight = config.weightTotal
 	}
 
-	return config, nil
+	return config
 }
 
 func createHeaderMatchRule(header string, value string, existingMatches []gatewayv1.HTTPRouteMatch, backend gatewayv1.HTTPBackendRef) gatewayv1.HTTPRouteRule {
@@ -228,34 +238,20 @@ func getCanaryInfo(notify notifications.NotifyFunc, backendSources []providerir.
 
 		if source.Ingress.Annotations[CanaryAnnotation] == "true" {
 			if canaryBackendIdx != -1 {
-				errList = append(errList, field.Invalid(
-					field.NewPath(routeType, routeName, "spec", "rules").Index(ruleIdx).Child("backendRefs"),
-					"multiple canary backends",
-					"at most one canary backend is allowed per rule",
-				))
+				notify(notifications.WarningNotification, fmt.Sprintf("%s %s rule %d has multiple canary backends, using the first one",
+					routeType, routeName, ruleIdx))
 				continue
 			}
 
-			parsedConfig, err := parseCanaryConfig(notify, source.Ingress)
-			if err != nil {
-				errList = append(errList, field.Invalid(
-					field.NewPath("ingress", source.Ingress.Namespace, source.Ingress.Name, "metadata", "annotations"),
-					source.Ingress.Annotations,
-					fmt.Sprintf("failed to parse canary configuration: %v", err),
-				))
-				continue
-			}
+			parsedConfig := parseCanaryConfig(notify, source.Ingress)
 
 			canaryBackendIdx = backendIdx
 			config = parsedConfig
 			canarySourceIngress = source.Ingress
 		} else {
 			if nonCanaryBackendIdx != -1 {
-				errList = append(errList, field.Invalid(
-					field.NewPath(routeType, routeName, "spec", "rules").Index(ruleIdx).Child("backendRefs"),
-					"multiple non-canary backends",
-					"at most one non-canary backend is allowed per rule when using canary",
-				))
+				notify(notifications.WarningNotification, fmt.Sprintf("%s %s rule %d has multiple non-canary backends, using the first one",
+					routeType, routeName, ruleIdx))
 				continue
 			}
 			nonCanaryBackendIdx = backendIdx
@@ -264,11 +260,8 @@ func getCanaryInfo(notify notifications.NotifyFunc, backendSources []providerir.
 
 	if canaryBackendIdx != -1 {
 		if nonCanaryBackendIdx == -1 {
-			errList = append(errList, field.Invalid(
-				field.NewPath(routeType, routeName, "spec", "rules").Index(ruleIdx).Child("backendRefs"),
-				"canary backend without non-canary backend",
-				"a non-canary backend is required when using canary",
-			))
+			notify(notifications.WarningNotification, fmt.Sprintf("%s %s rule %d has a canary backend without a non-canary backend, skipping canary",
+				routeType, routeName, ruleIdx))
 			return 0, 0, config, nil, -1, -1, errList
 		}
 		canaryWeight := config.weight
