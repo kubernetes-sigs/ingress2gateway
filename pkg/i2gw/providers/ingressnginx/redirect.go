@@ -218,15 +218,52 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 	return errs
 }
 
-// Ingress NGINX has some quirky behaviors around SSL redirect.
-// The formula we follow is that if an ingress has certs configured, and it does not have the
-// "nginx.ingress.kubernetes.io/ssl-redirect" annotation set to "false" (or "0", etc), then we
-// enable SSL redirect for that path. This is evaluated per-rule to match ingress-nginx's
-// per-location redirect semantics.
-func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR) field.ErrorList {
+// addDefaultSSLRedirect adds HTTP→HTTPS redirect routes to match ingress-nginx behavior.
+//
+// In ingress-nginx, TLS is merged at the hostname/server level — if any ingress on a hostname
+// has TLS configured, the cert applies to the entire server block and ssl-redirect defaults to
+// true for all locations. A rule only skips the redirect if its source ingress explicitly sets
+// "nginx.ingress.kubernetes.io/ssl-redirect" to "false".
+func addDefaultSSLRedirect(ingresses []networkingv1.Ingress, pir *providerir.ProviderIR, eir *emitterir.EmitterIR) field.ErrorList {
+	// Build a set of hostnames that have TLS configured
+	// In ingress-nginx, TLS is merged at the server/hostname level, so a cert
+	// from any ingress makes ssl-redirect apply to all paths on that host.
+	// When a TLS entry specifies Hosts, only those hosts get TLS from that entry.
+	// When a TLS entry has no Hosts (catch-all cert), all rule hosts on that
+	// ingress get TLS.
+	hostsWithTLS := make(map[string]struct{})
+	for _, ing := range ingresses {
+		for _, tls := range ing.Spec.TLS {
+			if len(tls.Hosts) > 0 {
+				for _, host := range tls.Hosts {
+					hostsWithTLS[host] = struct{}{}
+				}
+			} else {
+				for _, rule := range ing.Spec.Rules {
+					if rule.Host != "" {
+						hostsWithTLS[rule.Host] = struct{}{}
+					}
+				}
+				break
+			}
+		}
+	}
+
 	for key, httpRouteContext := range pir.HTTPRoutes {
 		eRouteCtx, ok := eir.HTTPRoutes[key]
 		if !ok {
+			continue
+		}
+
+		hostHasTLS := false
+		for _, hostname := range httpRouteContext.HTTPRoute.Spec.Hostnames {
+			if _, ok := hostsWithTLS[string(hostname)]; ok {
+				hostHasTLS = true
+				break
+			}
+		}
+
+		if !hostHasTLS {
 			continue
 		}
 
@@ -242,19 +279,11 @@ func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR)
 				continue
 			}
 
-			if len(ingress.Spec.TLS) == 0 {
-				continue
-			}
-
 			enableRedirect := true
 			if val, ok := ingress.Annotations[SSLRedirectAnnotation]; ok {
 				parsed, err := strconv.ParseBool(val)
 				if err != nil {
-					return field.ErrorList{field.Invalid(
-						field.NewPath("ingress", ingress.Namespace, ingress.Name, "metadata", "annotations"),
-						ingress.Annotations,
-						fmt.Sprintf("failed to parse redirect configuration: %v", err),
-					)}
+					parsed = true
 				}
 				enableRedirect = parsed
 			}
