@@ -1,0 +1,144 @@
+/*
+Copyright 2026 The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package ingressnginx
+
+import (
+	"strings"
+
+	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
+	"k8s.io/utils/ptr"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+)
+
+func applyTrailingSlashPathRedirectsToEmitterIR(pIR *providerir.ProviderIR, eir *emitterir.EmitterIR) {
+	for key, routeCtx := range eir.HTTPRoutes {
+		rules := routeCtx.Spec.Rules
+		sourcePathAlreadyMatched := make(map[string]struct{})
+		var existingPrefixes []string
+		for _, rule := range rules {
+			for _, match := range rule.Matches {
+				if match.Path == nil || match.Path.Type == nil || match.Path.Value == nil {
+					continue
+				}
+				if *match.Path.Type == gatewayv1.PathMatchExact || *match.Path.Type == gatewayv1.PathMatchPathPrefix {
+					sourcePathAlreadyMatched[*match.Path.Value] = struct{}{}
+				}
+				if *match.Path.Type == gatewayv1.PathMatchPathPrefix {
+					existingPrefixes = append(existingPrefixes, *match.Path.Value)
+				}
+			}
+		}
+
+		pRouteCtx, pRouteExists := pIR.HTTPRoutes[key]
+
+		redirectAdded := make(map[string]struct{})
+		for _, rule := range rules {
+			for _, match := range rule.Matches {
+				if match.Path == nil || match.Path.Type == nil || match.Path.Value == nil {
+					continue
+				}
+
+				matchType := *match.Path.Type
+				if matchType != gatewayv1.PathMatchExact && matchType != gatewayv1.PathMatchPathPrefix {
+					continue
+				}
+
+				redirectTarget := *match.Path.Value
+				if redirectTarget == "/" || !strings.HasSuffix(redirectTarget, "/") {
+					continue
+				}
+
+				redirectSource := strings.TrimSuffix(redirectTarget, "/")
+				if redirectSource == "" {
+					continue
+				}
+				if _, exists := sourcePathAlreadyMatched[redirectSource]; exists {
+					continue
+				}
+				if pathPrefixCoveredByAny(existingPrefixes, redirectSource) {
+					continue
+				}
+				if _, added := redirectAdded[redirectSource]; added {
+					continue
+				}
+
+				exact := gatewayv1.PathMatchExact
+				routeCtx.Spec.Rules = append(routeCtx.Spec.Rules, gatewayv1.HTTPRouteRule{
+					Matches: []gatewayv1.HTTPRouteMatch{
+						{
+							Path: &gatewayv1.HTTPPathMatch{
+								Type:  &exact,
+								Value: ptr.To(redirectSource),
+							},
+						},
+					},
+					Filters: []gatewayv1.HTTPRouteFilter{
+						{
+							Type: gatewayv1.HTTPRouteFilterRequestRedirect,
+							RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
+								StatusCode: ptr.To(301),
+								Path: &gatewayv1.HTTPPathModifier{
+									Type:            gatewayv1.FullPathHTTPPathModifier,
+									ReplaceFullPath: ptr.To(redirectTarget),
+								},
+							},
+						},
+					},
+				})
+
+				// Keep ProviderIR RuleBackendSources in sync with the new rule.
+				// Redirect-only rules have no backends, so the source slice is empty.
+				if pRouteExists {
+					pRouteCtx.RuleBackendSources = append(pRouteCtx.RuleBackendSources, []providerir.BackendSource{})
+				}
+
+				redirectAdded[redirectSource] = struct{}{}
+			}
+		}
+
+		eir.HTTPRoutes[key] = routeCtx
+		if pRouteExists {
+			pIR.HTTPRoutes[key] = pRouteCtx
+		}
+	}
+}
+
+// pathPrefixCoveredByAny returns true if any existing PathPrefix would match
+// the given path using Gateway API segment-based prefix matching semantics.
+func pathPrefixCoveredByAny(prefixes []string, path string) bool {
+	for _, prefix := range prefixes {
+		if pathPrefixCovers(prefix, path) {
+			return true
+		}
+	}
+	return false
+}
+
+// pathPrefixCovers returns true if a Gateway API PathPrefix match for prefix
+// would match path. Gateway API PathPrefix matching is segment-based:
+// PathPrefix "/a" matches "/a", "/a/", "/a/b" but NOT "/ab".
+func pathPrefixCovers(prefix, path string) bool {
+	if !strings.HasPrefix(path, prefix) {
+		return false
+	}
+	if len(path) == len(prefix) {
+		return true
+	}
+	// path is longer than prefix; check segment boundary
+	return prefix[len(prefix)-1] == '/' || path[len(prefix)] == '/'
+}
