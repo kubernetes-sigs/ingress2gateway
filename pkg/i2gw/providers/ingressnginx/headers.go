@@ -66,7 +66,7 @@ func headerModifierFeature(notify notifications.NotifyFunc, _ []networkingv1.Ing
 	return nil
 }
 
-func applyHeaderModifiers(notify notifications.NotifyFunc, httpRoute *gatewayv1.HTTPRoute, ruleIndex int, headersToSet map[string]string) {
+func applyHeaderModifiers(_ notifications.NotifyFunc, httpRoute *gatewayv1.HTTPRoute, ruleIndex int, headersToSet map[string]string) {
 	// Find existing RequestHeaderModifier filter or create new one
 	var filter *gatewayv1.HTTPRouteFilter
 	for j, f := range httpRoute.Spec.Rules[ruleIndex].Filters {
