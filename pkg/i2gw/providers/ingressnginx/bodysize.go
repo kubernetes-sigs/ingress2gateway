@@ -83,7 +83,7 @@ func convertNginxSizeToK8sQuantity(nginxSize string) (string, error) {
 // Currently supported annotations are:
 // - nginx.ingress.kubernetes.io/proxy-body-size
 // - nginx.ingress.kubernetes.io/client-body-buffer-size
-func applyBodySizeToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) field.ErrorList {
+func applyBodySizeToEmitterIR(notify notifications.NotifyFunc, pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) field.ErrorList {
 	var errs field.ErrorList
 
 	for key, pRouteCtx := range pIR.HTTPRoutes {

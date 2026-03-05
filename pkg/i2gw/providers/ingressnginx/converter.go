@@ -32,10 +32,11 @@ import (
 // resourcesToIRConverter implements the ToIR function of i2gw.ResourcesToIRConverter interface.
 type resourcesToIRConverter struct {
 	featureParsers []i2gw.FeatureParser
+	notify         notifications.NotifyFunc
 }
 
 // newResourcesToIRConverter returns an ingress-nginx resourcesToIRConverter instance.
-func newResourcesToIRConverter() *resourcesToIRConverter {
+func newResourcesToIRConverter(notify notifications.NotifyFunc) *resourcesToIRConverter {
 	return &resourcesToIRConverter{
 		featureParsers: []i2gw.FeatureParser{
 			canaryFeature,
@@ -45,10 +46,11 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 			regexFeature,
 			backendTLSFeature,
 		},
+		notify: notify,
 	}
 }
 
-func (c *resourcesToIRConverter) convert(storage *storage) (providerir.ProviderIR, field.ErrorList) {
+func (c *resourcesToIRConverter) convert(notify notifications.NotifyFunc, storage *storage) (providerir.ProviderIR, field.ErrorList) {
 
 	// TODO(liorliberman) temporary until we decide to change ToIR and featureParsers to get a map of [types.NamespacedName]*networkingv1.Ingress instead of a list
 	ingressList := storage.Ingresses.List()
@@ -81,7 +83,7 @@ func (c *resourcesToIRConverter) convert(storage *storage) (providerir.ProviderI
 	for _, ingress := range ingressList {
 		for annotation := range ingress.Annotations {
 			if _, ok := parsedAnnotations[annotation]; !ok && strings.HasPrefix(annotation, ingressNGINXAnnotationsPrefix) {
-				notify(notifications.WarningNotification, fmt.Sprintf("Unsupported annotation %v", annotation), &ingress)
+				c.notify(notifications.WarningNotification, fmt.Sprintf("Unsupported annotation %v", annotation), &ingress)
 			}
 		}
 	}
@@ -92,7 +94,7 @@ func (c *resourcesToIRConverter) convert(storage *storage) (providerir.ProviderI
 
 	for _, parseFeatureFunc := range c.featureParsers {
 		// Apply the feature parsing function to the gateway resources, one by one.
-		parseErrs := parseFeatureFunc(ingressList, storage.ServicePorts, &pIR)
+		parseErrs := parseFeatureFunc(c.notify, ingressList, storage.ServicePorts, &pIR)
 		// Append the parsing errors to the error list.
 		errs = append(errs, parseErrs...)
 	}

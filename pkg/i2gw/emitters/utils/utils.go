@@ -25,7 +25,6 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
@@ -129,7 +128,7 @@ func ToGatewayResources(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.Er
 	return gatewayResources, nil
 }
 
-func LogUnparsedErrors(ir emitterir.EmitterIR, notify func(mType notifications.MessageType, message string, callingObject ...client.Object)) {
+func LogUnparsedErrors(ir emitterir.EmitterIR, notify notifications.NotifyFunc) {
 	// currently, we only really have unparsed errors in the HTTPRouteContext, but we can expand this function as needed if we have unparsed errors in other contexts in the future.
 	for _, httpRouteContext := range ir.HTTPRoutes {
 		for _, unparsedExtension := range httpRouteContext.UnparsedExtensions() {

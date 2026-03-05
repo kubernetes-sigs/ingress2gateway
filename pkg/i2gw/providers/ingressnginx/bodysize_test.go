@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -105,7 +106,7 @@ func TestApplyBodySizeToEmitterIR_SetMaxSize(t *testing.T) {
 	}
 	pIR, eIR := setupBodySizeTest(key, annotations)
 
-	if err := applyBodySizeToEmitterIR(pIR, &eIR); err != nil {
+	if err := applyBodySizeToEmitterIR(notifications.NoopNotify, pIR, &eIR); err != nil {
 		t.Fatalf("unexpected error applying body size: %v", err)
 	}
 
@@ -125,7 +126,7 @@ func TestApplyBodySizeToEmitterIR_SetBufferSize(t *testing.T) {
 	}
 	pIR, eIR := setupBodySizeTest(key, annotations)
 
-	if err := applyBodySizeToEmitterIR(pIR, &eIR); err != nil {
+	if err := applyBodySizeToEmitterIR(notifications.NoopNotify, pIR, &eIR); err != nil {
 		t.Fatalf("unexpected error applying body size: %v", err)
 	}
 
@@ -146,7 +147,7 @@ func TestApplyBodySizeToEmitterIR_SetMaxAndBufferSize(t *testing.T) {
 	}
 	pIR, eIR := setupBodySizeTest(key, annotations)
 
-	if err := applyBodySizeToEmitterIR(pIR, &eIR); err != nil {
+	if err := applyBodySizeToEmitterIR(notifications.NoopNotify, pIR, &eIR); err != nil {
 		t.Fatalf("unexpected error applying body size: %v", err)
 	}
 

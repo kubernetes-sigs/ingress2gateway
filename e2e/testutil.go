@@ -544,7 +544,7 @@ func runI2GW(
 
 	// Log any notifications from stderr.
 	if stderr.Len() > 0 {
-		t.Log("Got stderr from ingress2gateway:\n", stderr.String())
+		t.Logf("Got stderr from ingress2gateway:\n%s", strings.TrimRight(stderr.String(), "\n"))
 	}
 
 	return parseYAMLOutput(t, stdout.Bytes())

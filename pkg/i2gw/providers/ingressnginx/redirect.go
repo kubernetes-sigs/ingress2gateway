@@ -42,7 +42,7 @@ import (
 // Intersecting with ingress-nginx's valid ranges:
 // - temporal-redirect defaults to 302, supported custom codes: 301, 302, 303, 307
 // - permanent-redirect defaults to 301, supported custom codes: 301, 302, 303, 307, 308
-func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func redirectFeature(notify notifications.NotifyFunc, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 
 	// Iterate over all HTTPRoutes in the IR

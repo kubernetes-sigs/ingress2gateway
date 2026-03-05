@@ -31,7 +31,7 @@ import (
 )
 
 // PathRegexFeature converts nginx.org/path-regex annotation to regex path matching
-func PathRegexFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func PathRegexFeature(notify notifications.NotifyFunc, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 
 	// Valid values for path-regex annotation

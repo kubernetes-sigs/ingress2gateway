@@ -23,6 +23,7 @@ import (
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -40,14 +41,18 @@ type Provider struct {
 	storage                *storage
 	resourceReader         *resourceReader
 	resourcesToIRConverter *resourcesToIRConverter
+	notify                 notifications.NotifyFunc
 }
 
 // NewProvider constructs and returns the cilium implementation of i2gw.Provider.
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
+	notify := conf.Report.Notifier(Name)
+
 	return &Provider{
 		storage:                newResourcesStorage(),
 		resourceReader:         newResourceReader(conf),
-		resourcesToIRConverter: newResourcesToIRConverter(),
+		resourcesToIRConverter: newResourcesToIRConverter(notify),
+		notify:                 notify,
 	}
 }
 
