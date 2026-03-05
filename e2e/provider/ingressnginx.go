@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package provider
 
 import (
 	"context"
@@ -22,6 +22,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/kubernetes-sigs/ingress2gateway/e2e/framework"
 	"helm.sh/helm/v4/pkg/cli"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -33,9 +34,11 @@ const (
 	ingressNginxChartRepo    = "https://kubernetes.github.io/ingress-nginx"
 )
 
-func deployIngressNginx(
+// DeployIngressNginx deploys the ingress-nginx ingress controller via Helm and returns a cleanup
+// function.
+func DeployIngressNginx(
 	ctx context.Context,
-	l logger,
+	l framework.Logger,
 	client *kubernetes.Clientset,
 	kubeconfigPath string,
 	namespace string,
@@ -61,7 +64,7 @@ func deployIngressNginx(
 		},
 	}
 
-	if err := installChart(
+	if err := framework.InstallChart(
 		ctx,
 		l,
 		settings,
@@ -80,7 +83,7 @@ func deployIngressNginx(
 	// registered cluster-wide immediately, but the admission controller pod takes time to start.
 	// Any Ingress creation will fail until the webhook service is ready to handle requests.
 	l.Logf("Waiting for ingress-nginx admission webhook to be ready")
-	if err := waitForServiceReady(ctx, client, namespace, "ingress-nginx-controller-admission"); err != nil {
+	if err := framework.WaitForServiceReady(ctx, client, namespace, "ingress-nginx-controller-admission"); err != nil {
 		return nil, fmt.Errorf("waiting for admission webhook service: %w", err)
 	}
 
@@ -102,17 +105,17 @@ func deployIngressNginx(
 		defer cancel()
 
 		log.Printf("Cleaning up ingress-nginx")
-		if err := uninstallChart(cleanupCtx, settings, "ingress-nginx", namespace); err != nil {
+		if err := framework.UninstallChart(cleanupCtx, settings, "ingress-nginx", namespace); err != nil {
 			log.Printf("Uninstalling chart: %v", err)
 		}
 
-		if err := deleteNamespaceAndWait(cleanupCtx, client, namespace); err != nil {
+		if err := framework.DeleteNamespaceAndWait(cleanupCtx, client, namespace); err != nil {
 			log.Printf("Deleting namespace: %v", err)
 		}
 	}, nil
 }
 
-// Wits until the ingress-nginx ValidatingWebhookConfiguration has a CA bundle configured. The
+// Waits until the ingress-nginx ValidatingWebhookConfiguration has a CA bundle configured. The
 // webhook service being ready doesn't guarantee the CA bundle has been propagated, which causes
 // X.509 certificate verification errors.
 func waitForAdmissionWebhookReady(ctx context.Context, client *kubernetes.Clientset) error {

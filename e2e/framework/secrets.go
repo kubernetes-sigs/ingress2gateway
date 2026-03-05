@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package framework
 
 import (
 	"context"
@@ -34,6 +34,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// TLSTestSecret holds a TLS secret and its CA certificate for testing.
 type TLSTestSecret struct {
 	Secret *corev1.Secret
 	CACert []byte
@@ -49,6 +50,7 @@ type BackendTLSSecrets struct {
 	CACertPEM    []byte
 }
 
+// GenerateSelfSignedTLSSecret creates a self-signed TLS secret for testing.
 func generateSelfSignedTLSSecret(name, namespace, commonName string, hosts []string) (*TLSTestSecret, error) {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -102,7 +104,8 @@ func generateSelfSignedTLSSecret(name, namespace, commonName string, hosts []str
 	}, nil
 }
 
-func createSecrets(ctx context.Context, l logger, client *kubernetes.Clientset, ns string, secrets []*corev1.Secret, skipCleanup bool) (func(), error) {
+// Creates Kubernetes Secret resources and returns a cleanup function.
+func createSecrets(ctx context.Context, l Logger, client *kubernetes.Clientset, ns string, secrets []*corev1.Secret, skipCleanup bool) (func(), error) {
 	for _, secret := range secrets {
 		if secret.Namespace == "" {
 			secret.Namespace = ns
@@ -234,9 +237,9 @@ func generateBackendTLSSecrets(serverSecretName, caSecretName, namespace, server
 			},
 			Type: corev1.SecretTypeOpaque,
 			Data: map[string][]byte{
-				"ca.crt":  caCertPEM,                // CA cert to verify the backend server
-				"tls.crt": caCertPEM,                // client cert the proxy presents to the backend
-				"tls.key": caKeyPEM,                 // client key matching tls.crt
+				"ca.crt":  caCertPEM, // CA cert to verify the backend server
+				"tls.crt": caCertPEM, // client cert the proxy presents to the backend
+				"tls.key": caKeyPEM,  // client key matching tls.crt
 			},
 		},
 		CACertPEM: caCertPEM,
