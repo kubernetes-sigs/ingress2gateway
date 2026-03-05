@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package framework
 
 import (
 	"context"
@@ -50,7 +50,7 @@ type portForwarder struct {
 	releaseSem func()
 }
 
-// Creates a port forward to a service's backing pod using client-go. The caller must call Stop()
+// Creates a port forward to a service's backing pod using client-go. The caller must call stop()
 // when done to release resources.
 func startPortForwardToService(
 	ctx context.Context,
@@ -249,7 +249,7 @@ func findTargetPort(svc *corev1.Service, pod *corev1.Pod, servicePort int) (int,
 // Finds the service created by a Gateway API implementation for a Gateway object.
 func findGatewayService(
 	ctx context.Context,
-	log logger,
+	log Logger,
 	client *kubernetes.Clientset,
 	gatewayNamespace string,
 	gatewayName string,

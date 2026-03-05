@@ -94,6 +94,24 @@ func parseCanaryConfig(ingress *networkingv1.Ingress) (canaryConfig, error) {
 	return config, nil
 }
 
+func createHeaderMatchRule(header string, value string, existingMatches []gatewayv1.HTTPRouteMatch, backend gatewayv1.HTTPBackendRef) gatewayv1.HTTPRouteRule {
+	headerMatch := gatewayv1.HTTPRouteMatch{
+		Headers: []gatewayv1.HTTPHeaderMatch{
+			{
+				Name:  gatewayv1.HTTPHeaderName(header),
+				Value: value,
+			},
+		},
+	}
+	if len(existingMatches) > 0 && existingMatches[0].Path != nil {
+		headerMatch.Path = existingMatches[0].Path
+	}
+	return gatewayv1.HTTPRouteRule{
+		Matches:     []gatewayv1.HTTPRouteMatch{headerMatch},
+		BackendRefs: []gatewayv1.HTTPBackendRef{backend},
+	}
+}
+
 func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	ruleGroups := common.GetRuleGroups(ingresses)
 	var errList field.ErrorList
@@ -107,7 +125,7 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 
 			for ruleIdx := 0; ruleIdx < len(httpRouteContext.HTTPRoute.Spec.Rules); ruleIdx++ {
 				backendSources := httpRouteContext.RuleBackendSources[ruleIdx]
-
+				existingMatches := httpRouteContext.HTTPRoute.Spec.Rules[ruleIdx].Matches
 				canaryWeight, nonCanaryWeight, config, canarySourceIngress, canaryBackendIdx, nonCanaryBackendIdx, parseErrs := getCanaryInfo(backendSources, "httproute", httpRouteContext.HTTPRoute.Name, ruleIdx)
 				errList = append(errList, parseErrs...)
 				if canaryBackendIdx != -1 && nonCanaryBackendIdx != -1 {
@@ -125,45 +143,25 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 						canaryBackendSource := backendSources[canaryBackendIdx]
 						nonCanaryBackendSource := backendSources[nonCanaryBackendIdx]
 
-						var header = "always"
+						var canaryHeaderValue = "always"
 						if config.headerValue != "" {
-							header = config.headerValue
+							canaryHeaderValue = config.headerValue
 						}
 						canaryBackendCopy := canaryBackend
 						canaryBackendCopy.Weight = nil
-						newRule := gatewayv1.HTTPRouteRule{
-							Matches: []gatewayv1.HTTPRouteMatch{
-								{
-									Headers: []gatewayv1.HTTPHeaderMatch{
-										{
-											Name:  gatewayv1.HTTPHeaderName(config.header),
-											Value: header,
-										},
-									},
-								},
-							},
-							BackendRefs: []gatewayv1.HTTPBackendRef{canaryBackendCopy},
-						}
-						rulesToAdd = append(rulesToAdd, newRule)
+
+						var canaryMatchRule = createHeaderMatchRule(config.header, canaryHeaderValue, existingMatches, canaryBackendCopy)
+						rulesToAdd = append(rulesToAdd, canaryMatchRule)
 						sourcesToAdd = append(sourcesToAdd, []providerir.BackendSource{canaryBackendSource, nonCanaryBackendSource})
+
+						notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set header \"%s\" with value \"%s\" for canary backend",
+							canarySourceIngress.Namespace, canarySourceIngress.Name, config.header, canaryHeaderValue), &httpRouteContext.HTTPRoute)
 
 						if config.headerValue == "" {
 							nonCanaryBackendCopy := nonCanaryBackend
 							nonCanaryBackendCopy.Weight = nil
-							neverRule := gatewayv1.HTTPRouteRule{
-								Matches: []gatewayv1.HTTPRouteMatch{
-									{
-										Headers: []gatewayv1.HTTPHeaderMatch{
-											{
-												Name:  gatewayv1.HTTPHeaderName(config.header),
-												Value: "never",
-											},
-										},
-									},
-								},
-								BackendRefs: []gatewayv1.HTTPBackendRef{nonCanaryBackendCopy},
-							}
-							rulesToAdd = append(rulesToAdd, neverRule)
+							var nonCanaryMatchRule = createHeaderMatchRule(config.header, "never", existingMatches, nonCanaryBackendCopy)
+							rulesToAdd = append(rulesToAdd, nonCanaryMatchRule)
 							sourcesToAdd = append(sourcesToAdd, []providerir.BackendSource{nonCanaryBackendSource})
 
 							notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set header \"%s\" with value \"never\" for non-canary backend",
@@ -183,8 +181,6 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 							httpRouteContext.HTTPRoute.Spec.Rules[ruleIdx].BackendRefs = filteredBackendRefs
 							httpRouteContext.RuleBackendSources[ruleIdx] = filteredBackendSources
 						}
-						notify(notifications.InfoNotification, fmt.Sprintf("parsed canary annotations of ingress %s/%s and set header \"%s\" with value \"%s\"",
-							canarySourceIngress.Namespace, canarySourceIngress.Name, config.header, config.headerValue), &httpRouteContext.HTTPRoute)
 					}
 				}
 			}
