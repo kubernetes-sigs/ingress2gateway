@@ -38,7 +38,7 @@ func parseIPSourceRangeAnnotation(annotations map[string]string, key string) []s
 	return items
 }
 
-func applyIPRangeControlToEmitterIR(notify notifications.NotifyFunc, pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) {
+func (p *Provider) applyIPRangeControlToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) {
 	for key, pRouteCtx := range pIR.HTTPRoutes {
 		eRouteCtx, ok := eIR.HTTPRoutes[key]
 		if !ok {
@@ -92,11 +92,11 @@ func applyIPRangeControlToEmitterIR(notify notifications.NotifyFunc, pIR provide
 			eRouteCtx.IPRangeControlByRuleIdx[ruleIdx] = ipRangeControl
 
 			if len(allowList) > 0 {
-				notify(notifications.InfoNotification, fmt.Sprintf("parsed whitelist-source-range annotation of ingress %s/%s: allowing CIDRs %s for HTTPRoute rule index %d",
+				p.notify(notifications.InfoNotification, fmt.Sprintf("parsed whitelist-source-range annotation of ingress %s/%s: allowing CIDRs %s for HTTPRoute rule index %d",
 					ing.Namespace, ing.Name, strings.Join(allowList, ", "), ruleIdx), &eRouteCtx.HTTPRoute)
 			}
 			if len(denyList) > 0 {
-				notify(notifications.InfoNotification, fmt.Sprintf("parsed denylist-source-range annotation of ingress %s/%s: denying CIDRs %s for HTTPRoute rule index %d",
+				p.notify(notifications.InfoNotification, fmt.Sprintf("parsed denylist-source-range annotation of ingress %s/%s: denying CIDRs %s for HTTPRoute rule index %d",
 					ing.Namespace, ing.Name, strings.Join(denyList, ", "), ruleIdx), &eRouteCtx.HTTPRoute)
 			}
 		}

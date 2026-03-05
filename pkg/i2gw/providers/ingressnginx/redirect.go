@@ -127,16 +127,16 @@ func redirectFeature(notify notifications.NotifyFunc, ingresses []networkingv1.I
 
 			// Validate that the redirect URL is not empty
 			if redirectURL == "" {
-				notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s has empty %s annotation, skipping redirect",
-					ingress.Namespace, ingress.Name, annotationUsed), ingress)
+				notify(notifications.ErrorNotification, fmt.Sprintf("Empty %s annotation, skipping redirect",
+					annotationUsed), ingress)
 				continue
 			}
 
 			// Parse the redirect URL
 			parsedURL, err := url.Parse(redirectURL)
 			if err != nil {
-				notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s has invalid redirect URL in %s annotation: %v, skipping redirect",
-					ingress.Namespace, ingress.Name, annotationUsed, err), ingress)
+				notify(notifications.ErrorNotification, fmt.Sprintf("Invalid redirect URL in %s annotation: %v, skipping redirect",
+					annotationUsed, err), ingress)
 				continue
 			}
 
@@ -163,8 +163,8 @@ func redirectFeature(notify notifications.NotifyFunc, ingresses []networkingv1.I
 					portNumber := gatewayv1.PortNumber(port)
 					redirectFilterConfig.Port = &portNumber
 				} else {
-					notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s has invalid port in redirect URL %q: %v, skipping redirect",
-						ingress.Namespace, ingress.Name, redirectURL, err), ingress)
+					notify(notifications.ErrorNotification, fmt.Sprintf("Invalid port in redirect URL %q: %v, skipping redirect",
+						redirectURL, err), ingress)
 					continue
 				}
 			}
@@ -212,7 +212,7 @@ func redirectFeature(notify notifications.NotifyFunc, ingresses []networkingv1.I
 // The formula we follow is that if an ingress has certs configured, and it does not have the
 // "nginx.ingress.kubernetes.io/ssl-redirect" annotation set to "false" (or "0", etc), then we
 // enable SSL redirect for that host.
-func addDefaultSSLRedirect(notify notifications.NotifyFunc, pir *providerir.ProviderIR, eir *emitterir.EmitterIR) {
+func (p *Provider) addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR) {
 	for key, httpRouteContext := range pir.HTTPRoutes {
 		hasSecrets := false
 		enableRedirect := true
@@ -230,13 +230,7 @@ func addDefaultSSLRedirect(notify notifications.NotifyFunc, pir *providerir.Prov
 
 			// Check the ssl-redirect annotation.
 			if val, ok := ingress.Annotations[SSLRedirectAnnotation]; ok {
-				parsed, err := strconv.ParseBool(val)
-				if err != nil {
-					notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s has invalid ssl-redirect annotation %q: %v, skipping SSL redirect",
-						ingress.Namespace, ingress.Name, val, err), ingress)
-					continue
-				}
-				enableRedirect = parsed
+				enableRedirect, _ = strconv.ParseBool(val)
 			}
 		}
 

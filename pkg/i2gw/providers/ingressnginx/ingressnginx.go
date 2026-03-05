@@ -68,11 +68,11 @@ func (p *Provider) ToIR() (emitterir.EmitterIR, field.ErrorList) {
 	pIR, errs := p.resourcesToIRConverter.convert(p.notify, p.storage)
 	eIR := providerir.ToEmitterIR(pIR)
 	applyRewriteTargetToEmitterIR(p.storage.Ingresses.List(), pIR, &eIR)
-	applyIPRangeControlToEmitterIR(p.notify, pIR, &eIR)
-	applyTimeoutsToEmitterIR(p.notify, pIR, &eIR)
-	applyCorsToEmitterIR(p.notify, pIR, &eIR)
-	addDefaultSSLRedirect(p.notify, &pIR, &eIR)
-	applyBodySizeToEmitterIR(p.notify, pIR, &eIR)
+	p.applyIPRangeControlToEmitterIR(pIR, &eIR)
+	p.applyTimeoutsToEmitterIR(pIR, &eIR)
+	p.applyCorsToEmitterIR(pIR, &eIR)
+	p.addDefaultSSLRedirect(&pIR, &eIR)
+	p.applyBodySizeToEmitterIR(pIR, &eIR)
 	return eIR, errs
 }
 

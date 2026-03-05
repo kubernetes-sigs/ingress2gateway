@@ -159,7 +159,7 @@ func TestApplyCorsToEmitterIR(t *testing.T) {
 				HTTPRoute: route,
 			}
 
-			applyCorsToEmitterIR(notifications.NoopNotify, pIR, &eIR)
+			(&Provider{notify: notifications.NoopNotify}).applyCorsToEmitterIR(pIR, &eIR)
 
 			result := eIR.HTTPRoutes[key]
 			var cors *gatewayv1.HTTPCORSFilter
@@ -303,7 +303,7 @@ func TestCorsMaxAgeParsing(t *testing.T) {
 				HTTPRoute: route,
 			}
 
-			applyCorsToEmitterIR(notifications.NoopNotify, pIR, &eIR)
+			(&Provider{notify: notifications.NoopNotify}).applyCorsToEmitterIR(pIR, &eIR)
 
 			if eIR.HTTPRoutes[key].CorsPolicyByRuleIdx == nil || eIR.HTTPRoutes[key].CorsPolicyByRuleIdx[0] == nil {
 				t.Fatalf("Expected CORS policy, got nil")

@@ -108,7 +108,8 @@ func TestTimeoutFeature(t *testing.T) {
 
 			eir := providerir.ToEmitterIR(ir)
 
-			applyTimeoutsToEmitterIR(notifications.NoopNotify, ir, &eir)
+			p := &Provider{notify: notifications.NoopNotify}
+			p.applyTimeoutsToEmitterIR(ir, &eir)
 
 			// Timeout feature should populate IR, not mutate the HTTPRoute directly.
 			if got := ir.HTTPRoutes[key].HTTPRoute.Spec.Rules[0].Timeouts; got != nil {

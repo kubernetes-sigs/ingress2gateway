@@ -47,7 +47,7 @@ func parseIngressNginxTimeout(val string) (time.Duration, error) {
 
 // applyTimeoutsToEmitterIR is a temporary bridge until timeout parsing is integrated
 // into the generic feature parsing flow.
-func applyTimeoutsToEmitterIR(notify notifications.NotifyFunc, pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) {
+func (p *Provider) applyTimeoutsToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) {
 
 	for key, httpRouteContext := range pIR.HTTPRoutes {
 		eHTTPContext, ok := eIR.HTTPRoutes[key]
@@ -68,9 +68,9 @@ func applyTimeoutsToEmitterIR(notify notifications.NotifyFunc, pIR providerir.Pr
 				continue
 			}
 
-			connect := parseIngressNginxTimeoutAnnotation(notify, ingress, ProxyConnectTimeoutAnnotation)
-			read := parseIngressNginxTimeoutAnnotation(notify, ingress, ProxyReadTimeoutAnnotation)
-			write := parseIngressNginxTimeoutAnnotation(notify, ingress, ProxySendTimeoutAnnotation)
+			connect := p.parseIngressNginxTimeoutAnnotation(ingress, ProxyConnectTimeoutAnnotation)
+			read := p.parseIngressNginxTimeoutAnnotation(ingress, ProxyReadTimeoutAnnotation)
+			write := p.parseIngressNginxTimeoutAnnotation(ingress, ProxySendTimeoutAnnotation)
 			if connect == nil && read == nil && write == nil {
 				continue
 			}
@@ -81,7 +81,7 @@ func applyTimeoutsToEmitterIR(notify notifications.NotifyFunc, pIR providerir.Pr
 				Write:   write,
 			}
 
-			notify(
+			p.notify(
 				notifications.WarningNotification,
 				"ingress-nginx only supports TCP-level timeouts; i2gw has made a best-effort translation to Gateway API timeouts.request."+
 					" Please verify that this meets your needs. See documentation: https://gateway-api.sigs.k8s.io/guides/http-timeouts/",
@@ -92,15 +92,15 @@ func applyTimeoutsToEmitterIR(notify notifications.NotifyFunc, pIR providerir.Pr
 	}
 }
 
-func parseIngressNginxTimeoutAnnotation(notify notifications.NotifyFunc, ingress *networkingv1.Ingress, annotation string) *gatewayv1.Duration {
+func (p *Provider) parseIngressNginxTimeoutAnnotation(ingress *networkingv1.Ingress, annotation string) *gatewayv1.Duration {
 	val, ok := ingress.Annotations[annotation]
 	if !ok || val == "" {
 		return nil
 	}
 	d, err := parseIngressNginxTimeout(val)
 	if err != nil {
-		notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s has invalid timeout annotation %s=%q: %v, skipping timeout",
-			ingress.Namespace, ingress.Name, annotation, val, err), ingress)
+		p.notify(notifications.WarningNotification, fmt.Sprintf("Invalid timeout annotation %s=%q: %v, skipping timeout",
+			annotation, val, err), ingress)
 		return nil
 	}
 	gwDur := gatewayv1.Duration(d.String())

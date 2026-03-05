@@ -31,7 +31,7 @@ import (
 // applyCorsToEmitterIR parses CORS annotations and populates the EmitterIR.
 // It matches the pattern of applyRewriteTargetToEmitterIR by applying changes directly to EmitterIR
 // after the initial ProviderIR -> EmitterIR conversion.
-func applyCorsToEmitterIR(notify notifications.NotifyFunc, pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) {
+func (p *Provider) applyCorsToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) {
 	for key, pRouteCtx := range pIR.HTTPRoutes {
 		eRouteCtx, ok := eIR.HTTPRoutes[key]
 		if !ok {
@@ -141,8 +141,7 @@ func applyCorsToEmitterIR(notify notifications.NotifyFunc, pIR providerir.Provid
 				if val, err := strconv.ParseInt(maxAgeStr, 10, 32); err == nil {
 					maxAgeVal = int32(val)
 				} else {
-					notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s has invalid cors-max-age annotation %q, using default %d",
-						ing.Namespace, ing.Name, maxAgeStr, maxAgeVal), ing)
+					p.notify(notifications.ErrorNotification, fmt.Sprintf("Invalid cors-max-age annotation %q, using default %d", maxAgeStr, maxAgeVal), ing)
 				}
 			}
 

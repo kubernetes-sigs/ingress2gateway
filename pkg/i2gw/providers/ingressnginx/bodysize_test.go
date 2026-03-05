@@ -106,7 +106,8 @@ func TestApplyBodySizeToEmitterIR_SetMaxSize(t *testing.T) {
 	}
 	pIR, eIR := setupBodySizeTest(key, annotations)
 
-	applyBodySizeToEmitterIR(notifications.NoopNotify, pIR, &eIR)
+	p := &Provider{notify: notifications.NoopNotify}
+	p.applyBodySizeToEmitterIR(pIR, &eIR)
 
 	bodySizeIR := eIR.HTTPRoutes[key].BodySizeByRuleIdx[0]
 	if bodySizeIR == nil {
@@ -124,7 +125,8 @@ func TestApplyBodySizeToEmitterIR_SetBufferSize(t *testing.T) {
 	}
 	pIR, eIR := setupBodySizeTest(key, annotations)
 
-	applyBodySizeToEmitterIR(notifications.NoopNotify, pIR, &eIR)
+	p := &Provider{notify: notifications.NoopNotify}
+	p.applyBodySizeToEmitterIR(pIR, &eIR)
 
 	bodySizeIR := eIR.HTTPRoutes[key].BodySizeByRuleIdx[0]
 	if bodySizeIR == nil {
@@ -143,7 +145,8 @@ func TestApplyBodySizeToEmitterIR_SetMaxAndBufferSize(t *testing.T) {
 	}
 	pIR, eIR := setupBodySizeTest(key, annotations)
 
-	applyBodySizeToEmitterIR(notifications.NoopNotify, pIR, &eIR)
+	p := &Provider{notify: notifications.NoopNotify}
+	p.applyBodySizeToEmitterIR(pIR, &eIR)
 
 	bodySizeIR := eIR.HTTPRoutes[key].BodySizeByRuleIdx[0]
 	if bodySizeIR == nil {
