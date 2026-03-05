@@ -503,7 +503,6 @@ func Test_redirectFeature_emptyURL(t *testing.T) {
 					},
 				},
 			},
-
 		},
 	}
 

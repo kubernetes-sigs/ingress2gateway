@@ -39,7 +39,7 @@ type TLSTestSecret struct {
 	CACert []byte
 }
 
-func generateSelfSignedTLSSecret(name, namespace, commonName string, hosts []string) (*TLSTestSecret, error) {
+func generateSelfSignedTLSSecret(name, commonName string, hosts []string) (*TLSTestSecret, error) {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, fmt.Errorf("generating key: %w", err)
@@ -79,8 +79,7 @@ func generateSelfSignedTLSSecret(name, namespace, commonName string, hosts []str
 	return &TLSTestSecret{
 		Secret: &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
+				Name: name,
 			},
 			Type: corev1.SecretTypeTLS,
 			Data: map[string][]byte{
