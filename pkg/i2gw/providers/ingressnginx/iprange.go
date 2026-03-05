@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -90,15 +89,6 @@ func (p *Provider) applyIPRangeControlToEmitterIR(pIR providerir.ProviderIR, eIR
 				)
 			}
 			eRouteCtx.IPRangeControlByRuleIdx[ruleIdx] = ipRangeControl
-
-			if len(allowList) > 0 {
-				p.notify(notifications.InfoNotification, fmt.Sprintf("parsed whitelist-source-range annotation of ingress %s/%s: allowing CIDRs %s for HTTPRoute rule index %d",
-					ing.Namespace, ing.Name, strings.Join(allowList, ", "), ruleIdx), &eRouteCtx.HTTPRoute)
-			}
-			if len(denyList) > 0 {
-				p.notify(notifications.InfoNotification, fmt.Sprintf("parsed denylist-source-range annotation of ingress %s/%s: denying CIDRs %s for HTTPRoute rule index %d",
-					ing.Namespace, ing.Name, strings.Join(denyList, ", "), ruleIdx), &eRouteCtx.HTTPRoute)
-			}
 		}
 		eIR.HTTPRoutes[key] = eRouteCtx
 	}

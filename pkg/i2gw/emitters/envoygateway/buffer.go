@@ -62,12 +62,6 @@ func (e *Emitter) EmitBuffer(ir emitterir.EmitterIR, gwResources *i2gw.GatewayRe
 			backendTrafficPolicy.Spec.RequestBuffer = &egapiv1a1.RequestBuffer{
 				Limit: *bufferVal,
 			}
-
-			ruleInfo := ""
-			if sectionName != nil {
-				ruleInfo = fmt.Sprintf(" rule %s", *sectionName)
-			}
-			e.notify(notifications.InfoNotification, fmt.Sprintf("applied Buffer feature for HTTPRoute%s", ruleInfo), &ctx.HTTPRoute)
 		}
 
 		// mark Buffer IR as processed
