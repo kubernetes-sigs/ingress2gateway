@@ -18,24 +18,42 @@ package notifications
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 	"sync"
 
-	"github.com/olekukonko/tablewriter"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// ANSI color codes for terminal output.
+const (
+	colorReset        = "\033[0m"
+	colorRed          = "\033[31m"
+	colorYellow       = "\033[33m"
+	colorGray         = "\033[90m"
+	colorCyan         = "\033[36m"
+	colorBrightGreen  = "\033[92m"
+	colorBrightPurple = "\033[95m"
+)
+
+// Number of dash characters in the top border after the level label.
+const boxDashes = 40
 
 // Report collects user-facing notifications during a single conversion run. A nil *Report is safe
 // to use - calls to Add and Notifier become no-ops.
 type Report struct {
 	mu            sync.Mutex
 	notifications map[string][]Notification
+	noColor       bool
 }
 
-// NewReport creates a new Report and returns a pointer to it.
-func NewReport() *Report {
+// NewReport creates a new Report and returns a pointer to it. Set noColor to true to disable ANSI
+// color codes in the output.
+func NewReport(noColor bool) *Report {
 	return &Report{
 		notifications: make(map[string][]Notification),
+		noColor:       noColor,
 	}
 }
 
@@ -62,37 +80,82 @@ func (r *Report) Notifier(source string) NotifyFunc {
 	}
 }
 
-// Render returns human-readable tables grouped by source. Called once after conversion completes.
-// Returns nil when r is nil.
-func (r *Report) Render() map[string]string {
+// Render returns notifications as a single human-readable string of colored boxes. Called once
+// after conversion completes. Notifications are sorted by source name for deterministic output.
+// Returns "" when r is nil or there are no notifications.
+func (r *Report) Render() string {
 	if r == nil {
-		return nil
+		return ""
 	}
-
-	out := make(map[string]string)
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	for source, notifications := range r.notifications {
-		table := strings.Builder{}
+	sources := slices.Sorted(maps.Keys(r.notifications))
 
-		t := tablewriter.NewWriter(&table)
-		t.SetHeader([]string{"Message Type", "Notification", "Calling Object"})
-		t.SetColWidth(200)
-		t.SetRowLine(true)
-
-		for _, n := range notifications {
-			row := []string{string(n.Type), n.Message, objectsToStr(n.CallingObjects)}
-			t.Append(row)
+	// Returns the ANSI code, or "" when color is disabled.
+	c := func(code string) string {
+		if r.noColor {
+			return ""
 		}
-
-		fmt.Fprintf(&table, "Notifications from %s:\n", strings.ToUpper(source))
-		t.Render()
-		out[source] = table.String()
+		return code
 	}
 
-	return out
+	var buf strings.Builder
+
+	for _, source := range sources {
+		for _, n := range r.notifications[source] {
+			label, lcolor := levelLabel(n.Type)
+
+			// Top border with level.
+			fmt.Fprintf(&buf, "%s┌─ %s%s%s %s%s\n",
+				c(colorGray), c(lcolor), label, c(colorGray),
+				strings.Repeat("─", boxDashes), c(colorReset))
+
+			// Message.
+			fmt.Fprintf(&buf, "%s│%s  %s\n",
+				c(colorGray), c(colorReset), n.Message)
+
+			// Source attribute.
+			fmt.Fprintf(&buf, "%s│%s  %ssource:%s %s%s%s\n",
+				c(colorGray), c(colorReset),
+				c(colorGray), c(colorReset),
+				c(colorBrightPurple), strings.ToUpper(source), c(colorReset))
+
+			// Calling objects.
+			if len(n.CallingObjects) > 0 {
+				key := "object"
+				if len(n.CallingObjects) > 1 {
+					key = "objects"
+				}
+				fmt.Fprintf(&buf, "%s│%s  %s%s:%s %s%s%s\n",
+					c(colorGray), c(colorReset),
+					c(colorGray), key, c(colorReset),
+					c(colorBrightGreen), objectsToStr(n.CallingObjects), c(colorReset))
+			}
+
+			// Bottom border.
+			fmt.Fprintf(&buf, "%s└─%s\n",
+				c(colorGray), c(colorReset))
+		}
+	}
+
+	return buf.String()
+}
+
+// levelLabel returns a display label and its ANSI color for the given MessageType. Labels for
+// WARN and INFO include a trailing space so all labels are 5 characters wide.
+func levelLabel(mt MessageType) (string, string) {
+	switch mt {
+	case ErrorNotification:
+		return "ERROR", colorRed
+	case WarningNotification:
+		return "WARN ", colorYellow
+	case InfoNotification:
+		return "INFO ", colorCyan
+	default:
+		return "INFO ", colorCyan
+	}
 }
 
 // NotifyFunc is the signature for a scoped notification callback. Used by providers and emitters

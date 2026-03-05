@@ -2,8 +2,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   annotations:
-    gateway.networking.k8s.io/generator: ingress2gateway-dev
-  creationTimestamp: null
+    gateway.networking.k8s.io/generator: ingress2gateway-v0.5.0-rc1-53-g7c171dc
   name: nginx
   namespace: default
 spec:
@@ -19,18 +18,16 @@ spec:
     protocol: HTTPS
     tls:
       certificateRefs:
-      - group: null
-        kind: null
+      - group: ""
+        kind: Secret
         name: secure-example-com-tls
       mode: Terminate
-status: {}
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   annotations:
-    gateway.networking.k8s.io/generator: ingress2gateway-dev
-  creationTimestamp: null
+    gateway.networking.k8s.io/generator: ingress2gateway-v0.5.0-rc1-53-g7c171dc
   name: test-ssl-redirect-secure-example-com
   namespace: default
 spec:
@@ -52,5 +49,6 @@ spec:
     - path:
         type: PathPrefix
         value: /
+    name: rule-0
 status:
   parents: []

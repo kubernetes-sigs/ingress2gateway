@@ -150,16 +150,13 @@ func (pr *PrintRunner) PrintGatewayAPIObjects(cmd *cobra.Command, _ []string) er
 		}
 	}
 
-	gatewayResources, report, err = i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, inputReader, pr.providers, pr.emitter, pr.getProviderSpecificFlags(), pr.allowExperimentalGatewayAPI)
+	gatewayResources, report, err = i2gw.ToGatewayAPIResources(cmd.Context(), pr.namespaceFilter, inputReader, pr.providers, pr.emitter, pr.getProviderSpecificFlags(), pr.allowExperimentalGatewayAPI, noColor)
 
 	if err != nil {
 		return err
 	}
 
-	for _, table := range report.Render() {
-		fmt.Fprintln(os.Stderr, table)
-	}
-
+	fmt.Fprint(os.Stderr, report.Render())
 	pr.outputResult(gatewayResources)
 
 	return nil

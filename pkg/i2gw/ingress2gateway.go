@@ -39,7 +39,7 @@ const GeneratorAnnotationKey = "gateway.networking.k8s.io/generator"
 // Examples: "v0.4.0", "v0.4.0-5-gabcdef", "v0.4.0-5-gabcdef-dirty"
 var Version = "dev" // Default value if not built with linker flags
 
-func ToGatewayAPIResources(ctx context.Context, namespace string, reader io.Reader, providers []string, emitterName string, providerSpecificFlags map[string]map[string]string, allowExperimentalGatewayAPI bool) ([]GatewayResources, *notifications.Report, error) {
+func ToGatewayAPIResources(ctx context.Context, namespace string, reader io.Reader, providers []string, emitterName string, providerSpecificFlags map[string]map[string]string, allowExperimentalGatewayAPI bool, noColor bool) ([]GatewayResources, *notifications.Report, error) {
 	var clusterClient client.Client
 
 	if reader == nil {
@@ -55,7 +55,7 @@ func ToGatewayAPIResources(ctx context.Context, namespace string, reader io.Read
 		clusterClient = client.NewNamespacedClient(cl, namespace)
 	}
 
-	report := notifications.NewReport()
+	report := notifications.NewReport(noColor)
 
 	providerByName, err := constructProviders(&ProviderConf{
 		Client:                clusterClient,
