@@ -29,6 +29,7 @@ func applyTrailingSlashPathRedirectsToEmitterIR(pIR *providerir.ProviderIR, eir 
 	for key, routeCtx := range eir.HTTPRoutes {
 		rules := routeCtx.Spec.Rules
 		sourcePathAlreadyMatched := make(map[string]struct{})
+		var existingPrefixes []string
 		for _, rule := range rules {
 			for _, match := range rule.Matches {
 				if match.Path == nil || match.Path.Type == nil || match.Path.Value == nil {
@@ -37,10 +38,13 @@ func applyTrailingSlashPathRedirectsToEmitterIR(pIR *providerir.ProviderIR, eir 
 				if *match.Path.Type == gatewayv1.PathMatchExact || *match.Path.Type == gatewayv1.PathMatchPathPrefix {
 					sourcePathAlreadyMatched[*match.Path.Value] = struct{}{}
 				}
+				if *match.Path.Type == gatewayv1.PathMatchPathPrefix {
+					existingPrefixes = append(existingPrefixes, *match.Path.Value)
+				}
 			}
 		}
 
-		pRouteCtx := pIR.HTTPRoutes[key]
+		pRouteCtx, pRouteExists := pIR.HTTPRoutes[key]
 
 		redirectAdded := make(map[string]struct{})
 		for _, rule := range rules {
@@ -64,6 +68,9 @@ func applyTrailingSlashPathRedirectsToEmitterIR(pIR *providerir.ProviderIR, eir 
 					continue
 				}
 				if _, exists := sourcePathAlreadyMatched[redirectSource]; exists {
+					continue
+				}
+				if pathPrefixCoveredByAny(existingPrefixes, redirectSource) {
 					continue
 				}
 				if _, added := redirectAdded[redirectSource]; added {
@@ -96,13 +103,42 @@ func applyTrailingSlashPathRedirectsToEmitterIR(pIR *providerir.ProviderIR, eir 
 
 				// Keep ProviderIR RuleBackendSources in sync with the new rule.
 				// Redirect-only rules have no backends, so the source slice is empty.
-				pRouteCtx.RuleBackendSources = append(pRouteCtx.RuleBackendSources, []providerir.BackendSource{})
+				if pRouteExists {
+					pRouteCtx.RuleBackendSources = append(pRouteCtx.RuleBackendSources, []providerir.BackendSource{})
+				}
 
 				redirectAdded[redirectSource] = struct{}{}
 			}
 		}
 
 		eir.HTTPRoutes[key] = routeCtx
-		pIR.HTTPRoutes[key] = pRouteCtx
+		if pRouteExists {
+			pIR.HTTPRoutes[key] = pRouteCtx
+		}
 	}
+}
+
+// pathPrefixCoveredByAny returns true if any existing PathPrefix would match
+// the given path using Gateway API segment-based prefix matching semantics.
+func pathPrefixCoveredByAny(prefixes []string, path string) bool {
+	for _, prefix := range prefixes {
+		if pathPrefixCovers(prefix, path) {
+			return true
+		}
+	}
+	return false
+}
+
+// pathPrefixCovers returns true if a Gateway API PathPrefix match for prefix
+// would match path. Gateway API PathPrefix matching is segment-based:
+// PathPrefix "/a" matches "/a", "/a/", "/a/b" but NOT "/ab".
+func pathPrefixCovers(prefix, path string) bool {
+	if !strings.HasPrefix(path, prefix) {
+		return false
+	}
+	if len(path) == len(prefix) {
+		return true
+	}
+	// path is longer than prefix; check segment boundary
+	return prefix[len(prefix)-1] == '/' || path[len(prefix)] == '/'
 }
