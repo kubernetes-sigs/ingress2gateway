@@ -173,10 +173,10 @@ func RunTestCase(t *testing.T, tc *TestCase, deployProviders DeployProvidersFunc
 		require.NoError(t, r.Wait(), "resource installation failed: %s", r.Name)
 	}
 
-	cleanupDummyApp1, err := deployDummyApp(ctx, t, k8sClient, DummyAppName1, appNS, skipCleanup)
+	cleanupDummyApp1, err := deployDummyApp(ctx, t, k8sClient, DummyAppName1, appNS, skipCleanup, false)
 	require.NoError(t, err, "creating %s", DummyAppName1)
 	t.Cleanup(cleanupDummyApp1)
-	cleanupDummyApp2, err := deployDummyApp(ctx, t, k8sClient, DummyAppName2, appNS, skipCleanup)
+	cleanupDummyApp2, err := deployDummyApp(ctx, t, k8sClient, DummyAppName2, appNS, skipCleanup, false)
 	require.NoError(t, err, "creating %s", DummyAppName2)
 	t.Cleanup(cleanupDummyApp2)
 

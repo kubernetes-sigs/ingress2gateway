@@ -33,15 +33,22 @@ import (
 const (
 	image   = "registry.k8s.io/e2e-test-images/agnhost"
 	version = "2.39"
+	// just adding to test dummy app modifcations
+	backendServerSecret = "tls-backend-server-cert"
 )
 
+// public wrapper for testing
+func DeployDummyApp(ctx context.Context, l Logger, client *kubernetes.Clientset, name, namespace string, skipCleanup bool, useTLS bool) (func(), error) {
+	return deployDummyApp(ctx, l, client, name, namespace, skipCleanup, useTLS)
+}
+
 // Creates a dummy backend application for testing and returns a cleanup function.
-func deployDummyApp(ctx context.Context, l Logger, client *kubernetes.Clientset, name, namespace string, skipCleanup bool) (func(), error) {
-	if err := createDummyAppDeployment(ctx, l, client, name, namespace); err != nil {
+func deployDummyApp(ctx context.Context, l Logger, client *kubernetes.Clientset, name, namespace string, skipCleanup bool, useTLS bool) (func(), error) {
+	if err := createDummyAppDeployment(ctx, l, client, name, namespace, useTLS); err != nil {
 		return nil, fmt.Errorf("creating deployment: %w", err)
 	}
 
-	if err := createDummyAppService(ctx, client, name, namespace); err != nil {
+	if err := createDummyAppService(ctx, client, name, namespace, useTLS); err != nil {
 		return nil, fmt.Errorf("creating service: %w", err)
 	}
 
@@ -72,10 +79,26 @@ func deployDummyApp(ctx context.Context, l Logger, client *kubernetes.Clientset,
 	}, nil
 }
 
-func createDummyAppDeployment(ctx context.Context, l Logger, client *kubernetes.Clientset, name, namespace string) error {
+func createDummyAppDeployment(ctx context.Context, l Logger, client *kubernetes.Clientset, name, namespace string, useTLS bool) error {
 	labels := map[string]string{"app": name}
 
 	l.Logf("Creating dummy app %s", name)
+
+	containerArgs := []string{"netexec", "--http-port=8080"}
+	portname := "http"
+	if useTLS {
+		containerArgs = append(containerArgs,
+			"--tls-cert-file=/etc/tls/tls.crt",
+			"--tls-private-key-file=/etc/tls/tls.key",
+		)
+		portname = "https"
+	}
+
+	volumeMount := corev1.VolumeMount{
+		Name:      "tls-certs",
+		MountPath: "/etc/tls",
+		ReadOnly:  true,
+	}
 
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -95,10 +118,10 @@ func createDummyAppDeployment(ctx context.Context, l Logger, client *kubernetes.
 						{
 							Name:  name,
 							Image: fmt.Sprintf("%s:%s", image, version),
-							Args:  []string{"netexec", "--http-port=8080"},
+							Args:  containerArgs,
 							Ports: []corev1.ContainerPort{
 								{
-									Name:          "http",
+									Name:          portname,
 									ContainerPort: 8080,
 								},
 							},
@@ -109,6 +132,20 @@ func createDummyAppDeployment(ctx context.Context, l Logger, client *kubernetes.
 		},
 	}
 
+	if useTLS {
+		deployment.Spec.Template.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{volumeMount}
+		deployment.Spec.Template.Spec.Volumes = []corev1.Volume{
+			{
+				Name: "tls-certs",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: backendServerSecret,
+					},
+				},
+			},
+		}
+	}
+
 	if _, err := client.AppsV1().Deployments(namespace).Create(ctx, deployment, metav1.CreateOptions{}); err != nil {
 		return fmt.Errorf("creating deployment: %w", err)
 	}
@@ -116,7 +153,14 @@ func createDummyAppDeployment(ctx context.Context, l Logger, client *kubernetes.
 	return nil
 }
 
-func createDummyAppService(ctx context.Context, client *kubernetes.Clientset, name, namespace string) error {
+func createDummyAppService(ctx context.Context, client *kubernetes.Clientset, name, namespace string, useTLS bool) error {
+
+	servicePortName := "http"
+	var servicePort int32 = 80
+	if useTLS {
+		servicePortName = "https"
+		servicePort = 443
+	}
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -126,8 +170,8 @@ func createDummyAppService(ctx context.Context, client *kubernetes.Clientset, na
 			Selector: map[string]string{"app": name},
 			Ports: []corev1.ServicePort{
 				{
-					Name:       "http",
-					Port:       80,
+					Name:       servicePortName,
+					Port:       servicePort,
 					TargetPort: intstr.FromInt(8080),
 				},
 			},
@@ -158,136 +202,6 @@ func waitForDummyApp(ctx context.Context, l Logger, client *kubernetes.Clientset
 	})
 	if err != nil {
 		return fmt.Errorf("waiting for deployment: %w", err)
-	}
-
-	return nil
-}
-
-// deployDummyTLSApp deploys an agnhost netexec app that serves HTTPS using the provided TLS
-// secret. The secret must contain tls.crt and tls.key. The service exposes port 443 targeting
-// the container's HTTPS port (8443).
-func DeployDummyTLSApp(ctx context.Context, l Logger, client *kubernetes.Clientset, name, namespace, tlsSecretName string, skipCleanup bool) (func(), error) {
-	if err := createDummyTLSAppDeployment(ctx, l, client, name, namespace, tlsSecretName); err != nil {
-		return nil, fmt.Errorf("creating TLS deployment: %w", err)
-	}
-
-	if err := createDummyTLSAppService(ctx, client, name, namespace); err != nil {
-		return nil, fmt.Errorf("creating TLS service: %w", err)
-	}
-
-	if err := waitForDummyApp(ctx, l, client, name, namespace); err != nil {
-		return nil, fmt.Errorf("waiting for TLS dummy app: %w", err)
-	}
-
-	//nolint:contextcheck // Intentional background context in cleanup function
-	return func() {
-		if skipCleanup {
-			log.Printf("Skipping cleanup of TLS dummy app")
-			return
-		}
-
-		cleanupCtx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-		defer cancel()
-
-		log.Printf("Deleting TLS dummy app %s", name)
-		err := client.CoreV1().Services(namespace).Delete(cleanupCtx, name, metav1.DeleteOptions{})
-		if err != nil {
-			log.Printf("Deleting TLS service %s: %v", name, err)
-		}
-
-		err = client.AppsV1().Deployments(namespace).Delete(cleanupCtx, name, metav1.DeleteOptions{})
-		if err != nil {
-			log.Printf("Deleting TLS deployment %s: %v", name, err)
-		}
-	}, nil
-}
-
-func createDummyTLSAppDeployment(ctx context.Context, l Logger, client *kubernetes.Clientset, name, namespace, tlsSecretName string) error {
-	labels := map[string]string{"app": name}
-
-	l.Logf("Creating TLS dummy app %s", name)
-
-	deployment := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: labels,
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  name,
-							Image: fmt.Sprintf("%s:%s", image, version),
-							Args: []string{
-								"netexec",
-								"--http-port=8080",
-								"--tls-cert-file=/etc/tls/tls.crt",
-								"--tls-private-key-file=/etc/tls/tls.key",
-							},
-							Ports: []corev1.ContainerPort{
-								{
-									Name:          "https",
-									ContainerPort: 8080,
-								},
-							},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "tls-certs",
-									MountPath: "/etc/tls",
-									ReadOnly:  true,
-								},
-							},
-						},
-					},
-					Volumes: []corev1.Volume{
-						{
-							Name: "tls-certs",
-							VolumeSource: corev1.VolumeSource{
-								Secret: &corev1.SecretVolumeSource{
-									SecretName: tlsSecretName,
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	if _, err := client.AppsV1().Deployments(namespace).Create(ctx, deployment, metav1.CreateOptions{}); err != nil {
-		return fmt.Errorf("creating TLS deployment: %w", err)
-	}
-
-	return nil
-}
-
-func createDummyTLSAppService(ctx context.Context, client *kubernetes.Clientset, name, namespace string) error {
-	service := &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-		},
-		Spec: corev1.ServiceSpec{
-			Selector: map[string]string{"app": name},
-			Ports: []corev1.ServicePort{
-				{
-					Name:       "https",
-					Port:       443,
-					TargetPort: intstr.FromInt(8080),
-				},
-			},
-		},
-	}
-
-	if _, err := client.CoreV1().Services(namespace).Create(ctx, service, metav1.CreateOptions{}); err != nil {
-		return fmt.Errorf("creating TLS service: %w", err)
 	}
 
 	return nil

@@ -120,7 +120,7 @@ func backendTLSSetup(ingresses ...*networkingv1.Ingress) func(ctx context.Contex
 		})
 
 		// Deploy the TLS backend app.
-		cleanupApp, err := framework.DeployDummyTLSApp(ctx, t, client, backendTLSAppName, namespace, backendServerSecret, skipCleanup)
+		cleanupApp, err := framework.DeployDummyApp(ctx, t, client, backendTLSAppName, namespace, skipCleanup, true)
 		require.NoError(t, err, "deploying TLS backend app")
 		t.Cleanup(cleanupApp)
 	}
