@@ -17,12 +17,13 @@ limitations under the License.
 package ingressnginx
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
-	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -30,8 +31,7 @@ import (
 // applyCorsToEmitterIR parses CORS annotations and populates the EmitterIR.
 // It matches the pattern of applyRewriteTargetToEmitterIR by applying changes directly to EmitterIR
 // after the initial ProviderIR -> EmitterIR conversion.
-func applyCorsToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) field.ErrorList {
-	var errs field.ErrorList
+func (p *Provider) applyCorsToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) {
 	for key, pRouteCtx := range pIR.HTTPRoutes {
 		eRouteCtx, ok := eIR.HTTPRoutes[key]
 		if !ok {
@@ -141,7 +141,7 @@ func applyCorsToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) f
 				if val, err := strconv.ParseInt(maxAgeStr, 10, 32); err == nil {
 					maxAgeVal = int32(val)
 				} else {
-					errs = append(errs, field.Invalid(field.NewPath("metadata", "annotations", CorsMaxAgeAnnotation), maxAgeStr, "invalid cors-max-age value"))
+					p.notify(notifications.ErrorNotification, fmt.Sprintf("Invalid cors-max-age annotation %q, using default %d", maxAgeStr, maxAgeVal), ing)
 				}
 			}
 
@@ -151,5 +151,4 @@ func applyCorsToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) f
 		}
 		eIR.HTTPRoutes[key] = eRouteCtx
 	}
-	return errs
 }

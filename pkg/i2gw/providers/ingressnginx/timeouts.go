@@ -25,7 +25,6 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -48,8 +47,7 @@ func parseIngressNginxTimeout(val string) (time.Duration, error) {
 
 // applyTimeoutsToEmitterIR is a temporary bridge until timeout parsing is integrated
 // into the generic feature parsing flow.
-func applyTimeoutsToEmitterIR(notify notifications.NotifyFunc, pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) field.ErrorList {
-	var errList field.ErrorList
+func (p *Provider) applyTimeoutsToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) {
 
 	for key, httpRouteContext := range pIR.HTTPRoutes {
 		eHTTPContext, ok := eIR.HTTPRoutes[key]
@@ -70,9 +68,9 @@ func applyTimeoutsToEmitterIR(notify notifications.NotifyFunc, pIR providerir.Pr
 				continue
 			}
 
-			connect, _ := parseIngressNginxTimeoutAnnotation(ingress, ProxyConnectTimeoutAnnotation, &errList)
-			read, _ := parseIngressNginxTimeoutAnnotation(ingress, ProxyReadTimeoutAnnotation, &errList)
-			write, _ := parseIngressNginxTimeoutAnnotation(ingress, ProxySendTimeoutAnnotation, &errList)
+			connect := p.parseIngressNginxTimeoutAnnotation(ingress, ProxyConnectTimeoutAnnotation)
+			read := p.parseIngressNginxTimeoutAnnotation(ingress, ProxyReadTimeoutAnnotation)
+			write := p.parseIngressNginxTimeoutAnnotation(ingress, ProxySendTimeoutAnnotation)
 			if connect == nil && read == nil && write == nil {
 				continue
 			}
@@ -83,7 +81,7 @@ func applyTimeoutsToEmitterIR(notify notifications.NotifyFunc, pIR providerir.Pr
 				Write:   write,
 			}
 
-			notify(
+			p.notify(
 				notifications.WarningNotification,
 				"ingress-nginx only supports TCP-level timeouts; i2gw has made a best-effort translation to Gateway API timeouts.request."+
 					" Please verify that this meets your needs. See documentation: https://gateway-api.sigs.k8s.io/guides/http-timeouts/",
@@ -92,27 +90,19 @@ func applyTimeoutsToEmitterIR(notify notifications.NotifyFunc, pIR providerir.Pr
 
 		eIR.HTTPRoutes[key] = eHTTPContext
 	}
-
-	if len(errList) > 0 {
-		return errList
-	}
-	return nil
 }
 
-func parseIngressNginxTimeoutAnnotation(ingress *networkingv1.Ingress, annotation string, errList *field.ErrorList) (*gatewayv1.Duration, error) {
+func (p *Provider) parseIngressNginxTimeoutAnnotation(ingress *networkingv1.Ingress, annotation string) *gatewayv1.Duration {
 	val, ok := ingress.Annotations[annotation]
 	if !ok || val == "" {
-		return nil, nil
+		return nil
 	}
 	d, err := parseIngressNginxTimeout(val)
 	if err != nil {
-		*errList = append(*errList, field.Invalid(
-			field.NewPath("ingress", ingress.Namespace, ingress.Name, "metadata", "annotations").Key(annotation),
-			val,
-			fmt.Sprintf("invalid timeout: %v", err),
-		))
-		return nil, err
+		p.notify(notifications.WarningNotification, fmt.Sprintf("Invalid timeout annotation %s=%q: %v, skipping timeout",
+			annotation, val, err), ingress)
+		return nil
 	}
 	gwDur := gatewayv1.Duration(d.String())
-	return &gwDur, nil
+	return &gwDur
 }

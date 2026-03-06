@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -158,10 +159,7 @@ func TestApplyCorsToEmitterIR(t *testing.T) {
 				HTTPRoute: route,
 			}
 
-			errs := applyCorsToEmitterIR(pIR, &eIR)
-			if len(errs) > 0 {
-				t.Fatalf("Unexpected errors: %v", errs)
-			}
+			(&Provider{notify: notifications.NoopNotify}).applyCorsToEmitterIR(pIR, &eIR)
 
 			result := eIR.HTTPRoutes[key]
 			var cors *gatewayv1.HTTPCORSFilter
@@ -246,19 +244,17 @@ func TestCorsMaxAgeParsing(t *testing.T) {
 	testCases := []struct {
 		name          string
 		annotationVal string
-		expectedValid bool
 		expectedVal   int32
 	}{
 		{
 			name:          "valid integer",
 			annotationVal: "100",
-			expectedValid: true,
 			expectedVal:   100,
 		},
 		{
-			name:          "invalid value",
+			name:          "invalid value defaults to nginx default",
 			annotationVal: "invalid",
-			expectedValid: false,
+			expectedVal:   1728000,
 		},
 	}
 
@@ -307,23 +303,14 @@ func TestCorsMaxAgeParsing(t *testing.T) {
 				HTTPRoute: route,
 			}
 
-			errs := applyCorsToEmitterIR(pIR, &eIR)
+			(&Provider{notify: notifications.NoopNotify}).applyCorsToEmitterIR(pIR, &eIR)
 
-			if tc.expectedValid {
-				if len(errs) > 0 {
-					t.Fatalf("Unexpected errors: %v", errs)
-				}
-				if eIR.HTTPRoutes[key].CorsPolicyByRuleIdx == nil || eIR.HTTPRoutes[key].CorsPolicyByRuleIdx[0] == nil {
-					t.Fatalf("Expected CORS policy, got nil")
-				}
-				cors := eIR.HTTPRoutes[key].CorsPolicyByRuleIdx[0]
-				if cors.MaxAge != tc.expectedVal {
-					t.Errorf("Expected MaxAge %d, got %d", tc.expectedVal, cors.MaxAge)
-				}
-			} else {
-				if len(errs) == 0 {
-					t.Fatal("Expected error for invalid value, got none")
-				}
+			if eIR.HTTPRoutes[key].CorsPolicyByRuleIdx == nil || eIR.HTTPRoutes[key].CorsPolicyByRuleIdx[0] == nil {
+				t.Fatalf("Expected CORS policy, got nil")
+			}
+			cors := eIR.HTTPRoutes[key].CorsPolicyByRuleIdx[0]
+			if cors.MaxAge != tc.expectedVal {
+				t.Errorf("Expected MaxAge %d, got %d", tc.expectedVal, cors.MaxAge)
 			}
 		})
 	}

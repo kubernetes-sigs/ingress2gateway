@@ -17,7 +17,6 @@ limitations under the License.
 package ingressnginx
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -34,8 +33,6 @@ func Test_parseCanaryConfig(t *testing.T) {
 		name           string
 		ingress        networkingv1.Ingress
 		expectedConfig canaryConfig
-		expectError    bool
-		errorContains  string
 	}{
 		{
 			name: "actually get weights",
@@ -56,7 +53,6 @@ func Test_parseCanaryConfig(t *testing.T) {
 				weight:      50,
 				weightTotal: 100,
 			},
-			expectError: false,
 		},
 		{
 			name: "actually get weights with canary-weight",
@@ -74,7 +70,6 @@ func Test_parseCanaryConfig(t *testing.T) {
 				weight:      50,
 				weightTotal: 100,
 			},
-			expectError: false,
 		},
 		{
 			name: "assigns default weight total",
@@ -94,7 +89,6 @@ func Test_parseCanaryConfig(t *testing.T) {
 				weight:      50,
 				weightTotal: 100,
 			},
-			expectError: false,
 		},
 		{
 			name: "weight set to 0",
@@ -114,7 +108,6 @@ func Test_parseCanaryConfig(t *testing.T) {
 				weight:      0,
 				weightTotal: 100,
 			},
-			expectError: false,
 		},
 		{
 			name: "weight set to 100",
@@ -134,7 +127,6 @@ func Test_parseCanaryConfig(t *testing.T) {
 				weight:      100,
 				weightTotal: 100,
 			},
-			expectError: false,
 		},
 		{
 			name: "custom weight total",
@@ -155,7 +147,6 @@ func Test_parseCanaryConfig(t *testing.T) {
 				weight:      50,
 				weightTotal: 200,
 			},
-			expectError: false,
 		},
 		{
 			name: "no weight annotation defaults to 0",
@@ -174,10 +165,9 @@ func Test_parseCanaryConfig(t *testing.T) {
 				weight:      0,
 				weightTotal: 100,
 			},
-			expectError: false,
 		},
 		{
-			name: "errors on non integer weight",
+			name: "invalid non-integer weight defaults to 0",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
@@ -186,11 +176,14 @@ func Test_parseCanaryConfig(t *testing.T) {
 					},
 				},
 			},
-			expectError:   true,
-			errorContains: "invalid canary-weight annotation",
+			expectedConfig: canaryConfig{
+				isWeight:    false,
+				weight:      0,
+				weightTotal: 100,
+			},
 		},
 		{
-			name: "errors on non integer weight total",
+			name: "invalid non-integer weight total defaults to 100",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
@@ -199,11 +192,14 @@ func Test_parseCanaryConfig(t *testing.T) {
 					},
 				},
 			},
-			expectError:   true,
-			errorContains: "invalid canary-weight-total annotation",
+			expectedConfig: canaryConfig{
+				isWeight:    false,
+				weight:      0,
+				weightTotal: 100,
+			},
 		},
 		{
-			name: "errors on invalid weight string",
+			name: "invalid weight string defaults to 0",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
@@ -212,11 +208,14 @@ func Test_parseCanaryConfig(t *testing.T) {
 					},
 				},
 			},
-			expectError:   true,
-			errorContains: "invalid canary-weight annotation",
+			expectedConfig: canaryConfig{
+				isWeight:    false,
+				weight:      0,
+				weightTotal: 100,
+			},
 		},
 		{
-			name: "errors on invalid weight total string",
+			name: "invalid weight total string defaults to 100",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
@@ -225,11 +224,14 @@ func Test_parseCanaryConfig(t *testing.T) {
 					},
 				},
 			},
-			expectError:   true,
-			errorContains: "invalid canary-weight-total annotation",
+			expectedConfig: canaryConfig{
+				isWeight:    false,
+				weight:      0,
+				weightTotal: 100,
+			},
 		},
 		{
-			name: "errors on negative weight",
+			name: "negative weight defaults to 0",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
@@ -238,11 +240,14 @@ func Test_parseCanaryConfig(t *testing.T) {
 					},
 				},
 			},
-			expectError:   true,
-			errorContains: "canary-weight must be non-negative",
+			expectedConfig: canaryConfig{
+				isWeight:    false,
+				weight:      0,
+				weightTotal: 100,
+			},
 		},
 		{
-			name: "errors on zero weight total",
+			name: "zero weight total defaults to 100",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
@@ -251,11 +256,14 @@ func Test_parseCanaryConfig(t *testing.T) {
 					},
 				},
 			},
-			expectError:   true,
-			errorContains: "canary-weight-total must be positive",
+			expectedConfig: canaryConfig{
+				isWeight:    false,
+				weight:      0,
+				weightTotal: 100,
+			},
 		},
 		{
-			name: "errors on negative weight total",
+			name: "negative weight total defaults to 100",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
@@ -264,11 +272,14 @@ func Test_parseCanaryConfig(t *testing.T) {
 					},
 				},
 			},
-			expectError:   true,
-			errorContains: "canary-weight-total must be positive",
+			expectedConfig: canaryConfig{
+				isWeight:    false,
+				weight:      0,
+				weightTotal: 100,
+			},
 		},
 		{
-			name: "errors when weight exceeds total",
+			name: "weight exceeding total is capped",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: map[string]string{
@@ -278,8 +289,11 @@ func Test_parseCanaryConfig(t *testing.T) {
 					},
 				},
 			},
-			expectError:   true,
-			errorContains: "canary-weight (150) exceeds canary-weight-total (100)",
+			expectedConfig: canaryConfig{
+				isWeight:    true,
+				weight:      100,
+				weightTotal: 100,
+			},
 		},
 		{
 			name: "weight equal to total is valid",
@@ -300,7 +314,6 @@ func Test_parseCanaryConfig(t *testing.T) {
 				weight:      200,
 				weightTotal: 200,
 			},
-			expectError: false,
 		},
 		{
 			name: "parses canary-by-header",
@@ -320,7 +333,6 @@ func Test_parseCanaryConfig(t *testing.T) {
 				weight:      0,
 				weightTotal: 100,
 			},
-			expectError: false,
 		},
 		{
 			name: "parses canary-by-header with header value",
@@ -341,7 +353,6 @@ func Test_parseCanaryConfig(t *testing.T) {
 				weight:      0,
 				weightTotal: 100,
 			},
-			expectError: false,
 		},
 		{
 			name: "parses both weight and header",
@@ -363,7 +374,6 @@ func Test_parseCanaryConfig(t *testing.T) {
 				weight:      30,
 				weightTotal: 100,
 			},
-			expectError: false,
 		},
 		{
 			name: "header value without header name is still parsed",
@@ -383,27 +393,12 @@ func Test_parseCanaryConfig(t *testing.T) {
 				weight:      0,
 				weightTotal: 100,
 			},
-			expectError: false,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			config, err := parseCanaryConfig(notifications.NoopNotify, &tc.ingress)
-
-			if tc.expectError {
-				if err == nil {
-					t.Fatalf("expected error but got none")
-				}
-				if tc.errorContains != "" && !strings.Contains(err.Error(), tc.errorContains) {
-					t.Fatalf("expected error containing %q, got %q", tc.errorContains, err.Error())
-				}
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
+			config := parseCanaryConfig(notifications.NoopNotify, &tc.ingress)
 
 			if diff := cmp.Diff(config, tc.expectedConfig, cmp.AllowUnexported(canaryConfig{})); diff != "" {
 				t.Fatalf("parseCanaryConfig() mismatch (-want +got):\n%s", diff)

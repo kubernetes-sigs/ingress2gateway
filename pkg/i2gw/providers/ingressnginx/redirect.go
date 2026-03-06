@@ -43,7 +43,6 @@ import (
 // - temporal-redirect defaults to 302, supported custom codes: 301, 302, 303, 307
 // - permanent-redirect defaults to 301, supported custom codes: 301, 302, 303, 307, 308
 func redirectFeature(notify notifications.NotifyFunc, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
-	var errs field.ErrorList
 
 	// Iterate over all HTTPRoutes in the IR
 	for key, httpRouteContext := range ir.HTTPRoutes {
@@ -128,22 +127,16 @@ func redirectFeature(notify notifications.NotifyFunc, ingresses []networkingv1.I
 
 			// Validate that the redirect URL is not empty
 			if redirectURL == "" {
-				errs = append(errs, field.Invalid(
-					field.NewPath("ingress", ingress.Namespace, ingress.Name, "metadata", "annotations", annotationUsed),
-					redirectURL,
-					"redirect URL cannot be empty",
-				))
+				notify(notifications.ErrorNotification, fmt.Sprintf("Empty %s annotation, skipping redirect",
+					annotationUsed), ingress)
 				continue
 			}
 
 			// Parse the redirect URL
 			parsedURL, err := url.Parse(redirectURL)
 			if err != nil {
-				errs = append(errs, field.Invalid(
-					field.NewPath("ingress", ingress.Namespace, ingress.Name, "metadata", "annotations", annotationUsed),
-					redirectURL,
-					fmt.Sprintf("invalid redirect URL: %v", err),
-				))
+				notify(notifications.ErrorNotification, fmt.Sprintf("Invalid redirect URL in %s annotation: %v, skipping redirect",
+					annotationUsed, err), ingress)
 				continue
 			}
 
@@ -170,11 +163,8 @@ func redirectFeature(notify notifications.NotifyFunc, ingresses []networkingv1.I
 					portNumber := gatewayv1.PortNumber(port)
 					redirectFilterConfig.Port = &portNumber
 				} else {
-					errs = append(errs, field.Invalid(
-						field.NewPath("ingress", ingress.Namespace, ingress.Name, "metadata", "annotations", annotationUsed),
-						redirectURL,
-						fmt.Sprintf("invalid port in redirect URL: %v", err),
-					))
+					notify(notifications.ErrorNotification, fmt.Sprintf("Invalid port in redirect URL %q: %v, skipping redirect",
+						redirectURL, err), ingress)
 					continue
 				}
 			}
@@ -204,25 +194,20 @@ func redirectFeature(notify notifications.NotifyFunc, ingresses []networkingv1.I
 
 			// Clear backend refs as redirects don't route to backends
 			httpRouteContext.HTTPRoute.Spec.Rules[ruleIndex].BackendRefs = nil
-
-			notify(notifications.InfoNotification,
-				fmt.Sprintf("parsed %q annotation of ingress %s/%s with redirect to %q (status code: %d). ",
-					annotationUsed, ingress.Namespace, ingress.Name, redirectURL, statusCode),
-				&httpRouteContext.HTTPRoute)
 		}
 
 		// Save the updated context back to the IR
 		ir.HTTPRoutes[key] = httpRouteContext
 	}
 
-	return errs
+	return nil
 }
 
 // Ingress NGINX has some quirky behaviors around SSL redirect.
 // The formula we follow is that if an ingress has certs configured, and it does not have the
 // "nginx.ingress.kubernetes.io/ssl-redirect" annotation set to "false" (or "0", etc), then we
 // enable SSL redirect for that host.
-func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR) field.ErrorList {
+func (p *Provider) addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR) {
 	for key, httpRouteContext := range pir.HTTPRoutes {
 		hasSecrets := false
 		enableRedirect := true
@@ -240,15 +225,7 @@ func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR)
 
 			// Check the ssl-redirect annotation.
 			if val, ok := ingress.Annotations[SSLRedirectAnnotation]; ok {
-				parsed, err := strconv.ParseBool(val)
-				if err != nil {
-					return field.ErrorList{field.Invalid(
-						field.NewPath("ingress", ingress.Namespace, ingress.Name, "metadata", "annotations"),
-						ingress.Annotations,
-						fmt.Sprintf("failed to parse canary configuration: %v", err),
-					)}
-				}
-				enableRedirect = parsed
+				enableRedirect, _ = strconv.ParseBool(val)
 			}
 		}
 
@@ -298,7 +275,6 @@ func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR)
 		}
 		eir.HTTPRoutes[key] = eHTTPRouteContext
 	}
-	return nil
 }
 
 // isValidTemporalRedirectCode returns true if the code is in the intersection of
