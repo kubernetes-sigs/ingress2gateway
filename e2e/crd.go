@@ -36,11 +36,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
-const (
-	gatewayAPIVersion    = "v1.5.0"
-	gatewayAPIInstallURL = "https://github.com/kubernetes-sigs/gateway-api/releases/download/" + gatewayAPIVersion + "/experimental-install.yaml"
-)
-
 func deployCRDs(ctx context.Context, l logger, client *apiextensionsclientset.Clientset, url string, skipCleanup bool) (func(), error) {
 	l.Logf("Fetching manifests from %s", url)
 	yamlData, err := fetchManifests(ctx, l, url)
