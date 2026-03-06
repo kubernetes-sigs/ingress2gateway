@@ -54,7 +54,7 @@ func regexHosts(ingresses []networkingv1.Ingress) map[string]struct{} {
 
 // regexFeature converts ingress-nginx regex-driving annotations
 // to Gateway API HTTPRoute RegularExpression path match.
-func regexFeature(_ notifications.NotifyFunc, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func regexFeature(notify notifications.NotifyFunc, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 
 	hostsWithRegex := regexHosts(ingresses)
@@ -81,6 +81,7 @@ func regexFeature(_ notifications.NotifyFunc, ingresses []networkingv1.Ingress, 
 				}
 			}
 		}
+		notify(notifications.InfoNotification, "Using case-insensitive regex path matches. You may want to change this.", &httpRouteCtx.HTTPRoute)
 	}
 	return errs
 }

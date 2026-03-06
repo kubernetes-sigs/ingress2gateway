@@ -158,7 +158,7 @@ func (p *Provider) applyBodySizeToEmitterIR(pIR providerir.ProviderIR, eIR *emit
 				message := "Most Gateway API implementations have reasonable body size and buffering defaults"
 				paths := make([]*field.Path, len(parsedAnnotations))
 				for i, ann := range parsedAnnotations {
-					paths[i] = field.NewPath("ingress", ing.Namespace, ing.Name, "metadata", "annotations", ann)
+					paths[i] = field.NewPath(ing.Namespace, ing.Name, "metadata", "annotations", fmt.Sprintf("%q", ann))
 				}
 				bodySizeIR.Metadata = emitterir.NewExtensionFeatureMetadata(
 					source,

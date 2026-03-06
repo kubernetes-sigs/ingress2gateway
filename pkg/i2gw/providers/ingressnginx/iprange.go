@@ -73,14 +73,14 @@ func (p *Provider) applyIPRangeControlToEmitterIR(pIR providerir.ProviderIR, eIR
 				DenyList:  denyList,
 			}
 			{
-				source := fmt.Sprintf("%s/%s", ing.Namespace, ing.Name)
+				source := fmt.Sprintf("%s and %s from %s/%s", WhiteListSourceRangeAnnotation, DenyListSourceRangeAnnotation, ing.Namespace, ing.Name)
 				message := "IP-based authorization is not supported"
 				paths := make([]*field.Path, 0, 2)
 				if len(allowList) > 0 {
-					paths = append(paths, field.NewPath("ingress", ing.Namespace, ing.Name, "metadata", "annotations", WhiteListSourceRangeAnnotation))
+					paths = append(paths, field.NewPath(ing.Namespace, ing.Name, "metadata", "annotations", fmt.Sprintf("%q", WhiteListSourceRangeAnnotation)))
 				}
 				if len(denyList) > 0 {
-					paths = append(paths, field.NewPath("ingress", ing.Namespace, ing.Name, "metadata", "annotations", DenyListSourceRangeAnnotation))
+					paths = append(paths, field.NewPath(ing.Namespace, ing.Name, "metadata", "annotations", fmt.Sprintf("%q", DenyListSourceRangeAnnotation)))
 				}
 				ipRangeControl.Metadata = emitterir.NewExtensionFeatureMetadata(
 					source,
