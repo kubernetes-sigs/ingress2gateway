@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package framework
 
 import (
 	"context"
@@ -30,9 +30,10 @@ import (
 	"helm.sh/helm/v4/pkg/registry"
 )
 
-func installChart(
+// InstallChart installs a Helm chart with the given configuration.
+func InstallChart(
 	ctx context.Context,
-	log logger,
+	log Logger,
 	settings *cli.EnvSettings,
 	repoURL string,
 	releaseName string,
@@ -89,7 +90,8 @@ func installChart(
 	return nil
 }
 
-func uninstallChart(ctx context.Context, settings *cli.EnvSettings, releaseName, namespace string) error {
+// UninstallChart uninstalls a Helm release.
+func UninstallChart(ctx context.Context, settings *cli.EnvSettings, releaseName, namespace string) error {
 	// Helm's Uninstall action doesn't support context so we can only check before starting.
 	if err := ctx.Err(); err != nil {
 		return fmt.Errorf("context canceled before uninstall: %w", err)
@@ -120,7 +122,7 @@ func uninstallChart(ctx context.Context, settings *cli.EnvSettings, releaseName,
 
 func locateChart(
 	ctx context.Context,
-	log logger,
+	log Logger,
 	install *action.Install,
 	chartName string,
 	settings *cli.EnvSettings,
