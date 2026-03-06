@@ -19,6 +19,7 @@ package ingressnginx
 import (
 	"strings"
 
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -28,7 +29,7 @@ import (
 
 // createBackendTLSPolicies inspects ingresses for backend-protocol annotations
 // and creates BackendTLSPolicies if HTTPS or GRPCS is specified.
-func createBackendTLSPolicies(ingresses []networkingv1.Ingress, servicePorts map[types.NamespacedName]map[string]int32, _ *providerir.ProviderIR) field.ErrorList {
+func createBackendTLSPolicies(_ notifications.NotifyFunc, ingresses []networkingv1.Ingress, servicePorts map[types.NamespacedName]map[string]int32, _ *providerir.ProviderIR) field.ErrorList {
 	ruleGroups := common.GetRuleGroups(ingresses)
 	var errList field.ErrorList
 

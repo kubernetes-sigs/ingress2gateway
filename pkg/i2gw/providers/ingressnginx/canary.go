@@ -40,7 +40,7 @@ type canaryConfig struct {
 }
 
 // parseCanaryConfig extracts canary weight configuration from an Ingress
-func parseCanaryConfig(ingress *networkingv1.Ingress) (canaryConfig, error) {
+func parseCanaryConfig(notify notifications.NotifyFunc, ingress *networkingv1.Ingress) (canaryConfig, error) {
 	config := canaryConfig{
 		weight:      0,
 		weightTotal: 100, // default
@@ -112,7 +112,7 @@ func createHeaderMatchRule(header string, value string, existingMatches []gatewa
 	}
 }
 
-func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func canaryFeature(notify notifications.NotifyFunc, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	ruleGroups := common.GetRuleGroups(ingresses)
 	var errList field.ErrorList
 
@@ -126,7 +126,7 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 			for ruleIdx := 0; ruleIdx < len(httpRouteContext.HTTPRoute.Spec.Rules); ruleIdx++ {
 				backendSources := httpRouteContext.RuleBackendSources[ruleIdx]
 				existingMatches := httpRouteContext.HTTPRoute.Spec.Rules[ruleIdx].Matches
-				canaryWeight, nonCanaryWeight, config, canarySourceIngress, canaryBackendIdx, nonCanaryBackendIdx, parseErrs := getCanaryInfo(backendSources, "httproute", httpRouteContext.HTTPRoute.Name, ruleIdx)
+				canaryWeight, nonCanaryWeight, config, canarySourceIngress, canaryBackendIdx, nonCanaryBackendIdx, parseErrs := getCanaryInfo(notify, backendSources, "httproute", httpRouteContext.HTTPRoute.Name, ruleIdx)
 				errList = append(errList, parseErrs...)
 				if canaryBackendIdx != -1 && nonCanaryBackendIdx != -1 {
 					// Set weights if isWeight is true or both header and weight are not set (all traffic should go to non-canary)
@@ -199,7 +199,7 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 					continue
 				}
 
-				canaryWeight, nonCanaryWeight, config, canarySourceIngress, canaryBackendIdx, nonCanaryBackendIdx, parseErrs := getCanaryInfo(backendSources, "grpcroute", grpcRouteContext.GRPCRoute.Name, ruleIdx)
+				canaryWeight, nonCanaryWeight, config, canarySourceIngress, canaryBackendIdx, nonCanaryBackendIdx, parseErrs := getCanaryInfo(notify, backendSources, "grpcroute", grpcRouteContext.GRPCRoute.Name, ruleIdx)
 				errList = append(errList, parseErrs...)
 				if canaryBackendIdx != -1 && nonCanaryBackendIdx != -1 {
 					grpcRouteContext.GRPCRoute.Spec.Rules[ruleIdx].BackendRefs[canaryBackendIdx].Weight = &canaryWeight
@@ -214,7 +214,7 @@ func canaryFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]
 	return errList
 }
 
-func getCanaryInfo(backendSources []providerir.BackendSource, routeType, routeName string, ruleIdx int) (int32, int32, canaryConfig, *networkingv1.Ingress, int, int, field.ErrorList) {
+func getCanaryInfo(notify notifications.NotifyFunc, backendSources []providerir.BackendSource, routeType, routeName string, ruleIdx int) (int32, int32, canaryConfig, *networkingv1.Ingress, int, int, field.ErrorList) {
 	var errList field.ErrorList
 	canaryBackendIdx := -1
 	nonCanaryBackendIdx := -1
@@ -236,7 +236,7 @@ func getCanaryInfo(backendSources []providerir.BackendSource, routeType, routeNa
 				continue
 			}
 
-			parsedConfig, err := parseCanaryConfig(source.Ingress)
+			parsedConfig, err := parseCanaryConfig(notify, source.Ingress)
 			if err != nil {
 				errList = append(errList, field.Invalid(
 					field.NewPath("ingress", source.Ingress.Namespace, source.Ingress.Name, "metadata", "annotations"),

@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -108,7 +109,7 @@ func TestTimeoutFeature(t *testing.T) {
 
 			eir := providerir.ToEmitterIR(ir)
 
-			errs := applyTimeoutsToEmitterIR(ir, &eir)
+			errs := applyTimeoutsToEmitterIR(notifications.NoopNotify, ir, &eir)
 			if tc.wantErr {
 				if len(errs) == 0 {
 					t.Fatalf("expected error")

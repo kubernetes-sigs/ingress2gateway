@@ -42,7 +42,7 @@ import (
 // Intersecting with ingress-nginx's valid ranges:
 // - temporal-redirect defaults to 302, supported custom codes: 301, 302, 303, 307
 // - permanent-redirect defaults to 301, supported custom codes: 301, 302, 303, 307, 308
-func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func redirectFeature(notify notifications.NotifyFunc, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	var errs field.ErrorList
 
 	// Iterate over all HTTPRoutes in the IR
@@ -224,13 +224,8 @@ func redirectFeature(ingresses []networkingv1.Ingress, _ map[types.NamespacedNam
 // has TLS configured, the cert applies to the entire server block and ssl-redirect defaults to
 // true for all locations. A rule only skips the redirect if its source ingress explicitly sets
 // "nginx.ingress.kubernetes.io/ssl-redirect" to "false".
-func addDefaultSSLRedirect(ingresses []networkingv1.Ingress, pir *providerir.ProviderIR, eir *emitterir.EmitterIR) field.ErrorList {
-	// Build a set of hostnames that have TLS configured
-	// In ingress-nginx, TLS is merged at the server/hostname level, so a cert
-	// from any ingress makes ssl-redirect apply to all paths on that host.
-	// When a TLS entry specifies Hosts, only those hosts get TLS from that entry.
-	// When a TLS entry has no Hosts (catch-all cert), all rule hosts on that
-	// ingress get TLS.
+func addDefaultSSLRedirect(ingresses []networkingv1.Ingress, pir *providerir.ProviderIR, eir *emitterir.EmitterIR) {
+	// Find hosts with TLS enabled
 	hostsWithTLS := make(map[string]struct{})
 	for _, ing := range ingresses {
 		for _, tls := range ing.Spec.TLS {
@@ -256,6 +251,7 @@ func addDefaultSSLRedirect(ingresses []networkingv1.Ingress, pir *providerir.Pro
 		}
 
 		hostHasTLS := false
+		// There should only be one hostname.
 		for _, hostname := range httpRouteContext.HTTPRoute.Spec.Hostnames {
 			if _, ok := hostsWithTLS[string(hostname)]; ok {
 				hostHasTLS = true
@@ -267,8 +263,8 @@ func addDefaultSSLRedirect(ingresses []networkingv1.Ingress, pir *providerir.Pro
 			continue
 		}
 
-		var redirectRules []gatewayv1.HTTPRouteRule
-		var nonRedirectRules []gatewayv1.HTTPRouteRule
+		var httpRules []gatewayv1.HTTPRouteRule
+		hasRedirect := false
 		for ruleIdx, sources := range httpRouteContext.RuleBackendSources {
 			ingress := getNonCanaryIngress(sources)
 			if ingress == nil {
@@ -289,6 +285,7 @@ func addDefaultSSLRedirect(ingresses []networkingv1.Ingress, pir *providerir.Pro
 			}
 
 			if enableRedirect {
+				hasRedirect = true
 				rule := gatewayv1.HTTPRouteRule{
 					Matches: eRouteCtx.Spec.Rules[ruleIdx].DeepCopy().Matches,
 					Filters: []gatewayv1.HTTPRouteFilter{
@@ -301,25 +298,26 @@ func addDefaultSSLRedirect(ingresses []networkingv1.Ingress, pir *providerir.Pro
 						},
 					},
 				}
-				redirectRules = append(redirectRules, rule)
+				httpRules = append(httpRules, rule)
 			} else {
-				nonRedirectRules = append(nonRedirectRules, *eRouteCtx.Spec.Rules[ruleIdx].DeepCopy())
+				httpRules = append(httpRules, *eRouteCtx.Spec.Rules[ruleIdx].DeepCopy())
 			}
 		}
 
-		if len(redirectRules) == 0 {
+		if !hasRedirect {
 			continue
 		}
 
+		// Might have non redirect rules too.
 		redirectRoute := gatewayv1.HTTPRoute{
 			TypeMeta: httpRouteContext.HTTPRoute.TypeMeta,
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("%s-ssl-redirect", httpRouteContext.HTTPRoute.Name),
+				Name:      fmt.Sprintf("%s-http", httpRouteContext.HTTPRoute.Name),
 				Namespace: httpRouteContext.HTTPRoute.Namespace,
 			},
 			Spec: gatewayv1.HTTPRouteSpec{
 				Hostnames: httpRouteContext.HTTPRoute.Spec.DeepCopy().Hostnames,
-				Rules:     redirectRules,
+				Rules:     httpRules,
 			},
 		}
 		// add parentrefs
@@ -341,33 +339,7 @@ func addDefaultSSLRedirect(ingresses []networkingv1.Ingress, pir *providerir.Pro
 		}
 		eir.HTTPRoutes[key] = eRouteCtx
 
-		// If some rules don't redirect, they still need to be reachable on port 80.
-		// Create a passthrough route on port 80 for those paths.
-		if len(nonRedirectRules) > 0 {
-			httpRoute := gatewayv1.HTTPRoute{
-				TypeMeta: httpRouteContext.HTTPRoute.TypeMeta,
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      fmt.Sprintf("%s-http", httpRouteContext.HTTPRoute.Name),
-					Namespace: httpRouteContext.HTTPRoute.Namespace,
-				},
-				Spec: gatewayv1.HTTPRouteSpec{
-					Hostnames: httpRouteContext.HTTPRoute.Spec.DeepCopy().Hostnames,
-					Rules:     nonRedirectRules,
-				},
-			}
-			httpRoute.Spec.ParentRefs = httpRouteContext.HTTPRoute.Spec.DeepCopy().ParentRefs
-			for i := range httpRoute.Spec.ParentRefs {
-				httpRoute.Spec.ParentRefs[i].Port = ptr.To[int32](80)
-			}
-			eir.HTTPRoutes[types.NamespacedName{
-				Namespace: httpRoute.Namespace,
-				Name:      httpRoute.Name,
-			}] = emitterir.HTTPRouteContext{
-				HTTPRoute: httpRoute,
-			}
-		}
 	}
-	return nil
 }
 
 // isValidTemporalRedirectCode returns true if the code is in the intersection of

@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -368,7 +369,7 @@ func Test_redirectFeature(t *testing.T) {
 			}
 
 			// Call the feature parser
-			errs := redirectFeature([]networkingv1.Ingress{tt.ingress}, nil, &ir)
+			errs := redirectFeature(notifications.NoopNotify, []networkingv1.Ingress{tt.ingress}, nil, &ir)
 
 			// Check error expectations
 			if tt.expectError && len(errs) == 0 {
@@ -527,7 +528,7 @@ func Test_redirectFeature_emptyURL(t *testing.T) {
 		},
 	}
 
-	errs := redirectFeature([]networkingv1.Ingress{ingress}, nil, &ir)
+	errs := redirectFeature(notifications.NoopNotify, []networkingv1.Ingress{ingress}, nil, &ir)
 
 	if len(errs) == 0 {
 		t.Errorf("Expected error for empty redirect URL")
@@ -578,7 +579,7 @@ func TestAddDefaultSSLRedirect_enabled(t *testing.T) {
 
 	addDefaultSSLRedirect([]networkingv1.Ingress{ing}, &pIR, &eIR)
 
-	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-ssl-redirect"}
+	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
 	redirectCtx, ok := eIR.HTTPRoutes[redirectKey]
 	if !ok {
 		t.Fatalf("expected redirect route %v to be added", redirectKey)
@@ -649,7 +650,7 @@ func TestAddDefaultSSLRedirect_disabledByAnnotation(t *testing.T) {
 
 	addDefaultSSLRedirect([]networkingv1.Ingress{ing}, &pIR, &eIR)
 
-	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-ssl-redirect"}
+	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
 	if _, ok := eIR.HTTPRoutes[redirectKey]; ok {
 		t.Fatalf("did not expect redirect route %v to be added", redirectKey)
 	}
@@ -727,35 +728,30 @@ func TestAddDefaultSSLRedirect_conflictingAnnotations(t *testing.T) {
 
 	addDefaultSSLRedirect([]networkingv1.Ingress{ingEnabled, ingDisabled}, &pIR, &eIR)
 
-	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-ssl-redirect"}
-	redirectCtx, ok := eIR.HTTPRoutes[redirectKey]
-	if !ok {
-		t.Fatalf("expected redirect route %v to be created for the enabled rule", redirectKey)
-	}
-
-	// Only one redirect rule (for /a), not two.
-	if len(redirectCtx.Spec.Rules) != 1 {
-		t.Fatalf("expected 1 redirect rule, got %d", len(redirectCtx.Spec.Rules))
-	}
-
-	if len(redirectCtx.Spec.Rules[0].Matches) != 1 || *redirectCtx.Spec.Rules[0].Matches[0].Path.Value != "/a" {
-		t.Fatalf("expected redirect rule to match /a, got %#v", redirectCtx.Spec.Rules[0].Matches)
-	}
-
-	// A passthrough route should be created on port 80 for /b.
 	httpKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
 	httpCtx, ok := eIR.HTTPRoutes[httpKey]
 	if !ok {
-		t.Fatalf("expected passthrough route %v to be created for non-redirect paths", httpKey)
+		t.Fatalf("expected http route %v to be created", httpKey)
 	}
-	if len(httpCtx.Spec.Rules) != 1 {
-		t.Fatalf("expected 1 passthrough rule, got %d", len(httpCtx.Spec.Rules))
+
+	// Consolidated route: redirect rule for /a, passthrough rule for /b
+	if len(httpCtx.Spec.Rules) != 2 {
+		t.Fatalf("expected 2 rules, got %d", len(httpCtx.Spec.Rules))
 	}
-	if len(httpCtx.Spec.Rules[0].Matches) != 1 || *httpCtx.Spec.Rules[0].Matches[0].Path.Value != "/b" {
-		t.Fatalf("expected passthrough rule to match /b, got %#v", httpCtx.Spec.Rules[0].Matches)
+	if *httpCtx.Spec.Rules[0].Matches[0].Path.Value != "/a" {
+		t.Fatalf("expected first rule to match /a, got %s", *httpCtx.Spec.Rules[0].Matches[0].Path.Value)
+	}
+	if len(httpCtx.Spec.Rules[0].Filters) != 1 || httpCtx.Spec.Rules[0].Filters[0].Type != gatewayv1.HTTPRouteFilterRequestRedirect {
+		t.Fatalf("expected first rule to have redirect filter")
+	}
+	if *httpCtx.Spec.Rules[1].Matches[0].Path.Value != "/b" {
+		t.Fatalf("expected second rule to match /b, got %s", *httpCtx.Spec.Rules[1].Matches[0].Path.Value)
+	}
+	if len(httpCtx.Spec.Rules[1].Filters) != 0 {
+		t.Fatalf("expected second rule to have no filters (passthrough)")
 	}
 	if len(httpCtx.Spec.ParentRefs) != 1 || httpCtx.Spec.ParentRefs[0].Port == nil || *httpCtx.Spec.ParentRefs[0].Port != 80 {
-		t.Fatalf("expected passthrough route parentRef port 80, got %#v", httpCtx.Spec.ParentRefs)
+		t.Fatalf("expected http route parentRef port 80, got %#v", httpCtx.Spec.ParentRefs)
 	}
 
 	origCtx := eIR.HTTPRoutes[key]
@@ -824,14 +820,9 @@ func TestAddDefaultSSLRedirect_allRulesDisabled(t *testing.T) {
 
 	addDefaultSSLRedirect([]networkingv1.Ingress{ingDisabledA, ingDisabledB}, &pIR, &eIR)
 
-	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-ssl-redirect"}
-	if _, ok := eIR.HTTPRoutes[redirectKey]; ok {
-		t.Fatalf("did not expect redirect route when all rules have ssl-redirect=false")
-	}
-
 	httpKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
 	if _, ok := eIR.HTTPRoutes[httpKey]; ok {
-		t.Fatalf("did not expect passthrough route when no redirect rules exist")
+		t.Fatalf("did not expect http route when all rules have ssl-redirect=false")
 	}
 
 	origCtx := eIR.HTTPRoutes[key]
@@ -903,33 +894,23 @@ func TestAddDefaultSSLRedirect_threeRulesMixed(t *testing.T) {
 
 	addDefaultSSLRedirect([]networkingv1.Ingress{ingEnabled, ingDisabled}, &pIR, &eIR)
 
-	// Redirect route should have 2 rules (/a and /c)
-	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-ssl-redirect"}
-	redirectCtx, ok := eIR.HTTPRoutes[redirectKey]
-	if !ok {
-		t.Fatalf("expected redirect route %v to be created", redirectKey)
-	}
-	if len(redirectCtx.Spec.Rules) != 2 {
-		t.Fatalf("expected 2 redirect rules, got %d", len(redirectCtx.Spec.Rules))
-	}
-	if *redirectCtx.Spec.Rules[0].Matches[0].Path.Value != "/a" {
-		t.Fatalf("expected first redirect rule to match /a, got %s", *redirectCtx.Spec.Rules[0].Matches[0].Path.Value)
-	}
-	if *redirectCtx.Spec.Rules[1].Matches[0].Path.Value != "/c" {
-		t.Fatalf("expected second redirect rule to match /c, got %s", *redirectCtx.Spec.Rules[1].Matches[0].Path.Value)
-	}
-
-	// Passthrough route should have 1 rule (/b)
+	// Consolidated: /a (redirect), /b (passthrough), /c (redirect) — in iteration order
 	httpKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
 	httpCtx, ok := eIR.HTTPRoutes[httpKey]
 	if !ok {
-		t.Fatalf("expected passthrough route %v to be created", httpKey)
+		t.Fatalf("expected http route %v to be created", httpKey)
 	}
-	if len(httpCtx.Spec.Rules) != 1 {
-		t.Fatalf("expected 1 passthrough rule, got %d", len(httpCtx.Spec.Rules))
+	if len(httpCtx.Spec.Rules) != 3 {
+		t.Fatalf("expected 3 rules, got %d", len(httpCtx.Spec.Rules))
 	}
-	if *httpCtx.Spec.Rules[0].Matches[0].Path.Value != "/b" {
-		t.Fatalf("expected passthrough rule to match /b, got %s", *httpCtx.Spec.Rules[0].Matches[0].Path.Value)
+	if *httpCtx.Spec.Rules[0].Matches[0].Path.Value != "/a" {
+		t.Fatalf("expected first rule to match /a, got %s", *httpCtx.Spec.Rules[0].Matches[0].Path.Value)
+	}
+	if *httpCtx.Spec.Rules[1].Matches[0].Path.Value != "/b" {
+		t.Fatalf("expected second rule (passthrough) to match /b, got %s", *httpCtx.Spec.Rules[1].Matches[0].Path.Value)
+	}
+	if *httpCtx.Spec.Rules[2].Matches[0].Path.Value != "/c" {
+		t.Fatalf("expected third rule to match /c, got %s", *httpCtx.Spec.Rules[2].Matches[0].Path.Value)
 	}
 }
 
@@ -998,7 +979,7 @@ func TestAddDefaultSSLRedirect_canarySourceIgnored(t *testing.T) {
 
 	addDefaultSSLRedirect([]networkingv1.Ingress{ingPrimary, ingCanary}, &pIR, &eIR)
 
-	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-ssl-redirect"}
+	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
 	if _, ok := eIR.HTTPRoutes[redirectKey]; ok {
 		t.Fatalf("did not expect redirect route — primary ingress has ssl-redirect=false, canary should be ignored")
 	}
@@ -1046,7 +1027,7 @@ func TestAddDefaultSSLRedirect_multipleParentRefs(t *testing.T) {
 
 	addDefaultSSLRedirect([]networkingv1.Ingress{ing}, &pIR, &eIR)
 
-	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-ssl-redirect"}
+	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
 	redirectCtx, ok := eIR.HTTPRoutes[redirectKey]
 	if !ok {
 		t.Fatalf("expected redirect route to be created")
@@ -1135,7 +1116,7 @@ func TestAddDefaultSSLRedirect_mixedTLSAndNoTLSRules(t *testing.T) {
 
 	// Both /a and /b should get redirects because the hostname has TLS
 	// (from ingWithTLS), matching ingress-nginx's hostname-level TLS merging.
-	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-ssl-redirect"}
+	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
 	redirectCtx, ok := eIR.HTTPRoutes[redirectKey]
 	if !ok {
 		t.Fatalf("expected redirect route for hostname with TLS")
@@ -1186,7 +1167,7 @@ func TestAddDefaultSSLRedirect_noTLS(t *testing.T) {
 
 	addDefaultSSLRedirect([]networkingv1.Ingress{ing}, &pIR, &eIR)
 
-	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-ssl-redirect"}
+	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
 	if _, ok := eIR.HTTPRoutes[redirectKey]; ok {
 		t.Fatalf("did not expect redirect route %v to be added", redirectKey)
 	}
@@ -1258,30 +1239,20 @@ func TestAddDefaultSSLRedirect_crossIngressTLSWithOptOut(t *testing.T) {
 
 	addDefaultSSLRedirect([]networkingv1.Ingress{ingWithTLS, ingNoTLSOptOut}, &pIR, &eIR)
 
-	// /a should redirect (TLS ingress, default enabled)
-	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-ssl-redirect"}
-	redirectCtx, ok := eIR.HTTPRoutes[redirectKey]
-	if !ok {
-		t.Fatalf("expected redirect route to be created")
-	}
-	if len(redirectCtx.Spec.Rules) != 1 {
-		t.Fatalf("expected 1 redirect rule, got %d", len(redirectCtx.Spec.Rules))
-	}
-	if *redirectCtx.Spec.Rules[0].Matches[0].Path.Value != "/a" {
-		t.Fatalf("expected redirect rule to match /a, got %s", *redirectCtx.Spec.Rules[0].Matches[0].Path.Value)
-	}
-
-	// /b should be a passthrough on port 80 (explicit ssl-redirect=false)
+	// Consolidated: /a redirect + /b passthrough in one route
 	httpKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
 	httpCtx, ok := eIR.HTTPRoutes[httpKey]
 	if !ok {
-		t.Fatalf("expected passthrough route for /b")
+		t.Fatalf("expected http route to be created")
 	}
-	if len(httpCtx.Spec.Rules) != 1 {
-		t.Fatalf("expected 1 passthrough rule, got %d", len(httpCtx.Spec.Rules))
+	if len(httpCtx.Spec.Rules) != 2 {
+		t.Fatalf("expected 2 rules, got %d", len(httpCtx.Spec.Rules))
 	}
-	if *httpCtx.Spec.Rules[0].Matches[0].Path.Value != "/b" {
-		t.Fatalf("expected passthrough rule to match /b, got %s", *httpCtx.Spec.Rules[0].Matches[0].Path.Value)
+	if *httpCtx.Spec.Rules[0].Matches[0].Path.Value != "/a" {
+		t.Fatalf("expected first rule to match /a, got %s", *httpCtx.Spec.Rules[0].Matches[0].Path.Value)
+	}
+	if *httpCtx.Spec.Rules[1].Matches[0].Path.Value != "/b" {
+		t.Fatalf("expected second rule (passthrough) to match /b, got %s", *httpCtx.Spec.Rules[1].Matches[0].Path.Value)
 	}
 }
 
@@ -1355,33 +1326,23 @@ func TestAddDefaultSSLRedirect_crossIngressTLSThreeWayMixed(t *testing.T) {
 
 	addDefaultSSLRedirect([]networkingv1.Ingress{ingWithTLS, ingNoTLSOptOut, ingNoTLSDefault}, &pIR, &eIR)
 
-	// /a and /c should redirect; /b should not (explicit opt-out)
-	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-ssl-redirect"}
-	redirectCtx, ok := eIR.HTTPRoutes[redirectKey]
-	if !ok {
-		t.Fatalf("expected redirect route to be created")
-	}
-	if len(redirectCtx.Spec.Rules) != 2 {
-		t.Fatalf("expected 2 redirect rules, got %d", len(redirectCtx.Spec.Rules))
-	}
-	if *redirectCtx.Spec.Rules[0].Matches[0].Path.Value != "/a" {
-		t.Fatalf("expected first redirect rule to match /a, got %s", *redirectCtx.Spec.Rules[0].Matches[0].Path.Value)
-	}
-	if *redirectCtx.Spec.Rules[1].Matches[0].Path.Value != "/c" {
-		t.Fatalf("expected second redirect rule to match /c, got %s", *redirectCtx.Spec.Rules[1].Matches[0].Path.Value)
-	}
-
-	// /b should be a passthrough on port 80
+	// Consolidated: /a (redirect), /b (passthrough), /c (redirect) — in iteration order
 	httpKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
 	httpCtx, ok := eIR.HTTPRoutes[httpKey]
 	if !ok {
-		t.Fatalf("expected passthrough route for /b")
+		t.Fatalf("expected http route to be created")
 	}
-	if len(httpCtx.Spec.Rules) != 1 {
-		t.Fatalf("expected 1 passthrough rule, got %d", len(httpCtx.Spec.Rules))
+	if len(httpCtx.Spec.Rules) != 3 {
+		t.Fatalf("expected 3 rules, got %d", len(httpCtx.Spec.Rules))
 	}
-	if *httpCtx.Spec.Rules[0].Matches[0].Path.Value != "/b" {
-		t.Fatalf("expected passthrough rule to match /b, got %s", *httpCtx.Spec.Rules[0].Matches[0].Path.Value)
+	if *httpCtx.Spec.Rules[0].Matches[0].Path.Value != "/a" {
+		t.Fatalf("expected first rule to match /a, got %s", *httpCtx.Spec.Rules[0].Matches[0].Path.Value)
+	}
+	if *httpCtx.Spec.Rules[1].Matches[0].Path.Value != "/b" {
+		t.Fatalf("expected second rule (passthrough) to match /b, got %s", *httpCtx.Spec.Rules[1].Matches[0].Path.Value)
+	}
+	if *httpCtx.Spec.Rules[2].Matches[0].Path.Value != "/c" {
+		t.Fatalf("expected third rule to match /c, got %s", *httpCtx.Spec.Rules[2].Matches[0].Path.Value)
 	}
 }
 
@@ -1435,15 +1396,10 @@ func TestAddDefaultSSLRedirect_allIngressesNoTLS(t *testing.T) {
 
 	addDefaultSSLRedirect([]networkingv1.Ingress{ingA, ingB}, &pIR, &eIR)
 
-	// No ingress has TLS, so no redirect should happen at all
-	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-ssl-redirect"}
-	if _, ok := eIR.HTTPRoutes[redirectKey]; ok {
-		t.Fatalf("did not expect redirect route when no ingress has TLS")
-	}
-
+	// No ingress has TLS, so no http route should be created
 	httpKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
 	if _, ok := eIR.HTTPRoutes[httpKey]; ok {
-		t.Fatalf("did not expect passthrough route when no ingress has TLS")
+		t.Fatalf("did not expect http route when no ingress has TLS")
 	}
 
 	origCtx := eIR.HTTPRoutes[key]

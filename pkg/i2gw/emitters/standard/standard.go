@@ -20,23 +20,30 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/utils"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
+
+const emitterName = "standard_emitter"
 
 func init() {
 	i2gw.EmitterConstructorByName["standard"] = NewEmitter
 }
 
-type Emitter struct{}
+type Emitter struct {
+	notify notifications.NotifyFunc
+}
 
 // Emitter is the standard emitter that converts the intermediate representation
 // to Gateway API resources without any provider-specific modifications.
-func NewEmitter(_ *i2gw.EmitterConf) i2gw.Emitter {
-	return &Emitter{}
+func NewEmitter(conf *i2gw.EmitterConf) i2gw.Emitter {
+	return &Emitter{
+		notify: conf.Report.Notifier(emitterName),
+	}
 }
 
 // Emit converts the provider intermediate representation to Gateway API resources.
 func (e *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.ErrorList) {
-	utils.LogUnparsedErrors(ir, notify)
+	utils.LogUnparsedErrors(ir, e.notify)
 	return utils.ToGatewayResources(ir)
 }

@@ -26,6 +26,9 @@ import (
 // kubeconfig indicates kubeconfig file location.
 var kubeconfig string
 
+// noColor disables ANSI color codes in the output.
+var noColor bool
+
 func newRootCmd() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "ingress2gateway",
@@ -37,6 +40,8 @@ func newRootCmd() *cobra.Command {
 
 	rootCmd.PersistentFlags().StringVar(&kubeconfig, "kubeconfig", "",
 		`The kubeconfig file to use when talking to the cluster. If the flag is not set, a set of standard locations can be searched for an existing kubeconfig file.`)
+	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false,
+		`Disable ANSI color codes in the output.`)
 	return rootCmd
 }
 
