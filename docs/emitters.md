@@ -21,6 +21,16 @@ The common emitter will output `EmitterIR`.
 
 Implementation-specific Emitters will read the `EmitterIR` from the common emitter and output Gateway API resources along with implementation-specific resources.
 Both providers and emitters MUST log any information that is lost in translation.
+
+## Available emitters
+
+You can list supported emitters via the CLI help (or by running the tool with `--help`). Example:
+
+```bash
+go run . print --help
+```
+
+The `agentgateway` emitter emits resources compatible with the Agent Gateway implementation (see `pkg/i2gw/emitters/agentgateway`).
 Ideally, when there is new IR and an emitter does not implement it, ingress2gateway should automatically emit notifications.
 
 Note that the emitters MAY modify the Gateway API resources as needed.
