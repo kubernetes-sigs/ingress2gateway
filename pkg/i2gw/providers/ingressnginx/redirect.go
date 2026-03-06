@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
+	"strings"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
@@ -218,65 +219,128 @@ func redirectFeature(notify notifications.NotifyFunc, ingresses []networkingv1.I
 	return errs
 }
 
-// Ingress NGINX has some quirky behaviors around SSL redirect.
-// The formula we follow is that if an ingress has certs configured, and it does not have the
-// "nginx.ingress.kubernetes.io/ssl-redirect" annotation set to "false" (or "0", etc), then we
-// enable SSL redirect for that host.
-func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR) field.ErrorList {
-	for key, httpRouteContext := range pir.HTTPRoutes {
-		hasSecrets := false
-		enableRedirect := true
+// addSSLAndTrailingSlashRedirects adds HTTP→HTTPS redirect routes and trailing slash
+// redirect rules to match ingress-nginx behavior.
+//
+// SSL redirect: In ingress-nginx, TLS is merged at the hostname/server level — if any
+// ingress on a hostname has TLS configured, the cert applies to the entire server block
+// and ssl-redirect defaults to true for all locations. A rule only skips the redirect if
+// its source ingress explicitly sets "nginx.ingress.kubernetes.io/ssl-redirect" to "false".
+//
+// Trailing slash redirect: NGINX implicitly redirects /path to /path/ with 301 when a
+// location /path/ {} block exists. On the HTTP (port 80) side, trailing slash redirects
+// are combined with the SSL upgrade into a single hop (301 to https://host/path/) to
+// avoid unnecessary intermediate redirects.
+func addSSLAndTrailingSlashRedirects(ingresses []networkingv1.Ingress, pir *providerir.ProviderIR, eir *emitterir.EmitterIR) {
+	// Find hosts with TLS enabled
+	hostsWithTLS := make(map[string]struct{})
+	for _, ing := range ingresses {
+		for _, tls := range ing.Spec.TLS {
+			if len(tls.Hosts) > 0 {
+				for _, host := range tls.Hosts {
+					hostsWithTLS[host] = struct{}{}
+				}
+			} else {
+				for _, rule := range ing.Spec.Rules {
+					if rule.Host != "" {
+						hostsWithTLS[rule.Host] = struct{}{}
+					}
+				}
+				break
+			}
+		}
+	}
 
-		for _, sources := range httpRouteContext.RuleBackendSources {
+	for key, httpRouteContext := range pir.HTTPRoutes {
+		eRouteCtx, ok := eir.HTTPRoutes[key]
+		if !ok {
+			continue
+		}
+
+		// Compute trailing slash redirect rules for this route.
+		trailingSlashRules := buildTrailingSlashRedirectRules(eRouteCtx.Spec.Rules)
+
+		// Add trailing slash rules to the main route (HTTPS side, or the only route if no TLS).
+		eRouteCtx.Spec.Rules = append(eRouteCtx.Spec.Rules, trailingSlashRules...)
+
+		hostHasTLS := false
+		for _, hostname := range httpRouteContext.HTTPRoute.Spec.Hostnames {
+			if _, ok := hostsWithTLS[string(hostname)]; ok {
+				hostHasTLS = true
+				break
+			}
+		}
+
+		if !hostHasTLS {
+			eir.HTTPRoutes[key] = eRouteCtx
+			continue
+		}
+
+		// Build HTTP (port 80) rules: per-rule SSL redirect or pass-through.
+		var httpRules []gatewayv1.HTTPRouteRule
+		hasRedirect := false
+		for ruleIdx, sources := range httpRouteContext.RuleBackendSources {
 			ingress := getNonCanaryIngress(sources)
 			if ingress == nil {
 				continue
 			}
 
-			// Check if the ingress has TLS secrets.
-			if len(ingress.Spec.TLS) > 0 {
-				hasSecrets = true
+			if ruleIdx >= len(eRouteCtx.Spec.Rules) {
+				continue
 			}
 
-			// Check the ssl-redirect annotation.
+			enableRedirect := true
 			if val, ok := ingress.Annotations[SSLRedirectAnnotation]; ok {
 				parsed, err := strconv.ParseBool(val)
 				if err != nil {
-					return field.ErrorList{field.Invalid(
-						field.NewPath("ingress", ingress.Namespace, ingress.Name, "metadata", "annotations"),
-						ingress.Annotations,
-						fmt.Sprintf("failed to parse canary configuration: %v", err),
-					)}
+					parsed = true
 				}
 				enableRedirect = parsed
 			}
+
+			if enableRedirect {
+				hasRedirect = true
+				rule := gatewayv1.HTTPRouteRule{
+					Matches: eRouteCtx.Spec.Rules[ruleIdx].DeepCopy().Matches,
+					Filters: []gatewayv1.HTTPRouteFilter{
+						{
+							Type: gatewayv1.HTTPRouteFilterRequestRedirect,
+							RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
+								Scheme:     ptr.To("https"),
+								StatusCode: ptr.To(308),
+							},
+						},
+					},
+				}
+				httpRules = append(httpRules, rule)
+			} else {
+				httpRules = append(httpRules, *eRouteCtx.Spec.Rules[ruleIdx].DeepCopy())
+			}
 		}
 
-		if !hasSecrets || !enableRedirect {
+		if !hasRedirect {
+			eir.HTTPRoutes[key] = eRouteCtx
 			continue
+		}
+
+		// For the HTTP route, combine trailing slash + SSL upgrade into single-hop
+		// redirects: http://host/path -> 301 https://host/path/
+		// Ingress nginx does http://host/path -> http://host/path/ -> https://host/path -> https://host/path/
+		for _, tsRule := range trailingSlashRules {
+			combinedRule := *tsRule.DeepCopy()
+			combinedRule.Filters[0].RequestRedirect.Scheme = ptr.To("https")
+			httpRules = append(httpRules, combinedRule)
 		}
 
 		redirectRoute := gatewayv1.HTTPRoute{
 			TypeMeta: httpRouteContext.HTTPRoute.TypeMeta,
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("%s-ssl-redirect", httpRouteContext.HTTPRoute.Name),
+				Name:      fmt.Sprintf("%s-http", httpRouteContext.HTTPRoute.Name),
 				Namespace: httpRouteContext.HTTPRoute.Namespace,
 			},
 			Spec: gatewayv1.HTTPRouteSpec{
 				Hostnames: httpRouteContext.HTTPRoute.Spec.DeepCopy().Hostnames,
-				Rules: []gatewayv1.HTTPRouteRule{
-					{
-						Filters: []gatewayv1.HTTPRouteFilter{
-							{
-								Type: gatewayv1.HTTPRouteFilterRequestRedirect,
-								RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
-									Scheme:     ptr.To("https"),
-									StatusCode: ptr.To(308),
-								},
-							},
-						},
-					},
-				},
+				Rules:     httpRules,
 			},
 		}
 		// add parentrefs
@@ -291,14 +355,13 @@ func addDefaultSSLRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR)
 		}] = emitterir.HTTPRouteContext{
 			HTTPRoute: redirectRoute,
 		}
-		// bind this to port 443
-		eHTTPRouteContext := eir.HTTPRoutes[key]
-		for i := range eHTTPRouteContext.Spec.ParentRefs {
-			eHTTPRouteContext.Spec.ParentRefs[i].Port = ptr.To[int32](443)
+
+		// bind original route to port 443
+		for i := range eRouteCtx.Spec.ParentRefs {
+			eRouteCtx.Spec.ParentRefs[i].Port = ptr.To[int32](443)
 		}
-		eir.HTTPRoutes[key] = eHTTPRouteContext
+		eir.HTTPRoutes[key] = eRouteCtx
 	}
-	return nil
 }
 
 // isValidTemporalRedirectCode returns true if the code is in the intersection of
@@ -323,4 +386,113 @@ func isValidPermanentRedirectCode(code int) bool {
 	default:
 		return false
 	}
+}
+
+// buildTrailingSlashRedirectRules generates HTTPRouteRules that redirect /path
+// to /path/ with a 301, matching NGINX's implicit trailing slash behavior.
+// Rules are only generated when a trailing-slash path exists in the input and
+// no existing rule already covers the non-slash variant.
+func buildTrailingSlashRedirectRules(rules []gatewayv1.HTTPRouteRule) []gatewayv1.HTTPRouteRule {
+	sourcePathAlreadyMatched := make(map[string]struct{})
+	var existingPrefixes []string
+	for _, rule := range rules {
+		for _, match := range rule.Matches {
+			if match.Path == nil || match.Path.Type == nil || match.Path.Value == nil {
+				continue
+			}
+			if *match.Path.Type == gatewayv1.PathMatchExact || *match.Path.Type == gatewayv1.PathMatchPathPrefix {
+				sourcePathAlreadyMatched[*match.Path.Value] = struct{}{}
+			}
+			if *match.Path.Type == gatewayv1.PathMatchPathPrefix {
+				existingPrefixes = append(existingPrefixes, *match.Path.Value)
+			}
+		}
+	}
+
+	var redirectRules []gatewayv1.HTTPRouteRule
+	redirectAdded := make(map[string]struct{})
+	for _, rule := range rules {
+		for _, match := range rule.Matches {
+			if match.Path == nil || match.Path.Type == nil || match.Path.Value == nil {
+				continue
+			}
+
+			matchType := *match.Path.Type
+			if matchType != gatewayv1.PathMatchExact && matchType != gatewayv1.PathMatchPathPrefix {
+				continue
+			}
+
+			redirectTarget := *match.Path.Value
+			if redirectTarget == "/" || !strings.HasSuffix(redirectTarget, "/") {
+				continue
+			}
+
+			redirectSource := strings.TrimSuffix(redirectTarget, "/")
+			if redirectSource == "" {
+				continue
+			}
+			if _, exists := sourcePathAlreadyMatched[redirectSource]; exists {
+				continue
+			}
+			if pathPrefixCoveredByAny(existingPrefixes, redirectSource) {
+				continue
+			}
+			if _, added := redirectAdded[redirectSource]; added {
+				continue
+			}
+
+			exact := gatewayv1.PathMatchExact
+			redirectRules = append(redirectRules, gatewayv1.HTTPRouteRule{
+				Matches: []gatewayv1.HTTPRouteMatch{
+					{
+						Path: &gatewayv1.HTTPPathMatch{
+							Type:  &exact,
+							Value: ptr.To(redirectSource),
+						},
+					},
+				},
+				Filters: []gatewayv1.HTTPRouteFilter{
+					{
+						Type: gatewayv1.HTTPRouteFilterRequestRedirect,
+						RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
+							StatusCode: ptr.To(301),
+							Path: &gatewayv1.HTTPPathModifier{
+								Type:            gatewayv1.FullPathHTTPPathModifier,
+								ReplaceFullPath: ptr.To(redirectTarget),
+							},
+						},
+					},
+				},
+			})
+
+			redirectAdded[redirectSource] = struct{}{}
+		}
+	}
+
+	return redirectRules
+}
+
+// pathPrefixCoveredByAny returns true if any existing PathPrefix would match
+// the given path using Gateway API segment-based prefix matching semantics.
+func pathPrefixCoveredByAny(prefixes []string, path string) bool {
+	for _, prefix := range prefixes {
+		if pathPrefixCovers(prefix, path) {
+			return true
+		}
+	}
+	return false
+}
+
+// pathPrefixCovers returns true if a Gateway API PathPrefix match for prefix
+// would match path. Gateway API PathPrefix matching is segment-based:
+// PathPrefix "/a" matches "/a", "/a/", "/a/b" but NOT "/ab".
+func pathPrefixCovers(prefix, path string) bool {
+	if !strings.HasPrefix(path, prefix) {
+		return false
+	}
+	if len(path) == len(prefix) {
+		return true
+	}
+	// path is longer than prefix; check segment boundary
+	return prefix[len(prefix)-1] == '/' || path[len(prefix)] == '/'
 }
