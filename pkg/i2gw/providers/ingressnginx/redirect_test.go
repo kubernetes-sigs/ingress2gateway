@@ -548,7 +548,7 @@ func TestAddDefaultSSLRedirect_enabled(t *testing.T) {
 			},
 		},
 		Spec: networkingv1.IngressSpec{
-			TLS: []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
+			TLS:   []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
 			Rules: []networkingv1.IngressRule{{Host: "example.com"}},
 		},
 	}
@@ -622,7 +622,7 @@ func TestAddDefaultSSLRedirect_disabledByAnnotation(t *testing.T) {
 			},
 		},
 		Spec: networkingv1.IngressSpec{
-			TLS: []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
+			TLS:   []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
 			Rules: []networkingv1.IngressRule{{Host: "example.com"}},
 		},
 	}
@@ -677,7 +677,7 @@ func TestAddDefaultSSLRedirect_conflictingAnnotations(t *testing.T) {
 			},
 		},
 		Spec: networkingv1.IngressSpec{
-			TLS: []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
+			TLS:   []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
 			Rules: []networkingv1.IngressRule{{Host: "example.com"}},
 		},
 	}
@@ -691,7 +691,7 @@ func TestAddDefaultSSLRedirect_conflictingAnnotations(t *testing.T) {
 			},
 		},
 		Spec: networkingv1.IngressSpec{
-			TLS: []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
+			TLS:   []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
 			Rules: []networkingv1.IngressRule{{Host: "example.com"}},
 		},
 	}
@@ -772,7 +772,7 @@ func TestAddDefaultSSLRedirect_allRulesDisabled(t *testing.T) {
 			},
 		},
 		Spec: networkingv1.IngressSpec{
-			TLS: []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
+			TLS:   []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
 			Rules: []networkingv1.IngressRule{{Host: "example.com"}},
 		},
 	}
@@ -785,7 +785,7 @@ func TestAddDefaultSSLRedirect_allRulesDisabled(t *testing.T) {
 			},
 		},
 		Spec: networkingv1.IngressSpec{
-			TLS: []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
+			TLS:   []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
 			Rules: []networkingv1.IngressRule{{Host: "example.com"}},
 		},
 	}
@@ -842,7 +842,7 @@ func TestAddDefaultSSLRedirect_threeRulesMixed(t *testing.T) {
 			Annotations: map[string]string{},
 		},
 		Spec: networkingv1.IngressSpec{
-			TLS: []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
+			TLS:   []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
 			Rules: []networkingv1.IngressRule{{Host: "example.com"}},
 		},
 	}
@@ -855,7 +855,7 @@ func TestAddDefaultSSLRedirect_threeRulesMixed(t *testing.T) {
 			},
 		},
 		Spec: networkingv1.IngressSpec{
-			TLS: []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
+			TLS:   []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
 			Rules: []networkingv1.IngressRule{{Host: "example.com"}},
 		},
 	}
@@ -927,7 +927,7 @@ func TestAddDefaultSSLRedirect_canarySourceIgnored(t *testing.T) {
 			},
 		},
 		Spec: networkingv1.IngressSpec{
-			TLS: []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
+			TLS:   []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
 			Rules: []networkingv1.IngressRule{{Host: "example.com"}},
 		},
 	}
@@ -943,7 +943,7 @@ func TestAddDefaultSSLRedirect_canarySourceIgnored(t *testing.T) {
 			},
 		},
 		Spec: networkingv1.IngressSpec{
-			TLS: []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
+			TLS:   []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
 			Rules: []networkingv1.IngressRule{{Host: "example.com"}},
 		},
 	}
@@ -995,7 +995,7 @@ func TestAddDefaultSSLRedirect_multipleParentRefs(t *testing.T) {
 			Annotations: map[string]string{},
 		},
 		Spec: networkingv1.IngressSpec{
-			TLS: []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
+			TLS:   []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
 			Rules: []networkingv1.IngressRule{{Host: "example.com"}},
 		},
 	}
@@ -1066,7 +1066,7 @@ func TestAddDefaultSSLRedirect_mixedTLSAndNoTLSRules(t *testing.T) {
 			Annotations: map[string]string{},
 		},
 		Spec: networkingv1.IngressSpec{
-			TLS: []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
+			TLS:   []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
 			Rules: []networkingv1.IngressRule{{Host: "example.com"}},
 		},
 	}
@@ -1191,7 +1191,7 @@ func TestAddDefaultSSLRedirect_crossIngressTLSWithOptOut(t *testing.T) {
 			Annotations: map[string]string{},
 		},
 		Spec: networkingv1.IngressSpec{
-			TLS: []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
+			TLS:   []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
 			Rules: []networkingv1.IngressRule{{Host: "example.com"}},
 		},
 	}
@@ -1267,7 +1267,7 @@ func TestAddDefaultSSLRedirect_crossIngressTLSThreeWayMixed(t *testing.T) {
 			Annotations: map[string]string{},
 		},
 		Spec: networkingv1.IngressSpec{
-			TLS: []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
+			TLS:   []networkingv1.IngressTLS{{SecretName: "secret", Hosts: []string{"example.com"}}},
 			Rules: []networkingv1.IngressRule{{Host: "example.com"}},
 		},
 	}
