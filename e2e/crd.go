@@ -36,16 +36,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
-const (
-	gatewayAPIVersion    = "v1.5.0"
-	gatewayAPIInstallURL = "https://github.com/kubernetes-sigs/gateway-api/releases/download/" + gatewayAPIVersion + "/experimental-install.yaml"
-)
-
-func deployCRDs(ctx context.Context, l logger, client *apiextensionsclientset.Clientset, skipCleanup bool) (func(), error) {
-	l.Logf("Fetching manifests from %s", gatewayAPIInstallURL)
-	yamlData, err := fetchManifests(ctx, l)
+func deployCRDs(ctx context.Context, l logger, client *apiextensionsclientset.Clientset, url string, skipCleanup bool) (func(), error) {
+	l.Logf("Fetching manifests from %s", url)
+	yamlData, err := fetchManifests(ctx, l, url)
 	if err != nil {
-		return nil, fmt.Errorf("fetching manifests from %s: %w", gatewayAPIInstallURL, err)
+		return nil, fmt.Errorf("fetching manifests from %s: %w", url, err)
 	}
 
 	crds, err := decodeCRDs(yamlData)
@@ -118,13 +113,13 @@ func decodeCRDs(yamlData []byte) ([]apiextensionsv1.CustomResourceDefinition, er
 	return out, nil
 }
 
-func fetchManifests(ctx context.Context, log logger) ([]byte, error) {
+func fetchManifests(ctx context.Context, log logger, url string) ([]byte, error) {
 	return retryWithData(ctx, log, defaultRetryConfig(),
 		func(attempt, maxAttempts int, err error) string {
 			return fmt.Sprintf("Fetching manifests (attempt %d/%d): %v", attempt, maxAttempts, err)
 		},
 		func() ([]byte, error) {
-			req, err := http.NewRequestWithContext(ctx, http.MethodGet, gatewayAPIInstallURL, nil)
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 			if err != nil {
 				return nil, fmt.Errorf("creating request: %w", err)
 			}

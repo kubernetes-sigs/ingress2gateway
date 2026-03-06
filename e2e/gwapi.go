@@ -32,6 +32,11 @@ import (
 	gwclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 )
 
+const (
+	gatewayAPIVersion    = "v1.5.0"
+	gatewayAPIInstallURL = "https://github.com/kubernetes-sigs/gateway-api/releases/download/" + gatewayAPIVersion + "/experimental-install.yaml"
+)
+
 func createGatewayResources(
 	ctx context.Context,
 	l logger,

@@ -38,6 +38,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -112,7 +113,7 @@ func runTestCase(t *testing.T, tc *testCase) {
 	t.Cleanup(cleanupNS)
 
 	crdResource := globalResourceManager.acquire("gateway-api-crds", func() (cleanupFunc, error) {
-		return deployCRDs(ctx, t, apiextensionsClient, skipCleanup)
+		return deployCRDs(ctx, t, apiextensionsClient, gatewayAPIInstallURL, skipCleanup)
 	})
 	t.Cleanup(func() {
 		<-crdResource.cleanup()
@@ -120,7 +121,7 @@ func runTestCase(t *testing.T, tc *testCase) {
 	require.NoError(t, crdResource.wait(), "Gateway API CRDs installation failed")
 
 	providers := deployProviders(ctx, t, k8sClient, kubeconfig, tc.providers, tc.gatewayImplementation, skipCleanup)
-	gwImpl := deployGatewayImplementation(ctx, t, k8sClient, gwClient, kubeconfig, tc.gatewayImplementation, skipCleanup)
+	gwImpl := deployGatewayImplementation(ctx, t, k8sClient, apiextensionsClient, gwClient, kubeconfig, tc.gatewayImplementation, skipCleanup)
 
 	resources := append(providers, gwImpl)
 
@@ -269,6 +270,7 @@ func deployGatewayImplementation(
 	ctx context.Context,
 	t *testing.T,
 	k8sClient *kubernetes.Clientset,
+	apiextClient *apiextensionsclientset.Clientset,
 	gwClient *gwclientset.Clientset,
 	kubeconfig string,
 	gwImpl string,
@@ -291,6 +293,11 @@ func deployGatewayImplementation(
 		ns := fmt.Sprintf("%s-kgateway-system", e2ePrefix)
 		r = globalResourceManager.acquire(kgatewayName, func() (cleanupFunc, error) {
 			return deployGatewayAPIKgateway(ctx, t, k8sClient, kubeconfig, ns, skipCleanup)
+		})
+	case envoyGatewayName:
+		ns := fmt.Sprintf("%s-envoy-gateway-system", e2ePrefix)
+		r = globalResourceManager.acquire(envoyGatewayName, func() (cleanupFunc, error) {
+			return deployGatewayAPIEnvoyGateway(ctx, t, k8sClient, apiextClient, gwClient, kubeconfig, ns, skipCleanup)
 		})
 	default:
 		t.Fatalf("Unknown gateway implementation: %s", gwImpl)

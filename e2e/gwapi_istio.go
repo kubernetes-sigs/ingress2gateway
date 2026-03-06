@@ -61,6 +61,7 @@ func deployGatewayAPIIstio(ctx context.Context,
 		istioVersion,
 		namespace,
 		true,
+		false,
 		values,
 	); err != nil {
 		return nil, fmt.Errorf("installing chart %s: %w", "istio-base", err)
@@ -81,6 +82,7 @@ func deployGatewayAPIIstio(ctx context.Context,
 		"istiod",
 		istioVersion,
 		namespace,
+		false,
 		false,
 		values,
 	); err != nil {
