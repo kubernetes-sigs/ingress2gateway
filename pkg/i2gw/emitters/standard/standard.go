@@ -45,6 +45,7 @@ func NewEmitter(conf *i2gw.EmitterConf) i2gw.Emitter {
 // Emit converts the provider intermediate representation to Gateway API resources.
 func (e *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.ErrorList) {
 	utils.LogUnparsedErrors(ir, e.notify)
+	e.notify(notifications.WarningNotification, "Gateway API does not support configuring URL normalization (RFC 3986, Section 6). Please check if this matters for your use case and consult implementation-specific details.")
 	resources, err := utils.ToGatewayResources(ir)
 	return resources, err
 }

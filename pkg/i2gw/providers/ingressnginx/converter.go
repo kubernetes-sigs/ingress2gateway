@@ -80,6 +80,33 @@ func (c *resourcesToIRConverter) convert(notify notifications.NotifyFunc, storag
 	pIR, errs := common.ToIR(httpIngresses, grpcIngresses, storage.ServicePorts, i2gw.ProviderImplementationSpecificOptions{
 		ToImplementationSpecificHTTPPathTypeMatch: implementationSpecificPathMatch,
 	})
+
+	// Warn about hosts that lack TLS certificates. Ingress NGINX serves TLS
+	// for all hosts using a self-signed certificate when no explicit cert is
+	// configured. We do not translate this behavior.
+	for _, gwCtx := range pIR.Gateways {
+		httpsHosts := map[string]struct{}{}
+		var httpHosts []string
+		for _, listener := range gwCtx.Gateway.Spec.Listeners {
+			if listener.Hostname == nil {
+				continue
+			}
+			host := string(*listener.Hostname)
+			if listener.Port == 443 {
+				httpsHosts[host] = struct{}{}
+			} else if listener.Port == 80 {
+				httpHosts = append(httpHosts, host)
+			}
+		}
+		for _, host := range httpHosts {
+			if _, ok := httpsHosts[host]; !ok {
+				c.notify(notifications.WarningNotification, fmt.Sprintf(
+					"Ingress NGINX serves TLS traffic for host %q with a self-signed certificate. This behavior will not be translated and the host will not be accessible via HTTPS.",
+					host))
+			}
+		}
+	}
+
 	for _, ingress := range ingressList {
 		for annotation := range ingress.Annotations {
 			if _, ok := parsedAnnotations[annotation]; !ok && strings.HasPrefix(annotation, ingressNGINXAnnotationsPrefix) {

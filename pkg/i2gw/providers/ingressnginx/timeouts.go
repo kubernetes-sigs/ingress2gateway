@@ -85,6 +85,7 @@ func (p *Provider) applyTimeoutsToEmitterIR(pIR providerir.ProviderIR, eIR *emit
 				notifications.WarningNotification,
 				"ingress-nginx only supports TCP-level timeouts; i2gw has made a best-effort translation to Gateway API timeouts.request."+
 					" Please verify that this meets your needs. See documentation: https://gateway-api.sigs.k8s.io/guides/http-timeouts/",
+				&httpRouteContext.HTTPRoute,
 			)
 		}
 
