@@ -113,8 +113,6 @@ type HTTPRouteContext struct {
 	// IPRangeControlByRuleIdx maps HTTPRoute rule indices to IP range control intent.
 	// This is provider-neutral and applied by each custom emitter.
 	IPRangeControlByRuleIdx map[int]*IPRangeControl
-
-	Gce *gce.HTTPRouteIR
 }
 
 func (h *HTTPRouteContext) UnparsedExtensions() []*ExtensionFeatureMetadata {

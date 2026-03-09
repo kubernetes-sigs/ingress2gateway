@@ -73,7 +73,6 @@ type HTTPRouteContext struct {
 }
 
 type ProviderSpecificHTTPRouteIR struct {
-	Gce *gce.HTTPRouteIR
 }
 
 // GRPCRouteContext contains the Gateway-API GRPCRoute object and GRPCRouteIR,

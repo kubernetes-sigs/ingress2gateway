@@ -90,11 +90,14 @@ func upsellGatewayClass(gatewayResources *i2gw.GatewayResources) {
 }
 
 func removeHTTPRouteRuleNames(gatewayResources *i2gw.GatewayResources) {
-	for i, route := range gatewayResources.HTTPRoutes {
-		for j := range route.Spec.Rules {
-			route.Spec.Rules[j].Name = nil
+	for k, route := range gatewayResources.HTTPRoutes {
+		rules := make([]gatewayv1.HTTPRouteRule, len(route.Spec.Rules))
+		copy(rules, route.Spec.Rules)
+		for j := range rules {
+			rules[j].Name = nil
 		}
-		gatewayResources.HTTPRoutes[i] = route
+		route.Spec.Rules = rules
+		gatewayResources.HTTPRoutes[k] = route
 	}
 }
 

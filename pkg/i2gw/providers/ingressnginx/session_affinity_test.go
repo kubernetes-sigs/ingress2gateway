@@ -132,7 +132,7 @@ func TestGCEFeature(t *testing.T) {
 				},
 			}
 
-			sessionAffinityFeature([]networkingv1.Ingress{tc.ingress}, nil, &ir)
+			sessionAffinityFeature(nil, []networkingv1.Ingress{tc.ingress}, nil, &ir)
 
 			actual := ir.Services[svcKey].SessionAffinity
 

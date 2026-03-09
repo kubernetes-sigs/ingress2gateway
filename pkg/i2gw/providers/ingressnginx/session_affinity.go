@@ -20,13 +20,14 @@ import (
 	"strconv"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-func sessionAffinityFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func sessionAffinityFeature(_ notifications.NotifyFunc, _ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	// Iterate over all HTTPRoutes to find backend services and apply generic SessionAffinity
 	for _, httpRouteCtx := range ir.HTTPRoutes {
 		for ruleIdx := range httpRouteCtx.Spec.Rules {
