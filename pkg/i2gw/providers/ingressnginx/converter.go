@@ -92,9 +92,10 @@ func (c *resourcesToIRConverter) convert(notify notifications.NotifyFunc, storag
 				continue
 			}
 			host := string(*listener.Hostname)
-			if listener.Port == 443 {
+			switch listener.Port {
+			case 443:
 				httpsHosts[host] = struct{}{}
-			} else if listener.Port == 80 {
+			case 80:
 				httpHosts = append(httpHosts, host)
 			}
 		}

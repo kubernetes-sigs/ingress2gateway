@@ -79,7 +79,7 @@ func applyRewriteTargetToEmitterIR(ingresses []networkingv1.Ingress,
 				pathRewriteIR.RegexCaptureGroupReferences = true
 			}
 
-			source := fmt.Sprintf("%s from Ingress %s/%s", ing.Namespace, ing.Name)
+			source := fmt.Sprintf("rewrite-target from Ingress %s/%s", ing.Namespace, ing.Name)
 			paths := []*field.Path{field.NewPath("metadata", "annotations", fmt.Sprintf("%q", RewriteTargetAnnotation))}
 			if hasRegex && strings.Contains(rewriteTarget, "\\$") {
 				// Otherwise, rewrites without capture group references work.
