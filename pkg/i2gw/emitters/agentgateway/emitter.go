@@ -127,14 +127,6 @@ func (e *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.Err
 				backendPolicies,
 			)
 
-			// backend-protocol maps to AgentgatewayPolicy.spec.backend.http.version, targeting Services.
-			applyBackendProtocolPolicy(
-				pol,
-				httpRouteKey,
-				httpRouteContext,
-				backendPolicies,
-			)
-
 			// rewrite-target maps to AgentgatewayPolicy.spec.traffic.transformation.
 			// Note: agentgateway attaches policies at the HTTPRoute scope; this feature is only safe when
 			// it fully covers the route (enforced by the full-coverage check below).
@@ -174,6 +166,16 @@ func (e *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.Err
 				httpRouteKey,
 				&httpRouteContext,
 				agentgatewayBackends,
+			)
+
+			// backend-protocol maps to AgentgatewayPolicy.spec.backend.http.version.
+			// If service-upstream rewrote backendRefs to AgentgatewayBackend, target those backends.
+			// Otherwise, target core Services.
+			applyBackendProtocolPolicy(
+				pol,
+				httpRouteKey,
+				httpRouteContext,
+				backendPolicies,
 			)
 
 			// BasicAuth maps to AgentgatewayPolicy.spec.traffic.basicAuthentication.

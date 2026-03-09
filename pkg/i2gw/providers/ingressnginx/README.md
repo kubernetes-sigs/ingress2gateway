@@ -106,6 +106,11 @@ The ingress-nginx provider currently supports translating the following annotati
       - Otherwise, the Kgateway emitter does **not** generate Kubernetes `Service` resources. Instead, it emits an **INFO** notification with a `kubectl patch`
         command to set `spec.ports[].appProtocol` on the existing Service.
       - This annotation is treated as upstream protocol metadata and does not imply `GRPCRoute` projection.
+    - For the Agentgateway implementation:
+      - The emitter projects this as `AgentgatewayPolicy.spec.backend.http.version: HTTP2`.
+      - For standard Service backendRefs, the policy targets the Service.
+      - If `service-upstream: "true"` rewrites backendRefs to `AgentgatewayBackend`, the policy instead targets the generated
+        `AgentgatewayBackend`.
   - **Values treated as default HTTP/1.x (no-op):** `HTTP`, `HTTPS`, `AUTO_HTTP`
   - **Unsupported values (rejected):** `FCGI` (and others)
   - **Safety note:** The provider does not attempt to create or mutate Kubernetes Services; implementation emitters decide how to safely project this intent.

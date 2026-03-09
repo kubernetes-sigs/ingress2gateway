@@ -345,7 +345,7 @@ The agentgateway emitter supports projecting upstream **connection timeout** beh
 
 - `nginx.ingress.kubernetes.io/proxy-connect-timeout`
 
-This is projected into a **Service-targeted** `AgentgatewayPolicy` by setting:
+This is projected into a backend-scoped `AgentgatewayPolicy` by setting:
 
 - `AgentgatewayPolicy.spec.backend.tcp.connectTimeout`
 
@@ -389,8 +389,12 @@ This is projected into a **Service-targeted** `AgentgatewayPolicy` by setting:
 
 **Notes:**
 
-- This feature is emitted as a **per-Service** `AgentgatewayPolicy` because backend HTTP protocol selection is
+- This feature is emitted as a **per-backend** `AgentgatewayPolicy` because backend HTTP protocol selection is
   backend-scoped.
+- Targeting behavior:
+  - For normal Service backendRefs, the policy targets `group: ""`, `kind: Service`.
+  - If `service-upstream` rewrites a backendRef to `group: agentgateway.dev`, `kind: AgentgatewayBackend`, the
+    policy targets that `AgentgatewayBackend` instead.
 - This annotation does **not** cause ingress2gateway to emit a `GRPCRoute`. The generated route remains an
   `HTTPRoute`; the emitter uses `AgentgatewayPolicy.spec.backend.http.version: HTTP2` to express how agentgateway
   should communicate with the upstream backend.
@@ -439,8 +443,8 @@ Mappings:
 
 - Rewrites only apply to core Service backendRefs (empty group and kind `Service` / unset kind).
 - If the provider could not determine an explicit backendRef port, that backendRef is skipped.
-- `backend-protocol` remains a Service-targeted `AgentgatewayPolicy` and continues to control upstream HTTP version
-  (`spec.backend.http.version`) independently from `service-upstream`.
+- `backend-protocol` remains independently projected as `spec.backend.http.version`. For rewritten backendRefs,
+  the policy targets the generated `AgentgatewayBackend`; otherwise it targets the original Service.
 
 ## AgentgatewayPolicy Projection
 
@@ -468,9 +472,9 @@ Proxy connect timeout policies are created **per backend Service**:
 - `metadata.name: <service-name>-backend-connect-timeout`
 - `metadata.namespace: <route-namespace>`
 
-Backend protocol policies are created **per backend Service**:
+Backend protocol policies are created **per targeted backend object**:
 
-- `metadata.name: <service-name>-backend-http-version`
+- `metadata.name: <backend-name>-backend-http-version`
 - `metadata.namespace: <route-namespace>`
 
 ### Attachment Semantics
