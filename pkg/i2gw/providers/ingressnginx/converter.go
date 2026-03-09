@@ -75,6 +75,12 @@ func (c *resourcesToIRConverter) convert(notify notifications.NotifyFunc, storag
 		}
 	}
 
+	// Warn that gRPC support is not fully fleshed out and some untranslated
+	// behavior may not be reported.
+	if len(grpcIngresses) > 0 {
+		notify(notifications.WarningNotification, "GRPC support is not fully implemented. Some Ingress-NGINX GRPC behaviors may not be correctly translated, and untranslated behavior may not be notified.")
+	}
+
 	// Convert plain ingress resources to gateway resources, ignoring all
 	// provider-specific features.
 	pIR, errs := common.ToIR(httpIngresses, grpcIngresses, storage.ServicePorts, i2gw.ProviderImplementationSpecificOptions{
