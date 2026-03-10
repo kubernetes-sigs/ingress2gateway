@@ -139,13 +139,6 @@ The above command will:
 | openapi3-gateway-class-name |                | No       | Provider-specific: openapi3. The name of the gateway class to use in the Gateways. |
 | openapi3-tls-secret  |                       | No       | Provider-specific: openapi3. The name of the secret for the TLS certificate references in the Gateways. |
 
-### `version` command
-
-Prints the build version of ingress2gateway and the Go version used to build it.
-
-```shell
-./ingress2gateway version
-```
 
 ## Gateway API version support
 
