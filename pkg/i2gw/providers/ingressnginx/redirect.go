@@ -625,3 +625,4 @@ func (p *Provider) addWWWRedirect(pir *providerir.ProviderIR, eir *emitterir.Emi
 	}
 	return nil
 }
+
