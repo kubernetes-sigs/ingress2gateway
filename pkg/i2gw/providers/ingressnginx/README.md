@@ -171,6 +171,25 @@ The ingress-nginx provider currently supports translating the following annotati
 
 ---
 
+### Frontend TLS Settings
+
+- `nginx.ingress.kubernetes.io/ssl-handshake-timeout`: Sets TLS handshake timeout for downstream/frontend listeners.
+  - Value may be a Go-style duration (`20s`, `1m`) or bare seconds (`20`).
+  - Must be at least `100ms`.
+- `nginx.ingress.kubernetes.io/ssl-alpn`: Comma-separated downstream ALPN protocol list (for example: `h2,http/1.1`).
+  - Empty entries are ignored.
+  - Duplicate values are de-duplicated while preserving order.
+  - Maximum `16` protocols.
+  - If `ssl-handshake-timeout` is not set, the provider records a default handshake timeout of `15s` so emitted
+    AgentgatewayPolicy resources satisfy Agentgateway `frontend.tls` validation.
+
+For the Agentgateway implementation, these map to:
+
+- `AgentgatewayPolicy.spec.frontend.tls.handshakeTimeout`
+- `AgentgatewayPolicy.spec.frontend.tls.alpnProtocols`
+
+---
+
 ### Session Affinity
 
 - `nginx.ingress.kubernetes.io/affinity`: Enables and sets the affinity type in all Upstreams of an Ingress. The only affinity type available for NGINX is "cookie". For the Kgateway implementation, this maps to `BackendConfigPolicy.spec.loadBalancer.ringHash.hashPolicies` with cookie-based hash policy.

@@ -273,6 +273,31 @@ func TestLoadBalance(t *testing.T) {
 	testutils.RequireLoadBalancedAcrossPodsEventually(t, host, "http", gwAddr, "80", "/", 3, 1*time.Minute)
 }
 
+func TestFrontendTLS(t *testing.T) {
+	_, gwAddr, host, ingressHostHeader, ingressIP := e2eTestSetup(t, "frontend_tls.yaml", "frontend_tls.yaml")
+
+	// Validate ingress-nginx behavior for baseline parity.
+	testutils.MakeHTTPRequestEventually(t, kubeContext, testutils.HTTPRequestConfig{
+		HostHeader:         ingressHostHeader,
+		Scheme:             "http",
+		Address:            ingressIP,
+		Path:               "/",
+		ExpectedStatusCode: 200,
+		Timeout:            1 * time.Minute,
+	})
+
+	// Validate agentgateway output is accepted and routes traffic.
+	testutils.MakeHTTPRequestEventually(t, kubeContext, testutils.HTTPRequestConfig{
+		HostHeader:         host,
+		Scheme:             "http",
+		Address:            gwAddr,
+		Port:               "80",
+		Path:               "/",
+		ExpectedStatusCode: 200,
+		Timeout:            1 * time.Minute,
+	})
+}
+
 func TestRateLimit(t *testing.T) {
 	_, gwAddr, host, ingressHostHeader, ingressIP := e2eTestSetup(t, "rate_limit.yaml", "rate_limit.yaml")
 

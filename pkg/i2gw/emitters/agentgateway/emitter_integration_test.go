@@ -311,6 +311,32 @@ func TestAgentgatewayIngressNginxIntegration_Timeouts(t *testing.T) {
 	}
 }
 
+func TestAgentgatewayIngressNginxIntegration_FrontendTLS(t *testing.T) {
+	t.Helper()
+
+	tests := []struct {
+		name      string
+		inputRel  string
+		goldenRel string
+	}{
+		{
+			name: "frontend_tls",
+			inputRel: filepath.Join(
+				"pkg", "i2gw", "emitters", "agentgateway", "testing", "testdata", "input", "frontend_tls.yaml",
+			),
+			goldenRel: filepath.Join(
+				"pkg", "i2gw", "emitters", "agentgateway", "testing", "testdata", "output", "frontend_tls.yaml",
+			),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runGoldenTest(t, tt.inputRel, tt.goldenRel)
+		})
+	}
+}
+
 func TestAgentgatewayIngressNginxIntegration_CORS(t *testing.T) {
 	t.Helper()
 
