@@ -94,6 +94,12 @@ brew install ingress2gateway
    make build
    ```
 
+1. Install the binary to your system
+
+   ```shell
+   go install .
+   ```
+
 ## Usage
 
 Ingress2gateway reads Ingress resources and/or provider-specific CRDs from a Kubernetes
@@ -102,7 +108,7 @@ or KYAML format to stdout. The simplest case is to convert all ingresses from on
 provider (in this example we use ingress-nginx):
 
 ```shell
-./ingress2gateway print --providers=ingress-nginx
+ingress2gateway print --providers=ingress-nginx
 ```
 
 The above command will:
