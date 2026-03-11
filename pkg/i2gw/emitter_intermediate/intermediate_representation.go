@@ -167,6 +167,17 @@ type FrontendTLSPolicy struct {
 	ALPNProtocols    []string
 }
 
+// FrontendHTTPPolicy defines frontend HTTP listener settings extracted from annotations.
+type FrontendHTTPPolicy struct {
+	HTTP1MaxHeaders           *int32
+	HTTP1IdleTimeout          *metav1.Duration
+	HTTP2WindowSize           *int32
+	HTTP2ConnectionWindowSize *int32
+	HTTP2FrameSize            *int32
+	HTTP2KeepaliveInterval    *metav1.Duration
+	HTTP2KeepaliveTimeout     *metav1.Duration
+}
+
 // Policy describes per-Ingress policy knobs projected by providers.
 type Policy struct {
 	ClientBodyBufferSize *resource.Quantity
@@ -177,6 +188,7 @@ type Policy struct {
 	ProxyReadTimeout     *metav1.Duration
 	ProxyConnectTimeout  *metav1.Duration
 	EnableAccessLog      *bool
+	FrontendHTTP         *FrontendHTTPPolicy
 	ExtAuth              *ExtAuthPolicy
 	BasicAuth            *BasicAuthPolicy
 	SessionAffinity      *SessionAffinityPolicy

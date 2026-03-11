@@ -69,6 +69,7 @@ func convertIngressNginxPolicy(in IngressNginxPolicy) emitterir.Policy {
 		ProxyReadTimeout:     in.ProxyReadTimeout,
 		ProxyConnectTimeout:  in.ProxyConnectTimeout,
 		EnableAccessLog:      in.EnableAccessLog,
+		FrontendHTTP:         convertIngressNginxFrontendHTTPPolicy(in.FrontendHTTP),
 		ExtAuth:              convertIngressNginxExtAuthPolicy(in.ExtAuth),
 		BasicAuth:            convertIngressNginxBasicAuthPolicy(in.BasicAuth),
 		SessionAffinity:      convertIngressNginxSessionAffinityPolicy(in.SessionAffinity),
@@ -174,6 +175,21 @@ func convertIngressNginxBackendLoadBalancingPolicy(in *IngressNginxBackendLoadBa
 	}
 	return &emitterir.BackendLoadBalancingPolicy{
 		Strategy: emitterir.LoadBalancingStrategy(in.Strategy),
+	}
+}
+
+func convertIngressNginxFrontendHTTPPolicy(in *IngressNginxFrontendHTTPPolicy) *emitterir.FrontendHTTPPolicy {
+	if in == nil {
+		return nil
+	}
+	return &emitterir.FrontendHTTPPolicy{
+		HTTP1MaxHeaders:           in.HTTP1MaxHeaders,
+		HTTP1IdleTimeout:          in.HTTP1IdleTimeout,
+		HTTP2WindowSize:           in.HTTP2WindowSize,
+		HTTP2ConnectionWindowSize: in.HTTP2ConnectionWindowSize,
+		HTTP2FrameSize:            in.HTTP2FrameSize,
+		HTTP2KeepaliveInterval:    in.HTTP2KeepaliveInterval,
+		HTTP2KeepaliveTimeout:     in.HTTP2KeepaliveTimeout,
 	}
 }
 

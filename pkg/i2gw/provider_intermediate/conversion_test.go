@@ -34,6 +34,7 @@ func TestToEmitterIRConvertsIngressNginxPolicy(t *testing.T) {
 	useRegex := true
 	backendProtocol := BackendProtocolGRPC
 	frontendHandshake := metav1.Duration{Duration: 10 * time.Second}
+	http1MaxHeaders := int32(128)
 
 	sourceIR := ProviderIR{
 		HTTPRoutes: map[types.NamespacedName]HTTPRouteContext{
@@ -64,6 +65,9 @@ func TestToEmitterIRConvertsIngressNginxPolicy(t *testing.T) {
 									Limit:           10,
 									Unit:            RateLimitUnitRPM,
 									BurstMultiplier: 3,
+								},
+								FrontendHTTP: &IngressNginxFrontendHTTPPolicy{
+									HTTP1MaxHeaders: &http1MaxHeaders,
 								},
 								UseRegexPaths: &useRegex,
 								FrontendTLS: &IngressNginxFrontendTLSPolicy{
@@ -112,6 +116,9 @@ func TestToEmitterIRConvertsIngressNginxPolicy(t *testing.T) {
 	}
 	if pol.RateLimit == nil || pol.RateLimit.Unit != emitterir.RateLimitUnitRPM {
 		t.Fatalf("expected rate limit unit %q, got %#v", emitterir.RateLimitUnitRPM, pol.RateLimit)
+	}
+	if pol.FrontendHTTP == nil || pol.FrontendHTTP.HTTP1MaxHeaders == nil || *pol.FrontendHTTP.HTTP1MaxHeaders != http1MaxHeaders {
+		t.Fatalf("expected frontend HTTP1MaxHeaders=%d, got %#v", http1MaxHeaders, pol.FrontendHTTP)
 	}
 	if pol.UseRegexPaths == nil || !*pol.UseRegexPaths {
 		t.Fatalf("expected UseRegexPaths=true")

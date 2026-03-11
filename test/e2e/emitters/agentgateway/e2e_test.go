@@ -219,6 +219,32 @@ func TestBasic(t *testing.T) {
 	})
 }
 
+func TestFrontendHTTP(t *testing.T) {
+	_, gwAddr, host, ingressHostHeader, ingressIP := e2eTestSetup(t, "frontend_http.yaml", "frontend_http.yaml")
+
+	// Test HTTP connectivity via Ingress
+	testutils.MakeHTTPRequestEventually(t, kubeContext, testutils.HTTPRequestConfig{
+		HostHeader:         ingressHostHeader,
+		Scheme:             "http",
+		Address:            ingressIP,
+		Port:               "",
+		Path:               "/",
+		ExpectedStatusCode: 200,
+		Timeout:            1 * time.Minute,
+	})
+
+	// Test HTTP connectivity via Gateway
+	testutils.MakeHTTPRequestEventually(t, kubeContext, testutils.HTTPRequestConfig{
+		HostHeader:         host,
+		Scheme:             "http",
+		Address:            gwAddr,
+		Port:               "80",
+		Path:               "/",
+		ExpectedStatusCode: 200,
+		Timeout:            1 * time.Minute,
+	})
+}
+
 func TestBackendProtocol(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	t.Cleanup(cancel)
