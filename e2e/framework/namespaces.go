@@ -68,15 +68,43 @@ func CreateNamespace(ctx context.Context, l Logger, client *kubernetes.Clientset
 // DeleteNamespaceAndWait deletes a namespace and waits for it to be fully removed.
 func DeleteNamespaceAndWait(ctx context.Context, client *kubernetes.Clientset, ns string) error {
 	if err := client.CoreV1().Namespaces().Delete(ctx, ns, metav1.DeleteOptions{}); err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
 		return fmt.Errorf("deleting namespace %s: %w", ns, err)
 	}
 
+	lastNudge := time.Time{}
 	if err := wait.PollUntilContextTimeout(ctx, 1*time.Second, 5*time.Minute, true, func(ctx context.Context) (bool, error) {
-		_, err := client.CoreV1().Namespaces().Get(ctx, ns, metav1.GetOptions{})
+		nsObj, err := client.CoreV1().Namespaces().Get(ctx, ns, metav1.GetOptions{})
 		if errors.IsNotFound(err) {
 			return true, nil
 		}
-		return false, err
+		if err != nil {
+			return false, nil //nolint:nilerr // Keep polling through transient errors
+		}
+
+		// If the namespace has been stuck in Terminating, periodically annotate it to trigger a
+		// watch event. The namespace controller enqueues namespaces via queue.Add (not
+		// AddRateLimited) on watch events, so this bypasses any exponential backoff the controller
+		// may be in after a transient error during finalization. We nudge every 10s because a
+		// single nudge may itself trigger a transient error, putting the controller back into
+		// backoff.
+		if nsObj.DeletionTimestamp != nil &&
+			time.Since(nsObj.DeletionTimestamp.Time) > 10*time.Second &&
+			time.Since(lastNudge) > 10*time.Second {
+			lastNudge = time.Now()
+			log.Printf("Namespace %s stuck in Terminating, nudging namespace controller", ns)
+			if nsObj.Annotations == nil {
+				nsObj.Annotations = map[string]string{}
+			}
+			nsObj.Annotations["e2e.ingress2gateway/nudge"] = time.Now().UTC().Format(time.RFC3339)
+			if _, updateErr := client.CoreV1().Namespaces().Update(ctx, nsObj, metav1.UpdateOptions{}); updateErr != nil {
+				log.Printf("Failed to nudge namespace %s: %v", ns, updateErr)
+			}
+		}
+
+		return false, nil
 	}); err != nil {
 		return fmt.Errorf("waiting for namespace %s to delete: %w", ns, err)
 	}
