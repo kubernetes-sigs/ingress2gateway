@@ -107,10 +107,25 @@ ensure-kind:
 		echo "kind installed successfully to $(LOCAL_BIN)/kind"; \
 	fi
 
+KIND_CONFIG := $(REPO_ROOT)/e2e/kind.yaml
+
+.PHONY: generate-kind-config
+generate-kind-config:
+	@mkdir -p $(dir $(KIND_CONFIG))
+	@printf '%s\n' \
+		'kind: Cluster' \
+		'apiVersion: kind.x-k8s.io/v1alpha4' \
+		'nodes:' \
+		'- role: control-plane' \
+		'- role: worker' \
+		'- role: worker' \
+		'- role: worker' \
+		> $(KIND_CONFIG)
+
 .PHONY: kind
-kind: ensure-kind
+kind: ensure-kind generate-kind-config
 	@if ! $(KIND) get clusters | grep -q i2gw-e2e; then \
-		$(KIND) create cluster -n i2gw-e2e --kubeconfig $(REPO_ROOT)/kind-kubeconfig --config ./e2e/kind.yaml; \
+		$(KIND) create cluster -n i2gw-e2e --kubeconfig $(REPO_ROOT)/kind-kubeconfig --config $(KIND_CONFIG); \
 	else \
 		echo "Cluster i2gw-e2e already exists. Reusing it."; \
 		$(KIND) get kubeconfig --name i2gw-e2e > $(REPO_ROOT)/kind-kubeconfig; \
@@ -151,3 +166,4 @@ e2e: build ## Run end-to-end tests.
 clean-kind:
 	$(KIND) delete cluster -n i2gw-e2e
 	rm -f $(REPO_ROOT)/kind-kubeconfig
+	rm -f $(KIND_CONFIG)

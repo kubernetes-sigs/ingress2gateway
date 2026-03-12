@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package framework
 
 import (
 	"crypto/rand"
@@ -22,9 +22,9 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-// Generates a cryptographically random alphanumeric string of length 5. Uses crypto/rand to ensure
-// uniqueness even when called from parallel tests.
-func randString() (string, error) {
+// RandString generates a cryptographically random alphanumeric string of length 5. Uses
+// crypto/rand to ensure uniqueness even when called from parallel tests.
+func RandString() (string, error) {
 	n := 5
 	const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
 	b := make([]byte, n)

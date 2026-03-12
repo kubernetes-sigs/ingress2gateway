@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package framework
 
 import (
 	"bytes"
@@ -36,7 +36,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
-func deployCRDs(ctx context.Context, l logger, client *apiextensionsclientset.Clientset, url string, skipCleanup bool) (func(), error) {
+// DeployCRDs fetches and installs CRDs specified by the given URL. Returns a cleanup function.
+func DeployCRDs(ctx context.Context, l Logger, client *apiextensionsclientset.Clientset, url string, skipCleanup bool) (CleanupFunc, error) {
 	l.Logf("Fetching manifests from %s", url)
 	yamlData, err := fetchManifests(ctx, l, url)
 	if err != nil {
@@ -113,7 +114,7 @@ func decodeCRDs(yamlData []byte) ([]apiextensionsv1.CustomResourceDefinition, er
 	return out, nil
 }
 
-func fetchManifests(ctx context.Context, log logger, url string) ([]byte, error) {
+func fetchManifests(ctx context.Context, log Logger, url string) ([]byte, error) {
 	return retryWithData(ctx, log, defaultRetryConfig(),
 		func(attempt, maxAttempts int, err error) string {
 			return fmt.Sprintf("Fetching manifests (attempt %d/%d): %v", attempt, maxAttempts, err)
