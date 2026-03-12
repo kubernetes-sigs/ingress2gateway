@@ -81,8 +81,7 @@ func GenerateSelfSignedTLSSecret(name, namespace, commonName string, hosts []str
 	return &TLSTestSecret{
 		Secret: &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
+				Name: name,
 			},
 			Type: corev1.SecretTypeTLS,
 			Data: map[string][]byte{
