@@ -191,7 +191,7 @@ func TestApplyIPRangeControlToEmitterIR(t *testing.T) {
 				HTTPRoute: route,
 			}
 
-			applyIPRangeControlToEmitterIR(notifications.NoopNotify, pIR, &eIR)
+			(&Provider{notify: notifications.NoopNotify}).applyIPRangeControlToEmitterIR(pIR, &eIR)
 
 			result := eIR.HTTPRoutes[key]
 			var ipRangeControl *emitterir.IPRangeControl

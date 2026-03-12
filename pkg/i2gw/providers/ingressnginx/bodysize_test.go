@@ -124,9 +124,8 @@ func TestApplyBodySizeToEmitterIR_SetMaxSize(t *testing.T) {
 	}
 	pIR, eIR := setupBodySizeTest(key, annotations)
 
-	if err := applyBodySizeToEmitterIR(notifications.NoopNotify, pIR, &eIR); err != nil {
-		t.Fatalf("unexpected error applying body size: %v", err)
-	}
+	p := &Provider{notify: notifications.NoopNotify}
+	p.applyBodySizeToEmitterIR(pIR, &eIR)
 
 	bodySizeIR := eIR.HTTPRoutes[key].BodySizeByRuleIdx[0]
 	if bodySizeIR == nil {
@@ -144,9 +143,8 @@ func TestApplyBodySizeToEmitterIR_SetBufferSize(t *testing.T) {
 	}
 	pIR, eIR := setupBodySizeTest(key, annotations)
 
-	if err := applyBodySizeToEmitterIR(notifications.NoopNotify, pIR, &eIR); err != nil {
-		t.Fatalf("unexpected error applying body size: %v", err)
-	}
+	p := &Provider{notify: notifications.NoopNotify}
+	p.applyBodySizeToEmitterIR(pIR, &eIR)
 
 	bodySizeIR := eIR.HTTPRoutes[key].BodySizeByRuleIdx[0]
 	if bodySizeIR == nil {
@@ -165,9 +163,8 @@ func TestApplyBodySizeToEmitterIR_SetMaxAndBufferSize(t *testing.T) {
 	}
 	pIR, eIR := setupBodySizeTest(key, annotations)
 
-	if err := applyBodySizeToEmitterIR(notifications.NoopNotify, pIR, &eIR); err != nil {
-		t.Fatalf("unexpected error applying body size: %v", err)
-	}
+	p := &Provider{notify: notifications.NoopNotify}
+	p.applyBodySizeToEmitterIR(pIR, &eIR)
 
 	bodySizeIR := eIR.HTTPRoutes[key].BodySizeByRuleIdx[0]
 	if bodySizeIR == nil {

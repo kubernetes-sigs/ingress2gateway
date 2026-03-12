@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -38,7 +37,7 @@ func parseIPSourceRangeAnnotation(annotations map[string]string, key string) []s
 	return items
 }
 
-func applyIPRangeControlToEmitterIR(notify notifications.NotifyFunc, pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) {
+func (p *Provider) applyIPRangeControlToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) {
 	for key, pRouteCtx := range pIR.HTTPRoutes {
 		eRouteCtx, ok := eIR.HTTPRoutes[key]
 		if !ok {
@@ -74,14 +73,14 @@ func applyIPRangeControlToEmitterIR(notify notifications.NotifyFunc, pIR provide
 				DenyList:  denyList,
 			}
 			{
-				source := fmt.Sprintf("%s/%s", ing.Namespace, ing.Name)
+				source := fmt.Sprintf("%s and %s from %s/%s", WhiteListSourceRangeAnnotation, DenyListSourceRangeAnnotation, ing.Namespace, ing.Name)
 				message := "IP-based authorization is not supported"
 				paths := make([]*field.Path, 0, 2)
 				if len(allowList) > 0 {
-					paths = append(paths, field.NewPath("ingress", ing.Namespace, ing.Name, "metadata", "annotations", WhiteListSourceRangeAnnotation))
+					paths = append(paths, field.NewPath(ing.Namespace, ing.Name, "metadata", "annotations", fmt.Sprintf("%q", WhiteListSourceRangeAnnotation)))
 				}
 				if len(denyList) > 0 {
-					paths = append(paths, field.NewPath("ingress", ing.Namespace, ing.Name, "metadata", "annotations", DenyListSourceRangeAnnotation))
+					paths = append(paths, field.NewPath(ing.Namespace, ing.Name, "metadata", "annotations", fmt.Sprintf("%q", DenyListSourceRangeAnnotation)))
 				}
 				ipRangeControl.Metadata = emitterir.NewExtensionFeatureMetadata(
 					source,
@@ -90,15 +89,6 @@ func applyIPRangeControlToEmitterIR(notify notifications.NotifyFunc, pIR provide
 				)
 			}
 			eRouteCtx.IPRangeControlByRuleIdx[ruleIdx] = ipRangeControl
-
-			if len(allowList) > 0 {
-				notify(notifications.InfoNotification, fmt.Sprintf("parsed whitelist-source-range annotation of ingress %s/%s: allowing CIDRs %s for HTTPRoute rule index %d",
-					ing.Namespace, ing.Name, strings.Join(allowList, ", "), ruleIdx), &eRouteCtx.HTTPRoute)
-			}
-			if len(denyList) > 0 {
-				notify(notifications.InfoNotification, fmt.Sprintf("parsed denylist-source-range annotation of ingress %s/%s: denying CIDRs %s for HTTPRoute rule index %d",
-					ing.Namespace, ing.Name, strings.Join(denyList, ", "), ruleIdx), &eRouteCtx.HTTPRoute)
-			}
 		}
 		eIR.HTTPRoutes[key] = eRouteCtx
 	}
