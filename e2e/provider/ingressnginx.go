@@ -74,6 +74,7 @@ func DeployIngressNginx(
 		ingressNginxChartVersion,
 		namespace,
 		true,
+		false,
 		values,
 	); err != nil {
 		return nil, fmt.Errorf("installing chart: %w", err)

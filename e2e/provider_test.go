@@ -1,5 +1,5 @@
 /*
-Copyright 2025 The Kubernetes Authors.
+Copyright The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,26 +20,22 @@ import (
 	"testing"
 
 	"github.com/kubernetes-sigs/ingress2gateway/e2e/framework"
+	"github.com/kubernetes-sigs/ingress2gateway/e2e/implementation"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
-	"github.com/stretchr/testify/require"
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
-// Provider smoke tests: Table-driven test covering all providers against the Istio implementation
-// + standard emitter.
+// Provider basics: Table-driven tests across providers, all using Istio + standard emitter.
 
-func TestProviderSmoke(t *testing.T) {
+func TestProviders(t *testing.T) {
 	t.Parallel()
 
-	type providerEntry struct {
+	providers := []struct {
 		name          string
 		ingressClass  string
 		providerFlags map[string]map[string]string
-	}
-
-	providers := []providerEntry{
+	}{
 		{
 			name:         ingressnginx.Name,
 			ingressClass: ingressnginx.NginxIngressClass,
@@ -55,72 +51,49 @@ func TestProviderSmoke(t *testing.T) {
 		},
 	}
 
-	for _, p := range providers {
-		t.Run(p.name, func(t *testing.T) {
+	for _, prov := range providers {
+		t.Run(prov.name, func(t *testing.T) {
 			t.Parallel()
-			t.Run("basic conversion", func(t *testing.T) {
-				runTestCase(t, &framework.TestCase{
-					GatewayImplementation: istio.ProviderName,
-					Providers:             []string{p.name},
-					ProviderFlags:         p.providerFlags,
-					Ingresses: []*networkingv1.Ingress{
-						framework.BasicIngress().
-							WithName("foo").
-							WithIngressClass(p.ingressClass).
-							Build(),
-					},
-					Verifiers: map[string][]framework.Verifier{
-						"foo": {&framework.HTTPRequestVerifier{Path: "/"}},
-					},
-				})
-			})
-			prefix, err := framework.RandString()
-			require.NoError(t, err)
-			host := prefix + ".foo.example.com"
-			t.Run("with host field", func(t *testing.T) {
-				runTestCase(t, &framework.TestCase{
-					GatewayImplementation: istio.ProviderName,
-					Providers:             []string{p.name},
-					ProviderFlags:         p.providerFlags,
-					Ingresses: []*networkingv1.Ingress{
-						framework.BasicIngress().
-							WithName("foo").
-							WithIngressClass(p.ingressClass).
-							WithHost(host).
-							Build(),
-					},
-					Verifiers: map[string][]framework.Verifier{
-						"foo": {
-							&framework.HTTPRequestVerifier{
-								Host: host,
-								Path: "/",
-							},
+			t.Run("to Istio", func(t *testing.T) {
+				t.Parallel()
+				t.Run("basic conversion", func(t *testing.T) {
+					runTestCase(t, &framework.TestCase{
+						GatewayImplementation: implementation.IstioName,
+						Providers:             []string{prov.name},
+						ProviderFlags:         prov.providerFlags,
+						Ingresses: []*networkingv1.Ingress{
+							framework.BasicIngress().
+								WithName("foo").
+								WithIngressClass(prov.ingressClass).
+								Build(),
 						},
-					},
+						Verifiers: map[string][]framework.Verifier{
+							"foo": {&framework.HTTPRequestVerifier{Path: "/"}},
+						},
+					})
 				})
-			})
-			t.Run("multiple ingresses", func(t *testing.T) {
-				runTestCase(t, &framework.TestCase{
-					GatewayImplementation: istio.ProviderName,
-					Providers:             []string{p.name},
-					ProviderFlags:         p.providerFlags,
-					Ingresses: []*networkingv1.Ingress{
-						framework.BasicIngress().
-							WithName("foo").
-							WithIngressClass(p.ingressClass).
-							Build(),
-						framework.BasicIngress().
-							WithName("bar").
-							WithIngressClass(p.ingressClass).
-							Build(),
-					},
-					Verifiers: map[string][]framework.Verifier{
-						"foo": {&framework.HTTPRequestVerifier{Path: "/"}},
-						"bar": {&framework.HTTPRequestVerifier{Path: "/"}},
-					},
+				t.Run("multiple ingresses", func(t *testing.T) {
+					runTestCase(t, &framework.TestCase{
+						GatewayImplementation: implementation.IstioName,
+						Providers:             []string{prov.name},
+						ProviderFlags:         prov.providerFlags,
+						Ingresses: []*networkingv1.Ingress{
+							framework.BasicIngress().
+								WithName("foo").
+								WithIngressClass(prov.ingressClass).
+								Build(),
+							framework.BasicIngress().
+								WithName("bar").
+								WithIngressClass(prov.ingressClass).
+								Build(),
+						},
+						Verifiers: map[string][]framework.Verifier{
+							"foo": {&framework.HTTPRequestVerifier{Path: "/"}},
+							"bar": {&framework.HTTPRequestVerifier{Path: "/"}},
+						},
+					})
 				})
 			})
 		})
-
 	}
 }

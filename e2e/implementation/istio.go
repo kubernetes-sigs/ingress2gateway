@@ -34,8 +34,8 @@ const (
 	istioChartRepo = "https://istio-release.storage.googleapis.com/charts"
 )
 
-// DeployIstio installs Istio with Gateway API support using Helm. Returns a cleanup function that
-// uninstalls Istio and deletes the namespace.
+// DeployIstio deploys Istio as a Gateway API implementation via Helm and returns a cleanup
+// function.
 func DeployIstio(ctx context.Context,
 	l framework.Logger,
 	client *kubernetes.Clientset,
@@ -64,6 +64,7 @@ func DeployIstio(ctx context.Context,
 		istioVersion,
 		namespace,
 		true,
+		false,
 		values,
 	); err != nil {
 		return nil, fmt.Errorf("installing chart %s: %w", "istio-base", err)
@@ -84,6 +85,7 @@ func DeployIstio(ctx context.Context,
 		"istiod",
 		istioVersion,
 		namespace,
+		false,
 		false,
 		values,
 	); err != nil {

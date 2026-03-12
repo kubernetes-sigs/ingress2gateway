@@ -41,6 +41,7 @@ func InstallChart(
 	version string,
 	namespace string,
 	createNamespace bool,
+	skipCRDs bool,
 	values map[string]interface{},
 ) error {
 	cfg := new(action.Configuration)
@@ -59,6 +60,7 @@ func InstallChart(
 	install.ReleaseName = releaseName
 	install.Namespace = namespace
 	install.CreateNamespace = createNamespace
+	install.SkipCRDs = skipCRDs
 	install.WaitStrategy = kube.StatusWatcherStrategy
 	install.Timeout = 5 * time.Minute
 	install.RepoURL = repoURL

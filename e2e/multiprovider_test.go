@@ -1,5 +1,5 @@
 /*
-Copyright 2025 The Kubernetes Authors.
+Copyright The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@ import (
 	"testing"
 
 	"github.com/kubernetes-sigs/ingress2gateway/e2e/framework"
+	"github.com/kubernetes-sigs/ingress2gateway/e2e/implementation"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
 	networkingv1 "k8s.io/api/networking/v1"
 )
@@ -32,7 +32,7 @@ func TestMultipleProviders(t *testing.T) {
 	t.Parallel()
 	t.Run("ingress-nginx + kong", func(t *testing.T) {
 		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: istio.ProviderName,
+			GatewayImplementation: implementation.IstioName,
 			Providers:             []string{ingressnginx.Name, kong.Name},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {

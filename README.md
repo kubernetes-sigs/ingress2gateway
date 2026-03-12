@@ -17,7 +17,21 @@ translated to [Gateway API](https://gateway-api.sigs.k8s.io/) directly.
 > **Note:** Ingress2gateway is not intended to copy annotations from Ingress to Gateway
 API.
 
-## Supported providers
+## Providers vs Emitters
+
+Ingress2gateway has two main components: **providers** and **emitters**.
+
+- **Providers** read Ingress resources and provider-specific CRDs, then convert
+  them into a generic intermediate representation (IR).
+- **Emitters** take that IR and produce the final Gateway API output. The default
+  `standard` emitter outputs core Gateway API resources (like `Gateway` and
+  `HTTPRoute`), while other emitters can additionally output resources tailored to
+  a specific Gateway API project (e.g. `EnvoyGateway` `BackendTrafficPolicy`
+  or `GKE` `HealthCheckPolicy`).
+
+For a detailed look at the architecture, see [docs/emitters.md](docs/emitters.md).
+
+### Supported Providers
 
 * [apisix](pkg/i2gw/providers/apisix/README.md)
 * [cilium](pkg/i2gw/providers/cilium/README.md)
@@ -31,14 +45,20 @@ API.
 If your provider, or a specific feature, is not currently supported, please open
 an issue and describe your use case.
 
-To contribute a new provider support - please read [PROVIDER.md](PROVIDER.md).
+To contribute a new provider support - please read [CONTRIBUTING.md](CONTRIBUTING.md).
+
+### Supported Emitters
+* [standard](https://gateway-api.sigs.k8s.io/) (default)
+* [envoy-gateway](https://gateway.envoyproxy.io/)
+* [gce](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/gateway-api)
+* [kgateway](https://kgateway.dev/)
 
 ## Installation
 
 ### Via go install
 
 If you have a Go development environment locally, you can install ingress2gateway
-with `go install github.com/kubernetes-sigs/ingress2gateway@v0.5.0`
+with `go install github.com/kubernetes-sigs/ingress2gateway@v1.0.0`
 
 This will put `ingress2gateway` binary in `$(go env GOPATH)/bin`
 
@@ -58,9 +78,9 @@ brew install ingress2gateway
 
    * Install Git: Make sure Git is installed on your system to clone the project
      repository.
-   * Install Go: Make sure the go language is installed on your system. You can
-     download it from the official website (https://golang.org/dl/) and follow the
-     installation instructions.
+   * Install Go 1.25.5 or later: Make sure the Go language is installed on your
+     system. You can download it from the official website
+     (https://golang.org/dl/) and follow the installation instructions.
 
 1. Clone the project repository
 
@@ -74,14 +94,21 @@ brew install ingress2gateway
    make build
    ```
 
+1. Install the binary to your system
+
+   ```shell
+   go install .
+   ```
+
 ## Usage
 
-Ingress2gateway reads Ingress resources and/or provider-specifc CRDs from a Kubernetes
-cluster or a file. It will output the equivalent Gateway API resources in a YAML/JSON
-format to stdout.  The simplest case is to convert all ingresses from one provider (in this example we use ingress-nginx):
+Ingress2gateway reads Ingress resources and/or provider-specific CRDs from a Kubernetes
+cluster or a file. It will output the equivalent Gateway API resources in a YAML, JSON,
+or KYAML format to stdout. The simplest case is to convert all ingresses from one
+provider (in this example we use ingress-nginx):
 
 ```shell
-./ingress2gateway print --providers=ingress-nginx
+ingress2gateway print --providers=ingress-nginx
 ```
 
 The above command will:
@@ -89,23 +116,45 @@ The above command will:
 1. Read your Kube config file to extract the cluster credentials and the current
    active namespace.
 1. Search for ingress-nginx resources in that namespace.
-1. Convert them to Gateway-API resources (Currently only Gateways and HTTPRoutes).
+1. Convert them to Gateway API resources.
+1. Warn you of any untranslated fields or unsupported features.
 
 ## Options
 
 ### `print` command
 
+| Flag           | Short | Default Value           | Required | Description                                                  |
+| -------------- | ----- | ----------------------- | -------- | ------------------------------------------------------------ |
+| all-namespaces | -A    | false                   | No       | If present, list the requested object(s) across all namespaces. Namespace in the current context is ignored even if specified with --namespace. |
+| allow-experimental-gw-api | | false              | No       | If present, include Experimental Gateway API fields (e.g. URLRewrite) in the output. |
+| emitter        |       | standard                | No       | The emitter to use for generating Gateway API resources.      |
+| input-file     |       |                         | No       | Path to the manifest file(s). When set, the tool will read ingresses from the file(s) instead of reading from the cluster. Supports yaml and json. Can be specified multiple times. |
+| kubeconfig     |       |                         | No       | The kubeconfig file to use when talking to the cluster. If the flag is not set, a set of standard locations can be searched for an existing kubeconfig file. |
+| namespace      | -n    |                         | No       | If present, the namespace scope for the invocation.           |
+| no-color       |       | false                   | No       | Disable ANSI color codes in the output.                       |
+| output         | -o    | yaml                    | No       | The output format. One of: yaml, json, kyaml.                 |
+| providers      |       |                         | Yes      | Comma-separated list of providers.                            |
+
+#### Provider-specific flags
+
 | Flag           | Default Value           | Required | Description                                                  |
 | -------------- | ----------------------- | -------- | ------------------------------------------------------------ |
-| all-namespaces | False                   | No       | If present, list the requested object(s) across all namespaces. Namespace in the current context is ignored even if specified with --namespace. |
-| input-file     |                         | No       | Path to the manifest file. When set, the tool will read ingresses from the file instead of reading from the cluster. Supported files are yaml and json. |
-| namespace      |                         | No       | If present, the namespace scope for the invocation.           |
-| openapi3-backend     |                         | No       | Provider-specific: openapi3. The name of the backend service to use in the HTTPRoutes. |
-| openapi3-gateway-class-name     |                         | No       | Provider-specific: openapi3. The name of the gateway class to use in the Gateways. |
-| openapi3-gateway-tls-secret     |                         | No       | Provider-specific: openapi3. The name of the secret for the TLS certificate references in the Gateways. |
-| output         | yaml                    | No       | The output format, either yaml or json.                       |
-| providers      |  | Yes       | Comma-separated list of providers. |
-| kubeconfig     |                         | No       | The kubeconfig file to use when talking to the cluster. If the flag is not set, a set of standard locations can be searched for an existing kubeconfig file. |
+| gce-gateway-class-name |                   | No       | Provider-specific: gce. The name of the GatewayClass to use for the Gateway. |
+| ingressnginx-ingress-class | nginx          | No       | Provider-specific: ingress-nginx. The name of the ingress class to select. |
+| openapi3-backend     |                       | No       | Provider-specific: openapi3. The name of the backend service to use in the HTTPRoutes. |
+| openapi3-gateway-class-name |                | No       | Provider-specific: openapi3. The name of the gateway class to use in the Gateways. |
+| openapi3-tls-secret  |                       | No       | Provider-specific: openapi3. The name of the secret for the TLS certificate references in the Gateways. |
+
+
+## Gateway API version support
+
+Ingress2gateway will support the latest stable version of the Gateway API at the time of release.
+
+| Ingress2gateway version | Supported Gateway API version |
+| ----------------------- | ----------------------------- |
+| v1.0                    | v1.5.0 [^1]                   |
+
+[^1]: The output of Ingress2Gateway v1.0 is generally forward-compatible with Gateway API v1.4.
 
 ## Conversion of Ingress resources to Gateway API
 

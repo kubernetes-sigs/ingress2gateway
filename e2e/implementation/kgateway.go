@@ -1,5 +1,5 @@
 /*
-Copyright 2026 The Kubernetes Authors.
+Copyright The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -37,8 +37,8 @@ const (
 	kgatewayCRDsRelease = "kgateway-crds"
 )
 
-// DeployKgateway installs kgateway with Gateway API support using Helm. Returns a
-// cleanup function that uninstalls kgateway and deletes the namespace.
+// DeployKgateway deploys kgateway as a Gateway API implementation via Helm and returns a cleanup
+// function.
 func DeployKgateway(
 	ctx context.Context,
 	l framework.Logger,
@@ -63,6 +63,7 @@ func DeployKgateway(
 		kgatewayVersion,
 		namespace,
 		true,
+		false,
 		nil,
 	); err != nil {
 		return nil, fmt.Errorf("installing kgateway CRDs chart: %w", err)
@@ -77,6 +78,7 @@ func DeployKgateway(
 		kgatewayChart,
 		kgatewayVersion,
 		namespace,
+		false,
 		false,
 		nil,
 	); err != nil {

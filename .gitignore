@@ -31,4 +31,5 @@ go.work
 .vscode/
 
 kind-kubeconfig
+e2e/kind.yaml
 bin

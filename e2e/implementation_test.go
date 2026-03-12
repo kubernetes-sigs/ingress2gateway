@@ -1,5 +1,5 @@
 /*
-Copyright 2025 The Kubernetes Authors.
+Copyright The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,49 +25,32 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
-// Implementation smoke tests: Table-driven test covering all implementations against the
+// Implementation smoke tests: Table-driven tests across gateway implementations, all using
 // ingress-nginx provider + standard emitter.
 
-func TestImplementationSmoke(t *testing.T) {
+func TestImplementations(t *testing.T) {
 	t.Parallel()
 
-	type implEntry struct {
-		implementation string
-		provider       string
-		ingressClass   string
-		providerFlags  map[string]map[string]string
-	}
-
-	implementations := []implEntry{
-		{
-			implementation: implementation.KongName,
-			provider:       ingressnginx.Name,
-			ingressClass:   ingressnginx.NginxIngressClass,
-		},
-		{
-			implementation: implementation.IstioName,
-			provider:       ingressnginx.Name,
-			ingressClass:   ingressnginx.NginxIngressClass,
-		},
-		{
-			implementation: implementation.KgatewayName,
-			provider:       ingressnginx.Name,
-			ingressClass:   ingressnginx.NginxIngressClass,
-		},
+	implementations := []struct {
+		name string
+	}{
+		{name: implementation.IstioName},
+		{name: implementation.KongName},
+		{name: implementation.KgatewayName},
+		{name: implementation.EnvoyGatewayName},
 	}
 
 	for _, impl := range implementations {
-		t.Run(impl.implementation, func(t *testing.T) {
+		t.Run(impl.name, func(t *testing.T) {
 			t.Parallel()
 			t.Run("basic conversion", func(t *testing.T) {
 				runTestCase(t, &framework.TestCase{
-					GatewayImplementation: impl.implementation,
-					Providers:             []string{impl.provider},
-					ProviderFlags:         impl.providerFlags,
+					GatewayImplementation: impl.name,
+					Providers:             []string{ingressnginx.Name},
 					Ingresses: []*networkingv1.Ingress{
 						framework.BasicIngress().
 							WithName("foo").
-							WithIngressClass(impl.ingressClass).
+							WithIngressClass(ingressnginx.NginxIngressClass).
 							Build(),
 					},
 					Verifiers: map[string][]framework.Verifier{
@@ -77,17 +60,16 @@ func TestImplementationSmoke(t *testing.T) {
 			})
 			t.Run("multiple ingresses", func(t *testing.T) {
 				runTestCase(t, &framework.TestCase{
-					GatewayImplementation: impl.implementation,
-					Providers:             []string{impl.provider},
-					ProviderFlags:         impl.providerFlags,
+					GatewayImplementation: impl.name,
+					Providers:             []string{ingressnginx.Name},
 					Ingresses: []*networkingv1.Ingress{
 						framework.BasicIngress().
 							WithName("foo").
-							WithIngressClass(impl.ingressClass).
+							WithIngressClass(ingressnginx.NginxIngressClass).
 							Build(),
 						framework.BasicIngress().
 							WithName("bar").
-							WithIngressClass(impl.ingressClass).
+							WithIngressClass(ingressnginx.NginxIngressClass).
 							Build(),
 					},
 					Verifiers: map[string][]framework.Verifier{

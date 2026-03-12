@@ -1,5 +1,5 @@
 /*
-Copyright 2025 The Kubernetes Authors.
+Copyright The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/e2e/provider"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
+	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/kubernetes"
 	gwclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 )
@@ -77,6 +78,7 @@ func deployGatewayImplementation(
 	ctx context.Context,
 	t *testing.T,
 	k8sClient *kubernetes.Clientset,
+	apiextClient *apiextensionsclientset.Clientset,
 	gwClient *gwclientset.Clientset,
 	kubeconfig string,
 	gwImpl string,
@@ -99,6 +101,11 @@ func deployGatewayImplementation(
 		ns := fmt.Sprintf("%s-kgateway-system", framework.E2EPrefix)
 		r = framework.GlobalResourceManager.Acquire(implementation.KgatewayName, func() (framework.CleanupFunc, error) {
 			return implementation.DeployKgateway(ctx, t, k8sClient, kubeconfig, ns, skipCleanup)
+		})
+	case implementation.EnvoyGatewayName:
+		ns := fmt.Sprintf("%s-envoy-gateway-system", framework.E2EPrefix)
+		r = framework.GlobalResourceManager.Acquire(implementation.EnvoyGatewayName, func() (framework.CleanupFunc, error) {
+			return implementation.DeployEnvoyGateway(ctx, t, k8sClient, apiextClient, gwClient, kubeconfig, ns, skipCleanup)
 		})
 	default:
 		t.Fatalf("Unknown gateway implementation: %s", gwImpl)
