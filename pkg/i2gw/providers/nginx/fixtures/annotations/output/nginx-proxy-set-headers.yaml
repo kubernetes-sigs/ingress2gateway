@@ -41,6 +41,5 @@ spec:
     - path:
         type: PathPrefix
         value: /echo
-    name: rule-0
 status:
   parents: []

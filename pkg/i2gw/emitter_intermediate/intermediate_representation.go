@@ -70,7 +70,19 @@ type EmitterIR struct {
 	BackendTLSPolicies map[types.NamespacedName]BackendTLSPolicyContext
 	ReferenceGrants    map[types.NamespacedName]ReferenceGrantContext
 
+	Services map[types.NamespacedName]ServiceContext
+
 	GceServices map[types.NamespacedName]gce.ServiceIR
+}
+
+type SessionAffinity struct {
+	Type         string
+	CookieName   string
+	CookieTTLSec *int64
+}
+
+type ServiceContext struct {
+	SessionAffinity *SessionAffinity
 }
 
 type GatewayContext struct {
@@ -84,7 +96,6 @@ type HTTPRouteContext struct {
 	gatewayv1.HTTPRoute
 	// TCPTimeoutsByRuleIdx holds provider TCP-level timeouts by HTTPRoute rule index.
 	TCPTimeoutsByRuleIdx map[int]*TCPTimeouts
-
 	// PathRewriteByRuleIdx maps HTTPRoute rule indices to path rewrite intent.
 	// This is provider-neutral and applied by the common emitter.
 	PathRewriteByRuleIdx map[int]*PathRewrite

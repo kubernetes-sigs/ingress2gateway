@@ -23,7 +23,6 @@ type GatewayIR struct {
 type SslPolicyConfig struct {
 	Name string
 }
-type HTTPRouteIR struct{}
 type ServiceIR struct {
 	SessionAffinity *SessionAffinityConfig
 	SecurityPolicy  *SecurityPolicyConfig

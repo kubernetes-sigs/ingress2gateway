@@ -110,7 +110,6 @@ func Test_ToGateway(t *testing.T) {
 								},
 								Hostnames: []gatewayv1.Hostname{"test.mydomain.com"},
 								Rules: []gatewayv1.HTTPRouteRule{{
-									Name: ptrTo(gatewayv1.SectionName("rule-0")),
 									Matches: []gatewayv1.HTTPRouteMatch{
 										{
 											Path: &gatewayv1.HTTPPathMatch{
@@ -247,7 +246,6 @@ func Test_ToGateway(t *testing.T) {
 								Hostnames: []gatewayv1.Hostname{"test.mydomain.com"},
 								Rules: []gatewayv1.HTTPRouteRule{
 									{
-										Name: ptrTo(gatewayv1.SectionName("rule-0")),
 										Matches: []gatewayv1.HTTPRouteMatch{
 											{
 												Path: &gatewayv1.HTTPPathMatch{
@@ -288,7 +286,6 @@ func Test_ToGateway(t *testing.T) {
 										},
 									},
 									{
-										Name: ptrTo(gatewayv1.SectionName("rule-1")),
 										Matches: []gatewayv1.HTTPRouteMatch{
 											{
 												Path: &gatewayv1.HTTPPathMatch{
@@ -398,7 +395,6 @@ func Test_ToGateway(t *testing.T) {
 								Hostnames: []gatewayv1.Hostname{"test.mydomain.com"},
 								Rules: []gatewayv1.HTTPRouteRule{
 									{
-										Name: ptrTo(gatewayv1.SectionName("rule-0")),
 										Matches: []gatewayv1.HTTPRouteMatch{
 											{
 												Path: &gatewayv1.HTTPPathMatch{
@@ -488,7 +484,6 @@ func Test_ToGateway(t *testing.T) {
 								Hostnames: []gatewayv1.Hostname{"test.mydomain.com"},
 								Rules: []gatewayv1.HTTPRouteRule{
 									{
-										Name: ptrTo(gatewayv1.SectionName("rule-0")),
 										Matches: []gatewayv1.HTTPRouteMatch{
 											{
 												Path: &gatewayv1.HTTPPathMatch{
