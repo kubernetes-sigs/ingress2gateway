@@ -1408,152 +1408,152 @@ func TestAddDefaultSSLRedirect_allIngressesNoTLS(t *testing.T) {
 	}
 }
 func TestBuildTrailingSlashRedirectRules(t *testing.T) {
-prefix := gatewayv1.PathMatchPathPrefix
-exact := gatewayv1.PathMatchExact
+	prefix := gatewayv1.PathMatchPathPrefix
+	exact := gatewayv1.PathMatchExact
 
-t.Run("generates redirect for trailing slash path", func(t *testing.T) {
-rules := []gatewayv1.HTTPRouteRule{
-{
-Matches: []gatewayv1.HTTPRouteMatch{{
-Path: &gatewayv1.HTTPPathMatch{
-Type:  &prefix,
-Value: ptr.To("/foo/"),
-},
-}},
-},
-}
+	t.Run("generates redirect for trailing slash path", func(t *testing.T) {
+		rules := []gatewayv1.HTTPRouteRule{
+			{
+				Matches: []gatewayv1.HTTPRouteMatch{{
+					Path: &gatewayv1.HTTPPathMatch{
+						Type:  &prefix,
+						Value: ptr.To("/foo/"),
+					},
+				}},
+			},
+		}
 
-got := buildTrailingSlashRedirectRules(rules)
-if len(got) != 1 {
-t.Fatalf("expected 1 redirect rule, got %d", len(got))
-}
+		got := buildTrailingSlashRedirectRules(rules)
+		if len(got) != 1 {
+			t.Fatalf("expected 1 redirect rule, got %d", len(got))
+		}
 
-redirect := got[0]
-if *redirect.Matches[0].Path.Value != "/foo" {
-t.Fatalf("expected redirect source /foo, got %s", *redirect.Matches[0].Path.Value)
-}
-if *redirect.Matches[0].Path.Type != gatewayv1.PathMatchExact {
-t.Fatalf("expected Exact match type")
-}
-if *redirect.Filters[0].RequestRedirect.StatusCode != 301 {
-t.Fatalf("expected 301 status code")
-}
-if *redirect.Filters[0].RequestRedirect.Path.ReplaceFullPath != "/foo/" {
-t.Fatalf("expected redirect target /foo/")
-}
-})
+		redirect := got[0]
+		if *redirect.Matches[0].Path.Value != "/foo" {
+			t.Fatalf("expected redirect source /foo, got %s", *redirect.Matches[0].Path.Value)
+		}
+		if *redirect.Matches[0].Path.Type != gatewayv1.PathMatchExact {
+			t.Fatalf("expected Exact match type")
+		}
+		if *redirect.Filters[0].RequestRedirect.StatusCode != 301 {
+			t.Fatalf("expected 301 status code")
+		}
+		if *redirect.Filters[0].RequestRedirect.Path.ReplaceFullPath != "/foo/" {
+			t.Fatalf("expected redirect target /foo/")
+		}
+	})
 
-t.Run("no redirect when exact path exists", func(t *testing.T) {
-rules := []gatewayv1.HTTPRouteRule{
-{
-Matches: []gatewayv1.HTTPRouteMatch{
-{Path: &gatewayv1.HTTPPathMatch{Type: &exact, Value: ptr.To("/foo")}},
-{Path: &gatewayv1.HTTPPathMatch{Type: &prefix, Value: ptr.To("/foo/")}},
-},
-},
-}
-got := buildTrailingSlashRedirectRules(rules)
-if len(got) != 0 {
-t.Fatalf("expected no redirect when exact /foo exists, got %d", len(got))
-}
-})
+	t.Run("no redirect when exact path exists", func(t *testing.T) {
+		rules := []gatewayv1.HTTPRouteRule{
+			{
+				Matches: []gatewayv1.HTTPRouteMatch{
+					{Path: &gatewayv1.HTTPPathMatch{Type: &exact, Value: ptr.To("/foo")}},
+					{Path: &gatewayv1.HTTPPathMatch{Type: &prefix, Value: ptr.To("/foo/")}},
+				},
+			},
+		}
+		got := buildTrailingSlashRedirectRules(rules)
+		if len(got) != 0 {
+			t.Fatalf("expected no redirect when exact /foo exists, got %d", len(got))
+		}
+	})
 
-t.Run("no redirect when prefix path exists", func(t *testing.T) {
-rules := []gatewayv1.HTTPRouteRule{
-{
-Matches: []gatewayv1.HTTPRouteMatch{
-{Path: &gatewayv1.HTTPPathMatch{Type: &prefix, Value: ptr.To("/foo")}},
-{Path: &gatewayv1.HTTPPathMatch{Type: &prefix, Value: ptr.To("/foo/")}},
-},
-},
-}
-got := buildTrailingSlashRedirectRules(rules)
-if len(got) != 0 {
-t.Fatalf("expected no redirect when prefix /foo exists, got %d", len(got))
-}
-})
+	t.Run("no redirect when prefix path exists", func(t *testing.T) {
+		rules := []gatewayv1.HTTPRouteRule{
+			{
+				Matches: []gatewayv1.HTTPRouteMatch{
+					{Path: &gatewayv1.HTTPPathMatch{Type: &prefix, Value: ptr.To("/foo")}},
+					{Path: &gatewayv1.HTTPPathMatch{Type: &prefix, Value: ptr.To("/foo/")}},
+				},
+			},
+		}
+		got := buildTrailingSlashRedirectRules(rules)
+		if len(got) != 0 {
+			t.Fatalf("expected no redirect when prefix /foo exists, got %d", len(got))
+		}
+	})
 
-t.Run("no redirect when shorter prefix covers path", func(t *testing.T) {
-rules := []gatewayv1.HTTPRouteRule{
-{Matches: []gatewayv1.HTTPRouteMatch{
-{Path: &gatewayv1.HTTPPathMatch{Type: &prefix, Value: ptr.To("/a")}},
-}},
-{Matches: []gatewayv1.HTTPRouteMatch{
-{Path: &gatewayv1.HTTPPathMatch{Type: &exact, Value: ptr.To("/a/b/c/")}},
-}},
-}
-got := buildTrailingSlashRedirectRules(rules)
-if len(got) != 0 {
-t.Fatalf("expected no redirect when /a covers /a/b/c, got %d", len(got))
-}
-})
+	t.Run("no redirect when shorter prefix covers path", func(t *testing.T) {
+		rules := []gatewayv1.HTTPRouteRule{
+			{Matches: []gatewayv1.HTTPRouteMatch{
+				{Path: &gatewayv1.HTTPPathMatch{Type: &prefix, Value: ptr.To("/a")}},
+			}},
+			{Matches: []gatewayv1.HTTPRouteMatch{
+				{Path: &gatewayv1.HTTPPathMatch{Type: &exact, Value: ptr.To("/a/b/c/")}},
+			}},
+		}
+		got := buildTrailingSlashRedirectRules(rules)
+		if len(got) != 0 {
+			t.Fatalf("expected no redirect when /a covers /a/b/c, got %d", len(got))
+		}
+	})
 
-t.Run("no redirect when root prefix covers path", func(t *testing.T) {
-rules := []gatewayv1.HTTPRouteRule{
-{Matches: []gatewayv1.HTTPRouteMatch{
-{Path: &gatewayv1.HTTPPathMatch{Type: &prefix, Value: ptr.To("/")}},
-}},
-{Matches: []gatewayv1.HTTPRouteMatch{
-{Path: &gatewayv1.HTTPPathMatch{Type: &prefix, Value: ptr.To("/xyz/")}},
-}},
-}
-got := buildTrailingSlashRedirectRules(rules)
-if len(got) != 0 {
-t.Fatalf("expected no redirect when / covers /xyz, got %d", len(got))
-}
-})
+	t.Run("no redirect when root prefix covers path", func(t *testing.T) {
+		rules := []gatewayv1.HTTPRouteRule{
+			{Matches: []gatewayv1.HTTPRouteMatch{
+				{Path: &gatewayv1.HTTPPathMatch{Type: &prefix, Value: ptr.To("/")}},
+			}},
+			{Matches: []gatewayv1.HTTPRouteMatch{
+				{Path: &gatewayv1.HTTPPathMatch{Type: &prefix, Value: ptr.To("/xyz/")}},
+			}},
+		}
+		got := buildTrailingSlashRedirectRules(rules)
+		if len(got) != 0 {
+			t.Fatalf("expected no redirect when / covers /xyz, got %d", len(got))
+		}
+	})
 
-t.Run("redirect when prefix does not cover at segment boundary", func(t *testing.T) {
-rules := []gatewayv1.HTTPRouteRule{
-{Matches: []gatewayv1.HTTPRouteMatch{
-{Path: &gatewayv1.HTTPPathMatch{Type: &prefix, Value: ptr.To("/ab")}},
-}},
-{Matches: []gatewayv1.HTTPRouteMatch{
-{Path: &gatewayv1.HTTPPathMatch{Type: &exact, Value: ptr.To("/a/b/c/")}},
-}},
-}
-got := buildTrailingSlashRedirectRules(rules)
-if len(got) != 1 {
-t.Fatalf("expected redirect for /a/b/c when /ab does NOT cover it, got %d", len(got))
-}
-})
+	t.Run("redirect when prefix does not cover at segment boundary", func(t *testing.T) {
+		rules := []gatewayv1.HTTPRouteRule{
+			{Matches: []gatewayv1.HTTPRouteMatch{
+				{Path: &gatewayv1.HTTPPathMatch{Type: &prefix, Value: ptr.To("/ab")}},
+			}},
+			{Matches: []gatewayv1.HTTPRouteMatch{
+				{Path: &gatewayv1.HTTPPathMatch{Type: &exact, Value: ptr.To("/a/b/c/")}},
+			}},
+		}
+		got := buildTrailingSlashRedirectRules(rules)
+		if len(got) != 1 {
+			t.Fatalf("expected redirect for /a/b/c when /ab does NOT cover it, got %d", len(got))
+		}
+	})
 
-t.Run("no redirect for root path", func(t *testing.T) {
-rules := []gatewayv1.HTTPRouteRule{
-{Matches: []gatewayv1.HTTPRouteMatch{
-{Path: &gatewayv1.HTTPPathMatch{Type: &prefix, Value: ptr.To("/")}},
-}},
-}
-got := buildTrailingSlashRedirectRules(rules)
-if len(got) != 0 {
-t.Fatalf("expected no redirect for root path, got %d", len(got))
-}
-})
+	t.Run("no redirect for root path", func(t *testing.T) {
+		rules := []gatewayv1.HTTPRouteRule{
+			{Matches: []gatewayv1.HTTPRouteMatch{
+				{Path: &gatewayv1.HTTPPathMatch{Type: &prefix, Value: ptr.To("/")}},
+			}},
+		}
+		got := buildTrailingSlashRedirectRules(rules)
+		if len(got) != 0 {
+			t.Fatalf("expected no redirect for root path, got %d", len(got))
+		}
+	})
 
-t.Run("no redirect for path without trailing slash", func(t *testing.T) {
-rules := []gatewayv1.HTTPRouteRule{
-{Matches: []gatewayv1.HTTPRouteMatch{
-{Path: &gatewayv1.HTTPPathMatch{Type: &prefix, Value: ptr.To("/foo")}},
-}},
-}
-got := buildTrailingSlashRedirectRules(rules)
-if len(got) != 0 {
-t.Fatalf("expected no redirect for /foo (no trailing slash), got %d", len(got))
-}
-})
+	t.Run("no redirect for path without trailing slash", func(t *testing.T) {
+		rules := []gatewayv1.HTTPRouteRule{
+			{Matches: []gatewayv1.HTTPRouteMatch{
+				{Path: &gatewayv1.HTTPPathMatch{Type: &prefix, Value: ptr.To("/foo")}},
+			}},
+		}
+		got := buildTrailingSlashRedirectRules(rules)
+		if len(got) != 0 {
+			t.Fatalf("expected no redirect for /foo (no trailing slash), got %d", len(got))
+		}
+	})
 
-t.Run("deduplicates redirect sources", func(t *testing.T) {
-rules := []gatewayv1.HTTPRouteRule{
-{Matches: []gatewayv1.HTTPRouteMatch{
-{Path: &gatewayv1.HTTPPathMatch{Type: &prefix, Value: ptr.To("/foo/")}},
-}},
-{Matches: []gatewayv1.HTTPRouteMatch{
-{Path: &gatewayv1.HTTPPathMatch{Type: &exact, Value: ptr.To("/foo/")}},
-}},
-}
-got := buildTrailingSlashRedirectRules(rules)
-if len(got) != 1 {
-t.Fatalf("expected 1 deduplicated redirect rule, got %d", len(got))
-}
-})
+	t.Run("deduplicates redirect sources", func(t *testing.T) {
+		rules := []gatewayv1.HTTPRouteRule{
+			{Matches: []gatewayv1.HTTPRouteMatch{
+				{Path: &gatewayv1.HTTPPathMatch{Type: &prefix, Value: ptr.To("/foo/")}},
+			}},
+			{Matches: []gatewayv1.HTTPRouteMatch{
+				{Path: &gatewayv1.HTTPPathMatch{Type: &exact, Value: ptr.To("/foo/")}},
+			}},
+		}
+		got := buildTrailingSlashRedirectRules(rules)
+		if len(got) != 1 {
+			t.Fatalf("expected 1 deduplicated redirect rule, got %d", len(got))
+		}
+	})
 }
