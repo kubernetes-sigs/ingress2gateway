@@ -172,6 +172,19 @@ func backendTLSFeature(notify notifications.NotifyFunc, ingresses []networkingv1
 				}
 
 				// We know proxySSLVerify is "on" and proxySSLSecret is not empty due to strict validation above.
+				notify(notifications.WarningNotification,
+					fmt.Sprintf("Ingress %s/%s: mTLS will not be configured. The original Secret %q contains client certificates (tls.crt/tls.key) "+
+						"for mutual TLS authentication, but Gateway API BackendTLSPolicy does not support client certificate authentication. "+
+						"Only server CA verification will be configured.",
+						primaryIngress.Namespace, primaryIngress.Name, proxySSLSecret),
+					primaryIngress,
+				)
+				notify(notifications.InfoNotification,
+					fmt.Sprintf("Ingress %s/%s: The generated BackendTLSPolicy references a ConfigMap %q for CA certificate validation. "+
+						"You must create a ConfigMap named %q in namespace %q with the CA certificate from your Secret under the key \"ca.crt\".",
+						primaryIngress.Namespace, primaryIngress.Name, caRefName, caRefName, namespace),
+					primaryIngress,
+				)
 				policy.Spec.Validation.CACertificateRefs = []gatewayv1.LocalObjectReference{{
 					Group: "",
 					Kind:  "ConfigMap",
