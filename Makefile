@@ -70,6 +70,11 @@ test: vet;$(info $(M)...Begin to run tests.)  @ ## Run tests.
 build: vet;$(info $(M)...Build the binary.)  @ ## Build the binary.
 	go build $(LDFLAGS) -o ingress2gateway .
 
+# install the binary
+.PHONY: install
+install: vet;$(info $(M)...Install the binary.)  @ ## Build the binary.
+	go install $(LDFLAGS)
+
 # Run static analysis.
 .PHONY: verify
 verify:
