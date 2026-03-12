@@ -93,6 +93,7 @@ type DeployGatewayImplFunc func(
 	ctx context.Context,
 	t *testing.T,
 	k8sClient *kubernetes.Clientset,
+	apiextClient *apiextensionsclientset.Clientset,
 	gwClient *gwclientset.Clientset,
 	kubeconfig string,
 	gwImpl string,
@@ -168,6 +169,14 @@ func RunTestCase(t *testing.T, tc *TestCase, deployProviders DeployProvidersFunc
 			<-ch
 		}
 	})
+
+	// Register namespace cleanup AFTER provider/implementation cleanup above.
+	// t.Cleanup runs in LIFO order, so the namespace is deleted FIRST — while CRDs are
+	// still registered and controllers are still running. This ensures the namespace
+	// controller can discover all resource types and that controllers (e.g., Envoy Gateway)
+	// can cleanly remove resources they created in the namespace (such as proxy deployments)
+	// before they themselves are torn down.
+	t.Cleanup(cleanupNS)
 
 	for _, r := range resources {
 		require.NoError(t, r.Wait(), "resource installation failed: %s", r.Name)
