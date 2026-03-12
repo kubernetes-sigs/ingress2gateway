@@ -137,6 +137,9 @@ func (a *tcpIngressAggregator) toRoutesAndGateways() ([]gatewayv1alpha2.TCPRoute
 					Name:  gatewayv1.ObjectName(tls.SecretName),
 				})
 		}
+		if listener.TLS != nil && len(listener.TLS.CertificateRefs) > 0 {
+			listener.TLS.CertificateRefs = common.DeduplicateSecretObjectReferences(listener.TLS.CertificateRefs)
+		}
 		gwKey := fmt.Sprintf("%s/%s", rg.namespace, rg.ingressClass)
 		listenersByNamespacedGateway[gwKey] = append(listenersByNamespacedGateway[gwKey], listener)
 		var errs field.ErrorList

@@ -201,6 +201,84 @@ func TestTCPIngressToGatewayAPI(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "TCPIngress duplicate TLS secrets deduplicates CertificateRefs",
+			tcpIngresses: []kongv1beta1.TCPIngress{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "sample",
+						Namespace: "default",
+						Annotations: map[string]string{
+							"kubernetes.io/ingress.class": "kong",
+						},
+					},
+					Spec: kongv1beta1.TCPIngressSpec{
+						TLS: []kongv1beta1.IngressTLS{
+							{SecretName: "testSecret"},
+							{SecretName: "testSecret"},
+						},
+						Rules: []kongv1beta1.IngressRule{
+							{
+								Port: 8888,
+								Host: "example.com",
+								Backend: kongv1beta1.IngressBackend{
+									ServiceName: "tcp-echo",
+									ServicePort: 1025,
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedGatewayResources: i2gw.GatewayResources{
+				Gateways: map[types.NamespacedName]gatewayv1.Gateway{
+					{Namespace: "default", Name: "kong"}: {
+						ObjectMeta: metav1.ObjectMeta{Name: "kong", Namespace: "default"},
+						Spec: gatewayv1.GatewaySpec{
+							GatewayClassName: "kong",
+							Listeners: []gatewayv1.Listener{{
+								Name:     "tls-example-com-8888",
+								Port:     8888,
+								Protocol: gatewayv1.TLSProtocolType,
+								Hostname: common.PtrTo(gatewayv1.Hostname("example.com")),
+								TLS: &gatewayv1.ListenerTLSConfig{
+									Mode: common.PtrTo(gatewayv1.TLSModePassthrough),
+									CertificateRefs: []gatewayv1.SecretObjectReference{{
+										Group: common.PtrTo(gatewayv1.Group("")),
+										Kind:  common.PtrTo(gatewayv1.Kind("Secret")),
+										Name:  "testSecret",
+									}},
+								},
+							}},
+						},
+					},
+				},
+				TLSRoutes: map[types.NamespacedName]gatewayv1alpha2.TLSRoute{
+					{Namespace: "default", Name: "sample-example-com"}: {
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "sample-example-com",
+							Namespace: "default",
+						},
+						Spec: gatewayv1alpha2.TLSRouteSpec{
+							CommonRouteSpec: gatewayv1.CommonRouteSpec{
+								ParentRefs: []gatewayv1.ParentReference{{
+									Name:        "kong",
+									SectionName: common.PtrTo(gatewayv1.SectionName("tls-example-com-8888")),
+								}},
+							},
+							Rules: []gatewayv1alpha2.TLSRouteRule{{
+								BackendRefs: []gatewayv1.BackendRef{{
+									BackendObjectReference: gatewayv1.BackendObjectReference{
+										Name: "tcp-echo",
+										Port: common.PtrTo(gatewayv1.PortNumber(1025)),
+									},
+								}},
+							}},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {

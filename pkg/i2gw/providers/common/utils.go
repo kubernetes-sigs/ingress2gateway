@@ -109,6 +109,36 @@ func RouteName(ingressName, host string) string {
 	return fmt.Sprintf("%s-%s", ingressName, NameFromHost(host))
 }
 
+func DeduplicateSecretObjectReferences(refs []gatewayv1.SecretObjectReference) []gatewayv1.SecretObjectReference {
+	seen := map[string]struct{}{}
+	result := make([]gatewayv1.SecretObjectReference, 0, len(refs))
+
+	for _, ref := range refs {
+		group := ""
+		kind := ""
+		namespace := ""
+		if ref.Group != nil {
+			group = string(*ref.Group)
+		}
+		if ref.Kind != nil {
+			kind = string(*ref.Kind)
+		}
+		if ref.Namespace != nil {
+			namespace = string(*ref.Namespace)
+		}
+
+		key := fmt.Sprintf("%s|%s|%s|%s", group, kind, namespace, ref.Name)
+		if _, exists := seen[key]; exists {
+			continue
+		}
+
+		seen[key] = struct{}{}
+		result = append(result, ref)
+	}
+
+	return result
+}
+
 func ToBackendRef(namespace string, ib networkingv1.IngressBackend, servicePorts map[types.NamespacedName]map[string]int32, path *field.Path) (*gatewayv1.BackendRef, *field.Error) {
 	if ib.Service != nil {
 		if ib.Service.Port.Name == "" {

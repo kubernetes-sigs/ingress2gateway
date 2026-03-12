@@ -387,17 +387,8 @@ func (a *ingressAggregator) toRoutesAndGateways(options i2gw.ProviderImplementat
 
 		for _, name := range orderedNames {
 			l := uniqueListeners[name]
-			// Final deduplication of certificates for this listener
 			if l.TLS != nil && len(l.TLS.CertificateRefs) > 0 {
-				uniqueRefs := make(map[gatewayv1.ObjectName]bool)
-				var certificates []gatewayv1.SecretObjectReference
-				for _, ref := range l.TLS.CertificateRefs {
-					if !uniqueRefs[ref.Name] {
-						certificates = append(certificates, ref)
-						uniqueRefs[ref.Name] = true
-					}
-				}
-				l.TLS.CertificateRefs = certificates
+				l.TLS.CertificateRefs = DeduplicateSecretObjectReferences(l.TLS.CertificateRefs)
 			}
 			gateway.Spec.Listeners = append(gateway.Spec.Listeners, *l)
 		}

@@ -333,6 +333,137 @@ func Test_ToIR(t *testing.T) {
 			expectedErrors: field.ErrorList{},
 		},
 		{
+			name: "multiple ingresses sharing same TLS secret deduplicates CertificateRefs",
+			ingresses: []networkingv1.Ingress{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "shared-1", Namespace: "test"},
+					Spec: networkingv1.IngressSpec{
+						TLS: []networkingv1.IngressTLS{{
+							Hosts:      []string{"example.com"},
+							SecretName: "shared-cert",
+						}},
+						Rules: []networkingv1.IngressRule{{
+							Host: "example.com",
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{{
+										Path:     "/one",
+										PathType: &iPrefix,
+										Backend: networkingv1.IngressBackend{
+											Service: &networkingv1.IngressServiceBackend{
+												Name: "svc-one",
+												Port: networkingv1.ServiceBackendPort{Number: 80},
+											},
+										},
+									}},
+								},
+							},
+						}},
+						IngressClassName: PtrTo("shared-cert"),
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "shared-2", Namespace: "test"},
+					Spec: networkingv1.IngressSpec{
+						TLS: []networkingv1.IngressTLS{{
+							Hosts:      []string{"example.com"},
+							SecretName: "shared-cert",
+						}},
+						Rules: []networkingv1.IngressRule{{
+							Host: "example.com",
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{{
+										Path:     "/two",
+										PathType: &iPrefix,
+										Backend: networkingv1.IngressBackend{
+											Service: &networkingv1.IngressServiceBackend{
+												Name: "svc-two",
+												Port: networkingv1.ServiceBackendPort{Number: 81},
+											},
+										},
+									}},
+								},
+							},
+						}},
+						IngressClassName: PtrTo("shared-cert"),
+					},
+				},
+			},
+			servicePorts: map[types.NamespacedName]map[string]int32{},
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
+					{Namespace: "test", Name: "shared-cert"}: {
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: "shared-cert", Namespace: "test"},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: "shared-cert",
+								Listeners: []gatewayv1.Listener{{
+									Name:     "example-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: PtrTo(gatewayv1.Hostname("example.com")),
+								}, {
+									Name:     "example-com-https",
+									Port:     443,
+									Protocol: gatewayv1.HTTPSProtocolType,
+									Hostname: PtrTo(gatewayv1.Hostname("example.com")),
+									TLS: &gatewayv1.ListenerTLSConfig{
+										CertificateRefs: []gatewayv1.SecretObjectReference{{
+											Group: ptr.To(gatewayv1.Group("")),
+											Kind:  ptr.To(gatewayv1.Kind("Secret")),
+											Name:  "shared-cert",
+										}},
+									},
+								}},
+							},
+						},
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
+					{Namespace: "test", Name: "shared-1-example-com"}: {
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: "shared-1-example-com", Namespace: "test"},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{Name: "shared-cert"}},
+								},
+								Hostnames: []gatewayv1.Hostname{"example.com"},
+								Rules: []gatewayv1.HTTPRouteRule{{
+									Name: ptr.To(gatewayv1.SectionName("rule-0")),
+									Matches: []gatewayv1.HTTPRouteMatch{{
+										Path: &gatewayv1.HTTPPathMatch{Type: &gPathPrefix, Value: PtrTo("/one")},
+									}},
+									BackendRefs: []gatewayv1.HTTPBackendRef{{
+										BackendRef: gatewayv1.BackendRef{
+											BackendObjectReference: gatewayv1.BackendObjectReference{
+												Name: "svc-one",
+												Port: PtrTo(gatewayv1.PortNumber(80)),
+											},
+										},
+									}},
+								}, {
+									Name: ptr.To(gatewayv1.SectionName("rule-1")),
+									Matches: []gatewayv1.HTTPRouteMatch{{
+										Path: &gatewayv1.HTTPPathMatch{Type: &gPathPrefix, Value: PtrTo("/two")},
+									}},
+									BackendRefs: []gatewayv1.HTTPBackendRef{{
+										BackendRef: gatewayv1.BackendRef{
+											BackendObjectReference: gatewayv1.BackendObjectReference{
+												Name: "svc-two",
+												Port: PtrTo(gatewayv1.PortNumber(81)),
+											},
+										},
+									}},
+								}},
+							},
+						},
+					},
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
+		{
 			name: "ingress with custom and default backend",
 			ingresses: []networkingv1.Ingress{{
 				ObjectMeta: metav1.ObjectMeta{Name: "net", Namespace: "different"},
