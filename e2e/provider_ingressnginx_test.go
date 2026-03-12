@@ -1,5 +1,5 @@
 /*
-Copyright 2026 The Kubernetes Authors.
+Copyright The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@ limitations under the License.
 package e2e
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -273,7 +272,7 @@ func TestIngressNGINXCanary(t *testing.T) {
 		require.NoError(t, err)
 		host := fmt.Sprintf("canary-%s.com", suffix)
 		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: istio.ProviderName,
+			GatewayImplementation: implementation.IstioName,
 			Providers:             []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
@@ -316,7 +315,7 @@ func TestIngressNGINXCanary(t *testing.T) {
 		require.NoError(t, err)
 		host := fmt.Sprintf("canary-header-path-%s.com", suffix)
 		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: istio.ProviderName,
+			GatewayImplementation: implementation.IstioName,
 			Providers:             []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
@@ -368,7 +367,7 @@ func TestIngressNGINXCanary(t *testing.T) {
 		require.NoError(t, err)
 		host := fmt.Sprintf("canary-combined-%s.com", suffix)
 		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: istio.ProviderName,
+			GatewayImplementation: implementation.IstioName,
 			Providers:             []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
@@ -441,7 +440,7 @@ func TestIngressNGINXCORS(t *testing.T) {
 		maxAge := "600"
 
 		runTestCase(t, &framework.TestCase{
-			GatewayImplementation:  istio.ProviderName,
+			GatewayImplementation:  implementation.IstioName,
 			AllowExperimentalGWAPI: true,
 			Providers:              []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
@@ -549,7 +548,7 @@ func TestIngressNGINXCORS(t *testing.T) {
 		maxAge := "1728000"
 
 		runTestCase(t, &framework.TestCase{
-			GatewayImplementation:  istio.ProviderName,
+			GatewayImplementation:  implementation.IstioName,
 			AllowExperimentalGWAPI: true,
 			Providers:              []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
@@ -654,7 +653,7 @@ func TestIngressNGINXCORS(t *testing.T) {
 		deniedOrigin := "https://cors-denied.example.com"
 
 		runTestCase(t, &framework.TestCase{
-			GatewayImplementation:  istio.ProviderName,
+			GatewayImplementation:  implementation.IstioName,
 			AllowExperimentalGWAPI: true,
 			Providers:              []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
@@ -706,7 +705,7 @@ func TestIngressNGINXCORS(t *testing.T) {
 		deniedHeader := "X-Not-Allowed"
 
 		runTestCase(t, &framework.TestCase{
-			GatewayImplementation:  istio.ProviderName,
+			GatewayImplementation:  implementation.IstioName,
 			AllowExperimentalGWAPI: true,
 			Providers:              []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
@@ -784,7 +783,7 @@ func TestIngressNGINXPathRewrite(t *testing.T) {
 	t.Parallel()
 	t.Run("basic conversion", func(t *testing.T) {
 		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: istio.ProviderName,
+			GatewayImplementation: implementation.IstioName,
 			Providers:             []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
@@ -820,7 +819,7 @@ func TestIngressNGINXTLS(t *testing.T) {
 			t.Fatalf("creating TLS secret: %v", err)
 		}
 		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: istio.ProviderName,
+			GatewayImplementation: implementation.IstioName,
 			Providers:             []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
@@ -876,7 +875,7 @@ func TestIngressNGINXTLS(t *testing.T) {
 			t.Fatalf("creating no-redirect TLS secret: %v", err)
 		}
 		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: istio.ProviderName,
+			GatewayImplementation: implementation.IstioName,
 			Providers:             []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
@@ -947,7 +946,7 @@ func TestIngressNGINXTimeouts(t *testing.T) {
 	t.Parallel()
 	t.Run("slow response allowed", func(t *testing.T) {
 		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: istio.ProviderName,
+			GatewayImplementation: implementation.IstioName,
 			Providers:             []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
@@ -976,7 +975,7 @@ func TestIngressNGINXTimeouts(t *testing.T) {
 	})
 	t.Run("short timeout", func(t *testing.T) {
 		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: istio.ProviderName,
+			GatewayImplementation: implementation.IstioName,
 			Providers:             []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
@@ -1013,7 +1012,7 @@ func TestIngressNGINXRedirect(t *testing.T) {
 		redirectURL := fmt.Sprintf("https://new-site-%s.example.com/new-path/", suffix)
 
 		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: istio.ProviderName,
+			GatewayImplementation: implementation.IstioName,
 			Providers:             []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
@@ -1054,7 +1053,7 @@ func TestIngressNGINXRedirect(t *testing.T) {
 		redirectURL := fmt.Sprintf("https://temp-site-%s.example.com/temp-path/", suffix)
 
 		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: istio.ProviderName,
+			GatewayImplementation: implementation.IstioName,
 			Providers:             []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
@@ -1095,7 +1094,7 @@ func TestIngressNGINXRedirect(t *testing.T) {
 		redirectURL := fmt.Sprintf("https://custom-code-%s.example.com/path/", suffix)
 
 		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: istio.ProviderName,
+			GatewayImplementation: implementation.IstioName,
 			Providers:             []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
@@ -1137,7 +1136,7 @@ func TestIngressNGINXRedirect(t *testing.T) {
 		redirectURL := fmt.Sprintf("https://custom-temp-%s.example.com/path/", suffix)
 
 		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: istio.ProviderName,
+			GatewayImplementation: implementation.IstioName,
 			Providers:             []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
@@ -1177,7 +1176,7 @@ func TestIngressNGINXRedirect(t *testing.T) {
 		redirectURL := "https://another-domain.example.com/"
 
 		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: istio.ProviderName,
+			GatewayImplementation: implementation.IstioName,
 			Providers:             []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
@@ -1218,7 +1217,7 @@ func TestIngressNGINXRedirect(t *testing.T) {
 		redirectURL := fmt.Sprintf("https://custom-port-%s.example.com:8443/secure/", suffix)
 
 		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: istio.ProviderName,
+			GatewayImplementation: implementation.IstioName,
 			Providers:             []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
@@ -1260,7 +1259,7 @@ func TestIngressNGINXRedirect(t *testing.T) {
 		temporalURL := fmt.Sprintf("https://temporal-%s.example.com/path/", suffix)
 
 		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: istio.ProviderName,
+			GatewayImplementation: implementation.IstioName,
 			Providers:             []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
@@ -1325,7 +1324,7 @@ func TestIngressNGINXRegex(t *testing.T) {
 		regex.Spec.Rules[0].HTTP.Paths[0].PathType = &implementationSpecific
 
 		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: istio.ProviderName,
+			GatewayImplementation: implementation.IstioName,
 			Providers:             []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
@@ -1374,7 +1373,7 @@ func TestIngressNGINXRegex(t *testing.T) {
 		rewriteRegex.Spec.Rules[0].HTTP.Paths[0].PathType = &implementationSpecific
 
 		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: istio.ProviderName,
+			GatewayImplementation: implementation.IstioName,
 			Providers:             []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
@@ -1414,7 +1413,7 @@ func TestIngressNGINXRegex(t *testing.T) {
 		ing.Spec.Rules[0].HTTP.Paths[0].PathType = &implementationSpecific
 
 		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: istio.ProviderName,
+			GatewayImplementation: implementation.IstioName,
 			Providers:             []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {

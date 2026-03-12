@@ -1,5 +1,5 @@
 /*
-Copyright 2026 The Kubernetes Authors.
+Copyright The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -48,7 +48,7 @@ func parseIngressNginxTimeout(val string) (time.Duration, error) {
 
 // applyTimeoutsToEmitterIR is a temporary bridge until timeout parsing is integrated
 // into the generic feature parsing flow.
-func applyTimeoutsToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) field.ErrorList {
+func applyTimeoutsToEmitterIR(notify notifications.NotifyFunc, pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) field.ErrorList {
 	var errList field.ErrorList
 
 	for key, httpRouteContext := range pIR.HTTPRoutes {

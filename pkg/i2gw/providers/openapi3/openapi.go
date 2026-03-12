@@ -26,6 +26,7 @@ import (
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 )
 
 const (
@@ -59,15 +60,19 @@ func init() {
 type Provider struct {
 	storage                Storage
 	resourcesToIRConverter ResourcesToIRConverter
+	notify                 notifications.NotifyFunc
 }
 
 var _ i2gw.Provider = &Provider{}
 
 // NewProvider returns an implementation of i2gw.Provider that converts OpenAPI specs to Gateway API resources.
 func NewProvider(conf *i2gw.ProviderConf) i2gw.Provider {
+	notify := conf.Report.Notifier(ProviderName)
+
 	return &Provider{
 		storage:                NewResourceStorage(),
-		resourcesToIRConverter: NewResourcesToIRConverter(conf),
+		resourcesToIRConverter: NewResourcesToIRConverter(conf, notify),
+		notify:                 notify,
 	}
 }
 

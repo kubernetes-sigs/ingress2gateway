@@ -1,5 +1,5 @@
 /*
-Copyright 2026 The Kubernetes Authors.
+Copyright The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -190,7 +191,7 @@ func TestApplyIPRangeControlToEmitterIR(t *testing.T) {
 				HTTPRoute: route,
 			}
 
-			applyIPRangeControlToEmitterIR(pIR, &eIR)
+			applyIPRangeControlToEmitterIR(notifications.NoopNotify, pIR, &eIR)
 
 			result := eIR.HTTPRoutes[key]
 			var ipRangeControl *emitterir.IPRangeControl

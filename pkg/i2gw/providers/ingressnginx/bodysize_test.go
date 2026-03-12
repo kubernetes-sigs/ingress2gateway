@@ -1,5 +1,5 @@
 /*
-Copyright 2026 The Kubernetes Authors.
+Copyright The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,21 +42,39 @@ func TestConvertNginxSizeToK8sQuantity(t *testing.T) {
 			wantErr:   false,
 		},
 		{
-			name:      "lowercase k stays as k",
+			name:      "k becomes Ki",
 			nginxSize: "100k",
-			want:      "100k",
+			want:      "100Ki",
 			wantErr:   false,
 		},
 		{
-			name:      "lowercase m to K8s Mega",
+			name:      "K becomes as Ki",
+			nginxSize: "100K",
+			want:      "100Ki",
+			wantErr:   false,
+		},
+		{
+			name:      "m to K8s Mega",
 			nginxSize: "10m",
-			want:      "10M",
+			want:      "10Mi",
 			wantErr:   false,
 		},
 		{
-			name:      "lowercase g to K8s Giga",
+			name:      "M to K8s Mega",
+			nginxSize: "10M",
+			want:      "10Mi",
+			wantErr:   false,
+		},
+		{
+			name:      "g to K8s Giga",
 			nginxSize: "5g",
-			want:      "5G",
+			want:      "5Gi",
+			wantErr:   false,
+		},
+		{
+			name:      "G to K8s Giga",
+			nginxSize: "5G",
+			want:      "5Gi",
 			wantErr:   false,
 		},
 		{
@@ -67,7 +86,7 @@ func TestConvertNginxSizeToK8sQuantity(t *testing.T) {
 		{
 			name:      "whitespace trimmed",
 			nginxSize: "  10m  ",
-			want:      "10M",
+			want:      "10Mi",
 			wantErr:   false,
 		},
 		{
@@ -105,7 +124,7 @@ func TestApplyBodySizeToEmitterIR_SetMaxSize(t *testing.T) {
 	}
 	pIR, eIR := setupBodySizeTest(key, annotations)
 
-	if err := applyBodySizeToEmitterIR(pIR, &eIR); err != nil {
+	if err := applyBodySizeToEmitterIR(notifications.NoopNotify, pIR, &eIR); err != nil {
 		t.Fatalf("unexpected error applying body size: %v", err)
 	}
 
@@ -113,8 +132,8 @@ func TestApplyBodySizeToEmitterIR_SetMaxSize(t *testing.T) {
 	if bodySizeIR == nil {
 		t.Fatalf("expected body size IR to be set for rule index 0")
 	}
-	if bodySizeIR.MaxSize.String() != "10M" {
-		t.Fatalf("expected max size 10M, got %s", bodySizeIR.MaxSize.String())
+	if bodySizeIR.MaxSize.String() != "10Mi" {
+		t.Fatalf("expected max size 10Mi, got %s", bodySizeIR.MaxSize.String())
 	}
 }
 
@@ -125,7 +144,7 @@ func TestApplyBodySizeToEmitterIR_SetBufferSize(t *testing.T) {
 	}
 	pIR, eIR := setupBodySizeTest(key, annotations)
 
-	if err := applyBodySizeToEmitterIR(pIR, &eIR); err != nil {
+	if err := applyBodySizeToEmitterIR(notifications.NoopNotify, pIR, &eIR); err != nil {
 		t.Fatalf("unexpected error applying body size: %v", err)
 	}
 
@@ -133,8 +152,8 @@ func TestApplyBodySizeToEmitterIR_SetBufferSize(t *testing.T) {
 	if bodySizeIR == nil {
 		t.Fatalf("expected body size IR to be set for rule index 0")
 	}
-	if bodySizeIR.BufferSize.String() != "10M" {
-		t.Fatalf("expected buffer size 10M, got %s", bodySizeIR.BufferSize.String())
+	if bodySizeIR.BufferSize.String() != "10Mi" {
+		t.Fatalf("expected buffer size 10Mi, got %s", bodySizeIR.BufferSize.String())
 	}
 }
 
@@ -146,7 +165,7 @@ func TestApplyBodySizeToEmitterIR_SetMaxAndBufferSize(t *testing.T) {
 	}
 	pIR, eIR := setupBodySizeTest(key, annotations)
 
-	if err := applyBodySizeToEmitterIR(pIR, &eIR); err != nil {
+	if err := applyBodySizeToEmitterIR(notifications.NoopNotify, pIR, &eIR); err != nil {
 		t.Fatalf("unexpected error applying body size: %v", err)
 	}
 
@@ -154,11 +173,11 @@ func TestApplyBodySizeToEmitterIR_SetMaxAndBufferSize(t *testing.T) {
 	if bodySizeIR == nil {
 		t.Fatalf("expected body size IR to be set for rule index 0")
 	}
-	if bodySizeIR.MaxSize.String() != "100M" {
-		t.Fatalf("expected max size 100M, got %s", bodySizeIR.MaxSize.String())
+	if bodySizeIR.MaxSize.String() != "100Mi" {
+		t.Fatalf("expected max size 100Mi, got %s", bodySizeIR.MaxSize.String())
 	}
-	if bodySizeIR.BufferSize.String() != "50M" {
-		t.Fatalf("expected buffer size 50M, got %s", bodySizeIR.BufferSize.String())
+	if bodySizeIR.BufferSize.String() != "50Mi" {
+		t.Fatalf("expected buffer size 50Mi, got %s", bodySizeIR.BufferSize.String())
 	}
 }
 

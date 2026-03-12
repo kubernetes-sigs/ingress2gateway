@@ -9,7 +9,6 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/kgateway-dev/kgateway/v2 v2.2.0
 	github.com/kong/kubernetes-ingress-controller/v2 v2.12.3
-	github.com/olekukonko/tablewriter v0.0.5
 	github.com/samber/lo v1.39.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1

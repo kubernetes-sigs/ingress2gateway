@@ -18,6 +18,7 @@ package cilium
 
 import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -28,10 +29,11 @@ import (
 type resourcesToIRConverter struct {
 	featureParsers                []i2gw.FeatureParser
 	implementationSpecificOptions i2gw.ProviderImplementationSpecificOptions
+	notify                        notifications.NotifyFunc
 }
 
 // newResourcesToIRConverter returns a cilium resourcesToIRConverter instance.
-func newResourcesToIRConverter() *resourcesToIRConverter {
+func newResourcesToIRConverter(notify notifications.NotifyFunc) *resourcesToIRConverter {
 	return &resourcesToIRConverter{
 		featureParsers: []i2gw.FeatureParser{
 			forceHTTPSFeature,
@@ -39,6 +41,7 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 		implementationSpecificOptions: i2gw.ProviderImplementationSpecificOptions{
 			// The list of the implementationSpecific ingress fields options comes here.
 		},
+		notify: notify,
 	}
 }
 
@@ -56,7 +59,7 @@ func (c *resourcesToIRConverter) convertToIR(storage *storage) (providerir.Provi
 
 	for _, parseFeatureFunc := range c.featureParsers {
 		// Apply the feature parsing function to the gateway resources, one by one.
-		parseErrs := parseFeatureFunc(ingressList, storage.ServicePorts, &ir)
+		parseErrs := parseFeatureFunc(c.notify, ingressList, storage.ServicePorts, &ir)
 		// Append the parsing errors to the error list.
 		errs = append(errs, parseErrs...)
 	}

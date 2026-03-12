@@ -1,5 +1,5 @@
 /*
-Copyright 2026 The Kubernetes Authors.
+Copyright The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -75,7 +75,7 @@ func (e *Emitter) EmitIPRangeControl(ir emitterir.EmitterIR, gwResources *i2gw.G
 			if sectionName != nil {
 				ruleInfo = fmt.Sprintf(" rule %s", *sectionName)
 			}
-			notify(notifications.InfoNotification, fmt.Sprintf("applied IP Range Control feature for HTTPRoute%s", ruleInfo), &ctx.HTTPRoute)
+			e.notify(notifications.InfoNotification, fmt.Sprintf("applied IP Range Control feature for HTTPRoute%s", ruleInfo), &ctx.HTTPRoute)
 		}
 
 		// mark IP Range Control IR as processed

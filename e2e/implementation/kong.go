@@ -40,7 +40,10 @@ const (
 	kongControllerName = "konghq.com/kic-gateway-controller"
 )
 
-// DeployKong deploys Kong via Helm and returns a cleanup function.
+// DeployKong deploys Kong via Helm and returns a cleanup function. Kong is unique in that it
+// serves as both an ingress provider and a Gateway API implementation. This function is called
+// by provider.DeployKong, which re-exports it so callers can use provider.DeployKong for
+// consistency with other providers.
 func DeployKong(
 	ctx context.Context,
 	l framework.Logger,
@@ -75,6 +78,7 @@ func DeployKong(
 		kongChartVersion,
 		namespace,
 		true,
+		false,
 		values,
 	); err != nil {
 		return nil, fmt.Errorf("installing Kong chart: %w", err)

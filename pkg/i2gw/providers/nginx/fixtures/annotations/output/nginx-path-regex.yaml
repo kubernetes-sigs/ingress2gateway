@@ -1,16 +1,13 @@
-Notifications from NGINX:
-+--------------+-------------------------------------------------------------------------------------------------------------------------------------+----------------------------------+
-| MESSAGE TYPE |                                                            NOTIFICATION                                                             |          CALLING OBJECT          |
-+--------------+-------------------------------------------------------------------------------------------------------------------------------------+----------------------------------+
-| WARNING      | nginx.org/path-regex: PathMatchRegularExpression is not supported by NGINX Gateway Fabric - only Exact and PathPrefix are supported | Ingress: default/test-path-regex |
-+--------------+-------------------------------------------------------------------------------------------------------------------------------------+----------------------------------+
-
+┌─ WARN  ────────────────────────────────────────
+│  nginx.org/path-regex: PathMatchRegularExpression is not supported by NGINX Gateway Fabric - only Exact and PathPrefix are supported
+│  source: NGINX
+│  object: Ingress: default/test-path-regex
+└─
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   annotations:
-    gateway.networking.k8s.io/generator: ingress2gateway-dev
-  creationTimestamp: null
+    gateway.networking.k8s.io/generator: ingress2gateway-v0.5.0-rc1-53-g7c171dc
   name: nginx
   namespace: default
 spec:
@@ -20,14 +17,12 @@ spec:
     name: example-com-http
     port: 80
     protocol: HTTP
-status: {}
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   annotations:
-    gateway.networking.k8s.io/generator: ingress2gateway-dev
-  creationTimestamp: null
+    gateway.networking.k8s.io/generator: ingress2gateway-v0.5.0-rc1-53-g7c171dc
   name: test-path-regex-example-com
   namespace: default
 spec:
@@ -43,6 +38,7 @@ spec:
     - path:
         type: RegularExpression
         value: /api/v[0-9]+
+    name: rule-0
   - backendRefs:
     - name: static-service
       port: 8080
@@ -50,5 +46,6 @@ spec:
     - path:
         type: RegularExpression
         value: /static
+    name: rule-1
 status:
   parents: []

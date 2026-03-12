@@ -1,5 +1,5 @@
 /*
-Copyright 2026 The Kubernetes Authors.
+Copyright The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-func headerModifierFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func headerModifierFeature(notify notifications.NotifyFunc, _ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	for _, httpRouteContext := range ir.HTTPRoutes {
 		for i := range httpRouteContext.HTTPRoute.Spec.Rules {
 			if i >= len(httpRouteContext.RuleBackendSources) {
@@ -60,14 +60,14 @@ func headerModifierFeature(_ []networkingv1.Ingress, _ map[types.NamespacedName]
 			}
 
 			if len(headersToSet) > 0 {
-				applyHeaderModifiers(&httpRouteContext.HTTPRoute, i, headersToSet)
+				applyHeaderModifiers(notify, &httpRouteContext.HTTPRoute, i, headersToSet)
 			}
 		}
 	}
 	return nil
 }
 
-func applyHeaderModifiers(httpRoute *gatewayv1.HTTPRoute, ruleIndex int, headersToSet map[string]string) {
+func applyHeaderModifiers(notify notifications.NotifyFunc, httpRoute *gatewayv1.HTTPRoute, ruleIndex int, headersToSet map[string]string) {
 	// Find existing RequestHeaderModifier filter or create new one
 	var filter *gatewayv1.HTTPRouteFilter
 	for j, f := range httpRoute.Spec.Rules[ruleIndex].Filters {

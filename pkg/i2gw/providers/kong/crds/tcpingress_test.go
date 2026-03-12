@@ -24,6 +24,7 @@ import (
 	kongv1beta1 "github.com/kong/kubernetes-ingress-controller/v2/pkg/apis/configuration/v1beta1"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -204,7 +205,7 @@ func TestTCPIngressToGatewayAPI(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ir, _, errs := TCPIngressToGatewayIR(tc.tcpIngresses)
+			ir, errs := TCPIngressToGatewayIR(notifications.NoopNotify, tc.tcpIngresses)
 
 			if len(ir.Gateways) != len(tc.expectedGatewayResources.Gateways) {
 				t.Errorf("Expected %d Gateways, got %d: %+v",

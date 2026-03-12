@@ -1,5 +1,5 @@
 /*
-Copyright 2026 The Kubernetes Authors.
+Copyright The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,24 +33,7 @@ var nginxSizeRegex = regexp.MustCompile(`^(?i)(\d+)([bkmg]?)$`)
 
 // convertNginxSizeToK8sQuantity converts nginx size format to Kubernetes resource.Quantity format.
 //
-// nginx uses lowercase suffixes for byte sizes:
-//   - b = bytes
-//   - k = kilobytes (10^3)
-//   - m = megabytes (10^6)
-//   - g = gigabytes (10^9)
-//
-// Kubernetes resource.Quantity uses different suffixes:
-//   - m = milli (10^-3)
-//   - k = kilo (10^3)
-//   - M = mega (10^6)
-//   - G = giga (10^9)
-//
-// This function converts nginx format to K8s format:
-//   - "10b" -> "10" (10 bytes)
-//   - "10k" -> "10k" (10 kilobytes, same)
-//   - "10m" -> "10M" (10 megabytes)
-//   - "10g" -> "10G" (10 gigabytes)
-//   - "100" -> "100" (no unit, same)
+// NGINX uses binary units (e.g. k = 2^10) while in Kubernetes, k = 1000 and Ki = 2^10.
 func convertNginxSizeToK8sQuantity(nginxSize string) (string, error) {
 	nginxSize = strings.TrimSpace(nginxSize)
 
@@ -63,15 +46,15 @@ func convertNginxSizeToK8sQuantity(nginxSize string) (string, error) {
 	unit := matches[2]
 
 	// Convert nginx unit to K8s Quantity unit
-	switch unit {
+	switch strings.ToLower(unit) {
 	case "b", "":
 		return number, nil
 	case "k":
-		return number + "k", nil
+		return number + "Ki", nil
 	case "m":
-		return number + "M", nil
+		return number + "Mi", nil
 	case "g":
-		return number + "G", nil
+		return number + "Gi", nil
 	default:
 		return "", fmt.Errorf("unsupported nginx size unit: %q", unit)
 	}
@@ -83,7 +66,7 @@ func convertNginxSizeToK8sQuantity(nginxSize string) (string, error) {
 // Currently supported annotations are:
 // - nginx.ingress.kubernetes.io/proxy-body-size
 // - nginx.ingress.kubernetes.io/client-body-buffer-size
-func applyBodySizeToEmitterIR(pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) field.ErrorList {
+func applyBodySizeToEmitterIR(notify notifications.NotifyFunc, pIR providerir.ProviderIR, eIR *emitterir.EmitterIR) field.ErrorList {
 	var errs field.ErrorList
 
 	for key, pRouteCtx := range pIR.HTTPRoutes {

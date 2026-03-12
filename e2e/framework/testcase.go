@@ -37,6 +37,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -143,10 +144,9 @@ func RunTestCase(t *testing.T, tc *TestCase, deployProviders DeployProvidersFunc
 	appNS := fmt.Sprintf("%s-app", nsPrefix)
 	cleanupNS, err := CreateNamespace(ctx, t, k8sClient, appNS, skipCleanup)
 	require.NoError(t, err)
-	t.Cleanup(cleanupNS)
 
 	crdResource := GlobalResourceManager.Acquire("gateway-api-crds", func() (CleanupFunc, error) {
-		return deployCRDs(ctx, t, apiextensionsClient, skipCleanup)
+		return DeployCRDs(ctx, t, apiextensionsClient, gatewayAPIInstallURL, skipCleanup)
 	})
 	t.Cleanup(func() {
 		<-crdResource.Cleanup()
@@ -154,7 +154,7 @@ func RunTestCase(t *testing.T, tc *TestCase, deployProviders DeployProvidersFunc
 	require.NoError(t, crdResource.Wait(), "Gateway API CRDs installation failed")
 
 	providers := deployProviders(ctx, t, k8sClient, gwClient, kubeconfig, tc.Providers, tc.GatewayImplementation, skipCleanup)
-	gwImpl := deployGWImpl(ctx, t, k8sClient, gwClient, kubeconfig, tc.GatewayImplementation, skipCleanup)
+	gwImpl := deployGWImpl(ctx, t, k8sClient, apiextensionsClient, gwClient, kubeconfig, tc.GatewayImplementation, skipCleanup)
 
 	resources := append(providers, gwImpl)
 
@@ -341,7 +341,7 @@ func setUpGatewayPortForwarding(
 		// proxy service in the Kong namespace.
 		var svc *corev1.Service
 		var err error
-		if gwImpl == kong.Name {
+		if gwImpl == "kong" { // Avoiding const to prevent import cycle
 			kongNS := fmt.Sprintf("%s-kong", E2EPrefix)
 			svc, err = findIngressControllerService(ctx, k8sClient, kongNS, kong.Name)
 		} else {
@@ -509,7 +509,7 @@ func runI2GW(
 
 	// Log any notifications from stderr.
 	if stderr.Len() > 0 {
-		t.Log("Got stderr from ingress2gateway:\n", stderr.String())
+		t.Logf("Got stderr from ingress2gateway:\n%s", strings.TrimRight(stderr.String(), "\n"))
 	}
 
 	return parseYAMLOutput(t, stdout.Bytes())
