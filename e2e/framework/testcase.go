@@ -70,6 +70,10 @@ type TestCase struct {
 	AllowExperimentalGWAPI bool
 	Emitter                string
 	Verifiers              map[string][]Verifier
+	// setup is an optional callback that runs after secrets are created and before ingresses.
+	// It receives the app namespace, k8s client, and skipCleanup flag. Returned cleanup func
+	// is registered via t.Cleanup.
+	Setup func(ctx context.Context, t *testing.T, client *kubernetes.Clientset, namespace string, skipCleanup bool)
 }
 
 // DeployProvidersFunc deploys ingress providers and returns their resources.
@@ -178,10 +182,10 @@ func RunTestCase(t *testing.T, tc *TestCase, deployProviders DeployProvidersFunc
 		require.NoError(t, r.Wait(), "resource installation failed: %s", r.Name)
 	}
 
-	cleanupDummyApp1, err := deployDummyApp(ctx, t, k8sClient, DummyAppName1, appNS, skipCleanup)
+	cleanupDummyApp1, err := deployDummyApp(ctx, t, k8sClient, DummyAppName1, appNS, skipCleanup, false)
 	require.NoError(t, err, "creating %s", DummyAppName1)
 	t.Cleanup(cleanupDummyApp1)
-	cleanupDummyApp2, err := deployDummyApp(ctx, t, k8sClient, DummyAppName2, appNS, skipCleanup)
+	cleanupDummyApp2, err := deployDummyApp(ctx, t, k8sClient, DummyAppName2, appNS, skipCleanup, false)
 	require.NoError(t, err, "creating %s", DummyAppName2)
 	t.Cleanup(cleanupDummyApp2)
 
@@ -198,6 +202,10 @@ func RunTestCase(t *testing.T, tc *TestCase, deployProviders DeployProvidersFunc
 		cleanupSecrets, secretsErr := createSecrets(ctx, t, k8sClient, appNS, tc.Secrets, skipCleanup)
 		require.NoError(t, secretsErr, "creating secrets")
 		t.Cleanup(cleanupSecrets)
+	}
+
+	if tc.Setup != nil {
+		tc.Setup(ctx, t, k8sClient, appNS, skipCleanup)
 	}
 
 	cleanupIngresses, err := createIngresses(ctx, t, k8sClient, appNS, tc.Ingresses, skipCleanup)
@@ -662,6 +670,19 @@ func (b *IngressBuilder) WithBackend(svc string) *IngressBuilder {
 		for j := range b.Spec.Rules[i].IngressRuleValue.HTTP.Paths {
 			path := rule.IngressRuleValue.HTTP.Paths[j]
 			path.Backend.Service.Name = svc
+			rule.IngressRuleValue.HTTP.Paths[j] = path
+		}
+		b.Spec.Rules[i] = rule
+	}
+	return b
+}
+
+func (b *IngressBuilder) WithBackendPort(port int32) *IngressBuilder {
+	for i := range b.Spec.Rules {
+		rule := b.Spec.Rules[i]
+		for j := range b.Spec.Rules[i].IngressRuleValue.HTTP.Paths {
+			path := rule.IngressRuleValue.HTTP.Paths[j]
+			path.Backend.Service.Port = networkingv1.ServiceBackendPort{Number: port}
 			rule.IngressRuleValue.HTTP.Paths[j] = path
 		}
 		b.Spec.Rules[i] = rule
