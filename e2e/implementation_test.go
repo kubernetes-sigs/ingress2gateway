@@ -38,6 +38,7 @@ func TestImplementations(t *testing.T) {
 		{name: implementation.KongName},
 		{name: implementation.KgatewayName},
 		{name: implementation.EnvoyGatewayName},
+		{name: implementation.AgentgatewayName},
 	}
 
 	for _, impl := range implementations {

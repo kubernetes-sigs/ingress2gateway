@@ -24,12 +24,14 @@ import (
 
 	"github.com/kubernetes-sigs/ingress2gateway/e2e/framework"
 	"helm.sh/helm/v4/pkg/cli"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	gwclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 )
 
 const (
-	agentgatewayName        = "agentgateway"
-	agentgatewayVersion     = "v1.0.0-rc.1"
+	AgentgatewayName        = "agentgateway"
+	agentgatewayVersion     = "v1.0.0"
 	agentgatewayChart       = "oci://cr.agentgateway.dev/charts/agentgateway"
 	agentgatewayCRDsChart   = "oci://cr.agentgateway.dev/charts/agentgateway-crds"
 	agentgatewayReleaseName = "agentgateway"
@@ -40,6 +42,7 @@ func DeployAgentgateway(
 	ctx context.Context,
 	l framework.Logger,
 	client *kubernetes.Clientset,
+	gwClient *gwclientset.Clientset,
 	kubeconfigPath string,
 	namespace string,
 	skipCleanup bool,
@@ -93,6 +96,12 @@ func DeployAgentgateway(
 		defer cancel()
 
 		log.Printf("Cleaning up agentgateway")
+
+		log.Printf("Deleting GatewayClass %s", AgentgatewayName)
+		if err := gwClient.GatewayV1().GatewayClasses().Delete(cleanupCtx, AgentgatewayName, metav1.DeleteOptions{}); err != nil {
+			log.Printf("Deleting GatewayClass: %v", err)
+		}
+
 		if err := framework.UninstallChart(cleanupCtx, settings, agentgatewayReleaseName, namespace); err != nil {
 			log.Printf("Uninstalling agentgateway chart: %v", err)
 		}
