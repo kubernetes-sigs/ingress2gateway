@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/client-body-buffer-size: "1Mi"
+    nginx.ingress.kubernetes.io/proxy-body-size: "2Mi"
+  name: ingress-buffer-body-size
+  namespace: default
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: buffer-body-size.example.org
+    http:
+      paths:
+      - backend:
+          service:
+            name: myservice
+            port:
+              number: 80
+        path: /
+        pathType: Prefix

@@ -398,13 +398,30 @@ This is projected into a **Service-targeted** `AgentgatewayPolicy` by setting:
 - The provider currently maps only gRPC-family values into policy IR, so the agentgateway emitter currently emits
   only `HTTP2` for this feature.
 
+#### Request/Body Buffer Size
+
+The agentgateway emitter supports projecting ingress-nginx request/body size controls via:
+
+- `nginx.ingress.kubernetes.io/proxy-body-size`
+- `nginx.ingress.kubernetes.io/client-body-buffer-size`
+
+These are projected into an `AgentgatewayPolicy` by setting:
+
+- `AgentgatewayPolicy.spec.frontend.http.maxBufferSize`
+
+**Semantics:**
+
+- `proxy-body-size` is preferred when both annotations are present.
+- `client-body-buffer-size` is used as a fallback when `proxy-body-size` is unset.
+- The selected quantity is resolved to bytes for `maxBufferSize`.
+
 ## AgentgatewayPolicy Projection
 
 Rate limit, timeout, CORS, rewrite target, access log, etc. annotations are converted into AgentgatewayPolicy resources.
 The agentgateway emitter emits AgentgatewayPolicy resources in two shapes:
 
 - HTTPRoute-scoped policies for traffic-level behavior (rate limit, request timeouts, CORS, rewrite target,
-  basic auth, ext auth, access log).
+  basic auth, ext auth, access log, request/body buffer size).
 - Service-scoped policies for backend connection behavior (backend TLS, proxy connect timeout, backend protocol).
 
 ### Naming

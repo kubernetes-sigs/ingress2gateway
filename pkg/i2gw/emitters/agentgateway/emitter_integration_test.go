@@ -441,6 +441,32 @@ func TestAgentgatewayIngressNginxIntegration_AccessLog(t *testing.T) {
 	}
 }
 
+func TestAgentgatewayIngressNginxIntegration_BufferBodySize(t *testing.T) {
+	t.Helper()
+
+	tests := []struct {
+		name      string
+		inputRel  string
+		goldenRel string
+	}{
+		{
+			name: "buffer_body_size",
+			inputRel: filepath.Join(
+				"pkg", "i2gw", "emitters", "agentgateway", "testing", "testdata", "input", "buffer_body_size.yaml",
+			),
+			goldenRel: filepath.Join(
+				"pkg", "i2gw", "emitters", "agentgateway", "testing", "testdata", "output", "buffer_body_size.yaml",
+			),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runGoldenTest(t, tt.inputRel, tt.goldenRel)
+		})
+	}
+}
+
 func TestAgentgatewayIngressNginxIntegration_SSLRedirect(t *testing.T) {
 	t.Helper()
 
