@@ -36,11 +36,11 @@ const (
 
 	// BackendServerSecretName is the name of the TLS secret mounted by the
 	// dummy app when deployed with TLS enabled.
-	BackendServerSecretName = "tls-backend-server-cert"
+	BackendServerSecretName = "tls-backend-server-cert" //nolint:gosec // Not a credential, just a resource name.
 
 	// BackendCASecretName is the name of the CA secret used for backend TLS
 	// verification (proxy-ssl-secret / BackendTLSPolicy).
-	BackendCASecretName = "tls-backend-ca"
+	BackendCASecretName = "tls-backend-ca" //nolint:gosec // Not a credential, just a resource name.
 )
 
 // public wrapper for testing

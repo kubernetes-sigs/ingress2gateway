@@ -211,15 +211,15 @@ func SetupTestEnv(t *testing.T, providers []string, gatewayImplementation string
 		// When TLS is requested, generate certs and create the server secret
 		// before deploying DummyApp1 so the pod can mount it.
 		svcHost := fmt.Sprintf("%s.%s.svc.cluster.local", DummyAppName1, appNS)
-		tlsSecrets, err := GenerateBackendTLSSecrets(BackendServerSecretName, BackendCASecretName, appNS, svcHost)
-		require.NoError(t, err, "generating backend TLS secrets")
+		tlsSecrets, tlsErr := GenerateBackendTLSSecrets(BackendServerSecretName, BackendCASecretName, appNS, svcHost)
+		require.NoError(t, tlsErr, "generating backend TLS secrets")
 
 		caCertPEM = tlsSecrets.CACertPEM
 		caSecret = tlsSecrets.CASecret
 
 		// Create the server secret now — the DummyApp1 pod mounts it.
-		cleanupServerSecret, err := createSecrets(ctx, t, k8sClient, appNS, []*corev1.Secret{tlsSecrets.ServerSecret}, skipCleanup)
-		require.NoError(t, err, "creating server TLS secret")
+		cleanupServerSecret, secretErr := createSecrets(ctx, t, k8sClient, appNS, []*corev1.Secret{tlsSecrets.ServerSecret}, skipCleanup)
+		require.NoError(t, secretErr, "creating server TLS secret")
 		t.Cleanup(cleanupServerSecret)
 	}
 
