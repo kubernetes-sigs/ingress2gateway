@@ -34,7 +34,11 @@ import (
 // setupTestEnv wraps framework.SetupTestEnv with the concrete deploy functions defined in this
 // package. The returned TestEnv can be used for additional test-specific setup before calling Run().
 func setupTestEnv(t *testing.T, providers []string, gatewayImplementation string) *framework.TestEnv {
-	return framework.SetupTestEnv(t, providers, gatewayImplementation, deployProviders, deployGatewayImplementation)
+	return framework.SetupTestEnv(t, providers, gatewayImplementation, false, deployProviders, deployGatewayImplementation)
+}
+
+func setupTestEnvTLS(t *testing.T, providers []string, gatewayImplementation string) *framework.TestEnv {
+	return framework.SetupTestEnv(t, providers, gatewayImplementation, true, deployProviders, deployGatewayImplementation)
 }
 
 // runTestCase is a convenience wrapper for tests that don't need custom setup between environment

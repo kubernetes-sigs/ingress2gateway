@@ -33,8 +33,14 @@ import (
 const (
 	image   = "registry.k8s.io/e2e-test-images/agnhost"
 	version = "2.39"
-	// just adding to test dummy app modifcations
-	backendServerSecret = "tls-backend-server-cert"
+
+	// BackendServerSecretName is the name of the TLS secret mounted by the
+	// dummy app when deployed with TLS enabled.
+	BackendServerSecretName = "tls-backend-server-cert"
+
+	// BackendCASecretName is the name of the CA secret used for backend TLS
+	// verification (proxy-ssl-secret / BackendTLSPolicy).
+	BackendCASecretName = "tls-backend-ca"
 )
 
 // public wrapper for testing
@@ -139,7 +145,7 @@ func createDummyAppDeployment(ctx context.Context, l Logger, client *kubernetes.
 				Name: "tls-certs",
 				VolumeSource: corev1.VolumeSource{
 					Secret: &corev1.SecretVolumeSource{
-						SecretName: backendServerSecret,
+						SecretName: BackendServerSecretName,
 					},
 				},
 			},

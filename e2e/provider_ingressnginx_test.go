@@ -17,7 +17,6 @@ limitations under the License.
 package e2e
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -33,77 +32,22 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// just keeping this here so it works for now
-const (
-	backendTLSAppName   = "tls-backend"
-	backendServerSecret = "tls-backend-server-cert"
-	backendCASecretName = "tls-backend-ca"
-)
-
 // ingress-nginx provider features: One test per feature, all using Istio + standard emitter.
 
-// backendTLSSetup creates TLS secrets, a CA ConfigMap, and deploys an HTTPS backend app.
-// It is called between setupTestEnv and env.Run() so that TLS secrets exist before the
-// dummy TLS app pod tries to mount them.
-func backendTLSSetup(env *framework.TestEnv) {
-	env.T.Helper()
-
-	namespace := env.Namespace
-
-	// The server hostname for the certificate must use the in-cluster DNS name.
-	svcHost := fmt.Sprintf("%s.%s.svc.cluster.local", backendTLSAppName, namespace)
-
-	secrets, err := framework.GenerateBackendTLSSecrets(backendServerSecret, backendCASecretName, namespace, svcHost)
-	require.NoError(env.T, err, "generating backend TLS secrets")
-
-	// Create the CA secret (referenced by proxy-ssl-secret annotation for NGINX ingress).
-	secrets.CASecret.Namespace = namespace
-	_, err = env.K8sClient.CoreV1().Secrets(namespace).Create(env.Ctx, secrets.CASecret, metav1.CreateOptions{})
-	require.NoError(env.T, err, "creating CA secret")
-	env.T.Cleanup(func() {
-		if env.SkipCleanup {
-			return
-		}
-		_ = env.K8sClient.CoreV1().Secrets(namespace).Delete(context.Background(), secrets.CASecret.Name, metav1.DeleteOptions{})
-	})
-
-	// Create a ConfigMap with the same CA cert data. The converter outputs
-	// caCertificateRefs with kind: ConfigMap (the standard kind supported by
-	// Gateway API implementations like Istio). The ConfigMap name matches the
-	// CA secret name so proxy-ssl-secret annotation value maps directly.
+// backendTLSResources builds the CA secret and CA ConfigMap from the TestEnv's TLS state.
+// These are returned for inclusion in tc.Secrets and tc.ConfigMaps respectively.
+// The server secret and TLS-enabled DummyApp1 are already created by setupTestEnvTLS.
+func backendTLSResources(env *framework.TestEnv) (caSecrets []*corev1.Secret, configMaps []*corev1.ConfigMap) {
 	caCM := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      backendCASecretName,
-			Namespace: namespace,
+			Name:      framework.BackendCASecretName,
+			Namespace: env.Namespace,
 		},
 		Data: map[string]string{
-			"ca.crt": string(secrets.CACertPEM),
+			"ca.crt": string(env.CACertPEM),
 		},
 	}
-	_, err = env.K8sClient.CoreV1().ConfigMaps(namespace).Create(env.Ctx, caCM, metav1.CreateOptions{})
-	require.NoError(env.T, err, "creating CA configmap")
-	env.T.Cleanup(func() {
-		if env.SkipCleanup {
-			return
-		}
-		_ = env.K8sClient.CoreV1().ConfigMaps(namespace).Delete(context.Background(), backendCASecretName, metav1.DeleteOptions{})
-	})
-
-	// Create the server TLS secret (mounted in the backend pod).
-	secrets.ServerSecret.Namespace = namespace
-	_, err = env.K8sClient.CoreV1().Secrets(namespace).Create(env.Ctx, secrets.ServerSecret, metav1.CreateOptions{})
-	require.NoError(env.T, err, "creating server TLS secret")
-	env.T.Cleanup(func() {
-		if env.SkipCleanup {
-			return
-		}
-		_ = env.K8sClient.CoreV1().Secrets(namespace).Delete(context.Background(), secrets.ServerSecret.Name, metav1.DeleteOptions{})
-	})
-
-	// Deploy the TLS backend app.
-	cleanupApp, err := framework.DeployDummyApp(env.Ctx, env.T, env.K8sClient, backendTLSAppName, namespace, env.SkipCleanup, true)
-	require.NoError(env.T, err, "deploying TLS backend app")
-	env.T.Cleanup(cleanupApp)
+	return []*corev1.Secret{env.CASecret}, []*corev1.ConfigMap{caCM}
 }
 
 func TestIngressNGINXBackendTLS(t *testing.T) {
@@ -119,19 +63,19 @@ func TestIngressNGINXBackendTLS(t *testing.T) {
 			require.NoError(t, err, "creating host suffix")
 			host := "backend-tls-valid-" + suffix + ".example.com"
 
-			env := setupTestEnv(t, []string{ingressnginx.Name}, istio.ProviderName)
-			backendTLSSetup(env)
+			env := setupTestEnvTLS(t, []string{ingressnginx.Name}, istio.ProviderName)
+			caSecrets, configMaps := backendTLSResources(env)
 
-			svcHost := fmt.Sprintf("%s.%s.svc.cluster.local", backendTLSAppName, env.Namespace)
+			svcHost := fmt.Sprintf("%s.%s.svc.cluster.local", framework.DummyAppName1, env.Namespace)
 			ing := framework.BasicIngress().
 				WithName("backend-tls-valid").
 				WithHost(host).
 				WithIngressClass(ingressnginx.NginxIngressClass).
-				WithBackend(backendTLSAppName).
+				WithBackend(framework.DummyAppName1).
 				WithBackendPort(443).
 				WithAnnotation(ingressnginx.BackendProtocolAnnotation, "HTTPS").
 				WithAnnotation(ingressnginx.ProxySSLVerifyAnnotation, "on").
-				WithAnnotation(ingressnginx.ProxySSLSecretAnnotation, env.Namespace+"/"+backendCASecretName).
+				WithAnnotation(ingressnginx.ProxySSLSecretAnnotation, env.Namespace+"/"+framework.BackendCASecretName).
 				WithAnnotation(ingressnginx.ProxySSLServerNameAnnotation, "on").
 				WithAnnotation(ingressnginx.ProxySSLNameAnnotation, svcHost).
 				Build()
@@ -142,7 +86,9 @@ func TestIngressNGINXBackendTLS(t *testing.T) {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				Ingresses: []*networkingv1.Ingress{ing},
+				Secrets:    caSecrets,
+				ConfigMaps: configMaps,
+				Ingresses:  []*networkingv1.Ingress{ing},
 				Verifiers: map[string][]framework.Verifier{
 					"backend-tls-valid": {
 						// The request should reach the HTTPS backend through the gateway
@@ -164,19 +110,19 @@ func TestIngressNGINXBackendTLS(t *testing.T) {
 			require.NoError(t, err, "creating host suffix")
 			host := "backend-tls-warn-" + suffix + ".example.com"
 
-			env := setupTestEnv(t, []string{ingressnginx.Name}, istio.ProviderName)
-			backendTLSSetup(env)
+			env := setupTestEnvTLS(t, []string{ingressnginx.Name}, istio.ProviderName)
+			caSecrets, configMaps := backendTLSResources(env)
 
-			svcHost := fmt.Sprintf("%s.%s.svc.cluster.local", backendTLSAppName, env.Namespace)
+			svcHost := fmt.Sprintf("%s.%s.svc.cluster.local", framework.DummyAppName1, env.Namespace)
 			ing := framework.BasicIngress().
 				WithName("backend-tls-warn").
 				WithHost(host).
 				WithIngressClass(ingressnginx.NginxIngressClass).
-				WithBackend(backendTLSAppName).
+				WithBackend(framework.DummyAppName1).
 				WithBackendPort(443).
 				WithAnnotation(ingressnginx.BackendProtocolAnnotation, "HTTPS").
 				WithAnnotation(ingressnginx.ProxySSLVerifyAnnotation, "on").
-				WithAnnotation(ingressnginx.ProxySSLSecretAnnotation, env.Namespace+"/"+backendCASecretName).
+				WithAnnotation(ingressnginx.ProxySSLSecretAnnotation, env.Namespace+"/"+framework.BackendCASecretName).
 				WithAnnotation(ingressnginx.ProxySSLServerNameAnnotation, "on").
 				WithAnnotation(ingressnginx.ProxySSLNameAnnotation, svcHost).
 				// These two annotations are unsupported in Gateway API
@@ -191,7 +137,9 @@ func TestIngressNGINXBackendTLS(t *testing.T) {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				Ingresses: []*networkingv1.Ingress{ing},
+				Secrets:    caSecrets,
+				ConfigMaps: configMaps,
+				Ingresses:  []*networkingv1.Ingress{ing},
 				Verifiers: map[string][]framework.Verifier{
 					"backend-tls-warn": {
 						&framework.HTTPRequestVerifier{
@@ -210,19 +158,19 @@ func TestIngressNGINXBackendTLS(t *testing.T) {
 			require.NoError(t, err, "creating host suffix")
 			host := "backend-tls-body-" + suffix + ".example.com"
 
-			env := setupTestEnv(t, []string{ingressnginx.Name}, istio.ProviderName)
-			backendTLSSetup(env)
+			env := setupTestEnvTLS(t, []string{ingressnginx.Name}, istio.ProviderName)
+			caSecrets, configMaps := backendTLSResources(env)
 
-			svcHost := fmt.Sprintf("%s.%s.svc.cluster.local", backendTLSAppName, env.Namespace)
+			svcHost := fmt.Sprintf("%s.%s.svc.cluster.local", framework.DummyAppName1, env.Namespace)
 			ing := framework.BasicIngress().
 				WithName("backend-tls-body").
 				WithHost(host).
 				WithIngressClass(ingressnginx.NginxIngressClass).
-				WithBackend(backendTLSAppName).
+				WithBackend(framework.DummyAppName1).
 				WithBackendPort(443).
 				WithAnnotation(ingressnginx.BackendProtocolAnnotation, "HTTPS").
 				WithAnnotation(ingressnginx.ProxySSLVerifyAnnotation, "on").
-				WithAnnotation(ingressnginx.ProxySSLSecretAnnotation, env.Namespace+"/"+backendCASecretName).
+				WithAnnotation(ingressnginx.ProxySSLSecretAnnotation, env.Namespace+"/"+framework.BackendCASecretName).
 				WithAnnotation(ingressnginx.ProxySSLServerNameAnnotation, "on").
 				WithAnnotation(ingressnginx.ProxySSLNameAnnotation, svcHost).
 				Build()
@@ -233,7 +181,9 @@ func TestIngressNGINXBackendTLS(t *testing.T) {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				Ingresses: []*networkingv1.Ingress{ing},
+				Secrets:    caSecrets,
+				ConfigMaps: configMaps,
+				Ingresses:  []*networkingv1.Ingress{ing},
 				Verifiers: map[string][]framework.Verifier{
 					"backend-tls-body": {
 						// agnhost netexec echoes back useful info on /hostname
