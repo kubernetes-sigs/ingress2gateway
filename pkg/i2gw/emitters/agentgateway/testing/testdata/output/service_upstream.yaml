@@ -27,16 +27,16 @@ status: {}
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayPolicy
 metadata:
-  name: myserviceb-backend-http-version
+  name: myserviceb-service-upstream-backend-http-version
   namespace: default
 spec:
   backend:
     http:
       version: HTTP2
   targetRefs:
-    - group: ""
-      kind: Service
-      name: myserviceb
+    - group: agentgateway.dev
+      kind: AgentgatewayBackend
+      name: myserviceb-service-upstream
 status:
   ancestors: null
 ---
