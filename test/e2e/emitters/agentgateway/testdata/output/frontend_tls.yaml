@@ -40,7 +40,7 @@ status:
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayPolicy
 metadata:
-  name: ingress-frontend-tls
+  name: nginx-frontend-tls
   namespace: default
 spec:
   frontend:
@@ -51,7 +51,7 @@ spec:
       handshakeTimeout: 20s
   targetRefs:
   - group: gateway.networking.k8s.io
-    kind: HTTPRoute
-    name: ingress-frontend-tls-frontend-tls-example-org
+    kind: Gateway
+    name: nginx
 status:
   ancestors: null

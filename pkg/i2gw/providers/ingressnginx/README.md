@@ -187,6 +187,8 @@ For the Agentgateway implementation, these map to:
 
 - `AgentgatewayPolicy.spec.frontend.tls.handshakeTimeout`
 - `AgentgatewayPolicy.spec.frontend.tls.alpnProtocols`
+- The emitter applies these as a Gateway-targeted `AgentgatewayPolicy`, since agentgateway does not allow
+  `spec.frontend` to target individual HTTPRoutes or listeners.
 
 ---
 
