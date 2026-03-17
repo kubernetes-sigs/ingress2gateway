@@ -60,9 +60,7 @@ const DummyAppName1 = "dummy-app1"
 // DummyAppName2 is the name of the second dummy app.
 const DummyAppName2 = "dummy-app2"
 
-// TestCase defines the test-specific data: ingresses, secrets, verifiers, and i2gw flags.
-// Providers and GatewayImplementation are also included for convenience when using runTestCase,
-// but SetupTestEnv takes them as direct arguments.
+// TestCase defines the configuration for a single e2e test case.
 type TestCase struct {
 	Ingresses              []*networkingv1.Ingress
 	Secrets                []*corev1.Secret
