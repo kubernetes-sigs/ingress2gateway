@@ -1,0 +1,96 @@
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: ingress-access-log-off
+  namespace: default
+spec:
+  frontend:
+    accessLog:
+      filter: "false"
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: ingress-access-log-off-access-log-off-example-org
+status:
+  ancestors: null
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: ingress-access-log-on
+  namespace: default
+spec:
+  frontend:
+    accessLog: {}
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: ingress-access-log-on-access-log-on-example-org
+status:
+  ancestors: null
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: nginx
+  namespace: default
+spec:
+  gatewayClassName: agentgateway
+  listeners:
+    - hostname: access-log-off.example.org
+      name: access-log-off-example-org-http
+      port: 80
+      protocol: HTTP
+    - hostname: access-log-on.example.org
+      name: access-log-on-example-org-http
+      port: 80
+      protocol: HTTP
+status: {}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: ingress-access-log-off-access-log-off-example-org
+  namespace: default
+spec:
+  hostnames:
+    - access-log-off.example.org
+  parentRefs:
+    - name: nginx
+  rules:
+    - backendRefs:
+        - name: myservice
+          port: 80
+      matches:
+        - path:
+            type: PathPrefix
+            value: /
+status:
+  parents: []
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: ingress-access-log-on-access-log-on-example-org
+  namespace: default
+spec:
+  hostnames:
+    - access-log-on.example.org
+  parentRefs:
+    - name: nginx
+  rules:
+    - backendRefs:
+        - name: myservice
+          port: 80
+      matches:
+        - path:
+            type: PathPrefix
+            value: /
+status:
+  parents: []

@@ -415,6 +415,32 @@ func TestAgentgatewayIngressNginxIntegration_BackendProtocol(t *testing.T) {
 	}
 }
 
+func TestAgentgatewayIngressNginxIntegration_AccessLog(t *testing.T) {
+	t.Helper()
+
+	tests := []struct {
+		name      string
+		inputRel  string
+		goldenRel string
+	}{
+		{
+			name: "access_log",
+			inputRel: filepath.Join(
+				"pkg", "i2gw", "emitters", "agentgateway", "testing", "testdata", "input", "access_log.yaml",
+			),
+			goldenRel: filepath.Join(
+				"pkg", "i2gw", "emitters", "agentgateway", "testing", "testdata", "output", "access_log.yaml",
+			),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runGoldenTest(t, tt.inputRel, tt.goldenRel)
+		})
+	}
+}
+
 func TestAgentgatewayIngressNginxIntegration_SSLRedirect(t *testing.T) {
 	t.Helper()
 

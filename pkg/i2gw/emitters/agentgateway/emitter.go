@@ -144,6 +144,11 @@ func (e *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.Err
 				touched, corsTouched = true, true
 			}
 
+			// enable-access-log maps to AgentgatewayPolicy.spec.frontend.accessLog.
+			if applyAccessLogPolicy(pol, polSourceIngressName, httpRouteKey.Namespace, agentgatewayPolicies) {
+				touched = true
+			}
+
 			// ExtAuth maps to AgentgatewayPolicy.spec.traffic.extAuth.
 			if applyExtAuthPolicy(pol, polSourceIngressName, httpRouteKey.Namespace, agentgatewayPolicies) {
 				touched = true
