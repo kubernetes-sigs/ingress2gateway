@@ -145,7 +145,7 @@ func LogUnparsedErrors(ir emitterir.EmitterIR, notify notifications.NotifyFunc) 
 			message := unparsedExtension.FailureMessage()
 
 			notify(notifications.WarningNotification,
-				fmt.Sprintf("failed to parse %s from Ingress %s: %s", source, strings.TrimSuffix(paths.String(), ", "), message),
+				fmt.Sprintf("Failed to apply %s from %s: %s", strings.TrimSuffix(paths.String(), ", "), source, message),
 				&httpRouteContext.HTTPRoute,
 			)
 		}

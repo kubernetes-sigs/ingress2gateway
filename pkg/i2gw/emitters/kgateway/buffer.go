@@ -48,9 +48,6 @@ func (e *Emitter) EmitBuffer(ir emitterir.EmitterIR) {
 			trafficPolicy.Spec.Buffer = &kgateway.Buffer{
 				MaxRequestSize: bufferVal,
 			}
-
-			ruleInfo := e.formatRuleInfo(sectionName)
-			e.notify(notifications.InfoNotification, fmt.Sprintf("applied Buffer feature for HTTPRoute%s", ruleInfo), &ctx.HTTPRoute)
 		}
 	}
 }
@@ -76,12 +73,4 @@ func (e *Emitter) selectBufferValue(bs *emitterir.BodySize, httpRoute *gatewayv1
 		return bs.MaxSize
 	}
 	return bs.BufferSize
-}
-
-// formatRuleInfo formats the rule information for notification messages.
-func (e *Emitter) formatRuleInfo(sectionName *gatewayv1.SectionName) string {
-	if sectionName != nil {
-		return fmt.Sprintf(" rule %s", *sectionName)
-	}
-	return ""
 }

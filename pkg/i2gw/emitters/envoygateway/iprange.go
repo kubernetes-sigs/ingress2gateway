@@ -17,12 +17,9 @@ limitations under the License.
 package envoygateway_emitter
 
 import (
-	"fmt"
-
 	egapiv1a1 "github.com/envoyproxy/gateway/api/v1alpha1"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/samber/lo"
 	"k8s.io/utils/ptr"
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -70,12 +67,6 @@ func (e *Emitter) EmitIPRangeControl(ir emitterir.EmitterIR, gwResources *i2gw.G
 				DefaultAction: ptr.To(defaultAction),
 				Rules:         rules,
 			}
-
-			ruleInfo := ""
-			if sectionName != nil {
-				ruleInfo = fmt.Sprintf(" rule %s", *sectionName)
-			}
-			e.notify(notifications.InfoNotification, fmt.Sprintf("applied IP Range Control feature for HTTPRoute%s", ruleInfo), &ctx.HTTPRoute)
 		}
 
 		// mark IP Range Control IR as processed
