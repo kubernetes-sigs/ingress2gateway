@@ -530,8 +530,8 @@ func Test_redirectFeature_emptyURL(t *testing.T) {
 
 	errs := redirectFeature(notifications.NoopNotify, []networkingv1.Ingress{ingress}, nil, &ir)
 
-	if len(errs) == 0 {
-		t.Errorf("Expected error for empty redirect URL")
+	if len(errs) != 0 {
+		t.Errorf("Expected no errors for empty redirect URL (should be a notification), got %v", errs)
 	}
 }
 
@@ -577,7 +577,7 @@ func TestAddDefaultSSLRedirect_enabled(t *testing.T) {
 	eIR := emitterir.EmitterIR{HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{}}
 	eIR.HTTPRoutes[key] = emitterir.HTTPRouteContext{HTTPRoute: route}
 
-	addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ing}, &pIR, &eIR)
+	(&Provider{}).addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ing}, &pIR, &eIR)
 
 	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
 	redirectCtx, ok := eIR.HTTPRoutes[redirectKey]
@@ -648,7 +648,7 @@ func TestAddDefaultSSLRedirect_disabledByAnnotation(t *testing.T) {
 	eIR := emitterir.EmitterIR{HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{}}
 	eIR.HTTPRoutes[key] = emitterir.HTTPRouteContext{HTTPRoute: route}
 
-	addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ing}, &pIR, &eIR)
+	(&Provider{}).addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ing}, &pIR, &eIR)
 
 	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
 	if _, ok := eIR.HTTPRoutes[redirectKey]; ok {
@@ -726,7 +726,7 @@ func TestAddDefaultSSLRedirect_conflictingAnnotations(t *testing.T) {
 	eIR := emitterir.EmitterIR{HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{}}
 	eIR.HTTPRoutes[key] = emitterir.HTTPRouteContext{HTTPRoute: route}
 
-	addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ingEnabled, ingDisabled}, &pIR, &eIR)
+	(&Provider{}).addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ingEnabled, ingDisabled}, &pIR, &eIR)
 
 	httpKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
 	httpCtx, ok := eIR.HTTPRoutes[httpKey]
@@ -818,7 +818,7 @@ func TestAddDefaultSSLRedirect_allRulesDisabled(t *testing.T) {
 	eIR := emitterir.EmitterIR{HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{}}
 	eIR.HTTPRoutes[key] = emitterir.HTTPRouteContext{HTTPRoute: route}
 
-	addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ingDisabledA, ingDisabledB}, &pIR, &eIR)
+	(&Provider{}).addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ingDisabledA, ingDisabledB}, &pIR, &eIR)
 
 	httpKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
 	if _, ok := eIR.HTTPRoutes[httpKey]; ok {
@@ -892,7 +892,7 @@ func TestAddDefaultSSLRedirect_threeRulesMixed(t *testing.T) {
 	eIR := emitterir.EmitterIR{HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{}}
 	eIR.HTTPRoutes[key] = emitterir.HTTPRouteContext{HTTPRoute: route}
 
-	addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ingEnabled, ingDisabled}, &pIR, &eIR)
+	(&Provider{}).addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ingEnabled, ingDisabled}, &pIR, &eIR)
 
 	// Consolidated: /a (redirect), /b (passthrough), /c (redirect) — in iteration order
 	httpKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
@@ -977,7 +977,7 @@ func TestAddDefaultSSLRedirect_canarySourceIgnored(t *testing.T) {
 	eIR := emitterir.EmitterIR{HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{}}
 	eIR.HTTPRoutes[key] = emitterir.HTTPRouteContext{HTTPRoute: route}
 
-	addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ingPrimary, ingCanary}, &pIR, &eIR)
+	(&Provider{}).addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ingPrimary, ingCanary}, &pIR, &eIR)
 
 	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
 	if _, ok := eIR.HTTPRoutes[redirectKey]; ok {
@@ -1025,7 +1025,7 @@ func TestAddDefaultSSLRedirect_multipleParentRefs(t *testing.T) {
 	eIR := emitterir.EmitterIR{HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{}}
 	eIR.HTTPRoutes[key] = emitterir.HTTPRouteContext{HTTPRoute: route}
 
-	addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ing}, &pIR, &eIR)
+	(&Provider{}).addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ing}, &pIR, &eIR)
 
 	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
 	redirectCtx, ok := eIR.HTTPRoutes[redirectKey]
@@ -1112,7 +1112,7 @@ func TestAddDefaultSSLRedirect_mixedTLSAndNoTLSRules(t *testing.T) {
 	eIR := emitterir.EmitterIR{HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{}}
 	eIR.HTTPRoutes[key] = emitterir.HTTPRouteContext{HTTPRoute: route}
 
-	addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ingWithTLS, ingNoTLS}, &pIR, &eIR)
+	(&Provider{}).addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ingWithTLS, ingNoTLS}, &pIR, &eIR)
 
 	// Both /a and /b should get redirects because the hostname has TLS
 	// (from ingWithTLS), matching ingress-nginx's hostname-level TLS merging.
@@ -1165,7 +1165,7 @@ func TestAddDefaultSSLRedirect_noTLS(t *testing.T) {
 	eIR := emitterir.EmitterIR{HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{}}
 	eIR.HTTPRoutes[key] = emitterir.HTTPRouteContext{HTTPRoute: route}
 
-	addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ing}, &pIR, &eIR)
+	(&Provider{}).addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ing}, &pIR, &eIR)
 
 	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
 	if _, ok := eIR.HTTPRoutes[redirectKey]; ok {
@@ -1237,7 +1237,7 @@ func TestAddDefaultSSLRedirect_crossIngressTLSWithOptOut(t *testing.T) {
 	eIR := emitterir.EmitterIR{HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{}}
 	eIR.HTTPRoutes[key] = emitterir.HTTPRouteContext{HTTPRoute: route}
 
-	addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ingWithTLS, ingNoTLSOptOut}, &pIR, &eIR)
+	(&Provider{}).addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ingWithTLS, ingNoTLSOptOut}, &pIR, &eIR)
 
 	// Consolidated: /a redirect + /b passthrough in one route
 	httpKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
@@ -1324,7 +1324,7 @@ func TestAddDefaultSSLRedirect_crossIngressTLSThreeWayMixed(t *testing.T) {
 	eIR := emitterir.EmitterIR{HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{}}
 	eIR.HTTPRoutes[key] = emitterir.HTTPRouteContext{HTTPRoute: route}
 
-	addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ingWithTLS, ingNoTLSOptOut, ingNoTLSDefault}, &pIR, &eIR)
+	(&Provider{}).addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ingWithTLS, ingNoTLSOptOut, ingNoTLSDefault}, &pIR, &eIR)
 
 	// Consolidated: /a (redirect), /b (passthrough), /c (redirect) — in iteration order
 	httpKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
@@ -1394,7 +1394,7 @@ func TestAddDefaultSSLRedirect_allIngressesNoTLS(t *testing.T) {
 	eIR := emitterir.EmitterIR{HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{}}
 	eIR.HTTPRoutes[key] = emitterir.HTTPRouteContext{HTTPRoute: route}
 
-	addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ingA, ingB}, &pIR, &eIR)
+	(&Provider{}).addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ingA, ingB}, &pIR, &eIR)
 
 	// No ingress has TLS, so no http route should be created
 	httpKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
