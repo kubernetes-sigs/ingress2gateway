@@ -26,7 +26,9 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/e2e/provider"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
+	corev1 "k8s.io/api/core/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	gwclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 )
@@ -46,6 +48,22 @@ func setupTestEnvTLS(t *testing.T, providers []string, gatewayImplementation str
 func runTestCase(t *testing.T, tc *framework.TestCase) {
 	env := setupTestEnv(t, tc.Providers, tc.GatewayImplementation)
 	env.Run(tc)
+}
+
+// backendTLSResources builds the CA secret and CA ConfigMap from the TestEnv's TLS state.
+// These are returned for inclusion in tc.Secrets and tc.ConfigMaps respectively.
+// The server secret and TLS-enabled DummyApp1 are already created by setupTestEnvTLS.
+func backendTLSResources(env *framework.TestEnv) (caSecrets []*corev1.Secret, configMaps []*corev1.ConfigMap) {
+	caCM := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      framework.BackendCASecretName,
+			Namespace: env.Namespace,
+		},
+		Data: map[string]string{
+			"ca.crt": string(env.CACertPEM),
+		},
+	}
+	return []*corev1.Secret{env.CASecret}, []*corev1.ConfigMap{caCM}
 }
 
 func deployProviders(

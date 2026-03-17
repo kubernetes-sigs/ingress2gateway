@@ -29,26 +29,9 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // ingress-nginx provider features: One test per feature, all using Istio + standard emitter.
-
-// backendTLSResources builds the CA secret and CA ConfigMap from the TestEnv's TLS state.
-// These are returned for inclusion in tc.Secrets and tc.ConfigMaps respectively.
-// The server secret and TLS-enabled DummyApp1 are already created by setupTestEnvTLS.
-func backendTLSResources(env *framework.TestEnv) (caSecrets []*corev1.Secret, configMaps []*corev1.ConfigMap) {
-	caCM := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      framework.BackendCASecretName,
-			Namespace: env.Namespace,
-		},
-		Data: map[string]string{
-			"ca.crt": string(env.CACertPEM),
-		},
-	}
-	return []*corev1.Secret{env.CASecret}, []*corev1.ConfigMap{caCM}
-}
 
 func TestIngressNGINXBackendTLS(t *testing.T) {
 	t.Parallel()
