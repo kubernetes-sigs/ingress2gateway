@@ -415,6 +415,33 @@ These are projected into an `AgentgatewayPolicy` by setting:
 - `client-body-buffer-size` is used as a fallback when `proxy-body-size` is unset.
 - The selected quantity is resolved to bytes for `maxBufferSize`.
 
+#### Service Upstream
+
+The agentgateway emitter supports projecting Service-upstream behavior via:
+
+- `nginx.ingress.kubernetes.io/service-upstream: "true"`
+
+This is projected by emitting one `AgentgatewayBackend` per covered backend Service and rewriting covered
+`HTTPRoute.spec.rules[].backendRefs[]` entries to reference that `AgentgatewayBackend`.
+
+Mappings:
+
+- `<service>` backendRef → `AgentgatewayBackend` named `<service>-service-upstream`
+- `AgentgatewayBackend.spec.static.host` → `<service>.<namespace>.svc.cluster.local`
+- `AgentgatewayBackend.spec.static.port` → original HTTPRoute backendRef port
+- rewritten HTTPRoute backendRef:
+  - `group: agentgateway.dev`
+  - `kind: AgentgatewayBackend`
+  - `name: <service>-service-upstream`
+  - `port` removed (port is defined on `AgentgatewayBackend.spec.static.port`)
+
+**Notes:**
+
+- Rewrites only apply to core Service backendRefs (empty group and kind `Service` / unset kind).
+- If the provider could not determine an explicit backendRef port, that backendRef is skipped.
+- `backend-protocol` remains a Service-targeted `AgentgatewayPolicy` and continues to control upstream HTTP version
+  (`spec.backend.http.version`) independently from `service-upstream`.
+
 ## AgentgatewayPolicy Projection
 
 Rate limit, timeout, CORS, rewrite target, access log, etc. annotations are converted into AgentgatewayPolicy resources.
@@ -484,8 +511,3 @@ to the output extensions list.
 
 - Only the **ingress-nginx provider** is currently supported by the Agentgateway emitter.
 - Regex path matching is not currently implemented for agentgateway output.
-
-## Future Work
-
-The code defines GVKs for additional agentgateway extension types (e.g. `AgentgatewayBackend`), but they are not
-yet emitted by the current implementation.

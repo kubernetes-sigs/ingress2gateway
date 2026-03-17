@@ -131,7 +131,7 @@ The ingress-nginx provider currently supports translating the following annotati
   - Instead, it records a provider-specific policy with:
     - derived static Backends (one per covered Service backendRef), and
     - `(rule, backend)` index pairs indicating which `HTTPRoute` backendRefs the policy applies to.
-  - An implementation-specific emitter (e.g., Kgateway) can then use this policy to:
+  - An implementation-specific emitter (e.g., Kgateway or Agentgateway) can then use this policy to:
     1. Emit implementation-specific `Backend` CRs, and
     2. Rewrite affected `HTTPRoute.spec.rules[].backendRefs[]` entries to reference those emitted Backend CRs.
   - Backend host is derived as in-cluster DNS (`<service>.<namespace>.svc.cluster.local`) and the Backend name is derived as
