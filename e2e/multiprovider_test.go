@@ -31,9 +31,7 @@ import (
 func TestMultipleProviders(t *testing.T) {
 	t.Parallel()
 	t.Run("ingress-nginx + kong", func(t *testing.T) {
-		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: implementation.IstioName,
-			Providers:             []string{ingressnginx.Name, kong.Name},
+		setupTestEnv(t, []string{ingressnginx.Name, kong.Name}, implementation.IstioName).Run(&framework.TestCase{
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
 					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,

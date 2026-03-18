@@ -215,13 +215,11 @@ func TestIngressNGINXCanary(t *testing.T) {
 		suffix, err := framework.RandString()
 		require.NoError(t, err)
 		host := fmt.Sprintf("canary-%s.com", suffix)
-		runTestCase(t, &framework.TestCase{
+		setupTestEnv(t, []string{ingressnginx.Name}, implementation.IstioName).Run(&framework.TestCase{
 			Backends: []framework.Backend{
 				{Name: framework.DummyAppName1},
 				{Name: framework.DummyAppName2},
 			},
-			GatewayImplementation: implementation.IstioName,
-			Providers:             []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
 					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
@@ -262,13 +260,11 @@ func TestIngressNGINXCanary(t *testing.T) {
 		suffix, err := framework.RandString()
 		require.NoError(t, err)
 		host := fmt.Sprintf("canary-header-path-%s.com", suffix)
-		runTestCase(t, &framework.TestCase{
+		setupTestEnv(t, []string{ingressnginx.Name}, implementation.IstioName).Run(&framework.TestCase{
 			Backends: []framework.Backend{
 				{Name: framework.DummyAppName1},
 				{Name: framework.DummyAppName2},
 			},
-			GatewayImplementation: implementation.IstioName,
-			Providers:             []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
 					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
@@ -318,13 +314,11 @@ func TestIngressNGINXCanary(t *testing.T) {
 		suffix, err := framework.RandString()
 		require.NoError(t, err)
 		host := fmt.Sprintf("canary-combined-%s.com", suffix)
-		runTestCase(t, &framework.TestCase{
+		setupTestEnv(t, []string{ingressnginx.Name}, implementation.IstioName).Run(&framework.TestCase{
 			Backends: []framework.Backend{
 				{Name: framework.DummyAppName1},
 				{Name: framework.DummyAppName2},
 			},
-			GatewayImplementation: implementation.IstioName,
-			Providers:             []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
 					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
@@ -395,10 +389,8 @@ func TestIngressNGINXCORS(t *testing.T) {
 		exposeHeaders := "X-Expose-1, X-Expose-2"
 		maxAge := "600"
 
-		runTestCase(t, &framework.TestCase{
-			GatewayImplementation:  implementation.IstioName,
+		setupTestEnv(t, []string{ingressnginx.Name}, implementation.IstioName).Run(&framework.TestCase{
 			AllowExperimentalGWAPI: true,
-			Providers:              []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
 					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
@@ -503,10 +495,8 @@ func TestIngressNGINXCORS(t *testing.T) {
 		origin := "https://cors-defaults.example.com"
 		maxAge := "1728000"
 
-		runTestCase(t, &framework.TestCase{
-			GatewayImplementation:  implementation.IstioName,
+		setupTestEnv(t, []string{ingressnginx.Name}, implementation.IstioName).Run(&framework.TestCase{
 			AllowExperimentalGWAPI: true,
-			Providers:              []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
 					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
@@ -608,10 +598,8 @@ func TestIngressNGINXCORS(t *testing.T) {
 		allowedOrigin := "https://cors-allowed.example.com"
 		deniedOrigin := "https://cors-denied.example.com"
 
-		runTestCase(t, &framework.TestCase{
-			GatewayImplementation:  implementation.IstioName,
+		setupTestEnv(t, []string{ingressnginx.Name}, implementation.IstioName).Run(&framework.TestCase{
 			AllowExperimentalGWAPI: true,
-			Providers:              []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
 					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
@@ -660,10 +648,8 @@ func TestIngressNGINXCORS(t *testing.T) {
 		deniedMethod := "DELETE"
 		deniedHeader := "X-Not-Allowed"
 
-		runTestCase(t, &framework.TestCase{
-			GatewayImplementation:  implementation.IstioName,
+		setupTestEnv(t, []string{ingressnginx.Name}, implementation.IstioName).Run(&framework.TestCase{
 			AllowExperimentalGWAPI: true,
-			Providers:              []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
 					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
@@ -738,9 +724,7 @@ func TestIngressNGINXCORS(t *testing.T) {
 func TestIngressNGINXPathRewrite(t *testing.T) {
 	t.Parallel()
 	t.Run("basic conversion", func(t *testing.T) {
-		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: implementation.IstioName,
-			Providers:             []string{ingressnginx.Name},
+		setupTestEnv(t, []string{ingressnginx.Name}, implementation.IstioName).Run(&framework.TestCase{
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
 					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
@@ -774,9 +758,7 @@ func TestIngressNGINXTLS(t *testing.T) {
 		if err != nil {
 			t.Fatalf("creating TLS secret: %v", err)
 		}
-		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: implementation.IstioName,
-			Providers:             []string{ingressnginx.Name},
+		setupTestEnv(t, []string{ingressnginx.Name}, implementation.IstioName).Run(&framework.TestCase{
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
 					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
@@ -830,9 +812,7 @@ func TestIngressNGINXTLS(t *testing.T) {
 		if err != nil {
 			t.Fatalf("creating no-redirect TLS secret: %v", err)
 		}
-		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: implementation.IstioName,
-			Providers:             []string{ingressnginx.Name},
+		setupTestEnv(t, []string{ingressnginx.Name}, implementation.IstioName).Run(&framework.TestCase{
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
 					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
@@ -901,9 +881,7 @@ const verySlowShellPath = "/shell?cmd=sleep%2015%3B%20echo%20done"
 func TestIngressNGINXTimeouts(t *testing.T) {
 	t.Parallel()
 	t.Run("slow response allowed", func(t *testing.T) {
-		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: implementation.IstioName,
-			Providers:             []string{ingressnginx.Name},
+		setupTestEnv(t, []string{ingressnginx.Name}, implementation.IstioName).Run(&framework.TestCase{
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
 					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
@@ -930,9 +908,7 @@ func TestIngressNGINXTimeouts(t *testing.T) {
 		})
 	})
 	t.Run("short timeout", func(t *testing.T) {
-		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: implementation.IstioName,
-			Providers:             []string{ingressnginx.Name},
+		setupTestEnv(t, []string{ingressnginx.Name}, implementation.IstioName).Run(&framework.TestCase{
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
 					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
@@ -967,9 +943,7 @@ func TestIngressNGINXRedirect(t *testing.T) {
 		require.NoError(t, err)
 		redirectURL := fmt.Sprintf("https://new-site-%s.example.com/new-path/", suffix)
 
-		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: implementation.IstioName,
-			Providers:             []string{ingressnginx.Name},
+		setupTestEnv(t, []string{ingressnginx.Name}, implementation.IstioName).Run(&framework.TestCase{
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
 					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
@@ -1008,9 +982,7 @@ func TestIngressNGINXRedirect(t *testing.T) {
 		require.NoError(t, err)
 		redirectURL := fmt.Sprintf("https://temp-site-%s.example.com/temp-path/", suffix)
 
-		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: implementation.IstioName,
-			Providers:             []string{ingressnginx.Name},
+		setupTestEnv(t, []string{ingressnginx.Name}, implementation.IstioName).Run(&framework.TestCase{
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
 					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
@@ -1049,9 +1021,7 @@ func TestIngressNGINXRedirect(t *testing.T) {
 		require.NoError(t, err)
 		redirectURL := fmt.Sprintf("https://custom-code-%s.example.com/path/", suffix)
 
-		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: implementation.IstioName,
-			Providers:             []string{ingressnginx.Name},
+		setupTestEnv(t, []string{ingressnginx.Name}, implementation.IstioName).Run(&framework.TestCase{
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
 					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
@@ -1091,9 +1061,7 @@ func TestIngressNGINXRedirect(t *testing.T) {
 		require.NoError(t, err)
 		redirectURL := fmt.Sprintf("https://custom-temp-%s.example.com/path/", suffix)
 
-		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: implementation.IstioName,
-			Providers:             []string{ingressnginx.Name},
+		setupTestEnv(t, []string{ingressnginx.Name}, implementation.IstioName).Run(&framework.TestCase{
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
 					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
@@ -1131,9 +1099,7 @@ func TestIngressNGINXRedirect(t *testing.T) {
 	t.Run("redirect with scheme and hostname only", func(t *testing.T) {
 		redirectURL := "https://another-domain.example.com/"
 
-		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: implementation.IstioName,
-			Providers:             []string{ingressnginx.Name},
+		setupTestEnv(t, []string{ingressnginx.Name}, implementation.IstioName).Run(&framework.TestCase{
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
 					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
@@ -1172,9 +1138,7 @@ func TestIngressNGINXRedirect(t *testing.T) {
 		require.NoError(t, err)
 		redirectURL := fmt.Sprintf("https://custom-port-%s.example.com:8443/secure/", suffix)
 
-		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: implementation.IstioName,
-			Providers:             []string{ingressnginx.Name},
+		setupTestEnv(t, []string{ingressnginx.Name}, implementation.IstioName).Run(&framework.TestCase{
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
 					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
@@ -1214,9 +1178,7 @@ func TestIngressNGINXRedirect(t *testing.T) {
 		permanentURL := fmt.Sprintf("https://permanent-%s.example.com/path/", suffix)
 		temporalURL := fmt.Sprintf("https://temporal-%s.example.com/path/", suffix)
 
-		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: implementation.IstioName,
-			Providers:             []string{ingressnginx.Name},
+		setupTestEnv(t, []string{ingressnginx.Name}, implementation.IstioName).Run(&framework.TestCase{
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
 					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
@@ -1279,9 +1241,7 @@ func TestIngressNGINXRegex(t *testing.T) {
 			Build()
 		regex.Spec.Rules[0].HTTP.Paths[0].PathType = &implementationSpecific
 
-		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: implementation.IstioName,
-			Providers:             []string{ingressnginx.Name},
+		setupTestEnv(t, []string{ingressnginx.Name}, implementation.IstioName).Run(&framework.TestCase{
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
 					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
@@ -1328,9 +1288,7 @@ func TestIngressNGINXRegex(t *testing.T) {
 			Build()
 		rewriteRegex.Spec.Rules[0].HTTP.Paths[0].PathType = &implementationSpecific
 
-		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: implementation.IstioName,
-			Providers:             []string{ingressnginx.Name},
+		setupTestEnv(t, []string{ingressnginx.Name}, implementation.IstioName).Run(&framework.TestCase{
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
 					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
@@ -1368,9 +1326,7 @@ func TestIngressNGINXRegex(t *testing.T) {
 			Build()
 		ing.Spec.Rules[0].HTTP.Paths[0].PathType = &implementationSpecific
 
-		runTestCase(t, &framework.TestCase{
-			GatewayImplementation: implementation.IstioName,
-			Providers:             []string{ingressnginx.Name},
+		setupTestEnv(t, []string{ingressnginx.Name}, implementation.IstioName).Run(&framework.TestCase{
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
 					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,

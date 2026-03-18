@@ -77,9 +77,7 @@ type TestCase struct {
 	Ingresses              []*networkingv1.Ingress
 	Secrets                []*corev1.Secret
 	ConfigMaps             []*corev1.ConfigMap
-	Providers              []string
 	ProviderFlags          map[string]map[string]string
-	GatewayImplementation  string
 	AllowExperimentalGWAPI bool
 	Emitter                string
 	Verifiers              map[string][]Verifier
