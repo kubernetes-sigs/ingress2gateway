@@ -148,6 +148,11 @@ func createSecrets(ctx context.Context, l Logger, client *kubernetes.Clientset, 
 	}, nil
 }
 
+const (
+	BackendServerSecretName = "tls-backend-server-cert" //nolint:gosec // Not a credential, just a resource name.
+	BackendCASecretName     = "tls-backend-ca"          //nolint:gosec // Not a credential, just a resource name.
+)
+
 // GenerateBackendTLSSecrets creates a CA and a server certificate signed by that CA.
 // It returns:
 //   - ServerSecret: a TLS secret (tls.crt + tls.key) to mount in the HTTPS backend pod
