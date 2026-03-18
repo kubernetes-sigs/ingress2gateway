@@ -82,7 +82,6 @@ func TestIngressNGINXBackendTLS(t *testing.T) {
 			env.Run(&framework.TestCase{
 				Backends: []framework.Backend{
 					{Name: framework.DummyAppName1, ServerSecretName: framework.BackendServerSecretName},
-					{Name: framework.DummyAppName2},
 				},
 				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
@@ -138,7 +137,6 @@ func TestIngressNGINXBackendTLS(t *testing.T) {
 			env.Run(&framework.TestCase{
 				Backends: []framework.Backend{
 					{Name: framework.DummyAppName1, ServerSecretName: framework.BackendServerSecretName},
-					{Name: framework.DummyAppName2},
 				},
 				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
@@ -187,7 +185,6 @@ func TestIngressNGINXBackendTLS(t *testing.T) {
 			env.Run(&framework.TestCase{
 				Backends: []framework.Backend{
 					{Name: framework.DummyAppName1, ServerSecretName: framework.BackendServerSecretName},
-					{Name: framework.DummyAppName2},
 				},
 				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
@@ -219,6 +216,10 @@ func TestIngressNGINXCanary(t *testing.T) {
 		require.NoError(t, err)
 		host := fmt.Sprintf("canary-%s.com", suffix)
 		runTestCase(t, &framework.TestCase{
+			Backends: []framework.Backend{
+				{Name: framework.DummyAppName1},
+				{Name: framework.DummyAppName2},
+			},
 			GatewayImplementation: implementation.IstioName,
 			Providers:             []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
@@ -262,6 +263,10 @@ func TestIngressNGINXCanary(t *testing.T) {
 		require.NoError(t, err)
 		host := fmt.Sprintf("canary-header-path-%s.com", suffix)
 		runTestCase(t, &framework.TestCase{
+			Backends: []framework.Backend{
+				{Name: framework.DummyAppName1},
+				{Name: framework.DummyAppName2},
+			},
 			GatewayImplementation: implementation.IstioName,
 			Providers:             []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{
@@ -314,6 +319,10 @@ func TestIngressNGINXCanary(t *testing.T) {
 		require.NoError(t, err)
 		host := fmt.Sprintf("canary-combined-%s.com", suffix)
 		runTestCase(t, &framework.TestCase{
+			Backends: []framework.Backend{
+				{Name: framework.DummyAppName1},
+				{Name: framework.DummyAppName2},
+			},
 			GatewayImplementation: implementation.IstioName,
 			Providers:             []string{ingressnginx.Name},
 			ProviderFlags: map[string]map[string]string{

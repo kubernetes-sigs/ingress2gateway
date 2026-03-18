@@ -238,12 +238,11 @@ func (env *TestEnv) Run(tc *TestCase) {
 		t.Cleanup(cleanupSecrets)
 	}
 
-	// Deploy backend apps. Default to two plain-HTTP dummy apps.
+	// Deploy backend apps. Default to one plain-HTTP dummy apps.
 	backends := tc.Backends
 	if backends == nil {
 		backends = []Backend{
 			{Name: DummyAppName1},
-			{Name: DummyAppName2},
 		}
 	}
 	for _, b := range backends {
