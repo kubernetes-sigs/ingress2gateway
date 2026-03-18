@@ -287,25 +287,12 @@ These are mapped into an `AgentgatewayPolicy` using agentgateway’s `Traffic.Ti
 
 #### Frontend TLS Settings
 
-The agentgateway emitter supports projecting frontend TLS listener settings via:
-
-- `nginx.ingress.kubernetes.io/ssl-handshake-timeout`
-- `nginx.ingress.kubernetes.io/ssl-alpn`
-
-These are mapped into an `AgentgatewayPolicy` using agentgateway's `Frontend.TLS` model:
-
-- `ssl-handshake-timeout` -> `AgentgatewayPolicy.spec.frontend.tls.handshakeTimeout`
-- `ssl-alpn` -> `AgentgatewayPolicy.spec.frontend.tls.alpnProtocols`
+Ingress NGINX does not document per-Ingress annotations for the downstream TLS handshake timeout or ALPN protocol
+settings exposed by `AgentgatewayPolicy.spec.frontend.tls`.
 
 **Notes:**
 
-- Agentgateway validates `spec.frontend` only on `Gateway` targets, so ingress2gateway emits a single
-  Gateway-targeted policy named `<gateway>-frontend-tls`.
-- If multiple source Ingresses on the same Gateway request different frontend TLS settings, the emitter returns an
-  error because agentgateway cannot scope these settings to an individual HTTPRoute or listener.
-- `ssl-handshake-timeout` accepts either Go-style durations (`20s`, `1m`) or bare seconds (`20`) and must be at least `100ms`.
-- `ssl-alpn` is parsed as a comma-separated list and de-duplicated while preserving order.
-- If only `ssl-alpn` is set, the provider projects a default `15s` handshake timeout so `spec.frontend.tls` remains valid.
+- ingress2gateway does not currently emit additional `frontend.tls` settings for ingress-nginx inputs.
 
 #### Local Rate Limiting
 

@@ -161,12 +161,6 @@ type BackendTLSPolicy struct {
 	Hostname   string
 }
 
-// FrontendTLSPolicy defines frontend TLS listener policy extracted from annotations.
-type FrontendTLSPolicy struct {
-	HandshakeTimeout *metav1.Duration
-	ALPNProtocols    []string
-}
-
 // Policy describes per-Ingress policy knobs projected by providers.
 type Policy struct {
 	ClientBodyBufferSize *resource.Quantity
@@ -182,7 +176,6 @@ type Policy struct {
 	SessionAffinity      *SessionAffinityPolicy
 	LoadBalancing        *BackendLoadBalancingPolicy
 	BackendTLS           *BackendTLSPolicy
-	FrontendTLS          *FrontendTLSPolicy
 	BackendProtocol      *BackendProtocol
 	SSLRedirect          *bool
 	RewriteTarget        *string
