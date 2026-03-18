@@ -18,6 +18,7 @@ package providerir
 
 import (
 	"testing"
+	"time"
 
 	emitterir "github.com/kgateway-dev/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -32,6 +33,7 @@ func TestToEmitterIRConvertsIngressNginxPolicy(t *testing.T) {
 	backendKey := types.NamespacedName{Namespace: "default", Name: "backend-a"}
 	useRegex := true
 	backendProtocol := BackendProtocolGRPC
+	frontendHandshake := metav1.Duration{Duration: 10 * time.Second}
 
 	sourceIR := ProviderIR{
 		HTTPRoutes: map[types.NamespacedName]HTTPRouteContext{
@@ -64,6 +66,10 @@ func TestToEmitterIRConvertsIngressNginxPolicy(t *testing.T) {
 									BurstMultiplier: 3,
 								},
 								UseRegexPaths: &useRegex,
+								FrontendTLS: &IngressNginxFrontendTLSPolicy{
+									HandshakeTimeout: &frontendHandshake,
+									ALPNProtocols:    []string{"h2", "http/1.1"},
+								},
 								RuleBackendSources: []PolicyIndex{
 									{Rule: 0, Backend: 0},
 								},
@@ -110,6 +116,12 @@ func TestToEmitterIRConvertsIngressNginxPolicy(t *testing.T) {
 	if pol.UseRegexPaths == nil || !*pol.UseRegexPaths {
 		t.Fatalf("expected UseRegexPaths=true")
 	}
+	if pol.FrontendTLS == nil || pol.FrontendTLS.HandshakeTimeout == nil || pol.FrontendTLS.HandshakeTimeout.Duration != 10*time.Second {
+		t.Fatalf("expected frontend TLS handshake timeout 10s, got %#v", pol.FrontendTLS)
+	}
+	if len(pol.FrontendTLS.ALPNProtocols) != 2 || pol.FrontendTLS.ALPNProtocols[0] != "h2" {
+		t.Fatalf("unexpected frontend TLS ALPN protocols: %#v", pol.FrontendTLS.ALPNProtocols)
+	}
 	if len(pol.RuleBackendSources) != 1 || pol.RuleBackendSources[0].Rule != 0 || pol.RuleBackendSources[0].Backend != 0 {
 		t.Fatalf("unexpected RuleBackendSources: %#v", pol.RuleBackendSources)
 	}
@@ -124,9 +136,13 @@ func TestToEmitterIRConvertsIngressNginxPolicy(t *testing.T) {
 	// Ensure slice/map fields are copied, not shared.
 	sourcePol := sourceIR.HTTPRoutes[routeKey].ProviderSpecificIR.IngressNginx.Policies["ing-a"]
 	sourcePol.Cors.AllowOrigin[0] = "https://mutated.example.com"
+	sourcePol.FrontendTLS.ALPNProtocols[0] = "mutated"
 	sourceIR.HTTPRoutes[routeKey].ProviderSpecificIR.IngressNginx.Policies["ing-a"] = sourcePol
 	if got := pol.Cors.AllowOrigin[0]; got != "https://example.com" {
 		t.Fatalf("expected converted policy to retain original allow origin, got %q", got)
+	}
+	if got := pol.FrontendTLS.ALPNProtocols[0]; got != "h2" {
+		t.Fatalf("expected converted policy to retain original ALPN protocol, got %q", got)
 	}
 
 	// Ensure converted policies retain dedupe behavior for later emitter updates.

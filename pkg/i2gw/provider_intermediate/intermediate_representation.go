@@ -203,6 +203,15 @@ type IngressNginxBackendTLSPolicy struct {
 	Hostname string
 }
 
+// IngressNginxFrontendTLSPolicy defines frontend TLS policy knobs extracted from ingress-nginx annotations.
+type IngressNginxFrontendTLSPolicy struct {
+	// HandshakeTimeout configures the TLS handshake timeout on the downstream/frontend listener.
+	HandshakeTimeout *metav1.Duration
+
+	// ALPNProtocols configures downstream ALPN protocol order (for example: h2,http/1.1).
+	ALPNProtocols []string
+}
+
 // IngressNginxPolicy describes all per-Ingress policy knobs that ingress-nginx projects into the
 // IR (buffer, CORS, etc.).
 type IngressNginxPolicy struct {
@@ -245,6 +254,9 @@ type IngressNginxPolicy struct {
 
 	// BackendTLS defines the backend TLS policy.
 	BackendTLS *IngressNginxBackendTLSPolicy
+
+	// FrontendTLS defines frontend TLS listener policy.
+	FrontendTLS *IngressNginxFrontendTLSPolicy
 
 	// BackendProtocol defines the upstream application protocol to use when communicating with
 	// backend Services covered by this policy.

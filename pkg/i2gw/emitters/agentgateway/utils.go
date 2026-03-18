@@ -23,6 +23,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -75,6 +76,26 @@ func numRules(hr gatewayv1.HTTPRoute) int {
 		n += len(r.BackendRefs)
 	}
 	return n
+}
+
+func gatewayParentKeyForHTTPRoute(hr gatewayv1.HTTPRoute, defaultNamespace string) (types.NamespacedName, bool) {
+	if len(hr.Spec.ParentRefs) == 0 {
+		return types.NamespacedName{}, false
+	}
+
+	parentRef := hr.Spec.ParentRefs[0]
+	gatewayNamespace := defaultNamespace
+	if parentRef.Namespace != nil {
+		gatewayNamespace = string(*parentRef.Namespace)
+	}
+	if parentRef.Name == "" {
+		return types.NamespacedName{}, false
+	}
+
+	return types.NamespacedName{
+		Namespace: gatewayNamespace,
+		Name:      string(parentRef.Name),
+	}, true
 }
 
 // toUnstructured converts a runtime.Object to unstructured.Unstructured

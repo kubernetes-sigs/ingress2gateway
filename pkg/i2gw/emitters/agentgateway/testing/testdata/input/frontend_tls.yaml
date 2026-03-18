@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-handshake-timeout: "20s"
+    nginx.ingress.kubernetes.io/ssl-alpn: "h2, http/1.1"
+  name: ingress-frontend-tls
+  namespace: default
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: frontend-tls.example.org
+    http:
+      paths:
+      - backend:
+          service:
+            name: myservice
+            port:
+              number: 80
+        path: /
+        pathType: Prefix

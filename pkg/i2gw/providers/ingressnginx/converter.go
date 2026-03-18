@@ -46,6 +46,7 @@ func newResourcesToIRConverter() *resourcesToIRConverter {
 			sessionAffinityFeature,
 			loadBalancingFeature,
 			backendTLSFeature,
+			frontendTLSFeature,
 			serviceUpstreamFeature,
 			backendProtocolFeature, // Must come after serviceUpstreamFeature.
 			sslRedirectFeature,

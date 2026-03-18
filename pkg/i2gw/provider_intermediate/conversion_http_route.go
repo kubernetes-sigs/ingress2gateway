@@ -74,6 +74,7 @@ func convertIngressNginxPolicy(in IngressNginxPolicy) emitterir.Policy {
 		SessionAffinity:      convertIngressNginxSessionAffinityPolicy(in.SessionAffinity),
 		LoadBalancing:        convertIngressNginxBackendLoadBalancingPolicy(in.LoadBalancing),
 		BackendTLS:           convertIngressNginxBackendTLSPolicy(in.BackendTLS),
+		FrontendTLS:          convertIngressNginxFrontendTLSPolicy(in.FrontendTLS),
 		BackendProtocol:      convertIngressNginxBackendProtocol(in.BackendProtocol),
 		SSLRedirect:          in.SSLRedirect,
 		RewriteTarget:        in.RewriteTarget,
@@ -154,6 +155,16 @@ func convertIngressNginxBackendTLSPolicy(in *IngressNginxBackendTLSPolicy) *emit
 		SecretName: in.SecretName,
 		Verify:     in.Verify,
 		Hostname:   in.Hostname,
+	}
+}
+
+func convertIngressNginxFrontendTLSPolicy(in *IngressNginxFrontendTLSPolicy) *emitterir.FrontendTLSPolicy {
+	if in == nil {
+		return nil
+	}
+	return &emitterir.FrontendTLSPolicy{
+		HandshakeTimeout: in.HandshakeTimeout,
+		ALPNProtocols:    cloneStringSlice(in.ALPNProtocols),
 	}
 }
 

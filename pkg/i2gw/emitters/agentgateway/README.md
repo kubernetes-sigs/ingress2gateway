@@ -285,6 +285,28 @@ These are mapped into an `AgentgatewayPolicy` using agentgateway’s `Traffic.Ti
   `spec.traffic.timeouts.request` to avoid unexpectedly truncating requests.
 - Invalid/unsupported duration values are ignored by the provider and will not be projected.
 
+#### Frontend TLS Settings
+
+The agentgateway emitter supports projecting frontend TLS listener settings via:
+
+- `nginx.ingress.kubernetes.io/ssl-handshake-timeout`
+- `nginx.ingress.kubernetes.io/ssl-alpn`
+
+These are mapped into an `AgentgatewayPolicy` using agentgateway's `Frontend.TLS` model:
+
+- `ssl-handshake-timeout` -> `AgentgatewayPolicy.spec.frontend.tls.handshakeTimeout`
+- `ssl-alpn` -> `AgentgatewayPolicy.spec.frontend.tls.alpnProtocols`
+
+**Notes:**
+
+- Agentgateway validates `spec.frontend` only on `Gateway` targets, so ingress2gateway emits a single
+  Gateway-targeted policy named `<gateway>-frontend-tls`.
+- If multiple source Ingresses on the same Gateway request different frontend TLS settings, the emitter returns an
+  error because agentgateway cannot scope these settings to an individual HTTPRoute or listener.
+- `ssl-handshake-timeout` accepts either Go-style durations (`20s`, `1m`) or bare seconds (`20`) and must be at least `100ms`.
+- `ssl-alpn` is parsed as a comma-separated list and de-duplicated while preserving order.
+- If only `ssl-alpn` is set, the provider projects a default `15s` handshake timeout so `spec.frontend.tls` remains valid.
+
 #### Local Rate Limiting
 
 The agentgateway emitter currently supports projecting local rate limiting via:
