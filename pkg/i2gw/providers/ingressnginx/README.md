@@ -192,22 +192,16 @@ For the Agentgateway implementation, these map to:
 
 ### Frontend HTTP Settings
 
-- `nginx.ingress.kubernetes.io/http1-max-headers`: Maximum number of HTTP/1 request headers.
-- `nginx.ingress.kubernetes.io/http1-idle-timeout`: Idle timeout for HTTP/1 connections.
-- `nginx.ingress.kubernetes.io/http2-window-size`: Initial stream-level flow control window for HTTP/2.
-- `nginx.ingress.kubernetes.io/http2-connection-window-size`: Initial connection-level flow control window for HTTP/2.
-- `nginx.ingress.kubernetes.io/http2-frame-size`: Maximum HTTP/2 frame size.
-- `nginx.ingress.kubernetes.io/http2-keepalive-interval`: Interval between HTTP/2 keepalive pings.
-- `nginx.ingress.kubernetes.io/http2-keepalive-timeout`: Timeout for HTTP/2 keepalive responses.
+Ingress NGINX documents frontend HTTP tuning as controller-wide `ConfigMap` settings such as
+`http2-max-concurrent-streams`, `keep-alive`, `keep-alive-requests`, and `large-client-header-buffers`,
+not as per-Ingress annotations.
 
 Behavior:
 
-- Positive integer values are required for `*-max-headers`, `*-window-size`, and `*-frame-size` fields.
-- Duration values accept Go duration format (`5s`, `1m`) or unitless seconds (for example `30`).
-- Duration values must be at least `1s`.
-- For the Agentgateway implementation, these map to `AgentgatewayPolicy.spec.frontend.http`.
-- The emitter applies these as a Gateway-targeted `AgentgatewayPolicy`, since agentgateway does not allow
-  `spec.frontend` to target individual HTTPRoutes or listeners.
+- ingress2gateway does not currently ingest the ingress-nginx controller `ConfigMap`, so it does not project
+  additional frontend HTTP listener settings into `AgentgatewayPolicy.spec.frontend.http`.
+- The supported `spec.frontend.http.maxBufferSize` mapping is documented separately in the
+  `Buffer/Body Size` section.
 
 ---
 

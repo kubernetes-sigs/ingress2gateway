@@ -70,11 +70,6 @@ func (e *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.Err
 	gatewayFrontendTLSPolicies := map[types.NamespacedName]*agentgatewayv1alpha1.AgentgatewayPolicy{}
 	gatewayFrontendTLSPolicySources := map[types.NamespacedName]string{}
 
-	// Track Gateway-scoped frontend HTTP policies. Agentgateway validates
-	// spec.frontend only when the policy targets the Gateway directly.
-	gatewayFrontendHTTPPolicies := map[types.NamespacedName]*agentgatewayv1alpha1.AgentgatewayPolicy{}
-	gatewayFrontendHTTPPolicySources := map[types.NamespacedName]string{}
-
 	// Track backend-scoped AgentgatewayPolicies per Service (ns/name) (e.g. TLS, connect timeout)
 	backendPolicies := map[types.NamespacedName]*agentgatewayv1alpha1.AgentgatewayPolicy{}
 
@@ -132,18 +127,6 @@ func (e *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.Err
 				gatewayFrontendTLSPolicySources,
 			); frontendTLSErr != nil {
 				errs = append(errs, frontendTLSErr)
-			}
-
-			// Frontend HTTP settings are Gateway-scoped in agentgateway.
-			if _, frontendHTTPErr := applyFrontendHTTPPolicy(
-				pol,
-				polSourceIngressName,
-				httpRouteContext.HTTPRoute,
-				httpRouteKey.Namespace,
-				gatewayFrontendHTTPPolicies,
-				gatewayFrontendHTTPPolicySources,
-			); frontendHTTPErr != nil {
-				errs = append(errs, frontendHTTPErr)
 			}
 
 			// Check if SSL redirect is enabled but don't apply it yet (will split route later).
@@ -374,11 +357,6 @@ func (e *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.Err
 
 	// Collect Gateway-scoped frontend TLS policies.
 	for _, ap := range gatewayFrontendTLSPolicies {
-		agentgatewayObjs = append(agentgatewayObjs, ap)
-	}
-
-	// Collect Gateway-scoped frontend HTTP policies.
-	for _, ap := range gatewayFrontendHTTPPolicies {
 		agentgatewayObjs = append(agentgatewayObjs, ap)
 	}
 

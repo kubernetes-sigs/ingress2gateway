@@ -309,34 +309,15 @@ These are mapped into an `AgentgatewayPolicy` using agentgateway's `Frontend.TLS
 
 #### Frontend HTTP Settings
 
-The agentgateway emitter supports projecting frontend HTTP listener settings from the following ingress-nginx annotations:
-
-- `nginx.ingress.kubernetes.io/http1-max-headers`
-- `nginx.ingress.kubernetes.io/http1-idle-timeout`
-- `nginx.ingress.kubernetes.io/http2-window-size`
-- `nginx.ingress.kubernetes.io/http2-connection-window-size`
-- `nginx.ingress.kubernetes.io/http2-frame-size`
-- `nginx.ingress.kubernetes.io/http2-keepalive-interval`
-- `nginx.ingress.kubernetes.io/http2-keepalive-timeout`
-
-These are mapped into `AgentgatewayPolicy.spec.frontend.http`:
-
-- `http1-max-headers` -> `frontend.http.http1MaxHeaders`
-- `http1-idle-timeout` -> `frontend.http.http1IdleTimeout`
-- `http2-window-size` -> `frontend.http.http2WindowSize`
-- `http2-connection-window-size` -> `frontend.http.http2ConnectionWindowSize`
-- `http2-frame-size` -> `frontend.http.http2FrameSize`
-- `http2-keepalive-interval` -> `frontend.http.http2KeepaliveInterval`
-- `http2-keepalive-timeout` -> `frontend.http.http2KeepaliveTimeout`
+Ingress NGINX does not document per-Ingress annotations for the remaining downstream HTTP listener settings exposed by
+`AgentgatewayPolicy.spec.frontend.http`. The closest upstream knobs are controller-wide ingress-nginx `ConfigMap`
+settings such as `http2-max-concurrent-streams`, `keep-alive`, `keep-alive-requests`, and
+`large-client-header-buffers`.
 
 Notes:
 
-- Integer values must be positive.
-- Duration values accept Go duration format or unitless seconds and must be at least `1s`.
-- Agentgateway validates `spec.frontend` only on `Gateway` targets, so ingress2gateway emits a single
-  Gateway-targeted policy named `<gateway>-frontend-http`.
-- If multiple source Ingresses on the same Gateway request different frontend HTTP settings, the emitter returns an
-  error because agentgateway cannot scope these settings to an individual HTTPRoute or listener.
+- ingress2gateway does not currently ingest the ingress-nginx controller `ConfigMap`, so it does not emit additional
+  `frontend.http` settings beyond the supported `maxBufferSize` mapping documented in the `Buffer/Body Size` section.
 
 #### Local Rate Limiting
 

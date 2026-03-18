@@ -212,24 +212,6 @@ type IngressNginxFrontendTLSPolicy struct {
 	ALPNProtocols []string
 }
 
-// IngressNginxFrontendHTTPPolicy defines frontend HTTP listener settings extracted from ingress-nginx annotations.
-type IngressNginxFrontendHTTPPolicy struct {
-	// HTTP1MaxHeaders defines the maximum number of HTTP/1.1 request headers.
-	HTTP1MaxHeaders *int32
-	// HTTP1IdleTimeout defines timeout before an idle HTTP/1.1 connection is closed.
-	HTTP1IdleTimeout *metav1.Duration
-	// HTTP2WindowSize defines the initial HTTP/2 stream-level flow control window size.
-	HTTP2WindowSize *int32
-	// HTTP2ConnectionWindowSize defines the initial HTTP/2 connection-level flow control window size.
-	HTTP2ConnectionWindowSize *int32
-	// HTTP2FrameSize defines the maximum HTTP/2 frame size.
-	HTTP2FrameSize *int32
-	// HTTP2KeepaliveInterval defines the interval between HTTP/2 keepalive pings.
-	HTTP2KeepaliveInterval *metav1.Duration
-	// HTTP2KeepaliveTimeout defines the timeout for HTTP/2 keepalive ping response.
-	HTTP2KeepaliveTimeout *metav1.Duration
-}
-
 // IngressNginxPolicy describes all per-Ingress policy knobs that ingress-nginx projects into the
 // IR (buffer, CORS, etc.).
 type IngressNginxPolicy struct {
@@ -256,9 +238,6 @@ type IngressNginxPolicy struct {
 
 	// EnableAccessLog defines whether access logging is enabled for the ingress.
 	EnableAccessLog *bool
-
-	// FrontendHTTP defines frontend HTTP listener policy.
-	FrontendHTTP *IngressNginxFrontendHTTPPolicy
 
 	// ExtAuth defines the external authentication policy.
 	ExtAuth *IngressNginxExtAuthPolicy
