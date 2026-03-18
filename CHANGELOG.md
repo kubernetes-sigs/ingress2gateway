@@ -2,7 +2,8 @@
 
 ## Table of Contents
 
-- [v1.0.0](#v100-rc1)
+- [v1.0.0](#v100)
+- [v1.0.0-rc1](#v100-rc1)
 - [v0.5.0](#v050)
 - [v0.5.0-rc1](#v050-rc1)
 - [v0.4.0](#v040)
@@ -13,6 +14,45 @@
 - [v0.2.0-rc1](#v020-rc1)
 - [v0.1.0](#v010)
 - [v0.1.0-rc1](#v010-rc1)
+
+## v1.0.0
+
+## Changes by Kind
+
+### Feature
+
+- Emitters framework: pluggable emitter architecture separating providers (Ingress → IR) from emitters (IR → Gateway API resources). Includes standard, Envoy Gateway, kgateway, and GCE emitters. (#265, #273, #305, #320, #336, @Stevenjin8, @kkk777-7, @puertomontt, @chakravardhan)
+- Route rule name support for xPolicy CRD attachment (#298, @kkk777-7)
+- ingress-nginx: header manipulation (`upstream-vhost`, `x-forwarded-prefix`, `connection-proxy-header`) (#283, @eladmotola)
+- ingress-nginx: GRPC support annotation  (#286, @eladmotola)
+- ingress-nginx: extended canary support with `canary-by-header`, `canary-by-header-value`, and cookie-based routing (#287, #365, #374, @jgreeer, @Stevenjin8)
+- ingress-nginx: `rewrite-target` annotation for path rewriting (#288, @Stevenjin8)
+- ingress-nginx: timeout annotations (`proxy-connect-timeout`, `proxy-send-timeout`, `proxy-read-timeout`) (#289, #376, #377, @Stevenjin8)
+- ingress-nginx: `permanent-redirect` and `temporal-redirect` annotations with configurable status codes (#299, @jgreeer)
+- ingress-nginx: full CORS configuration (`allow-origin`, `allow-methods`, `allow-headers`, `allow-credentials`, `expose-headers`, `max-age`). No longer requires `--allow-experimental-gw-api` flag. (#303, #371, @chakravardhan, @kkk777-7)
+- ingress-nginx: `use-regex` annotation with `implementationSpecific` path matching (#307, #344, @chakravardhan, @Stevenjin8)
+- ingress-nginx: Backend TLS via `proxy-ssl-verify` and `proxy-ssl-secret`, translated to BackendTLSPolicy (#308, @rajashish)
+- ingress-nginx: `proxy-body-size` and `client-body-buffer-size` buffer annotations (#305, #375, @kkk777-7, @Stevenjin8)
+- ingress-nginx: `whitelist-source-range` and `denylist-source-range` IP access control (#345, @kkk777-7)
+- ingress-nginx: annotation tracking with notifications for unsupported/unparsed annotations (#359, #361, #370, @Stevenjin8, @kkk777-7)
+- Read resources from multiple input files and directories via `--input-file` (#258, #357, @carmal891, @johananl)
+- Refactored notification system to provider- and emitter-scoped reports (#360, #384, @johananl, @Stevenjin8)
+- E2E test suite with real cluster testing across Ingress NGINX and Envoy Gateway (#294, #330, #351, #353, #366, #372, @johananl, @Stevenjin8, @kkk777-7)
+
+### Bug or Regression
+
+- Fix data race in NotificationAggregator (#292, @johananl)
+- Fix setting proper secret group and kind in TLS certificateRefs (#302, @cnvergence)
+- Fix panic on nil `ingress.rules.http` (#335, @Stevenjin8)
+- Fix deduplicate TLS CertificateRefs in gateway listeners (#378, @Stevenjin8)
+
+### Other (Cleanup or Flake)
+
+- Upgraded Gateway API to v1.5 (#367, @Stevenjin8)
+- Migrate to golangci-lint v2 (#323, @kkk777-7)
+- Bump Kong chart to v3.0.2 (#349, @johananl)
+- Docs: Providers vs Emitters architecture description (#369, @markuskobler)
+- Update main and ingress-nginx README (#390, @Stevenjin8)
 
 ## v1.0.0-rc1
 
