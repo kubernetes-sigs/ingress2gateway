@@ -29,7 +29,22 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// backendTLSConfigMap builds a ConfigMap containing the CA certificate for
+// BackendTLSPolicy verification.
+func backendTLSConfigMap(namespace string, caCertPEM []byte) *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      framework.BackendCASecretName,
+			Namespace: namespace,
+		},
+		Data: map[string]string{
+			"ca.crt": string(caCertPEM),
+		},
+	}
+}
 
 // ingress-nginx provider features: One test per feature, all using Istio + standard emitter.
 
@@ -46,10 +61,11 @@ func TestIngressNGINXBackendTLS(t *testing.T) {
 			require.NoError(t, err, "creating host suffix")
 			host := "backend-tls-valid-" + suffix + ".example.com"
 
-			env := setupTestEnvTLS(t, []string{ingressnginx.Name}, istio.ProviderName)
-			caSecrets, configMaps := backendTLSResources(env)
-
+			env := setupTestEnv(t, []string{ingressnginx.Name}, istio.ProviderName)
 			svcHost := fmt.Sprintf("%s.%s.svc.cluster.local", framework.DummyAppName1, env.Namespace)
+			tlsSecrets, err := framework.GenerateBackendTLSSecrets(framework.BackendServerSecretName, framework.BackendCASecretName, env.Namespace, svcHost)
+			require.NoError(t, err, "generating backend TLS secrets")
+
 			ing := framework.BasicIngress().
 				WithName("backend-tls-valid").
 				WithHost(host).
@@ -64,13 +80,17 @@ func TestIngressNGINXBackendTLS(t *testing.T) {
 				Build()
 
 			env.Run(&framework.TestCase{
+				Backends: []framework.Backend{
+					{Name: framework.DummyAppName1, ServerSecretName: framework.BackendServerSecretName},
+					{Name: framework.DummyAppName2},
+				},
 				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				Secrets:    caSecrets,
-				ConfigMaps: configMaps,
+				Secrets:    []*corev1.Secret{tlsSecrets.ServerSecret, tlsSecrets.CASecret},
+				ConfigMaps: []*corev1.ConfigMap{backendTLSConfigMap(env.Namespace, tlsSecrets.CACertPEM)},
 				Ingresses:  []*networkingv1.Ingress{ing},
 				Verifiers: map[string][]framework.Verifier{
 					"backend-tls-valid": {
@@ -93,10 +113,11 @@ func TestIngressNGINXBackendTLS(t *testing.T) {
 			require.NoError(t, err, "creating host suffix")
 			host := "backend-tls-warn-" + suffix + ".example.com"
 
-			env := setupTestEnvTLS(t, []string{ingressnginx.Name}, istio.ProviderName)
-			caSecrets, configMaps := backendTLSResources(env)
-
+			env := setupTestEnv(t, []string{ingressnginx.Name}, istio.ProviderName)
 			svcHost := fmt.Sprintf("%s.%s.svc.cluster.local", framework.DummyAppName1, env.Namespace)
+			tlsSecrets, err := framework.GenerateBackendTLSSecrets(framework.BackendServerSecretName, framework.BackendCASecretName, env.Namespace, svcHost)
+			require.NoError(t, err, "generating backend TLS secrets")
+
 			ing := framework.BasicIngress().
 				WithName("backend-tls-warn").
 				WithHost(host).
@@ -115,13 +136,17 @@ func TestIngressNGINXBackendTLS(t *testing.T) {
 				Build()
 
 			env.Run(&framework.TestCase{
+				Backends: []framework.Backend{
+					{Name: framework.DummyAppName1, ServerSecretName: framework.BackendServerSecretName},
+					{Name: framework.DummyAppName2},
+				},
 				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				Secrets:    caSecrets,
-				ConfigMaps: configMaps,
+				Secrets:    []*corev1.Secret{tlsSecrets.ServerSecret, tlsSecrets.CASecret},
+				ConfigMaps: []*corev1.ConfigMap{backendTLSConfigMap(env.Namespace, tlsSecrets.CACertPEM)},
 				Ingresses:  []*networkingv1.Ingress{ing},
 				Verifiers: map[string][]framework.Verifier{
 					"backend-tls-warn": {
@@ -141,10 +166,11 @@ func TestIngressNGINXBackendTLS(t *testing.T) {
 			require.NoError(t, err, "creating host suffix")
 			host := "backend-tls-body-" + suffix + ".example.com"
 
-			env := setupTestEnvTLS(t, []string{ingressnginx.Name}, istio.ProviderName)
-			caSecrets, configMaps := backendTLSResources(env)
-
+			env := setupTestEnv(t, []string{ingressnginx.Name}, istio.ProviderName)
 			svcHost := fmt.Sprintf("%s.%s.svc.cluster.local", framework.DummyAppName1, env.Namespace)
+			tlsSecrets, err := framework.GenerateBackendTLSSecrets(framework.BackendServerSecretName, framework.BackendCASecretName, env.Namespace, svcHost)
+			require.NoError(t, err, "generating backend TLS secrets")
+
 			ing := framework.BasicIngress().
 				WithName("backend-tls-body").
 				WithHost(host).
@@ -159,13 +185,17 @@ func TestIngressNGINXBackendTLS(t *testing.T) {
 				Build()
 
 			env.Run(&framework.TestCase{
+				Backends: []framework.Backend{
+					{Name: framework.DummyAppName1, ServerSecretName: framework.BackendServerSecretName},
+					{Name: framework.DummyAppName2},
+				},
 				ProviderFlags: map[string]map[string]string{
 					ingressnginx.Name: {
 						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
 					},
 				},
-				Secrets:    caSecrets,
-				ConfigMaps: configMaps,
+				Secrets:    []*corev1.Secret{tlsSecrets.ServerSecret, tlsSecrets.CASecret},
+				ConfigMaps: []*corev1.ConfigMap{backendTLSConfigMap(env.Namespace, tlsSecrets.CACertPEM)},
 				Ingresses:  []*networkingv1.Ingress{ing},
 				Verifiers: map[string][]framework.Verifier{
 					"backend-tls-body": {

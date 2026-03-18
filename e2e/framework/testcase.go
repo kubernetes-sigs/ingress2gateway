@@ -60,8 +60,20 @@ const DummyAppName1 = "dummy-app1"
 // DummyAppName2 is the name of the second dummy app.
 const DummyAppName2 = "dummy-app2"
 
+// Backend describes a backend application to deploy for a test case.
+type Backend struct {
+	// Name is the Kubernetes name for the deployment and service.
+	Name string
+	// ServerSecretName, when non-empty, deploys the app with TLS enabled,
+	// mounting the named secret as the server certificate.
+	ServerSecretName string
+}
+
 // TestCase defines the configuration for a single e2e test case.
 type TestCase struct {
+	// Backends to deploy. When nil, defaults to DummyAppName1 + DummyAppName2
+	// (both plain HTTP).
+	Backends               []Backend
 	Ingresses              []*networkingv1.Ingress
 	Secrets                []*corev1.Secret
 	ConfigMaps             []*corev1.ConfigMap
@@ -75,20 +87,13 @@ type TestCase struct {
 
 // TestEnv holds the runtime context created during test environment setup.
 // Tests that need custom setup between environment creation and test execution
-// (e.g. deploying a TLS backend) can use the exported fields directly.
+// can use the exported fields directly.
 type TestEnv struct {
 	Ctx         context.Context
 	T           *testing.T
 	K8sClient   *kubernetes.Clientset
 	Namespace   string
 	SkipCleanup bool
-
-	// CACertPEM holds the PEM-encoded CA certificate when useTLS is true.
-	// Tests can use this to build ConfigMaps for BackendTLSPolicy verification.
-	CACertPEM []byte
-	// CASecret holds the CA secret when useTLS is true.
-	// Tests can pass this in tc.Secrets for framework-managed creation.
-	CASecret *corev1.Secret
 
 	providers             []string
 	gatewayImplementation string
@@ -122,10 +127,9 @@ type DeployGatewayImplFunc func(
 	skipCleanup bool,
 ) Resource
 
-// SetupTestEnv creates the test namespace, deploys CRDs, providers, gateway
-// implementation, and dummy apps. The returned TestEnv can be used for
-// additional test-specific setup before calling Run().
-func SetupTestEnv(t *testing.T, providers []string, gatewayImplementation string, useTLS bool, deployProviders DeployProvidersFunc, deployGWImpl DeployGatewayImplFunc) *TestEnv {
+// SetupTestEnv creates the test namespace and deploys CRDs, providers and the gateway
+// implementation.
+func SetupTestEnv(t *testing.T, providers []string, gatewayImplementation string, deployProviders DeployProvidersFunc, deployGWImpl DeployGatewayImplFunc) *TestEnv {
 	t.Parallel()
 
 	if len(providers) == 0 {
@@ -204,40 +208,12 @@ func SetupTestEnv(t *testing.T, providers []string, gatewayImplementation string
 		require.NoError(t, r.Wait(), "resource installation failed: %s", r.Name)
 	}
 
-	var caCertPEM []byte
-	var caSecret *corev1.Secret
-
-	if useTLS {
-		// When TLS is requested, generate certs and create the server secret
-		// before deploying DummyApp1 so the pod can mount it.
-		svcHost := fmt.Sprintf("%s.%s.svc.cluster.local", DummyAppName1, appNS)
-		tlsSecrets, tlsErr := GenerateBackendTLSSecrets(BackendServerSecretName, BackendCASecretName, appNS, svcHost)
-		require.NoError(t, tlsErr, "generating backend TLS secrets")
-
-		caCertPEM = tlsSecrets.CACertPEM
-		caSecret = tlsSecrets.CASecret
-
-		// Create the server secret now — the DummyApp1 pod mounts it.
-		cleanupServerSecret, secretErr := createSecrets(ctx, t, k8sClient, appNS, []*corev1.Secret{tlsSecrets.ServerSecret}, skipCleanup)
-		require.NoError(t, secretErr, "creating server TLS secret")
-		t.Cleanup(cleanupServerSecret)
-	}
-
-	cleanupDummyApp1, err := deployDummyApp(ctx, t, k8sClient, DummyAppName1, appNS, skipCleanup, useTLS)
-	require.NoError(t, err, "creating %s", DummyAppName1)
-	t.Cleanup(cleanupDummyApp1)
-	cleanupDummyApp2, err := deployDummyApp(ctx, t, k8sClient, DummyAppName2, appNS, skipCleanup, false)
-	require.NoError(t, err, "creating %s", DummyAppName2)
-	t.Cleanup(cleanupDummyApp2)
-
 	return &TestEnv{
 		Ctx:                   ctx,
 		T:                     t,
 		K8sClient:             k8sClient,
 		Namespace:             appNS,
 		SkipCleanup:           skipCleanup,
-		CACertPEM:             caCertPEM,
-		CASecret:              caSecret,
 		providers:             providers,
 		gatewayImplementation: gatewayImplementation,
 		kubeconfig:            kubeconfig,
@@ -247,11 +223,34 @@ func SetupTestEnv(t *testing.T, providers []string, gatewayImplementation string
 	}
 }
 
-// Run creates ingresses and secrets from the test case, runs ingress2gateway,
-// creates gateway resources, and verifies both ingress and gateway traffic.
+// Run creates secrets, deploys backends, creates config maps and ingresses,
+// verifies ingress traffic, runs ingress2gateway, creates gateway resources,
+// and verifies gateway traffic.
 func (env *TestEnv) Run(tc *TestCase) {
 	t := env.T
 	ctx := env.Ctx
+
+	// Create secrets before deploying backends — TLS backends mount server
+	// secrets that must already exist when the pod is created.
+	if len(tc.Secrets) > 0 {
+		cleanupSecrets, secretsErr := createSecrets(ctx, t, env.K8sClient, env.Namespace, tc.Secrets, env.SkipCleanup)
+		require.NoError(t, secretsErr, "creating secrets")
+		t.Cleanup(cleanupSecrets)
+	}
+
+	// Deploy backend apps. Default to two plain-HTTP dummy apps.
+	backends := tc.Backends
+	if backends == nil {
+		backends = []Backend{
+			{Name: DummyAppName1},
+			{Name: DummyAppName2},
+		}
+	}
+	for _, b := range backends {
+		cleanup, err := deployDummyApp(ctx, t, env.K8sClient, b.Name, env.Namespace, env.SkipCleanup, b.ServerSecretName)
+		require.NoError(t, err, "creating backend %s", b.Name)
+		t.Cleanup(cleanup)
+	}
 
 	// Populate ingress Host field if not specified in the test case.
 	for _, ing := range tc.Ingresses {
@@ -260,12 +259,6 @@ func (env *TestEnv) Run(tc *TestCase) {
 				ing.Spec.Rules[i].Host = fmt.Sprintf("%s.%s.%s.test", ing.Name, env.randPrefix, E2EPrefix)
 			}
 		}
-	}
-
-	if len(tc.Secrets) > 0 {
-		cleanupSecrets, secretsErr := createSecrets(ctx, t, env.K8sClient, env.Namespace, tc.Secrets, env.SkipCleanup)
-		require.NoError(t, secretsErr, "creating secrets")
-		t.Cleanup(cleanupSecrets)
 	}
 
 	if len(tc.ConfigMaps) > 0 {

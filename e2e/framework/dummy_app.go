@@ -43,18 +43,19 @@ const (
 	BackendCASecretName = "tls-backend-ca" //nolint:gosec // Not a credential, just a resource name.
 )
 
-// public wrapper for testing
-func DeployDummyApp(ctx context.Context, l Logger, client *kubernetes.Clientset, name, namespace string, skipCleanup bool, useTLS bool) (func(), error) {
-	return deployDummyApp(ctx, l, client, name, namespace, skipCleanup, useTLS)
+// DeployDummyApp deploys a dummy backend application. If serverSecretName is
+// non-empty the app is deployed with TLS, mounting the named secret.
+func DeployDummyApp(ctx context.Context, l Logger, client *kubernetes.Clientset, name, namespace string, skipCleanup bool, serverSecretName string) (func(), error) {
+	return deployDummyApp(ctx, l, client, name, namespace, skipCleanup, serverSecretName)
 }
 
 // Creates a dummy backend application for testing and returns a cleanup function.
-func deployDummyApp(ctx context.Context, l Logger, client *kubernetes.Clientset, name, namespace string, skipCleanup bool, useTLS bool) (func(), error) {
-	if err := createDummyAppDeployment(ctx, l, client, name, namespace, useTLS); err != nil {
+func deployDummyApp(ctx context.Context, l Logger, client *kubernetes.Clientset, name, namespace string, skipCleanup bool, serverSecretName string) (func(), error) {
+	if err := createDummyAppDeployment(ctx, l, client, name, namespace, serverSecretName); err != nil {
 		return nil, fmt.Errorf("creating deployment: %w", err)
 	}
 
-	if err := createDummyAppService(ctx, client, name, namespace, useTLS); err != nil {
+	if err := createDummyAppService(ctx, client, name, namespace, serverSecretName != ""); err != nil {
 		return nil, fmt.Errorf("creating service: %w", err)
 	}
 
@@ -85,14 +86,14 @@ func deployDummyApp(ctx context.Context, l Logger, client *kubernetes.Clientset,
 	}, nil
 }
 
-func createDummyAppDeployment(ctx context.Context, l Logger, client *kubernetes.Clientset, name, namespace string, useTLS bool) error {
+func createDummyAppDeployment(ctx context.Context, l Logger, client *kubernetes.Clientset, name, namespace, serverSecretName string) error {
 	labels := map[string]string{"app": name}
 
 	l.Logf("Creating dummy app %s", name)
 
 	containerArgs := []string{"netexec", "--http-port=8080"}
 	portname := "http"
-	if useTLS {
+	if serverSecretName != "" {
 		containerArgs = append(containerArgs,
 			"--tls-cert-file=/etc/tls/tls.crt",
 			"--tls-private-key-file=/etc/tls/tls.key",
@@ -138,14 +139,14 @@ func createDummyAppDeployment(ctx context.Context, l Logger, client *kubernetes.
 		},
 	}
 
-	if useTLS {
+	if serverSecretName != "" {
 		deployment.Spec.Template.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{volumeMount}
 		deployment.Spec.Template.Spec.Volumes = []corev1.Volume{
 			{
 				Name: "tls-certs",
 				VolumeSource: corev1.VolumeSource{
 					Secret: &corev1.SecretVolumeSource{
-						SecretName: BackendServerSecretName,
+						SecretName: serverSecretName,
 					},
 				},
 			},
@@ -160,7 +161,6 @@ func createDummyAppDeployment(ctx context.Context, l Logger, client *kubernetes.
 }
 
 func createDummyAppService(ctx context.Context, client *kubernetes.Clientset, name, namespace string, useTLS bool) error {
-
 	servicePortName := "http"
 	var servicePort int32 = 80
 	if useTLS {
