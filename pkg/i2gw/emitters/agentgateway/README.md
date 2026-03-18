@@ -307,6 +307,18 @@ These are mapped into an `AgentgatewayPolicy` using agentgateway's `Frontend.TLS
 - `ssl-alpn` is parsed as a comma-separated list and de-duplicated while preserving order.
 - If only `ssl-alpn` is set, the provider projects a default `15s` handshake timeout so `spec.frontend.tls` remains valid.
 
+#### Frontend HTTP Settings
+
+Ingress NGINX does not document per-Ingress annotations for the remaining downstream HTTP listener settings exposed by
+`AgentgatewayPolicy.spec.frontend.http`. The closest upstream knobs are controller-wide ingress-nginx `ConfigMap`
+settings such as `http2-max-concurrent-streams`, `keep-alive`, `keep-alive-requests`, and
+`large-client-header-buffers`.
+
+Notes:
+
+- ingress2gateway does not currently ingest the ingress-nginx controller `ConfigMap`, so it does not emit additional
+  `frontend.http` settings beyond the supported `maxBufferSize` mapping documented in the `Buffer/Body Size` section.
+
 #### Local Rate Limiting
 
 The agentgateway emitter currently supports projecting local rate limiting via:

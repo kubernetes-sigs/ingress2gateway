@@ -190,6 +190,19 @@ For the Agentgateway implementation, these map to:
 - The emitter applies these as a Gateway-targeted `AgentgatewayPolicy`, since agentgateway does not allow
   `spec.frontend` to target individual HTTPRoutes or listeners.
 
+### Frontend HTTP Settings
+
+Ingress NGINX documents frontend HTTP tuning as controller-wide `ConfigMap` settings such as
+`http2-max-concurrent-streams`, `keep-alive`, `keep-alive-requests`, and `large-client-header-buffers`,
+not as per-Ingress annotations.
+
+Behavior:
+
+- ingress2gateway does not currently ingest the ingress-nginx controller `ConfigMap`, so it does not project
+  additional frontend HTTP listener settings into `AgentgatewayPolicy.spec.frontend.http`.
+- The supported `spec.frontend.http.maxBufferSize` mapping is documented separately in the
+  `Buffer/Body Size` section.
+
 ---
 
 ### Session Affinity
