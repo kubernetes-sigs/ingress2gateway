@@ -17,6 +17,28 @@
 
 ## v1.0.0
 
+## Major Themes
+
+### Emitters Framework
+
+New pluggable emitter architecture enabling output to vendor-specific Gateway API
+extensions. Supported emitters: standard (vanilla Gateway API), Agentgateway, Envoy Gateway, and Kgateway.
+(#265, #273, #305, #320)
+
+### Extensive ingress-nginx Annotation Support
+
+Significantly expanded ingress-nginx annotation coverage, adding translation for
+header manipulation, GRPC, canary routing, path rewriting, timeouts, SSL and permanent/temporal redirects,
+CORS, regex path matching, backend TLS, buffer sizing, IP access control.
+A new annotation tracking system also
+reports which annotations were parsed, unsupported, or unrecognized.
+
+### E2E Test Framework
+
+Comprehensive end-to-end test suite built in pure Go with real cluster testing
+across Ingress NGINX and Envoy Gateway providers. Covers TLS termination, SSL
+redirect, canary routing, CORS, and timeouts. (#294, #330, #353, #366, #372)
+
 ## Changes by Kind
 
 ### Feature
