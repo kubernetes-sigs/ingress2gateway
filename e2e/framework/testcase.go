@@ -60,16 +60,45 @@ const DummyAppName1 = "dummy-app1"
 // DummyAppName2 is the name of the second dummy app.
 const DummyAppName2 = "dummy-app2"
 
+// Backend describes a backend application to deploy for a test case.
+type Backend struct {
+	// Name is the Kubernetes name for the deployment and service.
+	Name string
+	// ServerSecretName, when non-empty, deploys the app with TLS enabled,
+	// mounting the named secret as the server certificate.
+	ServerSecretName string
+}
+
 // TestCase defines the configuration for a single e2e test case.
 type TestCase struct {
+	// Backends to deploy. When nil, defaults to DummyAppName1 + DummyAppName2
+	// (both plain HTTP).
+	Backends               []Backend
 	Ingresses              []*networkingv1.Ingress
 	Secrets                []*corev1.Secret
+	ConfigMaps             []*corev1.ConfigMap
 	Providers              []string
 	ProviderFlags          map[string]map[string]string
 	GatewayImplementation  string
 	AllowExperimentalGWAPI bool
 	Emitter                string
 	Verifiers              map[string][]Verifier
+}
+
+// TestEnv holds the runtime context created during test environment setup.
+// Tests that need custom setup between environment creation and test execution
+// can use the exported fields directly.
+type TestEnv struct {
+	Ctx         context.Context
+	T           *testing.T
+	K8sClient   *kubernetes.Clientset
+	Namespace   string
+	SkipCleanup bool
+
+	kubeconfig string
+	gwClient   *gwclientset.Clientset
+	restConfig *rest.Config
+	randPrefix string
 }
 
 // DeployProvidersFunc deploys ingress providers and returns their resources.
@@ -96,17 +125,16 @@ type DeployGatewayImplFunc func(
 	skipCleanup bool,
 ) Resource
 
-// RunTestCase executes a complete e2e test case. The deployProviders and deployGWImpl functions
-// are provided by the caller to decouple provider/implementation-specific logic from the
-// framework.
-func RunTestCase(t *testing.T, tc *TestCase, deployProviders DeployProvidersFunc, deployGWImpl DeployGatewayImplFunc) {
+// SetupTestEnv creates the test namespace and deploys CRDs, providers and the gateway
+// implementation.
+func SetupTestEnv(t *testing.T, providers []string, gatewayImplementation string, deployProviders DeployProvidersFunc, deployGWImpl DeployGatewayImplFunc) *TestEnv {
 	t.Parallel()
 
-	if len(tc.Providers) == 0 {
+	if len(providers) == 0 {
 		t.Fatal("At least one provider must be specified")
 	}
 
-	if tc.GatewayImplementation == "" {
+	if gatewayImplementation == "" {
 		t.Fatal("gatewayImplementation must be specified")
 	}
 
@@ -150,10 +178,10 @@ func RunTestCase(t *testing.T, tc *TestCase, deployProviders DeployProvidersFunc
 	})
 	require.NoError(t, crdResource.Wait(), "Gateway API CRDs installation failed")
 
-	providers := deployProviders(ctx, t, k8sClient, gwClient, kubeconfig, tc.Providers, tc.GatewayImplementation, skipCleanup)
-	gwImpl := deployGWImpl(ctx, t, k8sClient, apiextensionsClient, gwClient, kubeconfig, tc.GatewayImplementation, skipCleanup)
+	deployedProviders := deployProviders(ctx, t, k8sClient, gwClient, kubeconfig, providers, gatewayImplementation, skipCleanup)
+	gwImpl := deployGWImpl(ctx, t, k8sClient, apiextensionsClient, gwClient, kubeconfig, gatewayImplementation, skipCleanup)
 
-	resources := append(providers, gwImpl)
+	resources := append(deployedProviders, gwImpl)
 
 	// Clean up all providers and the GWAPI implementation in parallel.
 	t.Cleanup(func() {
@@ -178,29 +206,63 @@ func RunTestCase(t *testing.T, tc *TestCase, deployProviders DeployProvidersFunc
 		require.NoError(t, r.Wait(), "resource installation failed: %s", r.Name)
 	}
 
-	cleanupDummyApp1, err := deployDummyApp(ctx, t, k8sClient, DummyAppName1, appNS, skipCleanup)
-	require.NoError(t, err, "creating %s", DummyAppName1)
-	t.Cleanup(cleanupDummyApp1)
-	cleanupDummyApp2, err := deployDummyApp(ctx, t, k8sClient, DummyAppName2, appNS, skipCleanup)
-	require.NoError(t, err, "creating %s", DummyAppName2)
-	t.Cleanup(cleanupDummyApp2)
+	return &TestEnv{
+		Ctx:         ctx,
+		T:           t,
+		K8sClient:   k8sClient,
+		Namespace:   appNS,
+		SkipCleanup: skipCleanup,
+		kubeconfig:  kubeconfig,
+		gwClient:    gwClient,
+		restConfig:  restConfig,
+		randPrefix:  randPrefix,
+	}
+}
+
+// Run creates secrets, deploys backends, creates config maps and ingresses,
+// verifies ingress traffic, runs ingress2gateway, creates gateway resources,
+// and verifies gateway traffic.
+func (env *TestEnv) Run(tc *TestCase) {
+	t := env.T
+	ctx := env.Ctx
+
+	// Create secrets before deploying backends — TLS backends mount server
+	// secrets that must already exist when the pod is created.
+	if len(tc.Secrets) > 0 {
+		cleanupSecrets, secretsErr := createSecrets(ctx, t, env.K8sClient, env.Namespace, tc.Secrets, env.SkipCleanup)
+		require.NoError(t, secretsErr, "creating secrets")
+		t.Cleanup(cleanupSecrets)
+	}
+
+	// Deploy backend apps. Default to one plain-HTTP dummy apps.
+	backends := tc.Backends
+	if backends == nil {
+		backends = []Backend{
+			{Name: DummyAppName1},
+		}
+	}
+	for _, b := range backends {
+		cleanup, err := deployDummyApp(ctx, t, env.K8sClient, b.Name, env.Namespace, env.SkipCleanup, b.ServerSecretName)
+		require.NoError(t, err, "creating backend %s", b.Name)
+		t.Cleanup(cleanup)
+	}
 
 	// Populate ingress Host field if not specified in the test case.
 	for _, ing := range tc.Ingresses {
 		for i := range ing.Spec.Rules {
 			if ing.Spec.Rules[i].Host == "" {
-				ing.Spec.Rules[i].Host = fmt.Sprintf("%s.%s.%s.test", ing.Name, randPrefix, E2EPrefix)
+				ing.Spec.Rules[i].Host = fmt.Sprintf("%s.%s.%s.test", ing.Name, env.randPrefix, E2EPrefix)
 			}
 		}
 	}
 
-	if len(tc.Secrets) > 0 {
-		cleanupSecrets, secretsErr := createSecrets(ctx, t, k8sClient, appNS, tc.Secrets, skipCleanup)
-		require.NoError(t, secretsErr, "creating secrets")
-		t.Cleanup(cleanupSecrets)
+	if len(tc.ConfigMaps) > 0 {
+		cleanupConfigMaps, cmErr := createConfigMaps(ctx, t, env.K8sClient, env.Namespace, tc.ConfigMaps, env.SkipCleanup)
+		require.NoError(t, cmErr, "creating configmaps")
+		t.Cleanup(cleanupConfigMaps)
 	}
 
-	cleanupIngresses, err := createIngresses(ctx, t, k8sClient, appNS, tc.Ingresses, skipCleanup)
+	cleanupIngresses, err := createIngresses(ctx, t, env.K8sClient, env.Namespace, tc.Ingresses, env.SkipCleanup)
 	require.NoError(t, err)
 	t.Cleanup(cleanupIngresses)
 
@@ -208,8 +270,8 @@ func RunTestCase(t *testing.T, tc *TestCase, deployProviders DeployProvidersFunc
 	ingressPortForwarders, ingressAddresses := setUpIngressPortForwarding(
 		ctx,
 		t,
-		k8sClient,
-		restConfig,
+		env.K8sClient,
+		env.restConfig,
 		tc.Providers,
 		testCaseNeedsHTTPS(tc),
 	)
@@ -225,8 +287,8 @@ func RunTestCase(t *testing.T, tc *TestCase, deployProviders DeployProvidersFunc
 	res := runI2GW(
 		ctx,
 		t,
-		kubeconfig,
-		appNS,
+		env.kubeconfig,
+		env.Namespace,
 		tc.Providers,
 		tc.ProviderFlags,
 		tc.AllowExperimentalGWAPI,
@@ -242,7 +304,7 @@ func RunTestCase(t *testing.T, tc *TestCase, deployProviders DeployProvidersFunc
 		}
 	}
 
-	cleanupGatewayResources, err := createGatewayResources(ctx, t, gwClient, appNS, res, skipCleanup)
+	cleanupGatewayResources, err := createGatewayResources(ctx, t, env.gwClient, env.Namespace, res, env.SkipCleanup)
 	require.NoError(t, err, "creating gateway resources")
 	t.Cleanup(cleanupGatewayResources)
 
@@ -250,10 +312,10 @@ func RunTestCase(t *testing.T, tc *TestCase, deployProviders DeployProvidersFunc
 	gatewayPortForwarders, gwAddresses := setUpGatewayPortForwarding(
 		ctx,
 		t,
-		k8sClient,
-		restConfig,
+		env.K8sClient,
+		env.restConfig,
 		getGateways(res),
-		appNS,
+		env.Namespace,
 		tc.GatewayImplementation,
 		testCaseNeedsHTTPS(tc),
 	)
@@ -662,6 +724,19 @@ func (b *IngressBuilder) WithBackend(svc string) *IngressBuilder {
 		for j := range b.Spec.Rules[i].IngressRuleValue.HTTP.Paths {
 			path := rule.IngressRuleValue.HTTP.Paths[j]
 			path.Backend.Service.Name = svc
+			rule.IngressRuleValue.HTTP.Paths[j] = path
+		}
+		b.Spec.Rules[i] = rule
+	}
+	return b
+}
+
+func (b *IngressBuilder) WithBackendPort(port int32) *IngressBuilder {
+	for i := range b.Spec.Rules {
+		rule := b.Spec.Rules[i]
+		for j := range b.Spec.Rules[i].IngressRuleValue.HTTP.Paths {
+			path := rule.IngressRuleValue.HTTP.Paths[j]
+			path.Backend.Service.Port = networkingv1.ServiceBackendPort{Number: port}
 			rule.IngressRuleValue.HTTP.Paths[j] = path
 		}
 		b.Spec.Rules[i] = rule

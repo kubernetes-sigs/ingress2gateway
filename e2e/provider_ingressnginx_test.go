@@ -28,9 +28,197 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// backendTLSConfigMap builds a ConfigMap containing the CA certificate for
+// BackendTLSPolicy verification.
+func backendTLSConfigMap(namespace string, caCertPEM []byte) *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      framework.BackendCASecretName,
+			Namespace: namespace,
+		},
+		Data: map[string]string{
+			"ca.crt": string(caCertPEM),
+		},
+	}
+}
+
 // ingress-nginx provider features: One test per feature, all using Istio + standard emitter.
+
+func TestIngressNGINXBackendTLS(t *testing.T) {
+	t.Parallel()
+	t.Run("to Istio", func(t *testing.T) {
+		t.Parallel()
+
+		// Test 1: Valid backend TLS configuration – all required annotations present.
+		// The ingress2gateway tool should produce a BackendTLSPolicy for this ingress
+		// and the gateway should be able to reach the HTTPS backend.
+		t.Run("valid backend tls produces BackendTLSPolicy", func(t *testing.T) {
+			suffix, err := framework.RandString()
+			require.NoError(t, err, "creating host suffix")
+			host := "backend-tls-valid-" + suffix + ".example.com"
+
+			providers := []string{ingressnginx.Name}
+			gwImpl := implementation.IstioName
+			env := setupTestEnv(t, providers, gwImpl)
+			svcHost := fmt.Sprintf("%s.%s.svc.cluster.local", framework.DummyAppName1, env.Namespace)
+			tlsSecrets, err := framework.GenerateBackendTLSSecrets(framework.BackendServerSecretName, framework.BackendCASecretName, env.Namespace, svcHost)
+			require.NoError(t, err, "generating backend TLS secrets")
+
+			env.Run(&framework.TestCase{
+				Providers:             providers,
+				GatewayImplementation: gwImpl,
+				Backends: []framework.Backend{
+					{Name: framework.DummyAppName1, ServerSecretName: framework.BackendServerSecretName},
+				},
+				ProviderFlags: map[string]map[string]string{
+					ingressnginx.Name: {
+						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
+					},
+				},
+				Secrets:    []*corev1.Secret{tlsSecrets.ServerSecret, tlsSecrets.CASecret},
+				ConfigMaps: []*corev1.ConfigMap{backendTLSConfigMap(env.Namespace, tlsSecrets.CACertPEM)},
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("backend-tls-valid").
+						WithHost(host).
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						WithBackend(framework.DummyAppName1).
+						WithBackendPort(443).
+						WithAnnotation(ingressnginx.BackendProtocolAnnotation, "HTTPS").
+						WithAnnotation(ingressnginx.ProxySSLVerifyAnnotation, "on").
+						WithAnnotation(ingressnginx.ProxySSLSecretAnnotation, env.Namespace+"/"+framework.BackendCASecretName).
+						WithAnnotation(ingressnginx.ProxySSLServerNameAnnotation, "on").
+						WithAnnotation(ingressnginx.ProxySSLNameAnnotation, svcHost).
+						Build(),
+				},
+				Verifiers: map[string][]framework.Verifier{
+					"backend-tls-valid": {
+						// The request should reach the HTTPS backend through the gateway
+						// and return a 200 OK (agnhost netexec echoes back on /).
+						&framework.HTTPRequestVerifier{
+							Host: host,
+							Path: "/",
+						},
+					},
+				},
+			})
+		})
+
+		// Test 2: Unsupported annotations produce warnings but don't block policy generation.
+		// proxy-ssl-verify-depth and proxy-ssl-protocols should emit warnings but a valid
+		// BackendTLSPolicy should still be produced when all required annotations are present.
+		t.Run("unsupported annotations emit warnings but policy still generated", func(t *testing.T) {
+			suffix, err := framework.RandString()
+			require.NoError(t, err, "creating host suffix")
+			host := "backend-tls-warn-" + suffix + ".example.com"
+
+			providers := []string{ingressnginx.Name}
+			gwImpl := implementation.IstioName
+			env := setupTestEnv(t, providers, gwImpl)
+			svcHost := fmt.Sprintf("%s.%s.svc.cluster.local", framework.DummyAppName1, env.Namespace)
+			tlsSecrets, err := framework.GenerateBackendTLSSecrets(framework.BackendServerSecretName, framework.BackendCASecretName, env.Namespace, svcHost)
+			require.NoError(t, err, "generating backend TLS secrets")
+
+			env.Run(&framework.TestCase{
+				Providers:             providers,
+				GatewayImplementation: gwImpl,
+				Backends: []framework.Backend{
+					{Name: framework.DummyAppName1, ServerSecretName: framework.BackendServerSecretName},
+				},
+				ProviderFlags: map[string]map[string]string{
+					ingressnginx.Name: {
+						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
+					},
+				},
+				Secrets:    []*corev1.Secret{tlsSecrets.ServerSecret, tlsSecrets.CASecret},
+				ConfigMaps: []*corev1.ConfigMap{backendTLSConfigMap(env.Namespace, tlsSecrets.CACertPEM)},
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("backend-tls-warn").
+						WithHost(host).
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						WithBackend(framework.DummyAppName1).
+						WithBackendPort(443).
+						WithAnnotation(ingressnginx.BackendProtocolAnnotation, "HTTPS").
+						WithAnnotation(ingressnginx.ProxySSLVerifyAnnotation, "on").
+						WithAnnotation(ingressnginx.ProxySSLSecretAnnotation, env.Namespace+"/"+framework.BackendCASecretName).
+						WithAnnotation(ingressnginx.ProxySSLServerNameAnnotation, "on").
+						WithAnnotation(ingressnginx.ProxySSLNameAnnotation, svcHost).
+						// These two annotations are unsupported in Gateway API
+						// but should NOT prevent policy generation.
+						WithAnnotation(ingressnginx.ProxySSLVerifyDepthAnnotation, "3").
+						WithAnnotation(ingressnginx.ProxySSLProtocolsAnnotation, "TLSv1.2 TLSv1.3").
+						Build(),
+				},
+				Verifiers: map[string][]framework.Verifier{
+					"backend-tls-warn": {
+						&framework.HTTPRequestVerifier{
+							Host: host,
+							Path: "/",
+						},
+					},
+				},
+			})
+		})
+
+		// Test 3: Valid config with body response verification – ensure the request
+		// actually reaches the backend and we get a real response body.
+		t.Run("valid backend tls with body verification", func(t *testing.T) {
+			suffix, err := framework.RandString()
+			require.NoError(t, err, "creating host suffix")
+			host := "backend-tls-body-" + suffix + ".example.com"
+
+			providers := []string{ingressnginx.Name}
+			gwImpl := implementation.IstioName
+			env := setupTestEnv(t, providers, gwImpl)
+			svcHost := fmt.Sprintf("%s.%s.svc.cluster.local", framework.DummyAppName1, env.Namespace)
+			tlsSecrets, err := framework.GenerateBackendTLSSecrets(framework.BackendServerSecretName, framework.BackendCASecretName, env.Namespace, svcHost)
+			require.NoError(t, err, "generating backend TLS secrets")
+
+			env.Run(&framework.TestCase{
+				Providers:             providers,
+				GatewayImplementation: gwImpl,
+				Backends: []framework.Backend{
+					{Name: framework.DummyAppName1, ServerSecretName: framework.BackendServerSecretName},
+				},
+				ProviderFlags: map[string]map[string]string{
+					ingressnginx.Name: {
+						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
+					},
+				},
+				Secrets:    []*corev1.Secret{tlsSecrets.ServerSecret, tlsSecrets.CASecret},
+				ConfigMaps: []*corev1.ConfigMap{backendTLSConfigMap(env.Namespace, tlsSecrets.CACertPEM)},
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("backend-tls-body").
+						WithHost(host).
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						WithBackend(framework.DummyAppName1).
+						WithBackendPort(443).
+						WithAnnotation(ingressnginx.BackendProtocolAnnotation, "HTTPS").
+						WithAnnotation(ingressnginx.ProxySSLVerifyAnnotation, "on").
+						WithAnnotation(ingressnginx.ProxySSLSecretAnnotation, env.Namespace+"/"+framework.BackendCASecretName).
+						WithAnnotation(ingressnginx.ProxySSLServerNameAnnotation, "on").
+						WithAnnotation(ingressnginx.ProxySSLNameAnnotation, svcHost).
+						Build(),
+				},
+				Verifiers: map[string][]framework.Verifier{
+					"backend-tls-body": {
+						// agnhost netexec echoes back useful info on /hostname
+						&framework.HTTPRequestVerifier{
+							Host:      host,
+							Path:      "/hostname",
+							BodyRegex: regexp.MustCompile(`.+`),
+						},
+					},
+				},
+			})
+		})
+	})
+}
 
 func TestIngressNGINXCanary(t *testing.T) {
 	t.Parallel()
@@ -41,6 +229,10 @@ func TestIngressNGINXCanary(t *testing.T) {
 		runTestCase(t, &framework.TestCase{
 			GatewayImplementation: implementation.IstioName,
 			Providers:             []string{ingressnginx.Name},
+			Backends: []framework.Backend{
+				{Name: framework.DummyAppName1},
+				{Name: framework.DummyAppName2},
+			},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
 					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
@@ -84,6 +276,10 @@ func TestIngressNGINXCanary(t *testing.T) {
 		runTestCase(t, &framework.TestCase{
 			GatewayImplementation: implementation.IstioName,
 			Providers:             []string{ingressnginx.Name},
+			Backends: []framework.Backend{
+				{Name: framework.DummyAppName1},
+				{Name: framework.DummyAppName2},
+			},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
 					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
@@ -136,6 +332,10 @@ func TestIngressNGINXCanary(t *testing.T) {
 		runTestCase(t, &framework.TestCase{
 			GatewayImplementation: implementation.IstioName,
 			Providers:             []string{ingressnginx.Name},
+			Backends: []framework.Backend{
+				{Name: framework.DummyAppName1},
+				{Name: framework.DummyAppName2},
+			},
 			ProviderFlags: map[string]map[string]string{
 				ingressnginx.Name: {
 					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,

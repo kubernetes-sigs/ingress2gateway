@@ -152,17 +152,17 @@ func backendTLSFeature(notify notifications.NotifyFunc, ingresses []networkingv1
 				// We know proxySSLName is not empty due to strict validation above
 				policy.Spec.Validation.Hostname = gatewayv1.PreciseHostname(proxySSLName)
 
-				// Handle CA Certificates
-				secretName := proxySSLSecret
-				if strings.Contains(secretName, "/") {
-					parts := strings.SplitN(secretName, "/", 2)
+				// Handle CA Certificates.
+				caRefName := proxySSLSecret
+				if strings.Contains(caRefName, "/") {
+					parts := strings.SplitN(caRefName, "/", 2)
 					if len(parts) == 2 {
 						secretNamespace := parts[0]
-						secretName = parts[1]
+						caRefName = parts[1]
 
 						if secretNamespace != namespace {
 							notify(notifications.ErrorNotification,
-								fmt.Sprintf("Ingress %s/%s specifies backend TLS secret %s in a different namespace. BackendTLSPolicy only supports local Secrets. Policy will not be generated.",
+								fmt.Sprintf("Ingress %s/%s specifies backend TLS secret %s in a different namespace. BackendTLSPolicy only supports local references. Policy will not be generated.",
 									primaryIngress.Namespace, primaryIngress.Name, proxySSLSecret),
 								primaryIngress,
 							)
@@ -172,10 +172,23 @@ func backendTLSFeature(notify notifications.NotifyFunc, ingresses []networkingv1
 				}
 
 				// We know proxySSLVerify is "on" and proxySSLSecret is not empty due to strict validation above.
+				notify(notifications.WarningNotification,
+					fmt.Sprintf("Ingress %s/%s: mTLS will not be configured. The original Secret %q contains client certificates (tls.crt/tls.key) "+
+						"for mutual TLS authentication, but Gateway API BackendTLSPolicy does not support client certificate authentication. "+
+						"Only server CA verification will be configured.",
+						primaryIngress.Namespace, primaryIngress.Name, proxySSLSecret),
+					primaryIngress,
+				)
+				notify(notifications.InfoNotification,
+					fmt.Sprintf("Ingress %s/%s: The generated BackendTLSPolicy references a ConfigMap %q for CA certificate validation. "+
+						"You must create a ConfigMap named %q in namespace %q with the CA certificate from your Secret under the key \"ca.crt\".",
+						primaryIngress.Namespace, primaryIngress.Name, caRefName, caRefName, namespace),
+					primaryIngress,
+				)
 				policy.Spec.Validation.CACertificateRefs = []gatewayv1.LocalObjectReference{{
 					Group: "",
-					Kind:  "Secret",
-					Name:  gatewayv1.ObjectName(secretName),
+					Kind:  "ConfigMap",
+					Name:  gatewayv1.ObjectName(caRefName),
 				}}
 				policy.Spec.Validation.WellKnownCACertificates = nil
 
