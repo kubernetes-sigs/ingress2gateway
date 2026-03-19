@@ -58,9 +58,9 @@ func TestProviders(t *testing.T) {
 				t.Parallel()
 				t.Run("basic conversion", func(t *testing.T) {
 					runTestCase(t, &framework.TestCase{
-						Providers:             []string{prov.name},
 						GatewayImplementation: implementation.IstioName,
-						ProviderFlags: prov.providerFlags,
+						Providers:             []string{prov.name},
+						ProviderFlags:         prov.providerFlags,
 						Ingresses: []*networkingv1.Ingress{
 							framework.BasicIngress().
 								WithName("foo").
@@ -74,9 +74,9 @@ func TestProviders(t *testing.T) {
 				})
 				t.Run("multiple ingresses", func(t *testing.T) {
 					runTestCase(t, &framework.TestCase{
-						Providers:             []string{prov.name},
 						GatewayImplementation: implementation.IstioName,
-						ProviderFlags: prov.providerFlags,
+						Providers:             []string{prov.name},
+						ProviderFlags:         prov.providerFlags,
 						Ingresses: []*networkingv1.Ingress{
 							framework.BasicIngress().
 								WithName("foo").

@@ -125,7 +125,7 @@ e2e/
 ├── framework/       # Shared test infrastructure (no _test.go files)
 ├── provider/        # Provider deployment helpers — one .go file per provider
 ├── implementation/  # Gateway implementation deployment helpers — one .go file per implementation
-├── helpers.go       # setupTestEnv wrapper that wires providers + implementations to the framework
+├── helpers.go       # runTestCase wrapper that wires providers + implementations to the framework
 ├── *_test.go        # Test files, organized by category (see above)
 └── README.md
 ```
