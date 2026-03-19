@@ -56,7 +56,7 @@ func TestGCEFeature(t *testing.T) {
 				},
 			},
 			expectedSessionAffinity: &emitterir.SessionAffinity{
-				Metadata: emitterir.NewExtensionFeatureMetadata("ingress-nginx", []*field.Path{field.NewPath("annotations")}, ""),
+				Metadata: emitterir.NewExtensionFeatureMetadata("ingress-nginx", []*field.Path{field.NewPath("annotations", "nginx.ingress.kubernetes.io/affinity")}, ""),
 				Type:     "Cookie",
 			},
 		},
@@ -72,7 +72,7 @@ func TestGCEFeature(t *testing.T) {
 				},
 			},
 			expectedSessionAffinity: &emitterir.SessionAffinity{
-				Metadata:     emitterir.NewExtensionFeatureMetadata("ingress-nginx", []*field.Path{field.NewPath("annotations")}, ""),
+				Metadata:     emitterir.NewExtensionFeatureMetadata("ingress-nginx", []*field.Path{field.NewPath("annotations", "nginx.ingress.kubernetes.io/affinity")}, ""),
 				Type:         "Cookie",
 				CookieTTLSec: ptr.To(int64(3600)),
 			},
@@ -89,7 +89,7 @@ func TestGCEFeature(t *testing.T) {
 				},
 			},
 			expectedSessionAffinity: &emitterir.SessionAffinity{
-				Metadata:   emitterir.NewExtensionFeatureMetadata("ingress-nginx", []*field.Path{field.NewPath("annotations")}, ""),
+				Metadata:   emitterir.NewExtensionFeatureMetadata("ingress-nginx", []*field.Path{field.NewPath("annotations", "nginx.ingress.kubernetes.io/affinity")}, ""),
 				Type:       "Cookie",
 				CookieName: "MY_COOKIE",
 			},

@@ -37,10 +37,18 @@ type Notification struct {
 }
 
 func objectsToStr(ob []client.Object) string {
-	strs := make([]string, len(ob))
+	strs := make([]string, 0, len(ob))
 
-	for i, o := range ob {
-		strs[i] = o.GetObjectKind().GroupVersionKind().Kind + ": " + client.ObjectKeyFromObject(o).String()
+	for _, o := range ob {
+		if o == nil {
+			strs = append(strs, "Unknown")
+			continue
+		}
+		kind := o.GetObjectKind().GroupVersionKind().Kind
+		if kind == "" {
+			kind = "Object"
+		}
+		strs = append(strs, kind+": "+client.ObjectKeyFromObject(o).String())
 	}
 
 	return strings.Join(strs, ", ")

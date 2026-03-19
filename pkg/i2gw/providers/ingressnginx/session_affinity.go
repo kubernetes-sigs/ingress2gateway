@@ -105,7 +105,7 @@ func sessionAffinityFeature(notify notifications.NotifyFunc, _ []networkingv1.In
 					svc.SessionAffinity.Type = affinityType
 					svc.SessionAffinity.CookieTTLSec = cookieTTL
 					svc.SessionAffinity.CookieName = cookieName
-					svc.SessionAffinity.Metadata = emitterir.NewExtensionFeatureMetadata("ingress-nginx", []*field.Path{field.NewPath("annotations")}, "")
+					svc.SessionAffinity.Metadata = emitterir.NewExtensionFeatureMetadata("ingress-nginx", []*field.Path{field.NewPath("annotations", "nginx.ingress.kubernetes.io/affinity")}, "")
 
 					// Update the map
 					ir.Services[svcKey] = svc
@@ -113,7 +113,7 @@ func sessionAffinityFeature(notify notifications.NotifyFunc, _ []networkingv1.In
 					// Service doesn't exist yet, create it
 					svc = providerir.ProviderSpecificServiceIR{
 						SessionAffinity: &emitterir.SessionAffinity{
-							Metadata:     emitterir.NewExtensionFeatureMetadata("ingress-nginx", []*field.Path{field.NewPath("annotations")}, ""),
+							Metadata:     emitterir.NewExtensionFeatureMetadata("ingress-nginx", []*field.Path{field.NewPath("annotations", "nginx.ingress.kubernetes.io/affinity")}, ""),
 							Type:         affinityType,
 							CookieTTLSec: cookieTTL,
 							CookieName:   cookieName,

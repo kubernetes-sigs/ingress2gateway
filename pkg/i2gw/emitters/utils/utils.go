@@ -150,4 +150,55 @@ func LogUnparsedErrors(ir emitterir.EmitterIR, notify notifications.NotifyFunc) 
 			)
 		}
 	}
+
+	for svcKey, serviceContext := range ir.Services {
+		if serviceContext.SessionAffinity != nil {
+			meta := serviceContext.SessionAffinity.Metadata
+			source := meta.Source()
+			paths := strings.Builder{}
+			for _, p := range meta.Paths() {
+				paths.WriteString(p.String())
+				paths.WriteString(", ")
+			}
+
+			message := meta.FailureMessage()
+			if message == "" {
+				message = "Session Affinity is not supported by this emitter"
+			}
+
+			var associatedHR *gatewayv1.HTTPRoute
+			for _, hrContext := range ir.HTTPRoutes {
+				for _, rule := range hrContext.HTTPRoute.Spec.Rules {
+					for _, br := range rule.BackendRefs {
+						if string(br.Name) == svcKey.Name {
+							associatedHR = &hrContext.HTTPRoute
+							break
+						}
+					}
+					if associatedHR != nil {
+						break
+					}
+				}
+				if associatedHR != nil {
+					break
+				}
+			}
+
+			var warnObj *gatewayv1.HTTPRoute
+			if associatedHR != nil {
+				// Create a copy to modify type meta safely
+				copyHR := associatedHR.DeepCopy()
+				if copyHR.TypeMeta.Kind == "" {
+					copyHR.TypeMeta.Kind = "HTTPRoute"
+					copyHR.TypeMeta.APIVersion = "gateway.networking.k8s.io/v1"
+				}
+				warnObj = copyHR
+			}
+
+			notify(notifications.WarningNotification,
+				fmt.Sprintf("failed to parse %s from Ingress %s: %s", source, strings.TrimSuffix(paths.String(), ", "), message),
+				warnObj,
+			)
+		}
+	}
 }
