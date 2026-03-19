@@ -25,7 +25,6 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/e2e/framework"
 	"github.com/kubernetes-sigs/ingress2gateway/e2e/implementation"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
-	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/istio"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -62,7 +61,7 @@ func TestIngressNGINXBackendTLS(t *testing.T) {
 			host := "backend-tls-valid-" + suffix + ".example.com"
 
 			providers := []string{ingressnginx.Name}
-			gwImpl := istio.ProviderName
+			gwImpl := implementation.IstioName
 			env := setupTestEnv(t, providers, gwImpl)
 			svcHost := fmt.Sprintf("%s.%s.svc.cluster.local", framework.DummyAppName1, env.Namespace)
 			tlsSecrets, err := framework.GenerateBackendTLSSecrets(framework.BackendServerSecretName, framework.BackendCASecretName, env.Namespace, svcHost)
@@ -117,7 +116,7 @@ func TestIngressNGINXBackendTLS(t *testing.T) {
 			host := "backend-tls-warn-" + suffix + ".example.com"
 
 			providers := []string{ingressnginx.Name}
-			gwImpl := istio.ProviderName
+			gwImpl := implementation.IstioName
 			env := setupTestEnv(t, providers, gwImpl)
 			svcHost := fmt.Sprintf("%s.%s.svc.cluster.local", framework.DummyAppName1, env.Namespace)
 			tlsSecrets, err := framework.GenerateBackendTLSSecrets(framework.BackendServerSecretName, framework.BackendCASecretName, env.Namespace, svcHost)
@@ -173,7 +172,7 @@ func TestIngressNGINXBackendTLS(t *testing.T) {
 			host := "backend-tls-body-" + suffix + ".example.com"
 
 			providers := []string{ingressnginx.Name}
-			gwImpl := istio.ProviderName
+			gwImpl := implementation.IstioName
 			env := setupTestEnv(t, providers, gwImpl)
 			svcHost := fmt.Sprintf("%s.%s.svc.cluster.local", framework.DummyAppName1, env.Namespace)
 			tlsSecrets, err := framework.GenerateBackendTLSSecrets(framework.BackendServerSecretName, framework.BackendCASecretName, env.Namespace, svcHost)
