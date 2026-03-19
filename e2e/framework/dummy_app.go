@@ -84,13 +84,13 @@ func createDummyAppDeployment(ctx context.Context, l Logger, client *kubernetes.
 	l.Logf("Creating dummy app %s", name)
 
 	containerArgs := []string{"netexec", "--http-port=8080"}
-	portname := "http"
+	portName := "http"
 	if serverSecretName != "" {
 		containerArgs = append(containerArgs,
 			"--tls-cert-file=/etc/tls/tls.crt",
 			"--tls-private-key-file=/etc/tls/tls.key",
 		)
-		portname = "https"
+		portName = "https"
 	}
 
 	volumeMount := corev1.VolumeMount{
@@ -120,7 +120,7 @@ func createDummyAppDeployment(ctx context.Context, l Logger, client *kubernetes.
 							Args:  containerArgs,
 							Ports: []corev1.ContainerPort{
 								{
-									Name:          portname,
+									Name:          portName,
 									ContainerPort: 8080,
 								},
 							},

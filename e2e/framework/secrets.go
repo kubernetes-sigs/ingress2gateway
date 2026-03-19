@@ -41,13 +41,13 @@ type TLSTestSecret struct {
 }
 
 // BackendTLSSecrets holds the secrets needed for backend TLS authentication testing.
-// ServerSecret contains the TLS cert+key for the HTTPS backend pod.
-// CASecret contains the CA certificate used to verify the backend, referenced by the
-// proxy-ssl-secret annotation and later by BackendTLSPolicy.
 type BackendTLSSecrets struct {
-	ServerSecret *corev1.Secret // tls.crt + tls.key for the backend pod
-	CASecret     *corev1.Secret // ca.crt for the proxy-ssl-secret / BackendTLSPolicy
-	CACertPEM    []byte
+	// ServerSecret contains the TLS cert+key for the HTTPS backend pod.
+	ServerSecret *corev1.Secret
+	// CASecret contains the CA certificate used to verify the backend, referenced by the
+	// proxy-ssl-secret annotation and later by BackendTLSPolicy.
+	CASecret  *corev1.Secret // ca.crt for the proxy-ssl-secret / BackendTLSPolicy
+	CACertPEM []byte
 }
 
 // GenerateSelfSignedTLSSecret creates a self-signed TLS secret for testing.
@@ -153,12 +153,8 @@ const (
 	BackendCASecretName     = "tls-backend-ca"          //nolint:gosec // Not a credential, just a resource name.
 )
 
-// GenerateBackendTLSSecrets creates a CA and a server certificate signed by that CA.
-// It returns:
-//   - ServerSecret: a TLS secret (tls.crt + tls.key) to mount in the HTTPS backend pod
-//   - CASecret: an Opaque secret with ca.crt for the proxy-ssl-secret annotation / BackendTLSPolicy
-//
-// The serverHostname is the DNS name the server cert is valid for (used as SAN and for proxy-ssl-name).
+// GenerateBackendTLSSecrets creates a self-signed CA and a server certificate
+// signed by that CA, returning them as Kubernetes TLS and Opaque secrets.
 func GenerateBackendTLSSecrets(serverSecretName, caSecretName, namespace, serverHostname string) (*BackendTLSSecrets, error) {
 	// Generate CA key and self-signed CA cert.
 	caKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
