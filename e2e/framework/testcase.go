@@ -77,7 +77,9 @@ type TestCase struct {
 	Ingresses              []*networkingv1.Ingress
 	Secrets                []*corev1.Secret
 	ConfigMaps             []*corev1.ConfigMap
+	Providers              []string
 	ProviderFlags          map[string]map[string]string
+	GatewayImplementation  string
 	AllowExperimentalGWAPI bool
 	Emitter                string
 	Verifiers              map[string][]Verifier
@@ -93,12 +95,10 @@ type TestEnv struct {
 	Namespace   string
 	SkipCleanup bool
 
-	providers             []string
-	gatewayImplementation string
-	kubeconfig            string
-	gwClient              *gwclientset.Clientset
-	restConfig            *rest.Config
-	randPrefix            string
+	kubeconfig string
+	gwClient   *gwclientset.Clientset
+	restConfig *rest.Config
+	randPrefix string
 }
 
 // DeployProvidersFunc deploys ingress providers and returns their resources.
@@ -207,17 +207,15 @@ func SetupTestEnv(t *testing.T, providers []string, gatewayImplementation string
 	}
 
 	return &TestEnv{
-		Ctx:                   ctx,
-		T:                     t,
-		K8sClient:             k8sClient,
-		Namespace:             appNS,
-		SkipCleanup:           skipCleanup,
-		providers:             providers,
-		gatewayImplementation: gatewayImplementation,
-		kubeconfig:            kubeconfig,
-		gwClient:              gwClient,
-		restConfig:            restConfig,
-		randPrefix:            randPrefix,
+		Ctx:         ctx,
+		T:           t,
+		K8sClient:   k8sClient,
+		Namespace:   appNS,
+		SkipCleanup: skipCleanup,
+		kubeconfig:  kubeconfig,
+		gwClient:    gwClient,
+		restConfig:  restConfig,
+		randPrefix:  randPrefix,
 	}
 }
 
@@ -274,7 +272,7 @@ func (env *TestEnv) Run(tc *TestCase) {
 		t,
 		env.K8sClient,
 		env.restConfig,
-		env.providers,
+		tc.Providers,
 		testCaseNeedsHTTPS(tc),
 	)
 	t.Cleanup(func() {
@@ -291,7 +289,7 @@ func (env *TestEnv) Run(tc *TestCase) {
 		t,
 		env.kubeconfig,
 		env.Namespace,
-		env.providers,
+		tc.Providers,
 		tc.ProviderFlags,
 		tc.AllowExperimentalGWAPI,
 		tc.Emitter,
@@ -301,7 +299,7 @@ func (env *TestEnv) Run(tc *TestCase) {
 	// ingress at the moment.
 	for _, r := range res {
 		for k, v := range r.Gateways {
-			v.Spec.GatewayClassName = gwapiv1.ObjectName(env.gatewayImplementation)
+			v.Spec.GatewayClassName = gwapiv1.ObjectName(tc.GatewayImplementation)
 			r.Gateways[k] = v
 		}
 	}
@@ -318,7 +316,7 @@ func (env *TestEnv) Run(tc *TestCase) {
 		env.restConfig,
 		getGateways(res),
 		env.Namespace,
-		env.gatewayImplementation,
+		tc.GatewayImplementation,
 		testCaseNeedsHTTPS(tc),
 	)
 	t.Cleanup(func() {

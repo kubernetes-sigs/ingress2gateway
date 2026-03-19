@@ -44,7 +44,9 @@ func TestImplementations(t *testing.T) {
 		t.Run(impl.name, func(t *testing.T) {
 			t.Parallel()
 			t.Run("basic conversion", func(t *testing.T) {
-				setupTestEnv(t, []string{ingressnginx.Name}, impl.name).Run(&framework.TestCase{
+				runTestCase(t, &framework.TestCase{
+					Providers:             []string{ingressnginx.Name},
+					GatewayImplementation: impl.name,
 					Ingresses: []*networkingv1.Ingress{
 						framework.BasicIngress().
 							WithName("foo").
@@ -57,7 +59,9 @@ func TestImplementations(t *testing.T) {
 				})
 			})
 			t.Run("multiple ingresses", func(t *testing.T) {
-				setupTestEnv(t, []string{ingressnginx.Name}, impl.name).Run(&framework.TestCase{
+				runTestCase(t, &framework.TestCase{
+					Providers:             []string{ingressnginx.Name},
+					GatewayImplementation: impl.name,
 					Ingresses: []*networkingv1.Ingress{
 						framework.BasicIngress().
 							WithName("foo").

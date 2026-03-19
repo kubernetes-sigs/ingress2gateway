@@ -37,6 +37,12 @@ func setupTestEnv(t *testing.T, providers []string, gatewayImplementation string
 	return framework.SetupTestEnv(t, providers, gatewayImplementation, deployProviders, deployGatewayImplementation)
 }
 
+// runTestCase is a convenience wrapper for tests that don't need custom setup between environment
+// creation and test execution.
+func runTestCase(t *testing.T, tc *framework.TestCase) {
+	setupTestEnv(t, tc.Providers, tc.GatewayImplementation).Run(tc)
+}
+
 func deployProviders(
 	ctx context.Context,
 	t *testing.T,
