@@ -76,6 +76,7 @@ type EmitterIR struct {
 }
 
 type SessionAffinity struct {
+	Metadata     ExtensionFeatureMetadata
 	Type         string
 	CookieName   string
 	CookieTTLSec *int64

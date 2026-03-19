@@ -111,6 +111,7 @@ func Test_ToIR(t *testing.T) {
 								},
 								Hostnames: []gatewayv1.Hostname{"example.com"},
 								Rules: []gatewayv1.HTTPRouteRule{{
+									Name: ptr.To(gatewayv1.SectionName("rule-0")),
 									Matches: []gatewayv1.HTTPRouteMatch{{
 										Path: &gatewayv1.HTTPPathMatch{
 											Type:  &gPathPrefix,
@@ -206,6 +207,7 @@ func Test_ToIR(t *testing.T) {
 								},
 								Hostnames: []gatewayv1.Hostname{"example.com"},
 								Rules: []gatewayv1.HTTPRouteRule{{
+									Name: ptr.To(gatewayv1.SectionName("rule-0")),
 									Matches: []gatewayv1.HTTPRouteMatch{{
 										Path: &gatewayv1.HTTPPathMatch{
 											Type:  &gPathPrefix,
@@ -307,6 +309,7 @@ func Test_ToIR(t *testing.T) {
 								},
 								Hostnames: []gatewayv1.Hostname{"foo.example.com"},
 								Rules: []gatewayv1.HTTPRouteRule{{
+									Name: ptr.To(gatewayv1.SectionName("rule-0")),
 									Matches: []gatewayv1.HTTPRouteMatch{{
 										Path: &gatewayv1.HTTPPathMatch{
 											Type:  &gPathPrefix,
@@ -393,6 +396,7 @@ func Test_ToIR(t *testing.T) {
 								},
 								Hostnames: []gatewayv1.Hostname{"example.net"},
 								Rules: []gatewayv1.HTTPRouteRule{{
+									Name: ptr.To(gatewayv1.SectionName("rule-0")),
 									Matches: []gatewayv1.HTTPRouteMatch{{
 										Path: &gatewayv1.HTTPPathMatch{
 											Type:  &gExact,
@@ -422,6 +426,7 @@ func Test_ToIR(t *testing.T) {
 									}},
 								},
 								Rules: []gatewayv1.HTTPRouteRule{{
+									Name: ptr.To(gatewayv1.SectionName("rule-0")),
 									BackendRefs: []gatewayv1.HTTPBackendRef{{
 										BackendRef: gatewayv1.BackendRef{
 											BackendObjectReference: gatewayv1.BackendObjectReference{
@@ -498,6 +503,7 @@ func Test_ToIR(t *testing.T) {
 								},
 								Hostnames: []gatewayv1.Hostname{"example.com"},
 								Rules: []gatewayv1.HTTPRouteRule{{
+									Name: ptr.To(gatewayv1.SectionName("rule-0")),
 									Matches: []gatewayv1.HTTPRouteMatch{{
 										Path: &gatewayv1.HTTPPathMatch{
 											Type:  &gPathPrefix,

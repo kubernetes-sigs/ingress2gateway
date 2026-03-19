@@ -17,7 +17,9 @@ limitations under the License.
 package ingressnginx
 
 import (
+	"fmt"
 	"strconv"
+	"strings"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
@@ -27,7 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-func sessionAffinityFeature(_ notifications.NotifyFunc, _ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
+func sessionAffinityFeature(notify notifications.NotifyFunc, _ []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	// Iterate over all HTTPRoutes to find backend services and apply generic SessionAffinity
 	for _, httpRouteCtx := range ir.HTTPRoutes {
 		for ruleIdx := range httpRouteCtx.Spec.Rules {
@@ -63,6 +65,16 @@ func sessionAffinityFeature(_ notifications.NotifyFunc, _ []networkingv1.Ingress
 					if nameVal, ok := source.Ingress.Annotations[SessionCookieNameAnnotation]; ok {
 						cookieName = nameVal
 					}
+
+					// Warn on unsupported session-cookie annotations
+					for annotation := range source.Ingress.Annotations {
+						if strings.HasPrefix(annotation, "nginx.ingress.kubernetes.io/session-cookie-") {
+							if annotation != SessionCookieExpiresAnnotation && annotation != SessionCookieNameAnnotation {
+								notify(notifications.WarningNotification, fmt.Sprintf("Unsupported session affinity annotation %s", annotation), source.Ingress)
+							}
+						}
+					}
+
 					// Only use the first finding or merge? Nginx usually takes first match or last applied.
 					// We'll break on first valid "cookie" affinity found.
 					break
@@ -93,6 +105,7 @@ func sessionAffinityFeature(_ notifications.NotifyFunc, _ []networkingv1.Ingress
 					svc.SessionAffinity.Type = affinityType
 					svc.SessionAffinity.CookieTTLSec = cookieTTL
 					svc.SessionAffinity.CookieName = cookieName
+					svc.SessionAffinity.Metadata = emitterir.NewExtensionFeatureMetadata("ingress-nginx", []*field.Path{field.NewPath("annotations")}, "")
 
 					// Update the map
 					ir.Services[svcKey] = svc
@@ -100,6 +113,7 @@ func sessionAffinityFeature(_ notifications.NotifyFunc, _ []networkingv1.Ingress
 					// Service doesn't exist yet, create it
 					svc = providerir.ProviderSpecificServiceIR{
 						SessionAffinity: &emitterir.SessionAffinity{
+							Metadata:     emitterir.NewExtensionFeatureMetadata("ingress-nginx", []*field.Path{field.NewPath("annotations")}, ""),
 							Type:         affinityType,
 							CookieTTLSec: cookieTTL,
 							CookieName:   cookieName,

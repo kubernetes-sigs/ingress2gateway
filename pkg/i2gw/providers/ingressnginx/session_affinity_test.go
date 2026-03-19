@@ -25,6 +25,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -55,7 +56,8 @@ func TestGCEFeature(t *testing.T) {
 				},
 			},
 			expectedSessionAffinity: &emitterir.SessionAffinity{
-				Type: "Cookie",
+				Metadata: emitterir.NewExtensionFeatureMetadata("ingress-nginx", []*field.Path{field.NewPath("annotations")}, ""),
+				Type:     "Cookie",
 			},
 		},
 		{
@@ -70,6 +72,7 @@ func TestGCEFeature(t *testing.T) {
 				},
 			},
 			expectedSessionAffinity: &emitterir.SessionAffinity{
+				Metadata:     emitterir.NewExtensionFeatureMetadata("ingress-nginx", []*field.Path{field.NewPath("annotations")}, ""),
 				Type:         "Cookie",
 				CookieTTLSec: ptr.To(int64(3600)),
 			},
@@ -86,6 +89,7 @@ func TestGCEFeature(t *testing.T) {
 				},
 			},
 			expectedSessionAffinity: &emitterir.SessionAffinity{
+				Metadata:   emitterir.NewExtensionFeatureMetadata("ingress-nginx", []*field.Path{field.NewPath("annotations")}, ""),
 				Type:       "Cookie",
 				CookieName: "MY_COOKIE",
 			},
@@ -144,7 +148,7 @@ func TestGCEFeature(t *testing.T) {
 					t.Errorf("Expected nil SessionAffinity, got %v", actual)
 				}
 			} else {
-				if diff := cmp.Diff(tc.expectedSessionAffinity, actual); diff != "" {
+				if diff := cmp.Diff(tc.expectedSessionAffinity, actual, cmp.AllowUnexported(emitterir.ExtensionFeatureMetadata{}, field.Path{})); diff != "" {
 					t.Errorf("SessionAffinity IR mismatch (-want +got):\n%s", diff)
 				}
 			}
