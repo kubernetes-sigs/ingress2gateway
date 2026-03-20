@@ -25,6 +25,9 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
@@ -147,6 +150,40 @@ func LogUnparsedErrors(ir emitterir.EmitterIR, notify notifications.NotifyFunc) 
 			notify(notifications.WarningNotification,
 				fmt.Sprintf("Failed to apply %s from %s: %s", strings.TrimSuffix(paths.String(), ", "), source, message),
 				&httpRouteContext.HTTPRoute,
+			)
+		}
+	}
+
+	for svcKey, serviceContext := range ir.Services {
+		for _, unparsedExtension := range serviceContext.UnparsedExtensions() {
+			if unparsedExtension == nil {
+				continue
+			}
+			meta := unparsedExtension
+
+			source := meta.Source()
+			paths := strings.Builder{}
+			for _, p := range meta.Paths() {
+				paths.WriteString(p.String())
+				paths.WriteString(", ")
+			}
+
+			message := meta.FailureMessage()
+
+			svc := corev1.Service{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Service",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      svcKey.Name,
+					Namespace: svcKey.Namespace,
+				},
+			}
+
+			notify(notifications.WarningNotification,
+				fmt.Sprintf("failed to parse %s from Ingress %s: %s", source, strings.TrimSuffix(paths.String(), ", "), message),
+				&svc,
 			)
 		}
 	}

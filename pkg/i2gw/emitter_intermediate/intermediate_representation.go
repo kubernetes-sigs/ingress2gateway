@@ -70,7 +70,27 @@ type EmitterIR struct {
 	BackendTLSPolicies map[types.NamespacedName]BackendTLSPolicyContext
 	ReferenceGrants    map[types.NamespacedName]ReferenceGrantContext
 
+	Services map[types.NamespacedName]ServiceContext
+
 	GceServices map[types.NamespacedName]gce.ServiceIR
+}
+
+type SessionAffinity struct {
+	Metadata     ExtensionFeatureMetadata
+	Type         string
+	CookieTTLSec *int64
+}
+
+type ServiceContext struct {
+	SessionAffinity *SessionAffinity
+}
+
+func (s *ServiceContext) UnparsedExtensions() []*ExtensionFeatureMetadata {
+	var unparsedExtensions []*ExtensionFeatureMetadata
+	if s.SessionAffinity != nil {
+		unparsedExtensions = append(unparsedExtensions, &s.SessionAffinity.Metadata)
+	}
+	return unparsedExtensions
 }
 
 type GatewayContext struct {

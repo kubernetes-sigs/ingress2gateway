@@ -426,6 +426,7 @@ func Test_ToIR(t *testing.T) {
 									}},
 								},
 								Rules: []gatewayv1.HTTPRouteRule{{
+									Name: ptr.To(gatewayv1.SectionName("rule-0")),
 									BackendRefs: []gatewayv1.HTTPBackendRef{{
 										BackendRef: gatewayv1.BackendRef{
 											BackendObjectReference: gatewayv1.BackendObjectReference{

@@ -313,6 +313,9 @@ func (a *ingressAggregator) toRoutesAndGateways(options i2gw.ProviderImplementat
 				BackendRefs: []gatewayv1.HTTPBackendRef{{BackendRef: *backendRef}},
 			})
 		}
+		for idx := range httpRoute.Spec.Rules {
+			httpRoute.Spec.Rules[idx].Name = ptr.To(gatewayv1.SectionName(fmt.Sprintf("rule-%d", idx)))
+		}
 		// Set the single source for this default backend.
 		sources := [][]providerir.BackendSource{
 			{
