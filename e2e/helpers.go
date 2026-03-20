@@ -113,6 +113,11 @@ func deployGatewayImplementation(
 		r = framework.GlobalResourceManager.Acquire(implementation.EnvoyGatewayName, func() (framework.CleanupFunc, error) {
 			return implementation.DeployEnvoyGateway(ctx, t, k8sClient, apiextClient, gwClient, kubeconfig, ns, skipCleanup)
 		})
+	case implementation.AgentgatewayName:
+		ns := fmt.Sprintf("%s-agentgateway-system", framework.E2EPrefix)
+		r = framework.GlobalResourceManager.Acquire(implementation.AgentgatewayName, func() (framework.CleanupFunc, error) {
+			return implementation.DeployAgentgateway(ctx, t, k8sClient, gwClient, kubeconfig, ns, skipCleanup)
+		})
 	default:
 		t.Fatalf("Unknown gateway implementation: %s", gwImpl)
 	}
