@@ -40,8 +40,18 @@ type TLSTestSecret struct {
 	CACert []byte
 }
 
+// BackendTLSSecrets holds the secrets needed for backend TLS authentication testing.
+type BackendTLSSecrets struct {
+	// ServerSecret contains the TLS cert+key for the HTTPS backend pod.
+	ServerSecret *corev1.Secret
+	// CASecret contains the CA certificate used to verify the backend, referenced by the
+	// proxy-ssl-secret annotation and later by BackendTLSPolicy.
+	CASecret  *corev1.Secret // ca.crt for the proxy-ssl-secret / BackendTLSPolicy
+	CACertPEM []byte
+}
+
 // GenerateSelfSignedTLSSecret creates a self-signed TLS secret for testing.
-func GenerateSelfSignedTLSSecret(name, namespace, commonName string, hosts []string) (*TLSTestSecret, error) {
+func GenerateSelfSignedTLSSecret(name, commonName string, hosts []string) (*TLSTestSecret, error) {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, fmt.Errorf("generating key: %w", err)
@@ -81,8 +91,7 @@ func GenerateSelfSignedTLSSecret(name, namespace, commonName string, hosts []str
 	return &TLSTestSecret{
 		Secret: &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
+				Name: name,
 			},
 			Type: corev1.SecretTypeTLS,
 			Data: map[string][]byte{
@@ -135,5 +144,104 @@ func createSecrets(ctx context.Context, l Logger, client *kubernetes.Clientset, 
 				log.Printf("Deleting secret %s: %v", secret.Name, err)
 			}
 		}
+	}, nil
+}
+
+const (
+	BackendServerSecretName = "tls-backend-server-cert" //nolint:gosec // Not a credential, just a resource name.
+	BackendCASecretName     = "tls-backend-ca"          //nolint:gosec // Not a credential, just a resource name.
+)
+
+// GenerateBackendTLSSecrets creates a self-signed CA and a server certificate
+// signed by that CA, returning them as Kubernetes TLS and Opaque secrets.
+func GenerateBackendTLSSecrets(serverSecretName, caSecretName, namespace, serverHostname string) (*BackendTLSSecrets, error) {
+	// Generate CA key and self-signed CA cert.
+	caKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return nil, fmt.Errorf("generating CA key: %w", err)
+	}
+	caSerial, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	if err != nil {
+		return nil, fmt.Errorf("generating CA serial: %w", err)
+	}
+	caTemplate := x509.Certificate{
+		SerialNumber:          caSerial,
+		Subject:               pkix.Name{CommonName: "backend-tls-ca"},
+		NotBefore:             time.Now().Add(-1 * time.Hour),
+		NotAfter:              time.Now().Add(24 * time.Hour),
+		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
+		IsCA:                  true,
+		BasicConstraintsValid: true,
+	}
+	caDER, err := x509.CreateCertificate(rand.Reader, &caTemplate, &caTemplate, &caKey.PublicKey, caKey)
+	if err != nil {
+		return nil, fmt.Errorf("creating CA certificate: %w", err)
+	}
+	caCertPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caDER})
+	caKeyBytes, err := x509.MarshalECPrivateKey(caKey)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling CA key: %w", err)
+	}
+	caKeyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: caKeyBytes})
+	caCert, err := x509.ParseCertificate(caDER)
+	if err != nil {
+		return nil, fmt.Errorf("parsing CA certificate: %w", err)
+	}
+
+	// Generate server key and cert signed by the CA.
+	serverKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return nil, fmt.Errorf("generating server key: %w", err)
+	}
+	serverSerial, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	if err != nil {
+		return nil, fmt.Errorf("generating server serial: %w", err)
+	}
+	serverTemplate := x509.Certificate{
+		SerialNumber: serverSerial,
+		Subject:      pkix.Name{CommonName: serverHostname},
+		NotBefore:    time.Now().Add(-1 * time.Hour),
+		NotAfter:     time.Now().Add(24 * time.Hour),
+		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		DNSNames:     []string{serverHostname},
+	}
+	serverDER, err := x509.CreateCertificate(rand.Reader, &serverTemplate, caCert, &serverKey.PublicKey, caKey)
+	if err != nil {
+		return nil, fmt.Errorf("creating server certificate: %w", err)
+	}
+
+	serverCertPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: serverDER})
+	serverKeyBytes, err := x509.MarshalECPrivateKey(serverKey)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling server key: %w", err)
+	}
+	serverKeyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: serverKeyBytes})
+
+	return &BackendTLSSecrets{
+		ServerSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      serverSecretName,
+				Namespace: namespace,
+			},
+			Type: corev1.SecretTypeTLS,
+			Data: map[string][]byte{
+				corev1.TLSCertKey:       serverCertPEM,
+				corev1.TLSPrivateKeyKey: serverKeyPEM,
+			},
+		},
+		CASecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      caSecretName,
+				Namespace: namespace,
+			},
+			Type: corev1.SecretTypeOpaque,
+			Data: map[string][]byte{
+				"ca.crt":  caCertPEM, // CA cert to verify the backend server
+				"tls.crt": caCertPEM, // client cert the proxy presents to the backend
+				"tls.key": caKeyPEM,  // client key matching tls.crt
+			},
+		},
+		CACertPEM: caCertPEM,
 	}, nil
 }

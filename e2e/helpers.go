@@ -31,10 +31,16 @@ import (
 	gwclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 )
 
-// Wraps framework.RunTestCase with the concrete deploy functions defined in this package, keeping
-// provider-specific deployment code out of the framework.
+// setupTestEnv wraps framework.SetupTestEnv with the concrete deploy functions defined in this
+// package. The returned TestEnv can be used for additional test-specific setup before calling Run().
+func setupTestEnv(t *testing.T, providers []string, gatewayImplementation string) *framework.TestEnv {
+	return framework.SetupTestEnv(t, providers, gatewayImplementation, deployProviders, deployGatewayImplementation)
+}
+
+// runTestCase is a convenience wrapper for tests that don't need custom setup between environment
+// creation and test execution.
 func runTestCase(t *testing.T, tc *framework.TestCase) {
-	framework.RunTestCase(t, tc, deployProviders, deployGatewayImplementation)
+	setupTestEnv(t, tc.Providers, tc.GatewayImplementation).Run(tc)
 }
 
 func deployProviders(
@@ -106,6 +112,11 @@ func deployGatewayImplementation(
 		ns := fmt.Sprintf("%s-envoy-gateway-system", framework.E2EPrefix)
 		r = framework.GlobalResourceManager.Acquire(implementation.EnvoyGatewayName, func() (framework.CleanupFunc, error) {
 			return implementation.DeployEnvoyGateway(ctx, t, k8sClient, apiextClient, gwClient, kubeconfig, ns, skipCleanup)
+		})
+	case implementation.AgentgatewayName:
+		ns := fmt.Sprintf("%s-agentgateway-system", framework.E2EPrefix)
+		r = framework.GlobalResourceManager.Acquire(implementation.AgentgatewayName, func() (framework.CleanupFunc, error) {
+			return implementation.DeployAgentgateway(ctx, t, k8sClient, gwClient, kubeconfig, ns, skipCleanup)
 		})
 	default:
 		t.Fatalf("Unknown gateway implementation: %s", gwImpl)

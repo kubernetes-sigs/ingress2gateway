@@ -35,13 +35,19 @@ const (
 	version = "2.39"
 )
 
+// DeployDummyApp deploys a dummy backend application. If serverSecretName is
+// non-empty the app is deployed with TLS, mounting the named secret.
+func DeployDummyApp(ctx context.Context, l Logger, client *kubernetes.Clientset, name, namespace string, skipCleanup bool, serverSecretName string) (func(), error) {
+	return deployDummyApp(ctx, l, client, name, namespace, skipCleanup, serverSecretName)
+}
+
 // Creates a dummy backend application for testing and returns a cleanup function.
-func deployDummyApp(ctx context.Context, l Logger, client *kubernetes.Clientset, name, namespace string, skipCleanup bool) (func(), error) {
-	if err := createDummyAppDeployment(ctx, l, client, name, namespace); err != nil {
+func deployDummyApp(ctx context.Context, l Logger, client *kubernetes.Clientset, name, namespace string, skipCleanup bool, serverSecretName string) (func(), error) {
+	if err := createDummyAppDeployment(ctx, l, client, name, namespace, serverSecretName); err != nil {
 		return nil, fmt.Errorf("creating deployment: %w", err)
 	}
 
-	if err := createDummyAppService(ctx, client, name, namespace); err != nil {
+	if err := createDummyAppService(ctx, client, name, namespace, serverSecretName != ""); err != nil {
 		return nil, fmt.Errorf("creating service: %w", err)
 	}
 
@@ -72,10 +78,26 @@ func deployDummyApp(ctx context.Context, l Logger, client *kubernetes.Clientset,
 	}, nil
 }
 
-func createDummyAppDeployment(ctx context.Context, l Logger, client *kubernetes.Clientset, name, namespace string) error {
+func createDummyAppDeployment(ctx context.Context, l Logger, client *kubernetes.Clientset, name, namespace, serverSecretName string) error {
 	labels := map[string]string{"app": name}
 
 	l.Logf("Creating dummy app %s", name)
+
+	containerArgs := []string{"netexec", "--http-port=8080"}
+	portName := "http"
+	if serverSecretName != "" {
+		containerArgs = append(containerArgs,
+			"--tls-cert-file=/etc/tls/tls.crt",
+			"--tls-private-key-file=/etc/tls/tls.key",
+		)
+		portName = "https"
+	}
+
+	volumeMount := corev1.VolumeMount{
+		Name:      "tls-certs",
+		MountPath: "/etc/tls",
+		ReadOnly:  true,
+	}
 
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -95,10 +117,10 @@ func createDummyAppDeployment(ctx context.Context, l Logger, client *kubernetes.
 						{
 							Name:  name,
 							Image: fmt.Sprintf("%s:%s", image, version),
-							Args:  []string{"netexec", "--http-port=8080"},
+							Args:  containerArgs,
 							Ports: []corev1.ContainerPort{
 								{
-									Name:          "http",
+									Name:          portName,
 									ContainerPort: 8080,
 								},
 							},
@@ -109,6 +131,20 @@ func createDummyAppDeployment(ctx context.Context, l Logger, client *kubernetes.
 		},
 	}
 
+	if serverSecretName != "" {
+		deployment.Spec.Template.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{volumeMount}
+		deployment.Spec.Template.Spec.Volumes = []corev1.Volume{
+			{
+				Name: "tls-certs",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: serverSecretName,
+					},
+				},
+			},
+		}
+	}
+
 	if _, err := client.AppsV1().Deployments(namespace).Create(ctx, deployment, metav1.CreateOptions{}); err != nil {
 		return fmt.Errorf("creating deployment: %w", err)
 	}
@@ -116,7 +152,13 @@ func createDummyAppDeployment(ctx context.Context, l Logger, client *kubernetes.
 	return nil
 }
 
-func createDummyAppService(ctx context.Context, client *kubernetes.Clientset, name, namespace string) error {
+func createDummyAppService(ctx context.Context, client *kubernetes.Clientset, name, namespace string, useTLS bool) error {
+	servicePortName := "http"
+	var servicePort int32 = 80
+	if useTLS {
+		servicePortName = "https"
+		servicePort = 443
+	}
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -126,8 +168,8 @@ func createDummyAppService(ctx context.Context, client *kubernetes.Clientset, na
 			Selector: map[string]string{"app": name},
 			Ports: []corev1.ServicePort{
 				{
-					Name:       "http",
-					Port:       80,
+					Name:       servicePortName,
+					Port:       servicePort,
 					TargetPort: intstr.FromInt(8080),
 				},
 			},

@@ -71,8 +71,8 @@ func (p *Provider) ToIR() (emitterir.EmitterIR, field.ErrorList) {
 	p.applyIPRangeControlToEmitterIR(pIR, &eIR)
 	p.applyTimeoutsToEmitterIR(pIR, &eIR)
 	p.applyCorsToEmitterIR(pIR, &eIR)
-	p.addDefaultSSLRedirect(&pIR, &eIR)
 	p.applyBodySizeToEmitterIR(pIR, &eIR)
+	p.addSSLAndTrailingSlashRedirects(p.storage.Ingresses.List(), &pIR, &eIR)
 	return eIR, errs
 }
 
