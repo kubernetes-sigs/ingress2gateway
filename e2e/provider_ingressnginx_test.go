@@ -581,7 +581,7 @@ func TestIngressNGINXTLS(t *testing.T) {
 		suffix, err := framework.RandString()
 		require.NoError(t, err, "creating host suffix")
 		host := "tls-" + suffix + ".example.com"
-		tlsSecret, err := framework.GenerateSelfSignedTLSSecret("tls-cert-"+suffix, "", host, []string{host})
+		tlsSecret, err := framework.GenerateSelfSignedTLSSecret("tls-cert-"+suffix, host, []string{host})
 		if err != nil {
 			t.Fatalf("creating TLS secret: %v", err)
 		}
@@ -633,11 +633,11 @@ func TestIngressNGINXTLS(t *testing.T) {
 		require.NoError(t, err, "creating host suffix")
 		redirectHost := "tls-redirect-" + suffix + ".example.com"
 		noRedirectHost := "tls-noredirect-" + suffix + ".example.com"
-		redirectSecret, err := framework.GenerateSelfSignedTLSSecret("tls-redirect-"+suffix, "", redirectHost, []string{redirectHost})
+		redirectSecret, err := framework.GenerateSelfSignedTLSSecret("tls-redirect-"+suffix, redirectHost, []string{redirectHost})
 		if err != nil {
 			t.Fatalf("creating redirect TLS secret: %v", err)
 		}
-		noRedirectSecret, err := framework.GenerateSelfSignedTLSSecret("tls-noredirect-"+suffix, "", noRedirectHost, []string{noRedirectHost})
+		noRedirectSecret, err := framework.GenerateSelfSignedTLSSecret("tls-noredirect-"+suffix, noRedirectHost, []string{noRedirectHost})
 		if err != nil {
 			t.Fatalf("creating no-redirect TLS secret: %v", err)
 		}

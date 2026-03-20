@@ -41,7 +41,7 @@ type TLSTestSecret struct {
 }
 
 // GenerateSelfSignedTLSSecret creates a self-signed TLS secret for testing.
-func GenerateSelfSignedTLSSecret(name, namespace, commonName string, hosts []string) (*TLSTestSecret, error) {
+func GenerateSelfSignedTLSSecret(name, commonName string, hosts []string) (*TLSTestSecret, error) {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, fmt.Errorf("generating key: %w", err)
