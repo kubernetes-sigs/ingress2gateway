@@ -343,7 +343,7 @@ func Test_redirectFeature(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Set up the IR with the initial HTTPRoute
+			// Set up the IR with the initial HTTPRoute.
 			ir := providerir.ProviderIR{
 				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{},
 			}
@@ -353,7 +353,7 @@ func Test_redirectFeature(t *testing.T) {
 					Namespace: tt.initialHTTPRoute.Namespace,
 					Name:      tt.initialHTTPRoute.Name,
 				}
-				// Initialize RuleBackendSources to match the number of rules
+				// Initialize RuleBackendSources to match the number of rules.
 				ruleBackendSources := make([][]providerir.BackendSource, len(tt.initialHTTPRoute.Spec.Rules))
 				for i := range ruleBackendSources {
 					ruleBackendSources[i] = []providerir.BackendSource{
@@ -368,10 +368,10 @@ func Test_redirectFeature(t *testing.T) {
 				}
 			}
 
-			// Call the feature parser
+			// Call the feature parser.
 			errs := redirectFeature(notifications.NoopNotify, []networkingv1.Ingress{tt.ingress}, nil, &ir)
 
-			// Check error expectations
+			// Check error expectations.
 			if tt.expectError && len(errs) == 0 {
 				t.Errorf("Expected error but got none")
 			}
@@ -379,7 +379,7 @@ func Test_redirectFeature(t *testing.T) {
 				t.Errorf("Unexpected errors: %v", errs)
 			}
 
-			// If we don't expect errors, verify the HTTPRoute was modified correctly
+			// If we don't expect errors, verify the HTTPRoute was modified correctly.
 			if !tt.expectError && tt.expectedHTTPRoute != nil {
 				routeKey := types.NamespacedName{
 					Namespace: tt.expectedHTTPRoute.Namespace,
@@ -393,13 +393,13 @@ func Test_redirectFeature(t *testing.T) {
 
 				actualRoute := httpRouteContext.HTTPRoute
 
-				// Verify number of rules
+				// Verify number of rules.
 				if len(actualRoute.Spec.Rules) != len(tt.expectedHTTPRoute.Spec.Rules) {
 					t.Errorf("Expected %d rules, got %d", len(tt.expectedHTTPRoute.Spec.Rules), len(actualRoute.Spec.Rules))
 					return
 				}
 
-				// Verify redirect filter in first rule if expected
+				// Verify redirect filter in first rule if expected.
 				if len(tt.expectedHTTPRoute.Spec.Rules) > 0 && len(tt.expectedHTTPRoute.Spec.Rules[0].Filters) > 0 {
 					if len(actualRoute.Spec.Rules[0].Filters) == 0 {
 						t.Errorf("Expected redirect filter in first rule")
@@ -462,7 +462,7 @@ func Test_redirectFeature(t *testing.T) {
 						}
 					}
 
-					// Verify BackendRefs are cleared when redirect is present
+					// Verify BackendRefs are cleared when redirect is present.
 					if len(actualRoute.Spec.Rules[0].BackendRefs) != 0 {
 						t.Errorf("Expected BackendRefs to be cleared for redirect rule, got %d refs", len(actualRoute.Spec.Rules[0].BackendRefs))
 					}
@@ -544,7 +544,7 @@ func TestAddDefaultSSLRedirect_enabled(t *testing.T) {
 			Namespace:   key.Namespace,
 			Name:        "ing",
 			Annotations: map[string]string{
-				// no SSLRedirectAnnotation -> default enabled
+				// No SSLRedirectAnnotation -> default enabled.
 			},
 		},
 		Spec: networkingv1.IngressSpec{
@@ -734,7 +734,7 @@ func TestAddDefaultSSLRedirect_conflictingAnnotations(t *testing.T) {
 		t.Fatalf("expected http route %v to be created", httpKey)
 	}
 
-	// Consolidated route: redirect rule for /a, passthrough rule for /b
+	// Consolidated route: redirect rule for /a, passthrough rule for /b.
 	if len(httpCtx.Spec.Rules) != 2 {
 		t.Fatalf("expected 2 rules, got %d", len(httpCtx.Spec.Rules))
 	}
@@ -878,7 +878,7 @@ func TestAddDefaultSSLRedirect_threeRulesMixed(t *testing.T) {
 		},
 	}
 
-	// Rule 0 (/a) -> enabled, Rule 1 (/b) -> disabled, Rule 2 (/c) -> enabled
+	// Rule 0 (/a) -> enabled, Rule 1 (/b) -> disabled, Rule 2 (/c) -> enabled.
 	pIR := providerir.ProviderIR{HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{}}
 	pIR.HTTPRoutes[key] = providerir.HTTPRouteContext{
 		HTTPRoute: route,
@@ -894,7 +894,7 @@ func TestAddDefaultSSLRedirect_threeRulesMixed(t *testing.T) {
 
 	(&Provider{}).addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ingEnabled, ingDisabled}, &pIR, &eIR)
 
-	// Consolidated: /a (redirect), /b (passthrough), /c (redirect) — in iteration order
+	// Consolidated: /a (redirect), /b (passthrough), /c (redirect) — in iteration order.
 	httpKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
 	httpCtx, ok := eIR.HTTPRoutes[httpKey]
 	if !ok {
@@ -917,7 +917,7 @@ func TestAddDefaultSSLRedirect_threeRulesMixed(t *testing.T) {
 func TestAddDefaultSSLRedirect_canarySourceIgnored(t *testing.T) {
 	key := types.NamespacedName{Namespace: "default", Name: "route"}
 
-	// Primary ingress disables SSL redirect
+	// Primary ingress disables SSL redirect.
 	ingPrimary := networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: key.Namespace,
@@ -932,7 +932,7 @@ func TestAddDefaultSSLRedirect_canarySourceIgnored(t *testing.T) {
 		},
 	}
 
-	// Canary ingress enables SSL redirect — should be ignored
+	// Canary ingress enables SSL redirect — should be ignored.
 	ingCanary := networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: key.Namespace,
@@ -962,7 +962,7 @@ func TestAddDefaultSSLRedirect_canarySourceIgnored(t *testing.T) {
 		},
 	}
 
-	// Rule has both canary and primary sources; primary disables redirect
+	// Rule has both canary and primary sources; primary disables redirect.
 	pIR := providerir.ProviderIR{HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{}}
 	pIR.HTTPRoutes[key] = providerir.HTTPRouteContext{
 		HTTPRoute: route,
@@ -1033,7 +1033,7 @@ func TestAddDefaultSSLRedirect_multipleParentRefs(t *testing.T) {
 		t.Fatalf("expected redirect route to be created")
 	}
 
-	// Both parent refs on the redirect route should have port 80
+	// Both parent refs on the redirect route should have port 80.
 	if len(redirectCtx.Spec.ParentRefs) != 2 {
 		t.Fatalf("expected 2 parentRefs on redirect route, got %d", len(redirectCtx.Spec.ParentRefs))
 	}
@@ -1043,7 +1043,7 @@ func TestAddDefaultSSLRedirect_multipleParentRefs(t *testing.T) {
 		}
 	}
 
-	// Both parent refs on the original route should have port 443
+	// Both parent refs on the original route should have port 443.
 	origCtx := eIR.HTTPRoutes[key]
 	if len(origCtx.Spec.ParentRefs) != 2 {
 		t.Fatalf("expected 2 parentRefs on original route, got %d", len(origCtx.Spec.ParentRefs))
@@ -1058,7 +1058,7 @@ func TestAddDefaultSSLRedirect_multipleParentRefs(t *testing.T) {
 func TestAddDefaultSSLRedirect_mixedTLSAndNoTLSRules(t *testing.T) {
 	key := types.NamespacedName{Namespace: "default", Name: "route"}
 
-	// Ingress with TLS configured (default ssl-redirect=true)
+	// Ingress with TLS configured (default ssl-redirect=true).
 	ingWithTLS := networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   key.Namespace,
@@ -1099,7 +1099,7 @@ func TestAddDefaultSSLRedirect_mixedTLSAndNoTLSRules(t *testing.T) {
 		},
 	}
 
-	// Rule 0 (/a) -> has TLS, Rule 1 (/b) -> no TLS on its own ingress
+	// Rule 0 (/a) -> has TLS, Rule 1 (/b) -> no TLS on its own ingress.
 	pIR := providerir.ProviderIR{HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{}}
 	pIR.HTTPRoutes[key] = providerir.HTTPRouteContext{
 		HTTPRoute: route,
@@ -1116,6 +1116,7 @@ func TestAddDefaultSSLRedirect_mixedTLSAndNoTLSRules(t *testing.T) {
 
 	// Both /a and /b should get redirects because the hostname has TLS
 	// (from ingWithTLS), matching ingress-nginx's hostname-level TLS merging.
+
 	redirectKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
 	redirectCtx, ok := eIR.HTTPRoutes[redirectKey]
 	if !ok {
@@ -1239,7 +1240,7 @@ func TestAddDefaultSSLRedirect_crossIngressTLSWithOptOut(t *testing.T) {
 
 	(&Provider{}).addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ingWithTLS, ingNoTLSOptOut}, &pIR, &eIR)
 
-	// Consolidated: /a redirect + /b passthrough in one route
+	// Consolidated: /a redirect + /b passthrough in one route.
 	httpKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
 	httpCtx, ok := eIR.HTTPRoutes[httpKey]
 	if !ok {
@@ -1283,7 +1284,7 @@ func TestAddDefaultSSLRedirect_crossIngressTLSThreeWayMixed(t *testing.T) {
 		Spec: networkingv1.IngressSpec{},
 	}
 
-	// Ingress C: no TLS, default ssl-redirect (inherits from hostname)
+	// Ingress C: no TLS, default ssl-redirect (inherits from hostname).
 	ingNoTLSDefault := networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   key.Namespace,
@@ -1326,7 +1327,7 @@ func TestAddDefaultSSLRedirect_crossIngressTLSThreeWayMixed(t *testing.T) {
 
 	(&Provider{}).addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ingWithTLS, ingNoTLSOptOut, ingNoTLSDefault}, &pIR, &eIR)
 
-	// Consolidated: /a (redirect), /b (passthrough), /c (redirect) — in iteration order
+	// Consolidated: /a (redirect), /b (passthrough), /c (redirect) — in iteration order.
 	httpKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
 	httpCtx, ok := eIR.HTTPRoutes[httpKey]
 	if !ok {
@@ -1396,7 +1397,7 @@ func TestAddDefaultSSLRedirect_allIngressesNoTLS(t *testing.T) {
 
 	(&Provider{}).addSSLAndTrailingSlashRedirects([]networkingv1.Ingress{ingA, ingB}, &pIR, &eIR)
 
-	// No ingress has TLS, so no http route should be created
+	// No ingress has TLS, so no http route should be created.
 	httpKey := types.NamespacedName{Namespace: key.Namespace, Name: key.Name + "-http"}
 	if _, ok := eIR.HTTPRoutes[httpKey]; ok {
 		t.Fatalf("did not expect http route when no ingress has TLS")

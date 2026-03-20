@@ -42,26 +42,26 @@ import (
 // Gateway API only supports status codes 301, 302, 303, 307, 308.
 // Intersecting with ingress-nginx's valid ranges:
 // - temporal-redirect defaults to 302, supported custom codes: 301, 302, 303, 307
-// - permanent-redirect defaults to 301, supported custom codes: 301, 302, 303, 307, 308
+// - permanent-redirect defaults to 301, supported custom codes: 301, 302, 303, 307, 308.
 func redirectFeature(notify notifications.NotifyFunc, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 
-	// Iterate over all HTTPRoutes in the IR
+	// Iterate over all HTTPRoutes in the IR.
 	for key, httpRouteContext := range ir.HTTPRoutes {
-		// Iterate over each rule in the HTTPRoute
+		// Iterate over each rule in the HTTPRoute.
 		for ruleIndex := range httpRouteContext.HTTPRoute.Spec.Rules {
-			// Check if this rule has backend sources
+			// Check if this rule has backend sources.
 			if ruleIndex >= len(httpRouteContext.RuleBackendSources) {
 				continue
 			}
 
-			// Get the non canary ingress for this rule
+			// Get the non canary ingress for this rule.
 			ingress := getNonCanaryIngress(httpRouteContext.RuleBackendSources[ruleIndex])
 
 			if ingress == nil {
 				continue
 			}
 
-			// Warn about unsupported proxy-redirect annotations
+			// Warn about unsupported proxy-redirect annotations.
 			if ingress.Annotations[ProxyRedirectFromAnnotation] != "" {
 				notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s uses unsupported annotation %s",
 					ingress.Namespace, ingress.Name, ProxyRedirectFromAnnotation), ingress)
@@ -74,7 +74,7 @@ func redirectFeature(notify notifications.NotifyFunc, ingresses []networkingv1.I
 			temporalRedirectURL, hasTemporal := ingress.Annotations[TemporalRedirectAnnotation]
 			permanentRedirectURL, hasPermanent := ingress.Annotations[PermanentRedirectAnnotation]
 
-			// Skip if neither annotation is present
+			// Skip if neither annotation is present.
 			if !hasPermanent && !hasTemporal {
 				continue
 			}
@@ -92,7 +92,7 @@ func redirectFeature(notify notifications.NotifyFunc, ingresses []networkingv1.I
 				statusCode = 302
 				annotationUsed = TemporalRedirectAnnotation
 
-				// Warn if both annotations are present (permanent is ignored)
+				// Warn if both annotations are present (permanent is ignored).
 				if hasPermanent {
 					notify(notifications.WarningNotification, fmt.Sprintf("ingress %s/%s has both %s and %s annotations; temporal-redirect takes priority, permanent-redirect is ignored",
 						ingress.Namespace, ingress.Name, PermanentRedirectAnnotation, TemporalRedirectAnnotation), ingress)
@@ -109,7 +109,7 @@ func redirectFeature(notify notifications.NotifyFunc, ingresses []networkingv1.I
 					}
 				}
 			} else {
-				// Only reached if temporal-redirect annotation is completely absent
+				// Only reached if temporal-redirect annotation is completely absent.
 				redirectURL = permanentRedirectURL
 				statusCode = 301
 				annotationUsed = PermanentRedirectAnnotation
@@ -126,14 +126,14 @@ func redirectFeature(notify notifications.NotifyFunc, ingresses []networkingv1.I
 				}
 			}
 
-			// Validate that the redirect URL is not empty
+			// Validate that the redirect URL is not empty.
 			if redirectURL == "" {
 				notify(notifications.ErrorNotification, fmt.Sprintf("Empty %s annotation, skipping redirect",
 					annotationUsed), ingress)
 				continue
 			}
 
-			// Parse the redirect URL
+			// Parse the redirect URL.
 			parsedURL, err := url.Parse(redirectURL)
 			if err != nil {
 				notify(notifications.ErrorNotification, fmt.Sprintf("Invalid redirect URL in %s annotation: %v, skipping redirect",
@@ -141,23 +141,23 @@ func redirectFeature(notify notifications.NotifyFunc, ingresses []networkingv1.I
 				continue
 			}
 
-			// Create the redirect filter
+			// Create the redirect filter.
 			redirectFilterConfig := &gatewayv1.HTTPRequestRedirectFilter{
 				StatusCode: ptr.To(statusCode),
 			}
 
-			// Set scheme if present
+			// Set scheme if present.
 			if parsedURL.Scheme != "" {
 				redirectFilterConfig.Scheme = ptr.To(parsedURL.Scheme)
 			}
 
-			// Set hostname if present
+			// Set hostname if present.
 			if parsedURL.Hostname() != "" {
 				hostname := gatewayv1.PreciseHostname(parsedURL.Hostname())
 				redirectFilterConfig.Hostname = &hostname
 			}
 
-			// Set port if present
+			// Set port if present.
 			if parsedURL.Port() != "" {
 				port, err := strconv.Atoi(parsedURL.Port())
 				if err == nil {
@@ -171,7 +171,7 @@ func redirectFeature(notify notifications.NotifyFunc, ingresses []networkingv1.I
 			}
 
 			// Set path - default to root path if not specified in redirect URL
-			// This matches ingress-nginx behavior where redirects override the request path
+			// This matches ingress-nginx behavior where redirects override the request path.
 			path := parsedURL.Path
 			if path == "" {
 				path = "/"
@@ -187,17 +187,17 @@ func redirectFeature(notify notifications.NotifyFunc, ingresses []networkingv1.I
 				RequestRedirect: redirectFilterConfig,
 			}
 
-			// Add redirect filter to the current rule
+			// Add redirect filter to the current rule.
 			httpRouteContext.HTTPRoute.Spec.Rules[ruleIndex].Filters = append(
 				httpRouteContext.HTTPRoute.Spec.Rules[ruleIndex].Filters,
 				redirectFilter,
 			)
 
-			// Clear backend refs as redirects don't route to backends
+			// Clear backend refs as redirects don't route to backends.
 			httpRouteContext.HTTPRoute.Spec.Rules[ruleIndex].BackendRefs = nil
 		}
 
-		// Save the updated context back to the IR
+		// Save the updated context back to the IR.
 		ir.HTTPRoutes[key] = httpRouteContext
 	}
 
@@ -217,7 +217,7 @@ func redirectFeature(notify notifications.NotifyFunc, ingresses []networkingv1.I
 // are combined with the SSL upgrade into a single hop (301 to https://host/path/) to
 // avoid unnecessary intermediate redirects.
 func (p *Provider) addSSLAndTrailingSlashRedirects(ingresses []networkingv1.Ingress, pir *providerir.ProviderIR, eir *emitterir.EmitterIR) {
-	// Find hosts with TLS enabled
+	// Find hosts with TLS enabled.
 	hostsWithTLS := make(map[string]struct{})
 	for _, ing := range ingresses {
 		for _, tls := range ing.Spec.TLS {
@@ -306,7 +306,7 @@ func (p *Provider) addSSLAndTrailingSlashRedirects(ingresses []networkingv1.Ingr
 
 		// For the HTTP route, combine trailing slash + SSL upgrade into single-hop
 		// redirects: http://host/path -> 301 https://host/path/
-		// Ingress nginx does http://host/path -> http://host/path/ -> https://host/path -> https://host/path/
+		// Ingress nginx does http://host/path -> http://host/path/ -> https://host/path -> https://host/path/.
 		for _, tsRule := range trailingSlashRules {
 			combinedRule := *tsRule.DeepCopy()
 			combinedRule.Filters[0].RequestRedirect.Scheme = ptr.To("https")
@@ -324,9 +324,9 @@ func (p *Provider) addSSLAndTrailingSlashRedirects(ingresses []networkingv1.Ingr
 				Rules:     httpRules,
 			},
 		}
-		// add parentrefs
+		// Add parentrefs.
 		redirectRoute.Spec.ParentRefs = httpRouteContext.HTTPRoute.Spec.DeepCopy().ParentRefs
-		// bind to port 80
+		// Bind to port 80.
 		for i := range redirectRoute.Spec.ParentRefs {
 			redirectRoute.Spec.ParentRefs[i].Port = ptr.To[int32](80)
 		}
@@ -337,7 +337,7 @@ func (p *Provider) addSSLAndTrailingSlashRedirects(ingresses []networkingv1.Ingr
 			HTTPRoute: redirectRoute,
 		}
 
-		// bind original route to port 443
+		// Bind original route to port 443.
 		for i := range eRouteCtx.Spec.ParentRefs {
 			eRouteCtx.Spec.ParentRefs[i].Port = ptr.To[int32](443)
 		}
@@ -347,7 +347,7 @@ func (p *Provider) addSSLAndTrailingSlashRedirects(ingresses []networkingv1.Ingr
 
 // isValidTemporalRedirectCode returns true if the code is in the intersection of
 // ingress-nginx temporal-redirect codes (300-307) and Gateway API codes (301,302,303,307,308).
-// Result: 301, 302, 303, 307
+// Result: 301, 302, 303, 307.
 func isValidTemporalRedirectCode(code int) bool {
 	switch code {
 	case 301, 302, 303, 307:
@@ -359,7 +359,7 @@ func isValidTemporalRedirectCode(code int) bool {
 
 // isValidPermanentRedirectCode returns true if the code is in the intersection of
 // ingress-nginx permanent-redirect codes (300-308) and Gateway API codes (301,302,303,307,308).
-// Result: 301, 302, 303, 307, 308
+// Result: 301, 302, 303, 307, 308.
 func isValidPermanentRedirectCode(code int) bool {
 	switch code {
 	case 301, 302, 303, 307, 308:
@@ -474,6 +474,6 @@ func pathPrefixCovers(prefix, path string) bool {
 	if len(path) == len(prefix) {
 		return true
 	}
-	// path is longer than prefix; check segment boundary
+	// Path is longer than prefix; check segment boundary.
 	return prefix[len(prefix)-1] == '/' || path[len(prefix)] == '/'
 }
