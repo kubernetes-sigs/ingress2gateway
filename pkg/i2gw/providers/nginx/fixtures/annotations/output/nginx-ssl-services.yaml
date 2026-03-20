@@ -38,6 +38,7 @@ spec:
     - path:
         type: PathPrefix
         value: /ssl
+    name: rule-0
   - backendRefs:
     - name: tea
       port: 80
@@ -45,6 +46,7 @@ spec:
     - path:
         type: PathPrefix
         value: /tea
+    name: rule-1
 status:
   parents: []
 ---

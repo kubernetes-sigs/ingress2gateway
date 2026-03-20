@@ -38,6 +38,7 @@ spec:
     - path:
         type: RegularExpression
         value: /api/v[0-9]+
+    name: rule-0
   - backendRefs:
     - name: static-service
       port: 8080
@@ -45,5 +46,6 @@ spec:
     - path:
         type: RegularExpression
         value: /static
+    name: rule-1
 status:
   parents: []
