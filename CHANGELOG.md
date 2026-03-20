@@ -43,7 +43,7 @@ redirect, canary routing, CORS, and timeouts. (#294, #330, #353, #366, #372)
 
 ### Feature
 
-- Emitters framework: pluggable emitter architecture separating providers (Ingress → IR) from emitters (IR → Gateway API resources). Includes standard, Envoy Gateway, kgateway, and GCE emitters. (#265, #273, #305, #320, #336, @Stevenjin8, @kkk777-7, @puertomontt, @chakravardhan)
+- Emitters framework: pluggable emitter architecture separating providers (Ingress → IR) from emitters (IR → Gateway API resources). Includes standard, Agentgateway, Envoy Gateway, kgateway, and GCE emitters. (#265, #273, #305, #320, #336, #388, @Stevenjin8, @kkk777-7, @puertomontt, @chakravardhan, @markuskobler)
 - Route rule name support for xPolicy CRD attachment (#298, @kkk777-7)
 - ingress-nginx: header manipulation (`upstream-vhost`, `x-forwarded-prefix`, `connection-proxy-header`) (#283, @eladmotola)
 - ingress-nginx: GRPC support annotation  (#286, @eladmotola)
@@ -56,6 +56,8 @@ redirect, canary routing, CORS, and timeouts. (#294, #330, #353, #366, #372)
 - ingress-nginx: Backend TLS via `proxy-ssl-verify` and `proxy-ssl-secret`, translated to BackendTLSPolicy (#308, @rajashish)
 - ingress-nginx: `proxy-body-size` and `client-body-buffer-size` buffer annotations (#305, #375, @kkk777-7, @Stevenjin8)
 - ingress-nginx: `whitelist-source-range` and `denylist-source-range` IP access control (#345, @kkk777-7)
+- ingress-nginx: `ssl-redirect` annotation with per-route evaluation matching ingress-nginx per-location semantics (#290, #385, @Stevenjin8)
+- ingress-nginx: trailing slash redirects (#385, @Stevenjin8)
 - ingress-nginx: annotation tracking with notifications for unsupported/unparsed annotations (#359, #361, #370, @Stevenjin8, @kkk777-7)
 - Read resources from multiple input files and directories via `--input-file` (#258, #357, @carmal891, @johananl)
 - Refactored notification system to provider- and emitter-scoped reports (#360, #384, @johananl, @Stevenjin8)
