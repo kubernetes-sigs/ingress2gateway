@@ -51,7 +51,7 @@ type BackendTLSSecrets struct {
 }
 
 // GenerateSelfSignedTLSSecret creates a self-signed TLS secret for testing.
-func GenerateSelfSignedTLSSecret(name, namespace, commonName string, hosts []string) (*TLSTestSecret, error) {
+func GenerateSelfSignedTLSSecret(name, commonName string, hosts []string) (*TLSTestSecret, error) {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, fmt.Errorf("generating key: %w", err)
@@ -91,8 +91,7 @@ func GenerateSelfSignedTLSSecret(name, namespace, commonName string, hosts []str
 	return &TLSTestSecret{
 		Secret: &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
+				Name: name,
 			},
 			Type: corev1.SecretTypeTLS,
 			Data: map[string][]byte{
