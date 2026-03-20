@@ -110,6 +110,7 @@ func Test_convertToIR(t *testing.T) {
 								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
 								Rules: []gatewayv1.HTTPRouteRule{
 									{
+										Name: common.PtrTo(gatewayv1.SectionName("rule-0")),
 										Matches: []gatewayv1.HTTPRouteMatch{
 											{
 												Path: &gatewayv1.HTTPPathMatch{
@@ -174,6 +175,7 @@ func Test_convertToIR(t *testing.T) {
 								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
 								Rules: []gatewayv1.HTTPRouteRule{
 									{
+										Name: common.PtrTo(gatewayv1.SectionName("rule-0")),
 										Matches: []gatewayv1.HTTPRouteMatch{
 											{
 												Path: &gatewayv1.HTTPPathMatch{
@@ -239,6 +241,7 @@ func Test_convertToIR(t *testing.T) {
 								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
 								Rules: []gatewayv1.HTTPRouteRule{
 									{
+										Name: common.PtrTo(gatewayv1.SectionName("rule-0")),
 										Matches: []gatewayv1.HTTPRouteMatch{
 											{
 												Path: &gatewayv1.HTTPPathMatch{
@@ -305,6 +308,7 @@ func Test_convertToIR(t *testing.T) {
 								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
 								Rules: []gatewayv1.HTTPRouteRule{
 									{
+										Name: common.PtrTo(gatewayv1.SectionName("rule-0")),
 										Matches: []gatewayv1.HTTPRouteMatch{
 											{
 												Path: &gatewayv1.HTTPPathMatch{
@@ -371,6 +375,7 @@ func Test_convertToIR(t *testing.T) {
 								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
 								Rules: []gatewayv1.HTTPRouteRule{
 									{
+										Name: common.PtrTo(gatewayv1.SectionName("rule-0")),
 										Matches: []gatewayv1.HTTPRouteMatch{
 											{
 												Path: &gatewayv1.HTTPPathMatch{
@@ -437,6 +442,7 @@ func Test_convertToIR(t *testing.T) {
 								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
 								Rules: []gatewayv1.HTTPRouteRule{
 									{
+										Name: common.PtrTo(gatewayv1.SectionName("rule-0")),
 										Matches: []gatewayv1.HTTPRouteMatch{
 											{
 												Path: &gatewayv1.HTTPPathMatch{
@@ -512,6 +518,7 @@ func Test_convertToIR(t *testing.T) {
 								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
 								Rules: []gatewayv1.HTTPRouteRule{
 									{
+										Name: common.PtrTo(gatewayv1.SectionName("rule-0")),
 										Matches: []gatewayv1.HTTPRouteMatch{
 											{
 												Path: &gatewayv1.HTTPPathMatch{
@@ -597,6 +604,7 @@ func Test_convertToIR(t *testing.T) {
 								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
 								Rules: []gatewayv1.HTTPRouteRule{
 									{
+										Name: common.PtrTo(gatewayv1.SectionName("rule-0")),
 										Matches: []gatewayv1.HTTPRouteMatch{
 											{
 												Path: &gatewayv1.HTTPPathMatch{
@@ -682,6 +690,7 @@ func Test_convertToIR(t *testing.T) {
 								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
 								Rules: []gatewayv1.HTTPRouteRule{
 									{
+										Name: common.PtrTo(gatewayv1.SectionName("rule-0")),
 										Matches: []gatewayv1.HTTPRouteMatch{
 											{
 												Path: &gatewayv1.HTTPPathMatch{
@@ -772,6 +781,7 @@ func Test_convertToIR(t *testing.T) {
 								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
 								Rules: []gatewayv1.HTTPRouteRule{
 									{
+										Name: common.PtrTo(gatewayv1.SectionName("rule-0")),
 										Matches: []gatewayv1.HTTPRouteMatch{
 											{
 												Path: &gatewayv1.HTTPPathMatch{
@@ -866,6 +876,7 @@ func Test_convertToIR(t *testing.T) {
 								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
 								Rules: []gatewayv1.HTTPRouteRule{
 									{
+										Name: common.PtrTo(gatewayv1.SectionName("rule-0")),
 										Matches: []gatewayv1.HTTPRouteMatch{
 											{
 												Path: &gatewayv1.HTTPPathMatch{
@@ -932,6 +943,7 @@ func Test_convertToIR(t *testing.T) {
 								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
 								Rules: []gatewayv1.HTTPRouteRule{
 									{
+										Name: common.PtrTo(gatewayv1.SectionName("rule-0")),
 										Matches: []gatewayv1.HTTPRouteMatch{
 											{
 												Path: &gatewayv1.HTTPPathMatch{

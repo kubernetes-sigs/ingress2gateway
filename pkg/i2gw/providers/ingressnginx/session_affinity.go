@@ -19,7 +19,6 @@ package ingressnginx
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
@@ -49,11 +48,12 @@ func sessionAffinityFeature(notify notifications.NotifyFunc, _ []networkingv1.In
 
 			var affinityType string
 			var cookieTTL *int64
-			var cookieName string
+			var sourceIngress *networkingv1.Ingress
 
 			for _, source := range sources {
 				if val, ok := source.Ingress.Annotations[AffinityAnnotation]; ok && val == "cookie" {
 					affinityType = "Cookie"
+					sourceIngress = source.Ingress
 
 					// Check for Max Age (Expires)
 					if ttlVal, ok := source.Ingress.Annotations[SessionCookieExpiresAnnotation]; ok {
@@ -61,22 +61,7 @@ func sessionAffinityFeature(notify notifications.NotifyFunc, _ []networkingv1.In
 							cookieTTL = &ttl
 						}
 					}
-					// Check for Cookie Name
-					if nameVal, ok := source.Ingress.Annotations[SessionCookieNameAnnotation]; ok {
-						cookieName = nameVal
-					}
 
-					// Warn on unsupported session-cookie annotations
-					for annotation := range source.Ingress.Annotations {
-						if strings.HasPrefix(annotation, "nginx.ingress.kubernetes.io/session-cookie-") {
-							if annotation != SessionCookieExpiresAnnotation && annotation != SessionCookieNameAnnotation {
-								notify(notifications.WarningNotification, fmt.Sprintf("Unsupported session affinity annotation %s", annotation), source.Ingress)
-							}
-						}
-					}
-
-					// Only use the first finding or merge? Nginx usually takes first match or last applied.
-					// We'll break on first valid "cookie" affinity found.
 					break
 				}
 			}
@@ -84,6 +69,18 @@ func sessionAffinityFeature(notify notifications.NotifyFunc, _ []networkingv1.In
 			if affinityType == "" {
 				continue
 			}
+
+			// Build metadata following the same pattern as IPRangeControl:
+			// source is namespace/name, paths list all parsed annotations.
+			source := fmt.Sprintf("%s/%s", sourceIngress.Namespace, sourceIngress.Name)
+			message := "Session affinity is not supported"
+			paths := []*field.Path{
+				field.NewPath(sourceIngress.Namespace, sourceIngress.Name, "metadata", "annotations", fmt.Sprintf("%q", AffinityAnnotation)),
+			}
+			if cookieTTL != nil {
+				paths = append(paths, field.NewPath(sourceIngress.Namespace, sourceIngress.Name, "metadata", "annotations", fmt.Sprintf("%q", SessionCookieExpiresAnnotation)))
+			}
+			metadata := emitterir.NewExtensionFeatureMetadata(source, paths, message)
 
 			// Apply to all backend refs in this rule?
 			// Session Affinity is per Backend Service.
@@ -104,8 +101,7 @@ func sessionAffinityFeature(notify notifications.NotifyFunc, _ []networkingv1.In
 
 					svc.SessionAffinity.Type = affinityType
 					svc.SessionAffinity.CookieTTLSec = cookieTTL
-					svc.SessionAffinity.CookieName = cookieName
-					svc.SessionAffinity.Metadata = emitterir.NewExtensionFeatureMetadata("ingress-nginx", []*field.Path{field.NewPath("annotations", "nginx.ingress.kubernetes.io/affinity")}, "")
+					svc.SessionAffinity.Metadata = metadata
 
 					// Update the map
 					ir.Services[svcKey] = svc
@@ -113,10 +109,9 @@ func sessionAffinityFeature(notify notifications.NotifyFunc, _ []networkingv1.In
 					// Service doesn't exist yet, create it
 					svc = providerir.ProviderSpecificServiceIR{
 						SessionAffinity: &emitterir.SessionAffinity{
-							Metadata:     emitterir.NewExtensionFeatureMetadata("ingress-nginx", []*field.Path{field.NewPath("annotations", "nginx.ingress.kubernetes.io/affinity")}, ""),
+							Metadata:     metadata,
 							Type:         affinityType,
 							CookieTTLSec: cookieTTL,
-							CookieName:   cookieName,
 						},
 					}
 					ir.Services[svcKey] = svc

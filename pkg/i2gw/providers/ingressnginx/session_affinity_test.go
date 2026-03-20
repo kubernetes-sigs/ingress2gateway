@@ -17,16 +17,19 @@ limitations under the License.
 package ingressnginx
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -40,7 +43,8 @@ func TestGCEFeature(t *testing.T) {
 			name: "No Affinity",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "no-affinity",
+					Name:      "no-affinity",
+					Namespace: "default",
 				},
 			},
 			expectedSessionAffinity: nil, // Should not modify service
@@ -49,22 +53,28 @@ func TestGCEFeature(t *testing.T) {
 			name: "Cookie Affinity",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "cookie-affinity",
+					Name:      "cookie-affinity",
+					Namespace: "default",
 					Annotations: map[string]string{
 						"nginx.ingress.kubernetes.io/affinity": "cookie",
 					},
 				},
 			},
 			expectedSessionAffinity: &emitterir.SessionAffinity{
-				Metadata: emitterir.NewExtensionFeatureMetadata("ingress-nginx", []*field.Path{field.NewPath("annotations", "nginx.ingress.kubernetes.io/affinity")}, ""),
-				Type:     "Cookie",
+				Metadata: emitterir.NewExtensionFeatureMetadata(
+					"default/cookie-affinity",
+					[]*field.Path{field.NewPath("default", "cookie-affinity", "metadata", "annotations", fmt.Sprintf("%q", "nginx.ingress.kubernetes.io/affinity"))},
+					"Session affinity is not supported",
+				),
+				Type: "Cookie",
 			},
 		},
 		{
 			name: "Cookie Affinity with Expires",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "cookie-affinity-expires",
+					Name:      "cookie-affinity-expires",
+					Namespace: "default",
 					Annotations: map[string]string{
 						"nginx.ingress.kubernetes.io/affinity":               "cookie",
 						"nginx.ingress.kubernetes.io/session-cookie-expires": "3600",
@@ -72,16 +82,24 @@ func TestGCEFeature(t *testing.T) {
 				},
 			},
 			expectedSessionAffinity: &emitterir.SessionAffinity{
-				Metadata:     emitterir.NewExtensionFeatureMetadata("ingress-nginx", []*field.Path{field.NewPath("annotations", "nginx.ingress.kubernetes.io/affinity")}, ""),
+				Metadata: emitterir.NewExtensionFeatureMetadata(
+					"default/cookie-affinity-expires",
+					[]*field.Path{
+						field.NewPath("default", "cookie-affinity-expires", "metadata", "annotations", fmt.Sprintf("%q", "nginx.ingress.kubernetes.io/affinity")),
+						field.NewPath("default", "cookie-affinity-expires", "metadata", "annotations", fmt.Sprintf("%q", "nginx.ingress.kubernetes.io/session-cookie-expires")),
+					},
+					"Session affinity is not supported",
+				),
 				Type:         "Cookie",
 				CookieTTLSec: ptr.To(int64(3600)),
 			},
 		},
 		{
-			name: "Cookie Affinity with Name",
+			name: "Cookie Affinity with Name (unparsed - no emitter consumes it)",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "cookie-affinity-name",
+					Name:      "cookie-affinity-name",
+					Namespace: "default",
 					Annotations: map[string]string{
 						"nginx.ingress.kubernetes.io/affinity":            "cookie",
 						"nginx.ingress.kubernetes.io/session-cookie-name": "MY_COOKIE",
@@ -89,9 +107,12 @@ func TestGCEFeature(t *testing.T) {
 				},
 			},
 			expectedSessionAffinity: &emitterir.SessionAffinity{
-				Metadata:   emitterir.NewExtensionFeatureMetadata("ingress-nginx", []*field.Path{field.NewPath("annotations", "nginx.ingress.kubernetes.io/affinity")}, ""),
-				Type:       "Cookie",
-				CookieName: "MY_COOKIE",
+				Metadata: emitterir.NewExtensionFeatureMetadata(
+					"default/cookie-affinity-name",
+					[]*field.Path{field.NewPath("default", "cookie-affinity-name", "metadata", "annotations", fmt.Sprintf("%q", "nginx.ingress.kubernetes.io/affinity"))},
+					"Session affinity is not supported",
+				),
+				Type: "Cookie",
 			},
 		},
 	}
@@ -136,7 +157,7 @@ func TestGCEFeature(t *testing.T) {
 				},
 			}
 
-			sessionAffinityFeature(nil, []networkingv1.Ingress{tc.ingress}, nil, &ir)
+			sessionAffinityFeature(func(_ notifications.MessageType, _ string, _ ...client.Object) {}, []networkingv1.Ingress{tc.ingress}, nil, &ir)
 
 			actual := ir.Services[svcKey].SessionAffinity
 

@@ -78,7 +78,6 @@ type EmitterIR struct {
 type SessionAffinity struct {
 	Metadata     ExtensionFeatureMetadata
 	Type         string
-	CookieName   string
 	CookieTTLSec *int64
 }
 
@@ -97,7 +96,7 @@ type HTTPRouteContext struct {
 	gatewayv1.HTTPRoute
 	// TCPTimeoutsByRuleIdx holds provider TCP-level timeouts by HTTPRoute rule index.
 	TCPTimeoutsByRuleIdx map[int]*TCPTimeouts
-	
+
 	// PathRewriteByRuleIdx maps HTTPRoute rule indices to path rewrite intent.
 	// This is provider-neutral and applied by the common emitter.
 	PathRewriteByRuleIdx map[int]*PathRewrite
