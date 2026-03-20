@@ -41,14 +41,9 @@ func objectsToStr(ob []client.Object) string {
 
 	for _, o := range ob {
 		if o == nil {
-			strs = append(strs, "Unknown")
 			continue
 		}
-		kind := o.GetObjectKind().GroupVersionKind().Kind
-		if kind == "" {
-			kind = "Object"
-		}
-		strs = append(strs, kind+": "+client.ObjectKeyFromObject(o).String())
+		strs = append(strs, o.GetObjectKind().GroupVersionKind().Kind+": "+client.ObjectKeyFromObject(o).String())
 	}
 
 	return strings.Join(strs, ", ")
