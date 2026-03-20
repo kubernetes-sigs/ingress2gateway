@@ -85,6 +85,14 @@ type ServiceContext struct {
 	SessionAffinity *SessionAffinity
 }
 
+func (s *ServiceContext) UnparsedExtensions() []*ExtensionFeatureMetadata {
+	var unparsedExtensions []*ExtensionFeatureMetadata
+	if s.SessionAffinity != nil {
+		unparsedExtensions = append(unparsedExtensions, &s.SessionAffinity.Metadata)
+	}
+	return unparsedExtensions
+}
+
 type GatewayContext struct {
 	gatewayv1.Gateway
 	// Emitter IR should be provider/emitter neutral,

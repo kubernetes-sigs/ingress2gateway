@@ -25,6 +25,9 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
@@ -152,8 +155,12 @@ func LogUnparsedErrors(ir emitterir.EmitterIR, notify notifications.NotifyFunc) 
 	}
 
 	for svcKey, serviceContext := range ir.Services {
-		if serviceContext.SessionAffinity != nil {
-			meta := serviceContext.SessionAffinity.Metadata
+		for _, unparsedExtension := range serviceContext.UnparsedExtensions() {
+			if unparsedExtension == nil {
+				continue
+			}
+			meta := unparsedExtension
+
 			source := meta.Source()
 			paths := strings.Builder{}
 			for _, p := range meta.Paths() {
@@ -162,42 +169,21 @@ func LogUnparsedErrors(ir emitterir.EmitterIR, notify notifications.NotifyFunc) 
 			}
 
 			message := meta.FailureMessage()
-			if message == "" {
-				message = "Session Affinity is not supported by this emitter"
-			}
 
-			var associatedHR *gatewayv1.HTTPRoute
-			for _, hrContext := range ir.HTTPRoutes {
-				for _, rule := range hrContext.HTTPRoute.Spec.Rules {
-					for _, br := range rule.BackendRefs {
-						if string(br.Name) == svcKey.Name {
-							associatedHR = &hrContext.HTTPRoute
-							break
-						}
-					}
-					if associatedHR != nil {
-						break
-					}
-				}
-				if associatedHR != nil {
-					break
-				}
-			}
-
-			var warnObj *gatewayv1.HTTPRoute
-			if associatedHR != nil {
-				// Create a copy to modify type meta safely
-				copyHR := associatedHR.DeepCopy()
-				if copyHR.TypeMeta.Kind == "" {
-					copyHR.TypeMeta.Kind = "HTTPRoute"
-					copyHR.TypeMeta.APIVersion = "gateway.networking.k8s.io/v1"
-				}
-				warnObj = copyHR
+			svc := corev1.Service{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Service",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      svcKey.Name,
+					Namespace: svcKey.Namespace,
+				},
 			}
 
 			notify(notifications.WarningNotification,
 				fmt.Sprintf("failed to parse %s from Ingress %s: %s", source, strings.TrimSuffix(paths.String(), ", "), message),
-				warnObj,
+				&svc,
 			)
 		}
 	}
