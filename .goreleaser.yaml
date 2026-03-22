@@ -13,6 +13,8 @@ builds:
       - linux
       - darwin
       - windows
+    ldflags:
+      - -X 'github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw.Version={{.Version}}'
 
 archives:
   - format: tar.gz
