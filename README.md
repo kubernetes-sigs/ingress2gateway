@@ -41,6 +41,7 @@ For a detailed look at the architecture, see [docs/emitters.md](docs/emitters.md
 * [kong](pkg/i2gw/providers/kong/README.md)
 * [nginx](pkg/i2gw/providers/nginx/README.md)
 * [openapi](pkg/i2gw/providers/openapi3/README.md)
+* [traefik](pkg/i2gw/providers/traefik/README.md)
 
 If your provider, or a specific feature, is not currently supported, please open
 an issue and describe your use case.
