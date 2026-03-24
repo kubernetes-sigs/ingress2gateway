@@ -25,6 +25,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/utils/ptr"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,6 +33,18 @@ import (
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
+
+// AddHTTPRouteRuleNames assigns sequential names ("rule-0", "rule-1", etc.)
+// to all HTTPRoute rules in the EmitterIR. Emitters that support the extended
+// HTTPRoute rule name field should call this at the start of their Emit method.
+func AddHTTPRouteRuleNames(ir emitterir.EmitterIR) {
+	for key, ctx := range ir.HTTPRoutes {
+		for idx := range ctx.Spec.Rules {
+			ctx.Spec.Rules[idx].Name = ptr.To(gatewayv1.SectionName(fmt.Sprintf("rule-%d", idx)))
+		}
+		ir.HTTPRoutes[key] = ctx
+	}
+}
 
 type uniqueBackendRefsKey struct {
 	Name      gatewayv1.ObjectName

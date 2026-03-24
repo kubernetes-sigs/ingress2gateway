@@ -75,20 +75,7 @@ func (c *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.Err
 	buildGceGatewayExtensions(c.notify, ir, &gatewayResources)
 	buildGceServiceExtensions(c.notify, ir, &gatewayResources)
 
-	removeHTTPRouteRuleNames(&gatewayResources)
 	return gatewayResources, nil
-}
-
-func removeHTTPRouteRuleNames(gatewayResources *i2gw.GatewayResources) {
-	for k, route := range gatewayResources.HTTPRoutes {
-		rules := make([]gatewayv1.HTTPRouteRule, len(route.Spec.Rules))
-		copy(rules, route.Spec.Rules)
-		for j := range rules {
-			rules[j].Name = nil
-		}
-		route.Spec.Rules = rules
-		gatewayResources.HTTPRoutes[k] = route
-	}
 }
 
 func buildGceGatewayExtensions(notify notifications.NotifyFunc, ir emitterir.EmitterIR, gatewayResources *i2gw.GatewayResources) {
