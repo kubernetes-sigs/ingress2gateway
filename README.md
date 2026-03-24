@@ -141,7 +141,7 @@ The above command will:
 | Flag           | Default Value           | Required | Description                                                  |
 | -------------- | ----------------------- | -------- | ------------------------------------------------------------ |
 | gce-gateway-class-name |                   | No       | Provider-specific: gce. The name of the GatewayClass to use for the Gateway. |
-| ingressnginx-ingress-class | nginx          | No       | Provider-specific: ingress-nginx. The name of the ingress class to select. |
+| ingress-nginx-ingress-class | nginx          | No       | Provider-specific: ingress-nginx. The name of the ingress class to select. |
 | openapi3-backend     |                       | No       | Provider-specific: openapi3. The name of the backend service to use in the HTTPRoutes. |
 | openapi3-gateway-class-name |                | No       | Provider-specific: openapi3. The name of the gateway class to use in the Gateways. |
 | openapi3-tls-secret  |                       | No       | Provider-specific: openapi3. The name of the secret for the TLS certificate references in the Gateways. |
