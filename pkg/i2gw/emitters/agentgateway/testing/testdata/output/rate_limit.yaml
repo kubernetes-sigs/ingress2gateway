@@ -1,3 +1,58 @@
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: ingress-ratelimit-burst
+  namespace: default
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: ingress-ratelimit-burst-ratelimit-burst-example-org
+  traffic:
+    rateLimit:
+      local:
+        - burst: 250
+          requests: 50
+          unit: Seconds
+status:
+  ancestors: null
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: ingress-ratelimit-rpm
+  namespace: default
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: ingress-ratelimit-rpm-ratelimit-rpm-example-org
+  traffic:
+    rateLimit:
+      local:
+        - requests: 600
+          unit: Minutes
+status:
+  ancestors: null
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: ingress-ratelimit-rps
+  namespace: default
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: ingress-ratelimit-rps-ratelimit-rps-example-org
+  traffic:
+    rateLimit:
+      local:
+        - requests: 10
+          unit: Seconds
+status:
+  ancestors: null
+---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
@@ -8,42 +63,18 @@ metadata:
 spec:
   gatewayClassName: agentgateway
   listeners:
-  - hostname: ratelimit-burst.example.org
-    name: ratelimit-burst-example-org-http
-    port: 80
-    protocol: HTTP
-  - hostname: ratelimit-rpm.example.org
-    name: ratelimit-rpm-example-org-http
-    port: 80
-    protocol: HTTP
-  - hostname: ratelimit-rps.example.org
-    name: ratelimit-rps-example-org-http
-    port: 80
-    protocol: HTTP
-status: {}
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  annotations:
-    gateway.networking.k8s.io/generator: ingress2gateway-dev
-  name: ingress-ratelimit-rps-ratelimit-rps-example-org
-  namespace: default
-spec:
-  hostnames:
-  - ratelimit-rps.example.org
-  parentRefs:
-  - name: nginx
-  rules:
-  - backendRefs:
-    - name: myservice
+    - hostname: ratelimit-burst.example.org
+      name: ratelimit-burst-example-org-http
       port: 80
-    matches:
-    - path:
-        type: PathPrefix
-        value: /
-status:
-  parents: []
+      protocol: HTTP
+    - hostname: ratelimit-rpm.example.org
+      name: ratelimit-rpm-example-org-http
+      port: 80
+      protocol: HTTP
+    - hostname: ratelimit-rps.example.org
+      name: ratelimit-rps-example-org-http
+      port: 80
+      protocol: HTTP
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -54,17 +85,17 @@ metadata:
   namespace: default
 spec:
   hostnames:
-  - ratelimit-burst.example.org
+    - ratelimit-burst.example.org
   parentRefs:
-  - name: nginx
+    - name: nginx
   rules:
-  - backendRefs:
-    - name: myservice
-      port: 80
-    matches:
-    - path:
-        type: PathPrefix
-        value: /
+    - backendRefs:
+        - name: myservice
+          port: 80
+      matches:
+        - path:
+            type: PathPrefix
+            value: /
 status:
   parents: []
 ---
@@ -77,71 +108,39 @@ metadata:
   namespace: default
 spec:
   hostnames:
-  - ratelimit-rpm.example.org
+    - ratelimit-rpm.example.org
   parentRefs:
-  - name: nginx
+    - name: nginx
   rules:
-  - backendRefs:
-    - name: myservice
-      port: 80
-    matches:
-    - path:
-        type: PathPrefix
-        value: /rpm
+    - backendRefs:
+        - name: myservice
+          port: 80
+      matches:
+        - path:
+            type: PathPrefix
+            value: /rpm
 status:
   parents: []
 ---
-apiVersion: agentgateway.dev/v1alpha1
-kind: AgentgatewayPolicy
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
 metadata:
-  name: ingress-ratelimit-burst
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: ingress-ratelimit-rps-ratelimit-rps-example-org
   namespace: default
 spec:
-  targetRefs:
-  - group: gateway.networking.k8s.io
-    kind: HTTPRoute
-    name: ingress-ratelimit-burst-ratelimit-burst-example-org
-  traffic:
-    rateLimit:
-      local:
-      - burst: 250
-        requests: 50
-        unit: Seconds
+  hostnames:
+    - ratelimit-rps.example.org
+  parentRefs:
+    - name: nginx
+  rules:
+    - backendRefs:
+        - name: myservice
+          port: 80
+      matches:
+        - path:
+            type: PathPrefix
+            value: /
 status:
-  ancestors: null
----
-apiVersion: agentgateway.dev/v1alpha1
-kind: AgentgatewayPolicy
-metadata:
-  name: ingress-ratelimit-rpm
-  namespace: default
-spec:
-  targetRefs:
-  - group: gateway.networking.k8s.io
-    kind: HTTPRoute
-    name: ingress-ratelimit-rpm-ratelimit-rpm-example-org
-  traffic:
-    rateLimit:
-      local:
-      - requests: 600
-        unit: Minutes
-status:
-  ancestors: null
----
-apiVersion: agentgateway.dev/v1alpha1
-kind: AgentgatewayPolicy
-metadata:
-  name: ingress-ratelimit-rps
-  namespace: default
-spec:
-  targetRefs:
-  - group: gateway.networking.k8s.io
-    kind: HTTPRoute
-    name: ingress-ratelimit-rps-ratelimit-rps-example-org
-  traffic:
-    rateLimit:
-      local:
-      - requests: 10
-        unit: Seconds
-status:
-  ancestors: null
+  parents: []

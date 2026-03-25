@@ -8,11 +8,10 @@ metadata:
 spec:
   gatewayClassName: agentgateway
   listeners:
-  - hostname: lb.localdev.me
-    name: lb-localdev-me-http
-    port: 80
-    protocol: HTTP
-status: {}
+    - hostname: lb.localdev.me
+      name: lb-localdev-me-http
+      port: 80
+      protocol: HTTP
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -23,16 +22,16 @@ metadata:
   namespace: default
 spec:
   hostnames:
-  - lb.localdev.me
+    - lb.localdev.me
   parentRefs:
-  - name: nginx
+    - name: nginx
   rules:
-  - backendRefs:
-    - name: echo-backend
-      port: 8080
-    matches:
-    - path:
-        type: PathPrefix
-        value: /
+    - backendRefs:
+        - name: echo-backend
+          port: 8080
+      matches:
+        - path:
+            type: PathPrefix
+            value: /
 status:
   parents: []

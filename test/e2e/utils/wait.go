@@ -438,7 +438,7 @@ func MakeHTTPRequestEventually(t *testing.T, kubeContext string, cfg HTTPRequest
 		if sni == "" {
 			sni = cfg.HostHeader
 		}
-		gwtls.MakeTLSRequestAndExpectEventuallyConsistentResponse(t, rt, timeoutConfig, gwAddr, cfg.CertPem, cfg.KeyPem, sni, expected)
+		gwtls.MakeTLSRequestAndExpectEventuallyConsistentResponse(t, rt, timeoutConfig, gwAddr, cfg.CertPem, cfg.KeyPem, []byte{}, sni, expected)
 	} else {
 		gwhttp.MakeRequestAndExpectEventuallyConsistentResponse(t, rt, timeoutConfig, gwAddr, expected)
 	}

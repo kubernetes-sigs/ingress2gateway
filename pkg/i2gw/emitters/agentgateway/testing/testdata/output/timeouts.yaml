@@ -1,69 +1,3 @@
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  annotations:
-    gateway.networking.k8s.io/generator: ingress2gateway-dev
-  name: nginx
-  namespace: default
-spec:
-  gatewayClassName: agentgateway
-  listeners:
-  - hostname: timeout-proxy-read.example.org
-    name: timeout-proxy-read-example-org-http
-    port: 80
-    protocol: HTTP
-  - hostname: timeout-proxy-send.example.org
-    name: timeout-proxy-send-example-org-http
-    port: 80
-    protocol: HTTP
-status: {}
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  annotations:
-    gateway.networking.k8s.io/generator: ingress2gateway-dev
-  name: ingress-timeout-proxy-read-timeout-proxy-read-example-org
-  namespace: default
-spec:
-  hostnames:
-  - timeout-proxy-read.example.org
-  parentRefs:
-  - name: nginx
-  rules:
-  - backendRefs:
-    - name: myservice
-      port: 80
-    matches:
-    - path:
-        type: PathPrefix
-        value: /read
-status:
-  parents: []
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  annotations:
-    gateway.networking.k8s.io/generator: ingress2gateway-dev
-  name: ingress-timeout-proxy-send-timeout-proxy-send-example-org
-  namespace: default
-spec:
-  hostnames:
-  - timeout-proxy-send.example.org
-  parentRefs:
-  - name: nginx
-  rules:
-  - backendRefs:
-    - name: myservice
-      port: 80
-    matches:
-    - path:
-        type: PathPrefix
-        value: /
-status:
-  parents: []
----
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayPolicy
 metadata:
@@ -71,9 +5,9 @@ metadata:
   namespace: default
 spec:
   targetRefs:
-  - group: gateway.networking.k8s.io
-    kind: HTTPRoute
-    name: ingress-timeout-proxy-read-timeout-proxy-read-example-org
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: ingress-timeout-proxy-read-timeout-proxy-read-example-org
   traffic:
     timeouts:
       request: 45s
@@ -87,9 +21,9 @@ metadata:
   namespace: default
 spec:
   targetRefs:
-  - group: gateway.networking.k8s.io
-    kind: HTTPRoute
-    name: ingress-timeout-proxy-send-timeout-proxy-send-example-org
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: ingress-timeout-proxy-send-timeout-proxy-send-example-org
   traffic:
     timeouts:
       request: 1m0s
@@ -106,8 +40,73 @@ spec:
     tcp:
       connectTimeout: 15s
   targetRefs:
-  - group: ""
-    kind: Service
-    name: myservice
+    - group: ""
+      kind: Service
+      name: myservice
 status:
   ancestors: null
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: nginx
+  namespace: default
+spec:
+  gatewayClassName: agentgateway
+  listeners:
+    - hostname: timeout-proxy-read.example.org
+      name: timeout-proxy-read-example-org-http
+      port: 80
+      protocol: HTTP
+    - hostname: timeout-proxy-send.example.org
+      name: timeout-proxy-send-example-org-http
+      port: 80
+      protocol: HTTP
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: ingress-timeout-proxy-read-timeout-proxy-read-example-org
+  namespace: default
+spec:
+  hostnames:
+    - timeout-proxy-read.example.org
+  parentRefs:
+    - name: nginx
+  rules:
+    - backendRefs:
+        - name: myservice
+          port: 80
+      matches:
+        - path:
+            type: PathPrefix
+            value: /read
+status:
+  parents: []
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: ingress-timeout-proxy-send-timeout-proxy-send-example-org
+  namespace: default
+spec:
+  hostnames:
+    - timeout-proxy-send.example.org
+  parentRefs:
+    - name: nginx
+  rules:
+    - backendRefs:
+        - name: myservice
+          port: 80
+      matches:
+        - path:
+            type: PathPrefix
+            value: /
+status:
+  parents: []

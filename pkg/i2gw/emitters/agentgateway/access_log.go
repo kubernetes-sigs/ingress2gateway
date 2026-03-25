@@ -17,9 +17,9 @@ limitations under the License.
 package agentgateway
 
 import (
+	agentgatewayv1alpha1 "github.com/agentgateway/agentgateway/controller/api/v1alpha1/agentgateway"
+	"github.com/agentgateway/agentgateway/controller/api/v1alpha1/shared"
 	emitterir "github.com/kgateway-dev/ingress2gateway/pkg/i2gw/emitter_intermediate"
-	agentgatewayv1alpha1 "github.com/kgateway-dev/kgateway/v2/api/v1alpha1/agentgateway"
-	"github.com/kgateway-dev/kgateway/v2/api/v1alpha1/shared"
 )
 
 // applyAccessLogPolicy projects ingress-nginx enable-access-log into AgentgatewayPolicy.spec.frontend.accessLog.

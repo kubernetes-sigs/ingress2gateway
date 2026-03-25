@@ -1,89 +1,3 @@
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  annotations:
-    gateway.networking.k8s.io/generator: ingress2gateway-dev
-  name: nginx
-  namespace: default
-spec:
-  gatewayClassName: agentgateway
-  listeners:
-  - hostname: myservicea.foo.org
-    name: myservicea-foo-org-http
-    port: 80
-    protocol: HTTP
-  - hostname: myserviceb.foo.org
-    name: myserviceb-foo-org-http
-    port: 80
-    protocol: HTTP
-status: {}
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  annotations:
-    gateway.networking.k8s.io/generator: ingress2gateway-dev
-  name: ingress-myserviceb-myserviceb-foo-org
-  namespace: default
-spec:
-  hostnames:
-  - myserviceb.foo.org
-  parentRefs:
-  - name: nginx
-  rules:
-  - backendRefs:
-    - name: myserviceb
-      port: 80
-    filters:
-    - responseHeaderModifier:
-        remove:
-        - Access-Control-Allow-Origin
-        - Access-Control-Allow-Methods
-        - Access-Control-Allow-Headers
-        - Access-Control-Expose-Headers
-        - Access-Control-Max-Age
-        - Access-Control-Allow-Credentials
-      type: ResponseHeaderModifier
-    matches:
-    - path:
-        type: PathPrefix
-        value: /
-status:
-  parents: []
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  annotations:
-    gateway.networking.k8s.io/generator: ingress2gateway-dev
-  name: ingress-myservicea1-myservicea-foo-org
-  namespace: default
-spec:
-  hostnames:
-  - myservicea.foo.org
-  parentRefs:
-  - name: nginx
-  rules:
-  - backendRefs:
-    - name: myservicea
-      port: 80
-    filters:
-    - responseHeaderModifier:
-        remove:
-        - Access-Control-Allow-Origin
-        - Access-Control-Allow-Methods
-        - Access-Control-Allow-Headers
-        - Access-Control-Expose-Headers
-        - Access-Control-Max-Age
-        - Access-Control-Allow-Credentials
-      type: ResponseHeaderModifier
-    matches:
-    - path:
-        type: PathPrefix
-        value: /
-status:
-  parents: []
----
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayPolicy
 metadata:
@@ -91,25 +5,25 @@ metadata:
   namespace: default
 spec:
   targetRefs:
-  - group: gateway.networking.k8s.io
-    kind: HTTPRoute
-    name: ingress-myservicea1-myservicea-foo-org
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: ingress-myservicea1-myservicea-foo-org
   traffic:
     cors:
       allowCredentials: false
       allowHeaders:
-      - X-Requested-With
-      - Content-Type
+        - X-Requested-With
+        - Content-Type
       allowMethods:
-      - GET
-      - POST
-      - OPTIONS
+        - GET
+        - POST
+        - OPTIONS
       allowOrigins:
-      - https://example.com
-      - https://another.com
+        - https://example.com
+        - https://another.com
       exposeHeaders:
-      - X-Expose-One
-      - X-Expose-Two
+        - X-Expose-One
+        - X-Expose-Two
       maxAge: 600
 status:
   ancestors: null
@@ -121,16 +35,101 @@ metadata:
   namespace: default
 spec:
   targetRefs:
-  - group: gateway.networking.k8s.io
-    kind: HTTPRoute
-    name: ingress-myserviceb-myserviceb-foo-org
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: ingress-myserviceb-myserviceb-foo-org
   traffic:
     cors:
       allowOrigins:
-      - https://example.com
-      - https://another.com
+        - https://example.com
+        - https://another.com
       exposeHeaders:
-      - '*'
-      - X-CustomResponseHeader
+        - '*'
+        - X-CustomResponseHeader
 status:
   ancestors: null
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: nginx
+  namespace: default
+spec:
+  gatewayClassName: agentgateway
+  listeners:
+    - hostname: myservicea.foo.org
+      name: myservicea-foo-org-http
+      port: 80
+      protocol: HTTP
+    - hostname: myserviceb.foo.org
+      name: myserviceb-foo-org-http
+      port: 80
+      protocol: HTTP
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: ingress-myservicea1-myservicea-foo-org
+  namespace: default
+spec:
+  hostnames:
+    - myservicea.foo.org
+  parentRefs:
+    - name: nginx
+  rules:
+    - backendRefs:
+        - name: myservicea
+          port: 80
+      filters:
+        - responseHeaderModifier:
+            remove:
+              - Access-Control-Allow-Origin
+              - Access-Control-Allow-Methods
+              - Access-Control-Allow-Headers
+              - Access-Control-Expose-Headers
+              - Access-Control-Max-Age
+              - Access-Control-Allow-Credentials
+          type: ResponseHeaderModifier
+      matches:
+        - path:
+            type: PathPrefix
+            value: /
+status:
+  parents: []
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: ingress-myserviceb-myserviceb-foo-org
+  namespace: default
+spec:
+  hostnames:
+    - myserviceb.foo.org
+  parentRefs:
+    - name: nginx
+  rules:
+    - backendRefs:
+        - name: myserviceb
+          port: 80
+      filters:
+        - responseHeaderModifier:
+            remove:
+              - Access-Control-Allow-Origin
+              - Access-Control-Allow-Methods
+              - Access-Control-Allow-Headers
+              - Access-Control-Expose-Headers
+              - Access-Control-Max-Age
+              - Access-Control-Allow-Credentials
+          type: ResponseHeaderModifier
+      matches:
+        - path:
+            type: PathPrefix
+            value: /
+status:
+  parents: []

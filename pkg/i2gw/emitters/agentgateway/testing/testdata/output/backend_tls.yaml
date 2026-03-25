@@ -1,69 +1,3 @@
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  annotations:
-    gateway.networking.k8s.io/generator: ingress2gateway-dev
-  name: nginx
-  namespace: default
-spec:
-  gatewayClassName: agentgateway
-  listeners:
-  - hostname: insecure-tls.example.org
-    name: insecure-tls-example-org-http
-    port: 80
-    protocol: HTTP
-  - hostname: tls.example.org
-    name: tls-example-org-http
-    port: 80
-    protocol: HTTP
-status: {}
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  annotations:
-    gateway.networking.k8s.io/generator: ingress2gateway-dev
-  name: ingress-backendtls-verify-off-insecure-tls-example-org
-  namespace: default
-spec:
-  hostnames:
-  - insecure-tls.example.org
-  parentRefs:
-  - name: nginx
-  rules:
-  - backendRefs:
-    - name: httpbin-insecure
-      port: 80
-    matches:
-    - path:
-        type: PathPrefix
-        value: /
-status:
-  parents: []
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  annotations:
-    gateway.networking.k8s.io/generator: ingress2gateway-dev
-  name: ingress-backendtls-tls-example-org
-  namespace: default
-spec:
-  hostnames:
-  - tls.example.org
-  parentRefs:
-  - name: nginx
-  rules:
-  - backendRefs:
-    - name: httpbin2
-      port: 80
-    matches:
-    - path:
-        type: PathPrefix
-        value: /
-status:
-  parents: []
----
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayPolicy
 metadata:
@@ -75,9 +9,9 @@ spec:
       insecureSkipVerify: All
       sni: tls.example.com
   targetRefs:
-  - group: ""
-    kind: Service
-    name: httpbin-insecure
+    - group: ""
+      kind: Service
+      name: httpbin-insecure
 status:
   ancestors: null
 ---
@@ -90,11 +24,76 @@ spec:
   backend:
     tls:
       mtlsCertificateRef:
-      - name: base-certificate-tls
+        - name: base-certificate-tls
       sni: tls.example.com
   targetRefs:
-  - group: ""
-    kind: Service
-    name: httpbin2
+    - group: ""
+      kind: Service
+      name: httpbin2
 status:
   ancestors: null
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: nginx
+  namespace: default
+spec:
+  gatewayClassName: agentgateway
+  listeners:
+    - hostname: insecure-tls.example.org
+      name: insecure-tls-example-org-http
+      port: 80
+      protocol: HTTP
+    - hostname: tls.example.org
+      name: tls-example-org-http
+      port: 80
+      protocol: HTTP
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: ingress-backendtls-tls-example-org
+  namespace: default
+spec:
+  hostnames:
+    - tls.example.org
+  parentRefs:
+    - name: nginx
+  rules:
+    - backendRefs:
+        - name: httpbin2
+          port: 80
+      matches:
+        - path:
+            type: PathPrefix
+            value: /
+status:
+  parents: []
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-dev
+  name: ingress-backendtls-verify-off-insecure-tls-example-org
+  namespace: default
+spec:
+  hostnames:
+    - insecure-tls.example.org
+  parentRefs:
+    - name: nginx
+  rules:
+    - backendRefs:
+        - name: httpbin-insecure
+          port: 80
+      matches:
+        - path:
+            type: PathPrefix
+            value: /
+status:
+  parents: []
