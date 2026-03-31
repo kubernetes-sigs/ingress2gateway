@@ -86,6 +86,9 @@ const (
 	// Affinity annotations
 	AffinityAnnotation             = "nginx.ingress.kubernetes.io/affinity"
 	SessionCookieExpiresAnnotation = "nginx.ingress.kubernetes.io/session-cookie-expires"
+
+	// SSL Passthrough annotation
+	SSLPassthroughAnnotation = "nginx.ingress.kubernetes.io/ssl-passthrough"
 )
 
 const ingressNGINXAnnotationsPrefix = "nginx.ingress.kubernetes.io/"
@@ -137,4 +140,5 @@ var parsedAnnotations = map[string]struct{}{
 	ProxySSLProtocolsAnnotation:     {},
 	AffinityAnnotation:              {},
 	SessionCookieExpiresAnnotation:  {},
+	SSLPassthroughAnnotation:        {},
 }
