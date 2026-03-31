@@ -235,13 +235,13 @@ func (v *HTTPRequestVerifier) verify(ctx context.Context, log Logger, addr addre
 	return nil
 }
 
-type httpRedirectVerifier struct {
-	host           string
-	targetHost     string // What we expect in the Location header
-	expectedStatus []int  // Usually 301
+type HTTPRedirectVerifier struct {
+	Host           string
+	TargetHost     string // What we expect in the Location header
+	ExpectedStatus []int  // Usually 301
 }
 
-func (v *httpRedirectVerifier) verify(ctx context.Context, log logger, addr addresses, defaultHost string) error {
+func (v *HTTPRedirectVerifier) verify(ctx context.Context, log Logger, addr addresses, defaultHost string) error {
 	targetAddr := addr.http
 	if targetAddr == "" {
 		return fmt.Errorf("no http address available for verifier")
@@ -252,8 +252,8 @@ func (v *httpRedirectVerifier) verify(ctx context.Context, log logger, addr addr
 		return fmt.Errorf("constructing HTTP request: %w", err)
 	}
 
-	if v.host != "" {
-		req.Host = v.host
+	if v.Host != "" {
+		req.Host = v.Host
 	} else if defaultHost != "" {
 		req.Host = defaultHost
 	} else {
@@ -275,14 +275,14 @@ func (v *httpRedirectVerifier) verify(ctx context.Context, log logger, addr addr
 	defer func() { _ = res.Body.Close() }()
 
 	statusValOk := false
-	for _, status := range v.expectedStatus {
+	for _, status := range v.ExpectedStatus {
 		if res.StatusCode == status {
 			statusValOk = true
 			break
 		}
 	}
 	if !statusValOk {
-		return fmt.Errorf("unexpected HTTP status code: got %d, want one of %v", res.StatusCode, v.expectedStatus)
+		return fmt.Errorf("unexpected HTTP status code: got %d, want one of %v", res.StatusCode, v.ExpectedStatus)
 	}
 
 	location := res.Header.Get("Location")
@@ -290,8 +290,8 @@ func (v *httpRedirectVerifier) verify(ctx context.Context, log logger, addr addr
 		return fmt.Errorf("expected Location header, got none")
 	}
 
-	expectedLocation := fmt.Sprintf("http://%s", v.targetHost)
-	expectedLocationTrailing := fmt.Sprintf("http://%s/", v.targetHost)
+	expectedLocation := fmt.Sprintf("http://%s", v.TargetHost)
+	expectedLocationTrailing := fmt.Sprintf("http://%s/", v.TargetHost)
 	if location != expectedLocation && location != expectedLocationTrailing && location != expectedLocation+":80" && location != expectedLocation+":80/" {
 		return fmt.Errorf("unexpected Location header: got %s, want %s (or with trailing slash)", location, expectedLocation)
 	}
@@ -301,13 +301,13 @@ func (v *httpRedirectVerifier) verify(ctx context.Context, log logger, addr addr
 	return nil
 }
 
-type httpsRedirectVerifier struct {
-	host           string
-	targetHost     string // What we expect in the Location header
-	expectedStatus []int  // Usually 301
+type HTTPSRedirectVerifier struct {
+	Host           string
+	TargetHost     string // What we expect in the Location header
+	ExpectedStatus []int  // Usually 301
 }
 
-func (v *httpsRedirectVerifier) verify(ctx context.Context, log logger, addr addresses, defaultHost string) error {
+func (v *HTTPSRedirectVerifier) verify(ctx context.Context, log Logger, addr addresses, defaultHost string) error {
 	targetAddr := addr.https
 	if targetAddr == "" {
 		return fmt.Errorf("no https address available for verifier")
@@ -318,12 +318,12 @@ func (v *httpsRedirectVerifier) verify(ctx context.Context, log logger, addr add
 		return fmt.Errorf("constructing HTTPS request: %w", err)
 	}
 
-	hostName := v.host
+	hostName := v.Host
 	if hostName == "" {
 		if defaultHost != "" {
 			hostName = defaultHost
 		} else {
-			return fmt.Errorf("no host specified: set httpsRedirectVerifier.Host or ensure ingress has a rule with a host")
+			return fmt.Errorf("no host specified: set HTTPSRedirectVerifier.Host or ensure ingress has a rule with a host")
 		}
 	}
 	req.Host = hostName
@@ -349,19 +349,19 @@ func (v *httpsRedirectVerifier) verify(ctx context.Context, log logger, addr add
 	defer func() { _ = res.Body.Close() }()
 
 	statusValOk := false
-	for _, status := range v.expectedStatus {
+	for _, status := range v.ExpectedStatus {
 		if res.StatusCode == status {
 			statusValOk = true
 			break
 		}
 	}
 	if !statusValOk {
-		return fmt.Errorf("unexpected HTTP status code: got %d, want one of %v", res.StatusCode, v.expectedStatus)
+		return fmt.Errorf("unexpected HTTP status code: got %d, want one of %v", res.StatusCode, v.ExpectedStatus)
 	}
 
 	location := res.Header.Get("Location")
-	expectedLocation := fmt.Sprintf("https://%s", v.targetHost)
-	expectedLocationTrailing := fmt.Sprintf("https://%s/", v.targetHost)
+	expectedLocation := fmt.Sprintf("https://%s", v.TargetHost)
+	expectedLocationTrailing := fmt.Sprintf("https://%s/", v.TargetHost)
 
 	if location != expectedLocation && location != expectedLocationTrailing && location != expectedLocation+":443" && location != expectedLocation+":443/" {
 		return fmt.Errorf("unexpected Location header: got %s, want %s (or with trailing slash/port)", location, expectedLocation)

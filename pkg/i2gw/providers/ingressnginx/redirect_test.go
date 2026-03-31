@@ -18,6 +18,7 @@ package ingressnginx
 
 import (
 	"testing"
+
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"

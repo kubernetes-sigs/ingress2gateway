@@ -1034,19 +1034,19 @@ func TestIngressNGINXRedirect(t *testing.T) {
 			Verifiers: map[string][]framework.Verifier{
 				"from-to-www-redirect": {
 					&framework.HTTPRequestVerifier{
-						Host: "example.com",
-						Path: "/",
+						Host:         "example.com",
+						Path:         "/",
 						AllowedCodes: []int{http.StatusOK},
 					},
 					&framework.HTTPRequestVerifier{
-						Host: "www.example.com",
-						Path: "/",
+						Host:         "www.example.com",
+						Path:         "/",
 						AllowedCodes: []int{http.StatusMovedPermanently, http.StatusPermanentRedirect}, // 301, 308
 						HeaderMatches: []framework.HeaderMatch{
 							{
 								Name: "Location",
 								Patterns: []*framework.MaybeNegativePattern{
-									{Pattern: regexp.MustCompile(`^https?://example\.com/?$`)},
+									{Pattern: regexp.MustCompile(`^https?://example\.com(:80)?/?$`)},
 								},
 							},
 						},

@@ -530,14 +530,14 @@ func testCaseNeedsHTTPS(tc *TestCase) bool {
 	return false
 }
 
-func verifierNeedsHTTPS(v verifier) bool {
+func verifierNeedsHTTPS(v Verifier) bool {
 	switch t := v.(type) {
 	case *HTTPRequestVerifier:
 		return t.UseTLS
-	case *httpsRedirectVerifier:
+	case *HTTPSRedirectVerifier:
 		return true
-	case *canaryVerifier:
-		return verifierNeedsHTTPS(t.verifier)
+	case *CanaryVerifier:
+		return verifierNeedsHTTPS(t.Verifier)
 	}
 	return false
 }
@@ -721,7 +721,6 @@ func (b *IngressBuilder) WithHost(host string) *IngressBuilder {
 	}
 	return b
 }
-}
 
 // WithPath sets the path for all rules in the ingress.
 func (b *IngressBuilder) WithPath(path string) *IngressBuilder {
@@ -818,14 +817,6 @@ func BasicIngress() *IngressBuilder {
 			},
 		},
 	}
-}
-
-func (b *ingressBuilder) withTLS(hosts []string, secretName string) *ingressBuilder {
-	b.Spec.TLS = append(b.Spec.TLS, networkingv1.IngressTLS{
-		Hosts:      hosts,
-		SecretName: secretName,
-	})
-	return b
 }
 
 func createTLSSecret(ctx context.Context, k8sClient *kubernetes.Clientset, namespace, name, host string) error {

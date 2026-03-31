@@ -25,6 +25,7 @@ import (
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -221,7 +222,6 @@ func (p *Provider) addSSLAndTrailingSlashRedirects(ingresses []networkingv1.Ingr
 	hostsWithTLS := make(map[string]struct{})
 	for _, ing := range ingresses {
 
-
 		for _, tls := range ing.Spec.TLS {
 			if len(tls.Hosts) > 0 {
 				for _, host := range tls.Hosts {
@@ -339,9 +339,14 @@ func (p *Provider) addSSLAndTrailingSlashRedirects(ingresses []networkingv1.Ingr
 			HTTPRoute: redirectRoute,
 		}
 
-		// Bind original route to port 443.
+		// Bind original route to port 443 and specific listener to avoid conflicts.
 		for i := range eRouteCtx.Spec.ParentRefs {
 			eRouteCtx.Spec.ParentRefs[i].Port = ptr.To[int32](443)
+			if len(eRouteCtx.Spec.Hostnames) > 0 {
+				hostname := string(eRouteCtx.Spec.Hostnames[0])
+				sectionName := gatewayv1.SectionName(fmt.Sprintf("%s-https", common.NameFromHost(hostname)))
+				eRouteCtx.Spec.ParentRefs[i].SectionName = &sectionName
+			}
 		}
 		eir.HTTPRoutes[key] = eRouteCtx
 	}
@@ -625,4 +630,3 @@ func (p *Provider) addWWWRedirect(pir *providerir.ProviderIR, eir *emitterir.Emi
 	}
 	return nil
 }
-
