@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	backendconfigv1 "k8s.io/ingress-gce/pkg/apis/backendconfig/v1"
 	frontendconfigv1beta1 "k8s.io/ingress-gce/pkg/apis/frontendconfig/v1beta1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 type contextKey int
@@ -98,6 +99,7 @@ func (c *resourcesToIRConverter) convertToIR(storage *storage) (providerir.Provi
 	}
 	buildGceGatewayIR(c.ctx, storage, &ir)
 	buildGceServiceIR(c.ctx, c.notify, storage, &ir)
+	patchGceHTTPRouteIR(&ir)
 	return ir, errs
 }
 
@@ -282,6 +284,63 @@ func beConfigToGceServiceIR(beConfig *backendconfigv1.BackendConfig) gce.Service
 	if beConfig.Spec.HealthCheck != nil {
 		gceServiceIR.HealthCheck = extensions.BuildIRHealthCheckConfig(beConfig)
 	}
+	if beConfig.Spec.Cdn != nil {
+		gceServiceIR.Cdn = extensions.BuildIRCdnConfig(beConfig)
+	}
 
 	return gceServiceIR
+}
+
+func patchGceHTTPRouteIR(ir *providerir.ProviderIR) {
+	for routeKey, routeCtx := range ir.HTTPRoutes {
+		for i := range routeCtx.Spec.Rules {
+			for j := range routeCtx.Spec.Rules[i].BackendRefs {
+				if len(routeCtx.RuleBackendSources) <= i || len(routeCtx.RuleBackendSources[i]) <= j {
+					continue
+				}
+				bs := routeCtx.RuleBackendSources[i][j]
+				var serviceName string
+				if bs.Path != nil && bs.Path.Backend.Service != nil {
+					serviceName = bs.Path.Backend.Service.Name
+				} else if bs.DefaultBackend != nil && bs.DefaultBackend.Service != nil {
+					serviceName = bs.DefaultBackend.Service.Name
+				}
+				if serviceName == "" {
+					continue
+				}
+				svcKey := types.NamespacedName{Namespace: routeKey.Namespace, Name: serviceName}
+				serviceIR, exists := ir.Services[svcKey]
+				if !exists || serviceIR.Gce == nil || serviceIR.Gce.Cdn == nil {
+					continue
+				}
+				// Found a backend with CDN enabled!
+				// Attach the filter to the HTTPRoute rule.
+				filter := gatewayv1.HTTPRouteFilter{
+					Type: gatewayv1.HTTPRouteFilterExtensionRef,
+					ExtensionRef: &gatewayv1.LocalObjectReference{
+						Group: "networking.gke.io",
+						Kind:  "GCPHTTPFilter",
+						Name:  gatewayv1.ObjectName(serviceName),
+					},
+				}
+				if routeCtx.Spec.Rules[i].Filters == nil {
+					routeCtx.Spec.Rules[i].Filters = make([]gatewayv1.HTTPRouteFilter, 0)
+				}
+				// Avoid adding duplicate filters
+				alreadyExists := false
+				for _, existingFilter := range routeCtx.Spec.Rules[i].Filters {
+					if existingFilter.Type == gatewayv1.HTTPRouteFilterExtensionRef &&
+						existingFilter.ExtensionRef != nil &&
+						existingFilter.ExtensionRef.Name == filter.ExtensionRef.Name {
+						alreadyExists = true
+						break
+					}
+				}
+				if !alreadyExists {
+					routeCtx.Spec.Rules[i].Filters = append(routeCtx.Spec.Rules[i].Filters, filter)
+				}
+			}
+		}
+		ir.HTTPRoutes[routeKey] = routeCtx
+	}
 }

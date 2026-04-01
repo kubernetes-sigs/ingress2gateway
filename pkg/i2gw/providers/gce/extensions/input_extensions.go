@@ -90,3 +90,34 @@ func BuildIRHealthCheckConfig(beConfig *backendconfigv1.BackendConfig) *gce.Heal
 		RequestPath:        beConfig.Spec.HealthCheck.RequestPath,
 	}
 }
+
+func BuildIRCdnConfig(beConfig *backendconfigv1.BackendConfig) *gce.CdnConfig {
+	if beConfig.Spec.Cdn == nil {
+		return nil
+	}
+	return &gce.CdnConfig{
+		CachePolicy: &gce.CachePolicy{
+			CacheMode:         stringPtrToString(beConfig.Spec.Cdn.CacheMode),
+			DefaultTTL:        int64PtrToDurationString(beConfig.Spec.Cdn.DefaultTtl),
+			MaxTTL:            int64PtrToDurationString(beConfig.Spec.Cdn.MaxTtl),
+			ClientTTL:         int64PtrToDurationString(beConfig.Spec.Cdn.ClientTtl),
+			RequestCoalescing: beConfig.Spec.Cdn.RequestCoalescing,
+			ServeWhileStale:   int64PtrToDurationString(beConfig.Spec.Cdn.ServeWhileStale),
+			NegativeCaching:   beConfig.Spec.Cdn.NegativeCaching,
+		},
+	}
+}
+
+func stringPtrToString(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+func int64PtrToDurationString(i *int64) string {
+	if i == nil {
+		return ""
+	}
+	return fmt.Sprintf("%ds", *i)
+}
