@@ -28,6 +28,18 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
+// pathContainsRegex returns true if the path contains regex metacharacters,
+// indicating it should be treated as a regular expression.
+func pathContainsRegex(path string) bool {
+	for _, c := range path {
+		switch c {
+		case '.', '+', '*', '?', '^', '$', '{', '}', '(', ')', '[', ']', '|', '\\':
+			return true
+		}
+	}
+	return false
+}
+
 func regexHosts(ingresses []networkingv1.Ingress) map[string]struct{} {
 	hostsWithRegex := make(map[string]struct{})
 
@@ -41,6 +53,31 @@ func regexHosts(ingresses []networkingv1.Ingress) map[string]struct{} {
 		hasRewriteTarget := ingress.Annotations[RewriteTargetAnnotation] != ""
 		if !useRegex && !hasRewriteTarget {
 			continue
+		}
+
+		// When rewrite-target is set without use-regex, only flag the host
+		// if at least one path actually contains regex metacharacters.
+		// A static rewrite-target (e.g. "/") with a plain path does not
+		// imply regex matching.
+		if !useRegex && hasRewriteTarget {
+			hasRegexPath := false
+			for _, rule := range ingress.Spec.Rules {
+				if rule.HTTP == nil {
+					continue
+				}
+				for _, p := range rule.HTTP.Paths {
+					if pathContainsRegex(p.Path) {
+						hasRegexPath = true
+						break
+					}
+				}
+				if hasRegexPath {
+					break
+				}
+			}
+			if !hasRegexPath {
+				continue
+			}
 		}
 
 		for _, rule := range ingress.Spec.Rules {
