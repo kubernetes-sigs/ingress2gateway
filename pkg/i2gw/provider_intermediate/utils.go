@@ -41,7 +41,7 @@ func MergeIRs(irs ...ProviderIR) (ProviderIR, field.ErrorList) {
 		Gateways:           make(map[types.NamespacedName]GatewayContext),
 		GatewayClasses:     make(map[types.NamespacedName]gatewayv1.GatewayClass),
 		HTTPRoutes:         make(map[types.NamespacedName]HTTPRouteContext),
-		TLSRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
+		TLSRoutes:          make(map[types.NamespacedName]gatewayv1.TLSRoute),
 		TCPRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
 		UDPRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.UDPRoute),
 		GRPCRoutes:         make(map[types.NamespacedName]GRPCRouteContext),

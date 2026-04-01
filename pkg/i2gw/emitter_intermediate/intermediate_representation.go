@@ -184,7 +184,7 @@ type GatewayClassContext struct {
 }
 
 type TLSRouteContext struct {
-	gatewayv1alpha2.TLSRoute
+	gatewayv1.TLSRoute
 }
 
 type TCPRouteContext struct {
