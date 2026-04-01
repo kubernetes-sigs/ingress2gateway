@@ -41,7 +41,7 @@ type GatewayResources struct {
 
 	HTTPRoutes map[types.NamespacedName]gatewayv1.HTTPRoute
 	GRPCRoutes map[types.NamespacedName]gatewayv1.GRPCRoute
-	TLSRoutes  map[types.NamespacedName]gatewayv1alpha2.TLSRoute
+	TLSRoutes  map[types.NamespacedName]gatewayv1.TLSRoute
 	TCPRoutes  map[types.NamespacedName]gatewayv1alpha2.TCPRoute
 	UDPRoutes  map[types.NamespacedName]gatewayv1alpha2.UDPRoute
 

@@ -1400,7 +1400,7 @@ func Test_resourcesToIRConverter_convertVsTLSRoutes(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want []*gatewayv1alpha2.TLSRoute
+		want []*gatewayv1.TLSRoute
 	}{
 		{
 			name: "supported spec",
@@ -1455,11 +1455,11 @@ func Test_resourcesToIRConverter_convertVsTLSRoutes(t *testing.T) {
 					},
 				},
 			},
-			want: []*gatewayv1alpha2.TLSRoute{
+			want: []*gatewayv1.TLSRoute{
 				{
 					TypeMeta: metav1.TypeMeta{
 						Kind:       "TLSRoute",
-						APIVersion: "gateway.networking.k8s.io/v1alpha2",
+						APIVersion: "gateway.networking.k8s.io/v1",
 					},
 					ObjectMeta: metav1.ObjectMeta{
 						Name:        "test-idx-0",
@@ -1473,13 +1473,13 @@ func Test_resourcesToIRConverter_convertVsTLSRoutes(t *testing.T) {
 						},
 						Finalizers: []string{"finalizer1"},
 					},
-					Spec: gatewayv1alpha2.TLSRouteSpec{
-						Hostnames: []gatewayv1alpha2.Hostname{
-							gatewayv1alpha2.Hostname("*.com"),
-							gatewayv1alpha2.Hostname("*.wk.org"),
-							gatewayv1alpha2.Hostname("test.net"),
+					Spec: gatewayv1.TLSRouteSpec{
+						Hostnames: []gatewayv1.Hostname{
+							gatewayv1.Hostname("*.com"),
+							gatewayv1.Hostname("*.wk.org"),
+							gatewayv1.Hostname("test.net"),
 						},
-						Rules: []gatewayv1alpha2.TLSRouteRule{
+						Rules: []gatewayv1.TLSRouteRule{
 							{
 								BackendRefs: []gatewayv1.BackendRef{
 									{
@@ -2106,7 +2106,7 @@ func Test_convertHostnames(t *testing.T) {
 		name           string
 		virtualService *istioclientv1beta1.VirtualService
 		hostnames      []string
-		expected       []gatewayv1alpha2.Hostname
+		expected       []gatewayv1.Hostname
 	}{
 		{
 			name: "default",
@@ -2120,7 +2120,7 @@ func Test_convertHostnames(t *testing.T) {
 				},
 			},
 			hostnames: []string{"*.com", "test.net", "*.example.com"},
-			expected:  []gatewayv1alpha2.Hostname{"*.com", "test.net", "*.example.com"},
+			expected:  []gatewayv1.Hostname{"*.com", "test.net", "*.example.com"},
 		},
 		{
 			name: "* is not allowed",
@@ -2134,7 +2134,7 @@ func Test_convertHostnames(t *testing.T) {
 				},
 			},
 			hostnames: []string{"*"},
-			expected:  []gatewayv1alpha2.Hostname{},
+			expected:  []gatewayv1.Hostname{},
 		},
 		{
 			name: "IP is not allowed",
@@ -2148,7 +2148,7 @@ func Test_convertHostnames(t *testing.T) {
 				},
 			},
 			hostnames: []string{"192.0.2.1", "2001:db8::68", "::ffff:192.0.2.1"},
-			expected:  []gatewayv1alpha2.Hostname{},
+			expected:  []gatewayv1.Hostname{},
 		},
 		{
 			name: "The wildcard label must appear by itself as the first character",
@@ -2163,7 +2163,7 @@ func Test_convertHostnames(t *testing.T) {
 			},
 			hostnames: []string{"example*.com"},
 
-			expected: []gatewayv1alpha2.Hostname{},
+			expected: []gatewayv1.Hostname{},
 		},
 		{
 			name: "mix",
@@ -2177,7 +2177,7 @@ func Test_convertHostnames(t *testing.T) {
 				},
 			},
 			hostnames: []string{"192.0.2.1", "2001:db8::68", "::ffff:192.0.2.1", "*", "*.com", "test.net", "*.example.com"},
-			expected:  []gatewayv1alpha2.Hostname{"*.com", "test.net", "*.example.com"},
+			expected:  []gatewayv1.Hostname{"*.com", "test.net", "*.example.com"},
 		},
 	}
 

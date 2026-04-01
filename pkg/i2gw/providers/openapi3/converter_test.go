@@ -200,7 +200,7 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*emitterir.Emi
 				Name:      httpRoute.Name,
 			}] = emitterir.HTTPRouteContext{HTTPRoute: httpRoute}
 		case "TLSRoute":
-			var tlsRoute gatewayv1alpha2.TLSRoute
+			var tlsRoute gatewayv1.TLSRoute
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), &tlsRoute); err != nil {
 				return nil, fmt.Errorf("failed to parse k8s gateway TLSRoute object: %w", err)
 			}
