@@ -1409,3 +1409,67 @@ func TestIngressNGINXRegex(t *testing.T) {
 		})
 	})
 }
+
+func TestIngressNGINXSSLPassthrough(t *testing.T) {
+	t.Parallel()
+	t.Run("to Istio", func(t *testing.T) {
+		t.Parallel()
+
+		// Test: SSL passthrough sends TLS traffic directly to the backend without
+		// termination. The ingress2gateway tool should produce a TLSRoute with a
+		// Passthrough listener on the Gateway.
+		t.Run("basic ssl passthrough creates TLSRoute", func(t *testing.T) {
+			suffix, err := framework.RandString()
+			require.NoError(t, err, "creating host suffix")
+			host := "ssl-pt-" + suffix + ".example.com"
+
+			// Generate a self-signed TLS certificate for the backend. With SSL
+			// passthrough the client talks TLS directly to the backend, so the
+			// backend's certificate must match the expected hostname.
+			tlsSecret, err := framework.GenerateSelfSignedTLSSecret("backend-tls-"+suffix, host, []string{host})
+			require.NoError(t, err, "generating backend TLS secret")
+
+			providers := []string{ingressnginx.Name}
+			gwImpl := implementation.IstioName
+			env := setupTestEnv(t, providers, gwImpl)
+
+			env.Run(&framework.TestCase{
+				Providers:              providers,
+				GatewayImplementation:  gwImpl,
+				AllowExperimentalGWAPI: true, // TLSRoute is in the experimental channel
+				Backends: []framework.Backend{
+					{Name: framework.DummyAppName1, ServerSecretName: "backend-tls-" + suffix},
+				},
+				ProviderFlags: map[string]map[string]string{
+					ingressnginx.Name: {
+						ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
+					},
+				},
+				Secrets: []*corev1.Secret{tlsSecret.Secret},
+				Ingresses: []*networkingv1.Ingress{
+					framework.BasicIngress().
+						WithName("ssl-passthrough").
+						WithHost(host).
+						WithIngressClass(ingressnginx.NginxIngressClass).
+						WithBackend(framework.DummyAppName1).
+						WithBackendPort(443).
+						WithAnnotation(ingressnginx.SSLPassthroughAnnotation, "true").
+						Build(),
+				},
+				Verifiers: map[string][]framework.Verifier{
+					"ssl-passthrough": {
+						// With SSL passthrough, the TLS connection goes directly to the
+						// backend. We verify by making an HTTPS request and trusting the
+						// backend's self-signed certificate.
+						&framework.HTTPRequestVerifier{
+							Host:      host,
+							Path:      "/",
+							UseTLS:    true,
+							CACertPEM: tlsSecret.CACert,
+						},
+					},
+				},
+			})
+		})
+	})
+}
