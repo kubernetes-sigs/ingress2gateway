@@ -1476,9 +1476,8 @@ func TestIngressNGINXSSLPassthrough(t *testing.T) {
 			env := setupTestEnv(t, providers, gwImpl)
 
 			env.Run(&framework.TestCase{
-				Providers:              providers,
-				GatewayImplementation:  gwImpl,
-				AllowExperimentalGWAPI: true, // TLSRoute is in the experimental channel
+				Providers:             providers,
+				GatewayImplementation: gwImpl,
 				Backends: []framework.Backend{
 					{Name: framework.DummyAppName1, ServerSecretName: "backend-tls-" + suffix},
 				},
