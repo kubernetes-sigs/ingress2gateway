@@ -36,7 +36,7 @@ type ProviderIR struct {
 	Services   map[types.NamespacedName]ProviderSpecificServiceIR
 
 	GatewayClasses map[types.NamespacedName]gatewayv1.GatewayClass
-	TLSRoutes      map[types.NamespacedName]gatewayv1alpha2.TLSRoute
+	TLSRoutes      map[types.NamespacedName]gatewayv1.TLSRoute
 	TCPRoutes      map[types.NamespacedName]gatewayv1alpha2.TCPRoute
 	UDPRoutes      map[types.NamespacedName]gatewayv1alpha2.UDPRoute
 	GRPCRoutes     map[types.NamespacedName]GRPCRouteContext

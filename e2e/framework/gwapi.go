@@ -295,7 +295,7 @@ func createGRPCRoutes(ctx context.Context, l Logger, client *gwclientset.Clients
 	}, nil
 }
 
-func createTLSRoutes(ctx context.Context, l Logger, client *gwclientset.Clientset, ns string, routes map[types.NamespacedName]v1alpha2.TLSRoute, skipCleanup bool) (func(), error) {
+func createTLSRoutes(ctx context.Context, l Logger, client *gwclientset.Clientset, ns string, routes map[types.NamespacedName]gwapiv1.TLSRoute, skipCleanup bool) (func(), error) {
 	for name, route := range routes {
 		if route.Namespace == "" {
 			route.Namespace = ns
@@ -308,7 +308,7 @@ func createTLSRoutes(ctx context.Context, l Logger, client *gwclientset.Clientse
 
 		l.Logf("Creating TLSRoute:\n%s", y)
 
-		_, err = client.GatewayV1alpha2().TLSRoutes(route.Namespace).Create(
+		_, err = client.GatewayV1().TLSRoutes(route.Namespace).Create(
 			ctx,
 			&route,
 			metav1.CreateOptions{},
@@ -333,7 +333,7 @@ func createTLSRoutes(ctx context.Context, l Logger, client *gwclientset.Clientse
 				namespace = ns
 			}
 			log.Printf("Deleting TLSRoute %s/%s", namespace, route.Name)
-			err := client.GatewayV1alpha2().TLSRoutes(namespace).Delete(cleanupCtx, route.Name, metav1.DeleteOptions{})
+			err := client.GatewayV1().TLSRoutes(namespace).Delete(cleanupCtx, route.Name, metav1.DeleteOptions{})
 			if err != nil {
 				log.Printf("Deleting TLSRoute %s: %v", route.Name, err)
 			}

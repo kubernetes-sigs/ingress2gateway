@@ -20,10 +20,16 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"os"
 	"os/exec"
 	"strings"
@@ -38,6 +44,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -515,10 +522,22 @@ func verifyGatewayResources(ctx context.Context, t *testing.T, tc *TestCase, gwA
 func testCaseNeedsHTTPS(tc *TestCase) bool {
 	for _, verifiers := range tc.Verifiers {
 		for _, v := range verifiers {
-			if hv, ok := v.(*HTTPRequestVerifier); ok && hv.UseTLS {
+			if verifierNeedsHTTPS(v) {
 				return true
 			}
 		}
+	}
+	return false
+}
+
+func verifierNeedsHTTPS(v Verifier) bool {
+	switch t := v.(type) {
+	case *HTTPRequestVerifier:
+		return t.UseTLS
+	case *HTTPSRedirectVerifier:
+		return true
+	case *CanaryVerifier:
+		return verifierNeedsHTTPS(t.Verifier)
 	}
 	return false
 }
@@ -585,7 +604,7 @@ func parseYAMLOutput(t *testing.T, data []byte) []i2gw.GatewayResources {
 		GatewayClasses:     make(map[types.NamespacedName]gwapiv1.GatewayClass),
 		HTTPRoutes:         make(map[types.NamespacedName]gwapiv1.HTTPRoute),
 		GRPCRoutes:         make(map[types.NamespacedName]gwapiv1.GRPCRoute),
-		TLSRoutes:          make(map[types.NamespacedName]v1alpha2.TLSRoute),
+		TLSRoutes:          make(map[types.NamespacedName]gwapiv1.TLSRoute),
 		TCPRoutes:          make(map[types.NamespacedName]v1alpha2.TCPRoute),
 		UDPRoutes:          make(map[types.NamespacedName]v1alpha2.UDPRoute),
 		BackendTLSPolicies: make(map[types.NamespacedName]gwapiv1.BackendTLSPolicy),
@@ -640,8 +659,8 @@ func parseYAMLOutput(t *testing.T, data []byte) []i2gw.GatewayResources {
 			err := json.Unmarshal(objBytes, &gr)
 			require.NoError(t, err, "failed to unmarshal GRPCRoute")
 			res.GRPCRoutes[nn] = gr
-		case apiVersion == "gateway.networking.k8s.io/v1alpha2" && kind == "TLSRoute":
-			var tr v1alpha2.TLSRoute
+		case apiVersion == "gateway.networking.k8s.io/v1" && kind == "TLSRoute":
+			var tr gwapiv1.TLSRoute
 			err := json.Unmarshal(objBytes, &tr)
 			require.NoError(t, err, "failed to unmarshal TLSRoute")
 			res.TLSRoutes[nn] = tr
@@ -798,4 +817,49 @@ func BasicIngress() *IngressBuilder {
 			},
 		},
 	}
+}
+
+func createTLSSecret(ctx context.Context, k8sClient *kubernetes.Clientset, namespace, name, host string) error {
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return err
+	}
+
+	template := x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject: pkix.Name{
+			Organization: []string{"Acme Co"},
+		},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().Add(time.Hour * 24 * 180),
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+		DNSNames:              []string{host},
+	}
+
+	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
+	if err != nil {
+		return err
+	}
+
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv)})
+
+	sec := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Type: corev1.SecretTypeTLS,
+		Data: map[string][]byte{
+			corev1.TLSCertKey:       certPEM,
+			corev1.TLSPrivateKeyKey: keyPEM,
+		},
+	}
+	_, err = k8sClient.CoreV1().Secrets(namespace).Create(ctx, sec, metav1.CreateOptions{})
+	if k8serrors.IsAlreadyExists(err) {
+		return nil
+	}
+	return err
 }

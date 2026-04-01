@@ -25,6 +25,7 @@ import (
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -220,6 +221,7 @@ func (p *Provider) addSSLAndTrailingSlashRedirects(ingresses []networkingv1.Ingr
 	// Find hosts with TLS enabled.
 	hostsWithTLS := make(map[string]struct{})
 	for _, ing := range ingresses {
+
 		for _, tls := range ing.Spec.TLS {
 			if len(tls.Hosts) > 0 {
 				for _, host := range tls.Hosts {
@@ -337,9 +339,14 @@ func (p *Provider) addSSLAndTrailingSlashRedirects(ingresses []networkingv1.Ingr
 			HTTPRoute: redirectRoute,
 		}
 
-		// Bind original route to port 443.
+		// Bind original route to port 443 and specific listener to avoid conflicts.
 		for i := range eRouteCtx.Spec.ParentRefs {
 			eRouteCtx.Spec.ParentRefs[i].Port = ptr.To[int32](443)
+			if len(eRouteCtx.Spec.Hostnames) > 0 {
+				hostname := string(eRouteCtx.Spec.Hostnames[0])
+				sectionName := gatewayv1.SectionName(fmt.Sprintf("%s-https", common.NameFromHost(hostname)))
+				eRouteCtx.Spec.ParentRefs[i].SectionName = &sectionName
+			}
 		}
 		eir.HTTPRoutes[key] = eRouteCtx
 	}
@@ -476,4 +483,150 @@ func pathPrefixCovers(prefix, path string) bool {
 	}
 	// Path is longer than prefix; check segment boundary.
 	return prefix[len(prefix)-1] == '/' || path[len(prefix)] == '/'
+}
+
+func (p *Provider) addWWWRedirect(pir *providerir.ProviderIR, eir *emitterir.EmitterIR) field.ErrorList {
+	for _, httpRouteContext := range pir.HTTPRoutes {
+		wwwRedirect := false
+
+		for _, sources := range httpRouteContext.RuleBackendSources {
+			ingress := getNonCanaryIngress(sources)
+			if ingress == nil {
+				continue
+			}
+
+			if val, ok := ingress.Annotations[FromToWWWRedirectAnnotation]; ok {
+				parsed, err := strconv.ParseBool(val)
+				if err != nil {
+					return field.ErrorList{field.Invalid(
+						field.NewPath("ingress", ingress.Namespace, ingress.Name, "metadata", "annotations"),
+						ingress.Annotations,
+						fmt.Sprintf("failed to parse from-to-www-redirect configuration: %v", err),
+					)}
+				}
+				wwwRedirect = parsed
+			}
+		}
+
+		if !wwwRedirect {
+			continue
+		}
+
+		for _, hostname := range httpRouteContext.HTTPRoute.Spec.Hostnames {
+			h := string(hostname)
+			var srcHost, dstHost string
+			if len(h) >= 4 && h[:4] == "www." {
+				srcHost = h[4:]
+				dstHost = h
+			} else {
+				srcHost = "www." + h
+				dstHost = h
+			}
+
+			// Generate a valid route name based on the source host
+			routeNameSuffix := strings.ReplaceAll(srcHost, ".", "-")
+			redirectRoute := gatewayv1.HTTPRoute{
+				TypeMeta: httpRouteContext.HTTPRoute.TypeMeta,
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("00-%s-%s-www-redirect", httpRouteContext.HTTPRoute.Name, routeNameSuffix),
+					Namespace: httpRouteContext.HTTPRoute.Namespace,
+				},
+				Spec: gatewayv1.HTTPRouteSpec{
+					Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(srcHost)},
+					Rules: []gatewayv1.HTTPRouteRule{
+						{
+							Filters: []gatewayv1.HTTPRouteFilter{
+								{
+									Type: gatewayv1.HTTPRouteFilterRequestRedirect,
+									RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
+										Hostname:   ptr.To(gatewayv1.PreciseHostname(dstHost)),
+										StatusCode: ptr.To(301),
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+			redirectRoute.Spec.ParentRefs = httpRouteContext.HTTPRoute.Spec.DeepCopy().ParentRefs
+
+			// We need to ensure the redirect route is attached to both HTTP and HTTPS listeners if present.
+			// Currently it copies the ParentRefs from the original route, which might only be bound to 443
+			// if ssl-redirect is enabled. Let's create two ParentRefs for each Gateway, one for 80, one for 443.
+			var allParentRefs []gatewayv1.ParentReference
+			for _, pr := range redirectRoute.Spec.ParentRefs {
+				pr80 := pr
+				pr80.Port = ptr.To[gatewayv1.PortNumber](80)
+				pr80.SectionName = ptr.To(gatewayv1.SectionName(fmt.Sprintf("%s-http", strings.ReplaceAll(srcHost, ".", "-"))))
+				allParentRefs = append(allParentRefs, pr80)
+
+				pr443 := pr
+				pr443.Port = ptr.To[gatewayv1.PortNumber](443)
+				pr443.SectionName = ptr.To(gatewayv1.SectionName(fmt.Sprintf("%s-https", strings.ReplaceAll(srcHost, ".", "-"))))
+				allParentRefs = append(allParentRefs, pr443)
+			}
+			redirectRoute.Spec.ParentRefs = allParentRefs
+
+			eir.HTTPRoutes[types.NamespacedName{
+				Namespace: redirectRoute.Namespace,
+				Name:      redirectRoute.Name,
+			}] = emitterir.HTTPRouteContext{
+				HTTPRoute: redirectRoute,
+			}
+
+			// Inject the Gateway listener
+			for _, parentRef := range redirectRoute.Spec.ParentRefs {
+				gwKey := types.NamespacedName{
+					Namespace: redirectRoute.Namespace,
+					Name:      string(parentRef.Name),
+				}
+				if parentRef.Namespace != nil {
+					gwKey.Namespace = string(*parentRef.Namespace)
+				}
+
+				if gwCtx, ok := eir.Gateways[gwKey]; ok {
+					httpListenerExists := false
+					httpsListenerExists := false
+					var tlsConfig *gatewayv1.ListenerTLSConfig
+
+					for _, l := range gwCtx.Gateway.Spec.Listeners {
+						if l.Hostname != nil && string(*l.Hostname) == dstHost {
+							if l.Protocol == gatewayv1.HTTPSProtocolType {
+								tlsConfig = l.TLS
+							}
+						}
+						if l.Hostname != nil && string(*l.Hostname) == srcHost {
+							if l.Protocol == gatewayv1.HTTPProtocolType {
+								httpListenerExists = true
+							}
+							if l.Protocol == gatewayv1.HTTPSProtocolType {
+								httpsListenerExists = true
+							}
+						}
+					}
+					if !httpListenerExists {
+						listenerName := fmt.Sprintf("%s-http", strings.ReplaceAll(srcHost, ".", "-"))
+						gwCtx.Gateway.Spec.Listeners = append(gwCtx.Gateway.Spec.Listeners, gatewayv1.Listener{
+							Name:     gatewayv1.SectionName(listenerName),
+							Hostname: ptr.To(gatewayv1.Hostname(srcHost)),
+							Port:     80,
+							Protocol: gatewayv1.HTTPProtocolType,
+						})
+					}
+					if !httpsListenerExists && tlsConfig != nil {
+						listenerName := fmt.Sprintf("%s-https", strings.ReplaceAll(srcHost, ".", "-"))
+						gwCtx.Gateway.Spec.Listeners = append(gwCtx.Gateway.Spec.Listeners, gatewayv1.Listener{
+							Name:     gatewayv1.SectionName(listenerName),
+							Hostname: ptr.To(gatewayv1.Hostname(srcHost)),
+							Port:     443,
+							Protocol: gatewayv1.HTTPSProtocolType,
+							TLS:      tlsConfig,
+						})
+					}
+					eir.Gateways[gwKey] = gwCtx
+				}
+			}
+		}
+	}
+	return nil
 }
