@@ -169,13 +169,13 @@ func TestTCPIngressToGatewayAPI(t *testing.T) {
 						},
 					},
 				},
-				TLSRoutes: map[types.NamespacedName]gatewayv1alpha2.TLSRoute{
+				TLSRoutes: map[types.NamespacedName]gatewayv1.TLSRoute{
 					{Namespace: "default", Name: "sample-example-com"}: {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "sample-example-com",
 							Namespace: "default",
 						},
-						Spec: gatewayv1alpha2.TLSRouteSpec{
+						Spec: gatewayv1.TLSRouteSpec{
 							CommonRouteSpec: gatewayv1.CommonRouteSpec{
 								ParentRefs: []gatewayv1.ParentReference{
 									{
@@ -184,7 +184,7 @@ func TestTCPIngressToGatewayAPI(t *testing.T) {
 									},
 								},
 							},
-							Rules: []gatewayv1alpha2.TLSRouteRule{
+							Rules: []gatewayv1.TLSRouteRule{
 								{
 									BackendRefs: []gatewayv1.BackendRef{
 										{
