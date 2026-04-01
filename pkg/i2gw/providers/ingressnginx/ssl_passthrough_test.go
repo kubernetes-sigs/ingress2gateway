@@ -29,7 +29,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 var testNotify = notifications.NoopNotify
@@ -139,7 +138,7 @@ func TestSSLPassthroughFeature(t *testing.T) {
 					},
 				},
 			},
-			TLSRoutes: make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
+			TLSRoutes: make(map[types.NamespacedName]gatewayv1.TLSRoute),
 			Services:  make(map[types.NamespacedName]providerir.ProviderSpecificServiceIR),
 		}
 
@@ -272,7 +271,7 @@ func TestSSLPassthroughFeature(t *testing.T) {
 					},
 				},
 			},
-			TLSRoutes: make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
+			TLSRoutes: make(map[types.NamespacedName]gatewayv1.TLSRoute),
 			Services:  make(map[types.NamespacedName]providerir.ProviderSpecificServiceIR),
 		}
 
@@ -335,7 +334,7 @@ func TestSSLPassthroughFeature(t *testing.T) {
 					},
 				},
 			},
-			TLSRoutes: make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
+			TLSRoutes: make(map[types.NamespacedName]gatewayv1.TLSRoute),
 			Services:  make(map[types.NamespacedName]providerir.ProviderSpecificServiceIR),
 		}
 
@@ -412,7 +411,7 @@ func TestSSLPassthroughFeature(t *testing.T) {
 					},
 				},
 			},
-			TLSRoutes: make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
+			TLSRoutes: make(map[types.NamespacedName]gatewayv1.TLSRoute),
 			Services:  make(map[types.NamespacedName]providerir.ProviderSpecificServiceIR),
 		}
 
@@ -521,7 +520,7 @@ func TestSSLPassthroughFeature(t *testing.T) {
 					},
 				},
 			},
-			TLSRoutes: make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
+			TLSRoutes: make(map[types.NamespacedName]gatewayv1.TLSRoute),
 			Services:  make(map[types.NamespacedName]providerir.ProviderSpecificServiceIR),
 		}
 
@@ -600,7 +599,7 @@ func TestSSLPassthroughFeature(t *testing.T) {
 					},
 				},
 			},
-			TLSRoutes: make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
+			TLSRoutes: make(map[types.NamespacedName]gatewayv1.TLSRoute),
 			Services:  make(map[types.NamespacedName]providerir.ProviderSpecificServiceIR),
 		}
 
