@@ -140,7 +140,6 @@ func Test_ToIR(t *testing.T) {
 								},
 								Hostnames: []gatewayv1.Hostname{"echo.prod.mydomain.com"},
 								Rules: []gatewayv1.HTTPRouteRule{{
-									Name: ptrTo(gatewayv1.SectionName("rule-0")),
 									Matches: []gatewayv1.HTTPRouteMatch{{
 										Path: &gatewayv1.HTTPPathMatch{
 											Type:  &gPathPrefix,
@@ -269,7 +268,6 @@ func Test_ToIR(t *testing.T) {
 								},
 								Hostnames: []gatewayv1.Hostname{"echo.prod.mydomain.com"},
 								Rules: []gatewayv1.HTTPRouteRule{{
-									Name: ptrTo(gatewayv1.SectionName("rule-0")),
 									Matches: []gatewayv1.HTTPRouteMatch{{
 										Path: &gatewayv1.HTTPPathMatch{
 											Type:  &gPathPrefix,
@@ -370,7 +368,6 @@ func Test_ToIR(t *testing.T) {
 								},
 								Hostnames: []gatewayv1.Hostname{"test.mydomain.com"},
 								Rules: []gatewayv1.HTTPRouteRule{{
-									Name: ptrTo(gatewayv1.SectionName("rule-0")),
 									Matches: []gatewayv1.HTTPRouteMatch{{
 										Path: &gatewayv1.HTTPPathMatch{
 											Type:  &gPathPrefix,
@@ -537,7 +534,6 @@ func Test_ToIR(t *testing.T) {
 								},
 								Hostnames: []gatewayv1.Hostname{"bar.example.com"},
 								Rules: []gatewayv1.HTTPRouteRule{{
-									Name: ptrTo(gatewayv1.SectionName("rule-0")),
 									Matches: []gatewayv1.HTTPRouteMatch{{
 										Path: &gatewayv1.HTTPPathMatch{
 											Type:  &gPathPrefix,
@@ -570,7 +566,6 @@ func Test_ToIR(t *testing.T) {
 								Hostnames: []gatewayv1.Hostname{"foo.example.com"},
 								Rules: []gatewayv1.HTTPRouteRule{
 									{
-										Name: ptrTo(gatewayv1.SectionName("rule-0")),
 										Matches: []gatewayv1.HTTPRouteMatch{{
 											Path: &gatewayv1.HTTPPathMatch{
 												Type:  &gPathPrefix,
@@ -589,7 +584,6 @@ func Test_ToIR(t *testing.T) {
 										},
 									},
 									{
-										Name: ptrTo(gatewayv1.SectionName("rule-1")),
 										Matches: []gatewayv1.HTTPRouteMatch{{
 											Path: &gatewayv1.HTTPPathMatch{
 												Type:  &gPathPrefix,
@@ -752,7 +746,6 @@ func Test_ToIR(t *testing.T) {
 								},
 								Hostnames: []gatewayv1.Hostname{"bar.example.com"},
 								Rules: []gatewayv1.HTTPRouteRule{{
-									Name: ptrTo(gatewayv1.SectionName("rule-0")),
 									Matches: []gatewayv1.HTTPRouteMatch{{
 										Path: &gatewayv1.HTTPPathMatch{
 											Type:  &gPathPrefix,
@@ -795,7 +788,6 @@ func Test_ToIR(t *testing.T) {
 								Hostnames: []gatewayv1.Hostname{"foo.example.com"},
 								Rules: []gatewayv1.HTTPRouteRule{
 									{
-										Name: ptrTo(gatewayv1.SectionName("rule-0")),
 										Matches: []gatewayv1.HTTPRouteMatch{{
 											Path: &gatewayv1.HTTPPathMatch{
 												Type:  &gPathPrefix,
@@ -814,7 +806,6 @@ func Test_ToIR(t *testing.T) {
 										},
 									},
 									{
-										Name: ptrTo(gatewayv1.SectionName("rule-1")),
 										Matches: []gatewayv1.HTTPRouteMatch{{
 											Path: &gatewayv1.HTTPPathMatch{
 												Type:  &gPathPrefix,
@@ -954,7 +945,6 @@ func Test_ToIR(t *testing.T) {
 								Hostnames: []gatewayv1.Hostname{"api.example.com"},
 								Rules: []gatewayv1.HTTPRouteRule{
 									{
-										Name: ptrTo(gatewayv1.SectionName("rule-0")),
 										Matches: []gatewayv1.HTTPRouteMatch{{
 											Path: &gatewayv1.HTTPPathMatch{
 												Type:  &gPathPrefix,
@@ -984,7 +974,6 @@ func Test_ToIR(t *testing.T) {
 										},
 									},
 									{
-										Name: ptrTo(gatewayv1.SectionName("rule-1")),
 										Matches: []gatewayv1.HTTPRouteMatch{{
 											Path: &gatewayv1.HTTPPathMatch{
 												Type:  &gPathPrefix,
