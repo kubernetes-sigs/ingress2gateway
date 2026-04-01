@@ -28,7 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 // sslPassthroughFeature converts the nginx.ingress.kubernetes.io/ssl-passthrough
@@ -141,16 +140,16 @@ func sslPassthroughFeature(notify notifications.NotifyFunc, ingresses []networki
 // buildTLSRoute creates a TLSRoute from an HTTPRoute context. It uses the
 // hostnames and backend references from the HTTPRoute, keeping the same
 // parent refs so it attaches to the same Gateway.
-func buildTLSRoute(httpRouteCtx providerir.HTTPRouteContext) gatewayv1alpha2.TLSRoute {
-	tlsRoute := gatewayv1alpha2.TLSRoute{
+func buildTLSRoute(httpRouteCtx providerir.HTTPRouteContext) gatewayv1.TLSRoute {
+	tlsRoute := gatewayv1.TLSRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      httpRouteCtx.HTTPRoute.Name + "-tls-passthrough",
 			Namespace: httpRouteCtx.HTTPRoute.Namespace,
 		},
-		Spec: gatewayv1alpha2.TLSRouteSpec{
+		Spec: gatewayv1.TLSRouteSpec{
 			Hostnames: make([]gatewayv1.Hostname, len(httpRouteCtx.HTTPRoute.Spec.Hostnames)),
 		},
-		Status: gatewayv1alpha2.TLSRouteStatus{
+		Status: gatewayv1.TLSRouteStatus{
 			RouteStatus: gatewayv1.RouteStatus{
 				Parents: []gatewayv1.RouteParentStatus{},
 			},
@@ -194,7 +193,7 @@ func buildTLSRoute(httpRouteCtx providerir.HTTPRouteContext) gatewayv1alpha2.TLS
 	}
 
 	if len(backendRefs) > 0 {
-		tlsRoute.Spec.Rules = []gatewayv1alpha2.TLSRouteRule{
+		tlsRoute.Spec.Rules = []gatewayv1.TLSRouteRule{
 			{BackendRefs: backendRefs},
 		}
 	}
