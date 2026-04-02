@@ -223,7 +223,7 @@ func Test_appRootFeature(t *testing.T) {
 			},
 		},
 		{
-			name: "app-root annotation ignored for non-root path",
+			name: "app-root annotation with non-root path still adds redirect rule",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-ingress",
@@ -300,6 +300,28 @@ func Test_appRootFeature(t *testing.T) {
 							},
 							BackendRefs: []gatewayv1.HTTPBackendRef{
 								{BackendRef: gatewayv1.BackendRef{BackendObjectReference: gatewayv1.BackendObjectReference{Name: "api-svc", Port: ptr.To(gatewayv1.PortNumber(8080))}}},
+							},
+						},
+						{
+							Matches: []gatewayv1.HTTPRouteMatch{
+								{
+									Path: &gatewayv1.HTTPPathMatch{
+										Type:  ptr.To(gatewayv1.PathMatchExact),
+										Value: ptr.To("/"),
+									},
+								},
+							},
+							Filters: []gatewayv1.HTTPRouteFilter{
+								{
+									Type: gatewayv1.HTTPRouteFilterRequestRedirect,
+									RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
+										Path: &gatewayv1.HTTPPathModifier{
+											Type:            gatewayv1.FullPathHTTPPathModifier,
+											ReplaceFullPath: ptr.To("/app1"),
+										},
+										StatusCode: ptr.To(302),
+									},
+								},
 							},
 						},
 					},
@@ -384,6 +406,183 @@ func Test_appRootFeature(t *testing.T) {
 							},
 							BackendRefs: []gatewayv1.HTTPBackendRef{
 								{BackendRef: gatewayv1.BackendRef{BackendObjectReference: gatewayv1.BackendObjectReference{Name: "empty", Port: ptr.To(gatewayv1.PortNumber(80))}}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "absolute URL app-root is ignored",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-ingress",
+					Namespace: "default",
+					Annotations: map[string]string{
+						AppRootAnnotation: "https://example.com/landing",
+					},
+				},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{
+						{
+							Host: "absolute.com",
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{
+										{
+											Path: "/",
+											Backend: networkingv1.IngressBackend{
+												Service: &networkingv1.IngressServiceBackend{
+													Name: "http-svc",
+													Port: networkingv1.ServiceBackendPort{
+														Number: 80,
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			initialHTTPRoute: &gatewayv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-ingress-absolute-com",
+					Namespace: "default",
+				},
+				Spec: gatewayv1.HTTPRouteSpec{
+					Hostnames: []gatewayv1.Hostname{"absolute.com"},
+					Rules: []gatewayv1.HTTPRouteRule{
+						{
+							Matches: []gatewayv1.HTTPRouteMatch{
+								{
+									Path: &gatewayv1.HTTPPathMatch{
+										Type:  ptr.To(gatewayv1.PathMatchPathPrefix),
+										Value: ptr.To("/"),
+									},
+								},
+							},
+							BackendRefs: []gatewayv1.HTTPBackendRef{
+								{BackendRef: gatewayv1.BackendRef{BackendObjectReference: gatewayv1.BackendObjectReference{Name: "http-svc", Port: ptr.To(gatewayv1.PortNumber(80))}}},
+							},
+						},
+					},
+				},
+			},
+			expectedHTTPRoute: &gatewayv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-ingress-absolute-com",
+					Namespace: "default",
+				},
+				Spec: gatewayv1.HTTPRouteSpec{
+					Hostnames: []gatewayv1.Hostname{"absolute.com"},
+					Rules: []gatewayv1.HTTPRouteRule{
+						{
+							Matches: []gatewayv1.HTTPRouteMatch{
+								{
+									Path: &gatewayv1.HTTPPathMatch{
+										Type:  ptr.To(gatewayv1.PathMatchPathPrefix),
+										Value: ptr.To("/"),
+									},
+								},
+							},
+							BackendRefs: []gatewayv1.HTTPBackendRef{
+								{BackendRef: gatewayv1.BackendRef{BackendObjectReference: gatewayv1.BackendObjectReference{Name: "http-svc", Port: ptr.To(gatewayv1.PortNumber(80))}}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "app-root annotation with Exact root path adds redirect filter to existing rule",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-ingress",
+					Namespace: "default",
+					Annotations: map[string]string{
+						AppRootAnnotation: "/app1",
+					},
+				},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{
+						{
+							Host: "exact-root.bar.com",
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{
+										{
+											Path: "/",
+											Backend: networkingv1.IngressBackend{
+												Service: &networkingv1.IngressServiceBackend{
+													Name: "http-svc",
+													Port: networkingv1.ServiceBackendPort{
+														Number: 80,
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			initialHTTPRoute: &gatewayv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-ingress-exact-root-bar-com",
+					Namespace: "default",
+				},
+				Spec: gatewayv1.HTTPRouteSpec{
+					Hostnames: []gatewayv1.Hostname{"exact-root.bar.com"},
+					Rules: []gatewayv1.HTTPRouteRule{
+						{
+							Matches: []gatewayv1.HTTPRouteMatch{
+								{
+									Path: &gatewayv1.HTTPPathMatch{
+										Type:  ptr.To(gatewayv1.PathMatchExact),
+										Value: ptr.To("/"),
+									},
+								},
+							},
+							BackendRefs: []gatewayv1.HTTPBackendRef{
+								{BackendRef: gatewayv1.BackendRef{BackendObjectReference: gatewayv1.BackendObjectReference{Name: "http-svc", Port: ptr.To(gatewayv1.PortNumber(80))}}},
+							},
+						},
+					},
+				},
+			},
+			expectedHTTPRoute: &gatewayv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-ingress-exact-root-bar-com",
+					Namespace: "default",
+				},
+				Spec: gatewayv1.HTTPRouteSpec{
+					Hostnames: []gatewayv1.Hostname{"exact-root.bar.com"},
+					Rules: []gatewayv1.HTTPRouteRule{
+						{
+							Matches: []gatewayv1.HTTPRouteMatch{
+								{
+									Path: &gatewayv1.HTTPPathMatch{
+										Type:  ptr.To(gatewayv1.PathMatchExact),
+										Value: ptr.To("/"),
+									},
+								},
+							},
+							Filters: []gatewayv1.HTTPRouteFilter{
+								{
+									Type: gatewayv1.HTTPRouteFilterRequestRedirect,
+									RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
+										Path: &gatewayv1.HTTPPathModifier{
+											Type:            gatewayv1.FullPathHTTPPathModifier,
+											ReplaceFullPath: ptr.To("/app1"),
+										},
+										StatusCode: ptr.To(302),
+									},
+								},
 							},
 						},
 					},

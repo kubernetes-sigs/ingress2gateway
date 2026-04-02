@@ -18,6 +18,7 @@ package ingressnginx
 
 import (
 	"fmt"
+	"net/url"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
@@ -30,14 +31,12 @@ import (
 
 // appRootFeature converts the nginx.ingress.kubernetes.io/app-root annotation
 // to a Gateway API RequestRedirect filter. The annotation causes ingress-nginx
-// to return a 302 redirect from "/" to the specified path.
-//
-// In Gateway API terms, this adds a new HTTPRouteRule with an Exact "/"
-// path match and a RequestRedirect filter, while keeping the existing
-// PathPrefix "/" rule intact for other request paths.
+// to return a 302 redirect from "/" to the specified path at the server level,
+// regardless of which locations are defined.
 func appRootFeature(notify notifications.NotifyFunc, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	for key, httpRouteContext := range ir.HTTPRoutes {
 		var appRootPath string
+		exactRootRuleIndex := -1
 
 		for ruleIndex := range httpRouteContext.HTTPRoute.Spec.Rules {
 			if ruleIndex >= len(httpRouteContext.RuleBackendSources) {
@@ -54,52 +53,68 @@ func appRootFeature(notify notifications.NotifyFunc, ingresses []networkingv1.In
 				continue
 			}
 
-			// Only apply app-root when the rule matches PathPrefix "/".
+			// Reject absolute URLs, matching ingress-nginx's u.IsAbs() check.
+			if u, err := url.Parse(appRoot); err == nil && u.IsAbs() {
+				notify(notifications.WarningNotification, fmt.Sprintf("Ignoring app-root annotation with absolute URL %q (not supported)", appRoot))
+				continue
+			}
+
+			appRootPath = appRoot
+
+			// Check whether this rule has a "/" match we can attach to.
 			for _, match := range httpRouteContext.HTTPRoute.Spec.Rules[ruleIndex].Matches {
 				if match.Path != nil &&
-					match.Path.Type != nil && *match.Path.Type == gatewayv1.PathMatchPathPrefix &&
-					match.Path.Value != nil && *match.Path.Value == "/" {
-					appRootPath = appRoot
+					match.Path.Type != nil &&
+					match.Path.Value != nil && *match.Path.Value == "/" &&
+					*match.Path.Type == gatewayv1.PathMatchExact {
+					exactRootRuleIndex = ruleIndex
 					break
 				}
 			}
-
-			if appRootPath != "" {
-				break
-			}
+			break
 		}
 
 		if appRootPath == "" {
 			continue
 		}
 
-		notify(notifications.InfoNotification, fmt.Sprintf("Translating app-root annotation to a redirect from / to %s", appRootPath))
-
-		redirectRule := gatewayv1.HTTPRouteRule{
-			Matches: []gatewayv1.HTTPRouteMatch{
-				{
-					Path: &gatewayv1.HTTPPathMatch{
-						Type:  ptr.To(gatewayv1.PathMatchExact),
-						Value: ptr.To("/"),
-					},
+		redirectFilter := gatewayv1.HTTPRouteFilter{
+			Type: gatewayv1.HTTPRouteFilterRequestRedirect,
+			RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
+				Path: &gatewayv1.HTTPPathModifier{
+					Type:            gatewayv1.FullPathHTTPPathModifier,
+					ReplaceFullPath: ptr.To(appRootPath),
 				},
-			},
-			Filters: []gatewayv1.HTTPRouteFilter{
-				{
-					Type: gatewayv1.HTTPRouteFilterRequestRedirect,
-					RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
-						Path: &gatewayv1.HTTPPathModifier{
-							Type:            gatewayv1.FullPathHTTPPathModifier,
-							ReplaceFullPath: ptr.To(appRootPath),
-						},
-						StatusCode: ptr.To(302),
-					},
-				},
+				StatusCode: ptr.To(302),
 			},
 		}
 
-		httpRouteContext.HTTPRoute.Spec.Rules = append(httpRouteContext.HTTPRoute.Spec.Rules, redirectRule)
-		httpRouteContext.RuleBackendSources = append(httpRouteContext.RuleBackendSources, nil)
+		if exactRootRuleIndex >= 0 {
+			// The rule already matches Exact "/", so add the redirect
+			// filter directly to that rule. BackendRefs must be cleared
+			// because Gateway API forbids combining a RequestRedirect
+			// filter with backend references.
+			httpRouteContext.HTTPRoute.Spec.Rules[exactRootRuleIndex].Filters = append(
+				httpRouteContext.HTTPRoute.Spec.Rules[exactRootRuleIndex].Filters, redirectFilter)
+			httpRouteContext.HTTPRoute.Spec.Rules[exactRootRuleIndex].BackendRefs = nil
+		} else {
+			// Either there's a PathPrefix "/" (need a separate Exact "/"
+			// rule) or there's no "/" rule at all (need a standalone
+			// redirect). Both cases produce the same new rule.
+			redirectRule := gatewayv1.HTTPRouteRule{
+				Matches: []gatewayv1.HTTPRouteMatch{
+					{
+						Path: &gatewayv1.HTTPPathMatch{
+							Type:  ptr.To(gatewayv1.PathMatchExact),
+							Value: ptr.To("/"),
+						},
+					},
+				},
+				Filters: []gatewayv1.HTTPRouteFilter{redirectFilter},
+			}
+			httpRouteContext.HTTPRoute.Spec.Rules = append(httpRouteContext.HTTPRoute.Spec.Rules, redirectRule)
+			httpRouteContext.RuleBackendSources = append(httpRouteContext.RuleBackendSources, nil)
+		}
 
 		ir.HTTPRoutes[key] = httpRouteContext
 	}
