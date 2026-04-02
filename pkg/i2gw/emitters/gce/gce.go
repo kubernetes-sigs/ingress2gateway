@@ -23,6 +23,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/utils"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	providergce "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/gce"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -50,6 +51,12 @@ var (
 		Group:   "networking.gke.io",
 		Version: "v1",
 		Kind:    "HealthCheckPolicy",
+	}
+
+	GCPHTTPFilterGVK = schema.GroupVersionKind{
+		Group:   "networking.gke.io",
+		Version: "v1",
+		Kind:    "GCPHTTPFilter",
 	}
 )
 
@@ -173,6 +180,16 @@ func buildGceServiceExtensions(notify notifications.NotifyFunc, ir emitterir.Emi
 			}
 			gatewayResources.GatewayExtensions = append(gatewayResources.GatewayExtensions, *obj)
 		}
+
+		httpFilter := addGCPHTTPFilterIfConfigured(svcKey, gceServiceIR)
+		if httpFilter != nil {
+			obj, err := i2gw.CastToUnstructured(httpFilter)
+			if err != nil {
+				notify(notifications.ErrorNotification, "Failed to cast GCPHTTPFilter to unstructured", httpFilter)
+				continue
+			}
+			gatewayResources.GatewayExtensions = append(gatewayResources.GatewayExtensions, *obj)
+		}
 	}
 }
 
@@ -245,4 +262,22 @@ func addHealthCheckPolicyIfConfigured(serviceNamespacedName types.NamespacedName
 	}
 	healthCheckPolicy.SetGroupVersionKind(HealthCheckPolicyGVK)
 	return &healthCheckPolicy
+}
+
+func addGCPHTTPFilterIfConfigured(serviceNamespacedName types.NamespacedName, gceServiceIR *gce.ServiceIR) *providergce.GCPHTTPFilter {
+	if gceServiceIR == nil || gceServiceIR.Cdn == nil {
+		return nil
+	}
+
+	httpFilter := providergce.GCPHTTPFilter{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: serviceNamespacedName.Namespace,
+			Name:      serviceNamespacedName.Name + "-filter",
+		},
+		Spec: providergce.GCPHTTPFilterSpec{
+			CachePolicy: gceServiceIR.Cdn.CachePolicy,
+		},
+	}
+	httpFilter.SetGroupVersionKind(GCPHTTPFilterGVK)
+	return &httpFilter
 }
