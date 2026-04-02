@@ -320,7 +320,7 @@ func patchGceHTTPRouteIR(ir *providerir.ProviderIR) {
 					ExtensionRef: &gatewayv1.LocalObjectReference{
 						Group: "networking.gke.io",
 						Kind:  "GCPHTTPFilter",
-						Name:  gatewayv1.ObjectName(serviceName),
+						Name:  gatewayv1.ObjectName(serviceName + "-filter"),
 					},
 				}
 				if routeCtx.Spec.Rules[i].Filters == nil {

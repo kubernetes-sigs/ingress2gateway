@@ -1055,7 +1055,7 @@ func Test_convertToIR(t *testing.T) {
 												ExtensionRef: &gatewayv1.LocalObjectReference{
 													Group: "networking.gke.io",
 													Kind:  "GCPHTTPFilter",
-													Name:  "test-service",
+													Name:  "test-service-filter",
 												},
 											},
 										},

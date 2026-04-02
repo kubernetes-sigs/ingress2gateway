@@ -272,7 +272,7 @@ func addGCPHTTPFilterIfConfigured(serviceNamespacedName types.NamespacedName, gc
 	httpFilter := providergce.GCPHTTPFilter{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: serviceNamespacedName.Namespace,
-			Name:      serviceNamespacedName.Name,
+			Name:      serviceNamespacedName.Name + "-filter",
 		},
 		Spec: providergce.GCPHTTPFilterSpec{
 			CachePolicy: gceServiceIR.Cdn.CachePolicy,
