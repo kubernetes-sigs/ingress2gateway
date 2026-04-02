@@ -1451,3 +1451,53 @@ func TestIngressNGINXRegex(t *testing.T) {
 		})
 	})
 }
+
+func TestIngressNGINXAppRoot(t *testing.T) {
+	t.Parallel()
+	t.Run("root path redirects to app-root", func(t *testing.T) {
+		suffix, err := framework.RandString()
+		require.NoError(t, err)
+		host := fmt.Sprintf("approot-%s.example.com", suffix)
+
+		runTestCase(t, &framework.TestCase{
+			GatewayImplementation: implementation.IstioName,
+			Providers:             []string{ingressnginx.Name},
+			ProviderFlags: map[string]map[string]string{
+				ingressnginx.Name: {
+					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
+				},
+			},
+			Ingresses: []*networkingv1.Ingress{
+				framework.BasicIngress().
+					WithName("approot").
+					WithHost(host).
+					WithIngressClass(ingressnginx.NginxIngressClass).
+					WithAnnotation(ingressnginx.AppRootAnnotation, "/dashboard").
+					Build(),
+			},
+			Verifiers: map[string][]framework.Verifier{
+				"approot": {
+					// Requesting "/" should produce a 302 redirect to "/dashboard".
+					&framework.HTTPRequestVerifier{
+						Host:         host,
+						Path:         "/",
+						AllowedCodes: []int{http.StatusFound},
+						HeaderMatches: []framework.HeaderMatch{
+							{
+								Name: "Location",
+								Patterns: []*framework.MaybeNegativePattern{
+									{Pattern: regexp.MustCompile(`/dashboard$`)},
+								},
+							},
+						},
+					},
+					// Requesting a sub-path should still reach the backend normally.
+					&framework.HTTPRequestVerifier{
+						Host: host,
+						Path: "/hostname",
+					},
+				},
+			},
+		})
+	})
+}
