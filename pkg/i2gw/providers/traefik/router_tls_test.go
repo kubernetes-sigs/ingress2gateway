@@ -1,5 +1,5 @@
 /*
-Copyright 2024 The Kubernetes Authors.
+Copyright 2026 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,7 +26,6 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -382,13 +381,3 @@ func hostnamePtr(h string) *gatewayv1.Hostname {
 	return &v
 }
 
-// fieldErrCount returns the number of errors matching a specific field path in an ErrorList.
-func fieldErrCount(errs field.ErrorList, path string) int {
-	count := 0
-	for _, e := range errs {
-		if e.Field == path {
-			count++
-		}
-	}
-	return count
-}

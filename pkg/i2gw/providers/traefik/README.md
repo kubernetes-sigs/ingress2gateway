@@ -19,10 +19,36 @@ The project supports translating [Traefik](https://traefik.io/) specific annotat
 ### Entrypoints
 
 - `traefik.ingress.kubernetes.io/router.entrypoints`: Controls which Traefik entrypoints (ports) the router listens on. The two standard values are:
-  - `websecure` only — removes the HTTP listener (port 80) from the generated Gateway; the route becomes HTTPS-only.
+  - `websecure` only — the route is HTTPS-only. If an HTTPS listener (port 443) is present on the generated Gateway, the HTTP listener (port 80) is **kept** and an HTTP→HTTPS redirect HTTPRoute (301) is generated and bound to it, mirroring Traefik's behaviour. If no HTTPS listener exists (e.g. `router.tls` is not set and no `spec.tls` block is present), the HTTP listener is removed instead.
   - `web` only — removes the HTTPS listener (port 443) from the generated Gateway; the route becomes HTTP-only.
   - `web,websecure` — no listeners are removed; this matches the default Gateway API behaviour.
   - Any other (non-standard) entrypoint name — **Recognized but not converted.** A warning is emitted asking you to review the Gateway listener configuration manually.
+
+### HTTP→HTTPS Redirect
+
+When `router.entrypoints: websecure` is combined with `router.tls: "true"` (or a `spec.tls` block), ingress2gateway generates an additional redirect HTTPRoute named `{route-name}-http` that redirects all HTTP traffic (port 80) to HTTPS (301). This HTTPRoute is bound to the HTTP listener via `sectionName` so that only port-80 traffic is affected. The main HTTPRoute continues to serve HTTPS traffic on port 443.
+
+## Annotation Interaction Order
+
+When multiple annotations are present, they are applied in this order:
+
+1. **`spec.tls`** (standard Ingress field) — processed first by the common converter. If a `spec.tls` block is present, an HTTPS listener is already created with the real secret name before any Traefik annotations are evaluated.
+
+2. **`router.tls`** — evaluated only when `spec.tls` is **absent**. If `spec.tls` is present, `router.tls` is a no-op — the existing HTTPS listener is used as-is and no duplicate listener is created.
+
+3. **`router.entrypoints`** — evaluated after TLS listeners are in place. When `websecure` is set:
+   - If an HTTPS listener exists (from either `spec.tls` or `router.tls`), the HTTP listener is kept and a redirect HTTPRoute is generated.
+   - If no HTTPS listener exists, the HTTP listener is removed.
+
+**In practice, the common combinations are:**
+
+| `spec.tls` | `router.tls` | `router.entrypoints` | Result |
+|---|---|---|---|
+| present | any | `websecure` | HTTP + HTTPS listeners (real secret from `spec.tls`) + HTTP→HTTPS redirect route |
+| absent | `true` | `websecure` | HTTP + HTTPS listeners (placeholder secret) + HTTP→HTTPS redirect route |
+| absent | `true` | absent | HTTP + HTTPS listeners (placeholder secret), no redirect |
+| absent | absent | `websecure` | HTTP listener removed (no HTTPS listener to redirect to) |
+| absent | absent | `web` | HTTP listener only (no HTTPS listener was present to remove) |
 
 ### Not Converted (warnings emitted)
 
@@ -77,7 +103,11 @@ metadata:
 spec:
   gatewayClassName: traefik
   listeners:
-  - name: my-app-example-com-https   # HTTP listener removed (entrypoints: websecure)
+  - name: my-app-example-com-http    # HTTP listener kept for redirect
+    hostname: my-app.example.com
+    port: 80
+    protocol: HTTP
+  - name: my-app-example-com-https
     hostname: my-app.example.com
     port: 443
     protocol: HTTPS
@@ -87,6 +117,25 @@ spec:
       - group: ""
         kind: Secret
         name: my-app-example-com-tls  # create this secret before applying
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: my-app-my-app-example-com-http   # redirects HTTP → HTTPS (301)
+  namespace: production
+spec:
+  parentRefs:
+  - name: traefik
+    namespace: production
+    sectionName: my-app-example-com-http
+  hostnames:
+  - my-app.example.com
+  rules:
+  - filters:
+    - type: RequestRedirect
+      requestRedirect:
+        scheme: https
+        statusCode: 301
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute

@@ -1,5 +1,5 @@
 /*
-Copyright 2024 The Kubernetes Authors.
+Copyright 2026 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package traefik
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
@@ -47,7 +48,8 @@ func routerTLSFeature(notify notifications.NotifyFunc, ingresses []networkingv1.
 	for _, rg := range ruleGroups {
 		for _, rule := range rg.Rules {
 			val, ok := rule.Ingress.Annotations[RouterTLSAnnotation]
-			if !ok || (val != "true" && val != "True") {
+			parsed, err := strconv.ParseBool(val)
+			if !ok || err != nil || !parsed {
 				continue
 			}
 
@@ -65,7 +67,10 @@ func routerTLSFeature(notify notifications.NotifyFunc, ingresses []networkingv1.
 			}
 			gw, found := ir.Gateways[gatewayKey]
 			if !found {
-				errs = append(errs, field.NotFound(field.NewPath("Gateway"), gatewayKey))
+				errs = append(errs, field.NotFound(
+					field.NewPath("Gateway"),
+					fmt.Sprintf("%s (from ingress %s/%s)", gatewayKey, rule.Ingress.Namespace, rule.Ingress.Name),
+				))
 				continue
 			}
 

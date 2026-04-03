@@ -1,5 +1,5 @@
 /*
-Copyright 2024 The Kubernetes Authors.
+Copyright 2026 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -40,13 +40,15 @@ const (
 //
 // Traefik entrypoints define which ports a router listens on. The two standard
 // entrypoints are:
-//   - web       → port 80  (HTTP)
-//   - websecure → port 443 (HTTPS)
+//   - web       -> port 80  (HTTP)
+//   - websecure -> port 443 (HTTPS)
 //
 // When only "websecure" is listed (without "web"), the route is HTTPS-only.
-// common.ToIR() always generates an HTTP listener, so this parser removes it.
+// If an HTTPS listener is already present on the Gateway, the HTTP listener is
+// kept so that forceHTTPSFeature can attach a redirect HTTPRoute to it.
+// If no HTTPS listener exists, the HTTP listener is removed as a fallback.
 //
-// When only "web" is listed, the route is HTTP-only — the HTTPS listener (if
+// When only "web" is listed, the route is HTTP-only -- the HTTPS listener (if
 // any was added by router_tls.go) is removed.
 //
 // When both are listed, or when neither standard entrypoint is present, no
@@ -74,53 +76,75 @@ func routerEntrypointsFeature(notify notifications.NotifyFunc, ingresses []netwo
 			}
 			gw, found := ir.Gateways[gatewayKey]
 			if !found {
-				errs = append(errs, field.NotFound(field.NewPath("Gateway"), gatewayKey))
+				errs = append(errs, field.NotFound(
+					field.NewPath("Gateway"),
+					fmt.Sprintf("%s (from ingress %s/%s)", gatewayKey, rule.Ingress.Namespace, rule.Ingress.Name),
+				))
 				continue
 			}
 
+			routeKey := types.NamespacedName{
+				Namespace: rule.Ingress.Namespace,
+				Name:      common.RouteName(rg.Name, rg.Host),
+			}
+			httpRoute := ir.HTTPRoutes[routeKey]
+
 			switch {
 			case hasWebsecure && !hasWeb:
-				// HTTPS-only: remove the HTTP listener that common.ToIR() always adds.
-				httpListenerName := gatewayv1.SectionName(httpListenerName(rg.Host))
-				gw.Spec.Listeners = removeListener(gw.Spec.Listeners, httpListenerName)
-				ir.Gateways[gatewayKey] = gw
+				// HTTPS-only route. When an HTTPS listener is already present on the
+				// Gateway (added by router_tls.go or via spec.tls), keep the HTTP
+				// listener so that forceHTTPSFeature can attach a redirect HTTPRoute
+				// to it. If no HTTPS listener exists there is nothing to redirect to,
+				// so the HTTP listener is removed as a fallback.
+				httpSectionName := gatewayv1.SectionName(httpListenerName(rg.Host))
 
-				routeKey := types.NamespacedName{
-					Namespace: rule.Ingress.Namespace,
-					Name:      common.RouteName(rg.Name, rg.Host),
+				hasHTTPS := false
+				for _, l := range gw.Spec.Listeners {
+					if l.Protocol == gatewayv1.HTTPSProtocolType {
+						hasHTTPS = true
+						break
+					}
 				}
-				httpRoute := ir.HTTPRoutes[routeKey]
-				notify(
-					notifications.InfoNotification,
-					fmt.Sprintf(
-						"parsed %q annotation (value: %q): removed HTTP listener %q from Gateway %s — route is HTTPS-only",
-						RouterEntrypointsAnnotation, val, httpListenerName, gatewayKey,
-					),
-					&httpRoute.HTTPRoute,
-				)
+
+				if hasHTTPS {
+					notify(
+						notifications.InfoNotification,
+						fmt.Sprintf(
+							"parsed %q annotation (value: %q): route is HTTPS-only -- "+
+								"HTTP listener %q kept for HTTP->HTTPS redirect",
+							RouterEntrypointsAnnotation, val, httpSectionName,
+						),
+						&httpRoute.HTTPRoute,
+					)
+				} else {
+					gw.Spec.Listeners = removeListener(gw.Spec.Listeners, httpSectionName)
+					ir.Gateways[gatewayKey] = gw
+					notify(
+						notifications.InfoNotification,
+						fmt.Sprintf(
+							"parsed %q annotation (value: %q): removed HTTP listener %q from Gateway %s -- route is HTTPS-only",
+							RouterEntrypointsAnnotation, val, httpSectionName, gatewayKey,
+						),
+						&httpRoute.HTTPRoute,
+					)
+				}
 
 			case hasWeb && !hasWebsecure:
 				// HTTP-only: remove the HTTPS listener if one was added (e.g. by router_tls.go).
-				httpsListenerName := gatewayv1.SectionName(httpsListenerName(rg.Host))
-				gw.Spec.Listeners = removeListener(gw.Spec.Listeners, httpsListenerName)
+				httpsName := gatewayv1.SectionName(httpsListenerName(rg.Host))
+				gw.Spec.Listeners = removeListener(gw.Spec.Listeners, httpsName)
 				ir.Gateways[gatewayKey] = gw
-
-				routeKey := types.NamespacedName{
-					Namespace: rule.Ingress.Namespace,
-					Name:      common.RouteName(rg.Name, rg.Host),
-				}
-				httpRoute := ir.HTTPRoutes[routeKey]
 				notify(
 					notifications.InfoNotification,
 					fmt.Sprintf(
-						"parsed %q annotation (value: %q): removed HTTPS listener %q from Gateway %s — route is HTTP-only",
-						RouterEntrypointsAnnotation, val, httpsListenerName, gatewayKey,
+						"parsed %q annotation (value: %q): removed HTTPS listener %q from Gateway %s -- route is HTTP-only",
+						RouterEntrypointsAnnotation, val, httpsName, gatewayKey,
 					),
 					&httpRoute.HTTPRoute,
 				)
 
 			case hasWeb && hasWebsecure:
-				// Both entrypoints — nothing to remove, this is the default Gateway API
+				// Both entrypoints -- nothing to remove, this is the default Gateway API
 				// behaviour (HTTP + HTTPS listeners). No notification needed.
 
 			default:
@@ -130,7 +154,7 @@ func routerEntrypointsFeature(notify notifications.NotifyFunc, ingresses []netwo
 					notifications.WarningNotification,
 					fmt.Sprintf(
 						"parsed %q annotation (value: %q) on ingress %s/%s: "+
-							"non-standard entrypoint(s) cannot be mapped to Gateway listeners — "+
+							"non-standard entrypoint(s) cannot be mapped to Gateway listeners -- "+
 							"review the Gateway spec and add the correct listener port/protocol manually",
 						RouterEntrypointsAnnotation, val,
 						rule.Ingress.Namespace, rule.Ingress.Name,

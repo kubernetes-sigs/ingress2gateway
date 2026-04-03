@@ -1,5 +1,5 @@
 /*
-Copyright 2024 The Kubernetes Authors.
+Copyright 2026 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -142,15 +142,14 @@ func Test_convertToIR_routerTLSWithEntrypoints(t *testing.T) {
 		t.Fatalf("Gateway %v not found", gatewayKey)
 	}
 
-	// Only HTTPS listener should exist — HTTP must have been removed by routerEntrypointsFeature.
+	// Both HTTP and HTTPS listeners should be present:
+	// - routerEntrypointsFeature keeps the HTTP listener (HTTPS listener exists)
+	// - forceHTTPSFeature generates a redirect HTTPRoute on port 80
+	httpFound, httpsFound := false, false
 	for _, l := range gw.Spec.Listeners {
 		if l.Protocol == gatewayv1.HTTPProtocolType {
-			t.Errorf("HTTP listener should have been removed but found: %v", l.Name)
+			httpFound = true
 		}
-	}
-
-	httpsFound := false
-	for _, l := range gw.Spec.Listeners {
 		if l.Protocol == gatewayv1.HTTPSProtocolType {
 			httpsFound = true
 			// Verify placeholder cert name.
@@ -164,8 +163,17 @@ func Test_convertToIR_routerTLSWithEntrypoints(t *testing.T) {
 			}
 		}
 	}
+	if !httpFound {
+		t.Error("expected HTTP listener to be present (forceHTTPSFeature attaches redirect route to it)")
+	}
 	if !httpsFound {
 		t.Error("expected HTTPS listener to be present")
+	}
+
+	// Verify that forceHTTPSFeature generated a redirect HTTPRoute for port 80.
+	redirectRouteKey := types.NamespacedName{Namespace: "monitoring", Name: "grafana-grafana-example-com-http"}
+	if _, ok := ir.HTTPRoutes[redirectRouteKey]; !ok {
+		t.Errorf("expected HTTP->HTTPS redirect HTTPRoute %v to be present", redirectRouteKey)
 	}
 
 	// Verify path type: ImplementationSpecific → PathPrefix.

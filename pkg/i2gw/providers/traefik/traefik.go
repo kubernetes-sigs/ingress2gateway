@@ -1,5 +1,5 @@
 /*
-Copyright 2024 The Kubernetes Authors.
+Copyright 2026 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,10 +18,11 @@ limitations under the License.
 // Ingress resources (ingressClassName: traefik) to Gateway API resources.
 //
 // Supported annotations:
-//   - traefik.ingress.kubernetes.io/router.tls       → HTTPS listener on the Gateway
-//   - traefik.ingress.kubernetes.io/router.entrypoints → warning (no direct equivalent)
-//   - traefik.ingress.kubernetes.io/router.middlewares → warning (no direct equivalent)
-//   - traefik.ingress.kubernetes.io/router.priority   → warning (no direct equivalent)
+//   - traefik.ingress.kubernetes.io/router.tls         → adds an HTTPS listener to the Gateway
+//   - traefik.ingress.kubernetes.io/router.entrypoints → controls which listeners are kept or removed
+//
+// Any other annotation starting with traefik.ingress.kubernetes.io/ is not converted;
+// a warning is emitted so the user can handle it manually.
 package traefik
 
 import (

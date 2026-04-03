@@ -1,5 +1,5 @@
 /*
-Copyright 2024 The Kubernetes Authors.
+Copyright 2026 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ limitations under the License.
 package traefik
 
 import (
+	"bytes"
 	"context"
 	"io"
 
@@ -62,13 +63,19 @@ func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage
 func (r *resourceReader) readResourcesFromFile(reader io.Reader) (*storage, error) {
 	storage := newResourcesStorage()
 
-	ingresses, err := common.ReadIngressesFromFile(reader, r.conf.Namespace, TraefikIngressClass)
+	// Buffer upfront so each call gets a fresh reader over the same data.
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	ingresses, err := common.ReadIngressesFromFile(bytes.NewReader(data), r.conf.Namespace, TraefikIngressClass)
 	if err != nil {
 		return nil, err
 	}
 	storage.Ingresses = ingresses
 
-	services, err := common.ReadServicesFromFile(reader, r.conf.Namespace)
+	services, err := common.ReadServicesFromFile(bytes.NewReader(data), r.conf.Namespace)
 	if err != nil {
 		return nil, err
 	}

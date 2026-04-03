@@ -30,16 +30,13 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-func Test_routerEntrypointsFeature(t *testing.T) {
+func Test_forceHTTPSFeature(t *testing.T) {
 	iPrefix := networkingv1.PathTypePrefix
 
-	// bothListeners is the Gateway state that common.ToIR() produces when
-	// a host has TLS configured — HTTP on 80 and HTTPS on 443.
 	bothListeners := func(host string) []gatewayv1.Listener {
 		return []gatewayv1.Listener{
 			{Name: gatewayv1.SectionName(httpListenerName(host)), Hostname: hostnamePtr(host), Port: 80, Protocol: gatewayv1.HTTPProtocolType},
-			{
-				Name: gatewayv1.SectionName(httpsListenerName(host)), Hostname: hostnamePtr(host), Port: 443, Protocol: gatewayv1.HTTPSProtocolType,
+			{Name: gatewayv1.SectionName(httpsListenerName(host)), Hostname: hostnamePtr(host), Port: 443, Protocol: gatewayv1.HTTPSProtocolType,
 				TLS: &gatewayv1.ListenerTLSConfig{
 					Mode: ptr.To(gatewayv1.TLSModeTerminate),
 					CertificateRefs: []gatewayv1.SecretObjectReference{{
@@ -52,17 +49,49 @@ func Test_routerEntrypointsFeature(t *testing.T) {
 		}
 	}
 
+	makeRedirectRoute := func(host, namespace, routeName string) gatewayv1.HTTPRoute {
+		sectionName := gatewayv1.SectionName(httpListenerName(host))
+		gwNamespace := gatewayv1.Namespace(namespace)
+		route := gatewayv1.HTTPRoute{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "gateway.networking.k8s.io/v1",
+				Kind:       "HTTPRoute",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      routeName + "-http",
+				Namespace: namespace,
+			},
+			Spec: gatewayv1.HTTPRouteSpec{
+				Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(host)},
+				Rules: []gatewayv1.HTTPRouteRule{{
+					Filters: []gatewayv1.HTTPRouteFilter{{
+						Type: gatewayv1.HTTPRouteFilterRequestRedirect,
+						RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{
+							Scheme:     ptr.To("https"),
+							StatusCode: ptr.To(301),
+						},
+					}},
+				}},
+			},
+		}
+		route.Spec.ParentRefs = []gatewayv1.ParentReference{{
+			Name:        "traefik",
+			Namespace:   &gwNamespace,
+			SectionName: &sectionName,
+		}}
+		return route
+	}
+
 	testCases := []struct {
-		name              string
-		ingress           networkingv1.Ingress
-		initialListeners  []gatewayv1.Listener
-		expectedListeners []gatewayv1.Listener
-		expectedErrCount  int
+		name                       string
+		ingress                    networkingv1.Ingress
+		listeners                  []gatewayv1.Listener
+		expectedRedirectRoute      *gatewayv1.HTTPRoute
+		expectedMainRouteSectionName *gatewayv1.SectionName // nil means no sectionName expected
+		expectedErrCount           int
 	}{
 		{
-			// When an HTTPS listener is present, the HTTP listener is kept so that
-			// forceHTTPSFeature can attach a redirect HTTPRoute to it.
-			name: "entrypoints=websecure with HTTPS listener keeps both listeners",
+			name: "websecure with HTTP+HTTPS listeners generates redirect route",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "my-app",
@@ -76,13 +105,19 @@ func Test_routerEntrypointsFeature(t *testing.T) {
 					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80)}},
 				},
 			},
-			initialListeners:  bothListeners("foo.com"),
-			expectedListeners: bothListeners("foo.com"),
+			listeners: bothListeners("foo.com"),
+			expectedRedirectRoute: func() *gatewayv1.HTTPRoute {
+				r := makeRedirectRoute("foo.com", "default", "my-app-foo-com")
+				return &r
+			}(),
+			expectedMainRouteSectionName: func() *gatewayv1.SectionName {
+				s := gatewayv1.SectionName(httpsListenerName("foo.com"))
+				return &s
+			}(),
 		},
 		{
-			// Fallback: when no HTTPS listener is present there is nothing to redirect
-			// to, so the HTTP listener is removed.
-			name: "entrypoints=websecure without HTTPS listener removes HTTP listener",
+			// HTTP listener was removed by routerEntrypointsFeature (fallback) -- no redirect route.
+			name: "websecure without HTTP listener generates no redirect route",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "my-app",
@@ -96,13 +131,28 @@ func Test_routerEntrypointsFeature(t *testing.T) {
 					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80)}},
 				},
 			},
-			initialListeners: []gatewayv1.Listener{
-				{Name: gatewayv1.SectionName(httpListenerName("foo.com")), Hostname: hostnamePtr("foo.com"), Port: 80, Protocol: gatewayv1.HTTPProtocolType},
+			listeners: []gatewayv1.Listener{
+				{Name: gatewayv1.SectionName(httpsListenerName("foo.com")), Hostname: hostnamePtr("foo.com"), Port: 443, Protocol: gatewayv1.HTTPSProtocolType},
 			},
-			expectedListeners: []gatewayv1.Listener{},
+			expectedRedirectRoute: nil,
 		},
 		{
-			name: "entrypoints=web removes HTTPS listener",
+			name: "no annotation -- no redirect route",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "my-app",
+					Namespace: "default",
+				},
+				Spec: networkingv1.IngressSpec{
+					IngressClassName: ptr.To("traefik"),
+					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80)}},
+				},
+			},
+			listeners:             bothListeners("foo.com"),
+			expectedRedirectRoute: nil,
+		},
+		{
+			name: "entrypoints=web -- no redirect route",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "my-app",
@@ -116,13 +166,11 @@ func Test_routerEntrypointsFeature(t *testing.T) {
 					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80)}},
 				},
 			},
-			initialListeners: bothListeners("foo.com"),
-			expectedListeners: []gatewayv1.Listener{
-				{Name: gatewayv1.SectionName(httpListenerName("foo.com")), Hostname: hostnamePtr("foo.com"), Port: 80, Protocol: gatewayv1.HTTPProtocolType},
-			},
+			listeners:             bothListeners("foo.com"),
+			expectedRedirectRoute: nil,
 		},
 		{
-			name: "entrypoints=web,websecure keeps both listeners",
+			name: "entrypoints=web,websecure -- no redirect route (HTTP explicitly included)",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "my-app",
@@ -136,62 +184,11 @@ func Test_routerEntrypointsFeature(t *testing.T) {
 					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80)}},
 				},
 			},
-			initialListeners:  bothListeners("foo.com"),
-			expectedListeners: bothListeners("foo.com"),
+			listeners:             bothListeners("foo.com"),
+			expectedRedirectRoute: nil,
 		},
 		{
-			name: "entrypoints=websecure,web (reversed order) keeps both listeners",
-			ingress: networkingv1.Ingress{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "my-app",
-					Namespace: "default",
-					Annotations: map[string]string{
-						RouterEntrypointsAnnotation: "websecure,web",
-					},
-				},
-				Spec: networkingv1.IngressSpec{
-					IngressClassName: ptr.To("traefik"),
-					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80)}},
-				},
-			},
-			initialListeners:  bothListeners("foo.com"),
-			expectedListeners: bothListeners("foo.com"),
-		},
-		{
-			name: "non-standard entrypoint emits warning and keeps listeners unchanged",
-			ingress: networkingv1.Ingress{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "my-app",
-					Namespace: "default",
-					Annotations: map[string]string{
-						RouterEntrypointsAnnotation: "internal",
-					},
-				},
-				Spec: networkingv1.IngressSpec{
-					IngressClassName: ptr.To("traefik"),
-					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80)}},
-				},
-			},
-			initialListeners:  bothListeners("foo.com"),
-			expectedListeners: bothListeners("foo.com"),
-		},
-		{
-			name: "no annotation -- no change",
-			ingress: networkingv1.Ingress{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "my-app",
-					Namespace: "default",
-				},
-				Spec: networkingv1.IngressSpec{
-					IngressClassName: ptr.To("traefik"),
-					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80)}},
-				},
-			},
-			initialListeners:  bothListeners("foo.com"),
-			expectedListeners: bothListeners("foo.com"),
-		},
-		{
-			name: "entrypoints=WEBSECURE (uppercase) with HTTPS listener keeps both listeners",
+			name: "entrypoints=WEBSECURE (uppercase) generates redirect route",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "my-app",
@@ -205,11 +202,18 @@ func Test_routerEntrypointsFeature(t *testing.T) {
 					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80)}},
 				},
 			},
-			initialListeners:  bothListeners("foo.com"),
-			expectedListeners: bothListeners("foo.com"),
+			listeners: bothListeners("foo.com"),
+			expectedRedirectRoute: func() *gatewayv1.HTTPRoute {
+				r := makeRedirectRoute("foo.com", "default", "my-app-foo-com")
+				return &r
+			}(),
+			expectedMainRouteSectionName: func() *gatewayv1.SectionName {
+				s := gatewayv1.SectionName(httpsListenerName("foo.com"))
+				return &s
+			}(),
 		},
 		{
-			name: "entrypoints=websecure with spaces trimmed and HTTPS listener keeps both listeners",
+			name: "entrypoints=websecure with spaces generates redirect route",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "my-app",
@@ -223,8 +227,15 @@ func Test_routerEntrypointsFeature(t *testing.T) {
 					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80)}},
 				},
 			},
-			initialListeners:  bothListeners("foo.com"),
-			expectedListeners: bothListeners("foo.com"),
+			listeners: bothListeners("foo.com"),
+			expectedRedirectRoute: func() *gatewayv1.HTTPRoute {
+				r := makeRedirectRoute("foo.com", "default", "my-app-foo-com")
+				return &r
+			}(),
+			expectedMainRouteSectionName: func() *gatewayv1.SectionName {
+				s := gatewayv1.SectionName(httpsListenerName("foo.com"))
+				return &s
+			}(),
 		},
 	}
 
@@ -243,45 +254,58 @@ func Test_routerEntrypointsFeature(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{Name: "traefik", Namespace: tc.ingress.Namespace},
 						Spec: gatewayv1.GatewaySpec{
 							GatewayClassName: "traefik",
-							Listeners:        tc.initialListeners,
+							Listeners:        tc.listeners,
 						},
 					}},
 				},
 				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 					routeKey: {HTTPRoute: gatewayv1.HTTPRoute{
 						ObjectMeta: metav1.ObjectMeta{Name: routeKey.Name, Namespace: routeKey.Namespace},
+
 					}},
 				},
 			}
 
-			errs := routerEntrypointsFeature(notifications.NoopNotify, ingresses, nil, ir)
+			// Set a parentRef on the main HTTPRoute so forceHTTPSFeature can pin it.
+			mainCtx := ir.HTTPRoutes[routeKey]
+			mainCtx.HTTPRoute.Spec.ParentRefs = []gatewayv1.ParentReference{{
+				Name: gatewayv1.ObjectName("traefik"),
+			}}
+			ir.HTTPRoutes[routeKey] = mainCtx
+
+			errs := forceHTTPSFeature(notifications.NoopNotify, ingresses, nil, ir)
 
 			if len(errs) != tc.expectedErrCount {
 				t.Errorf("expected %d errors, got %d: %v", tc.expectedErrCount, len(errs), errs)
 			}
 
-			actualListeners := ir.Gateways[gatewayKey].Gateway.Spec.Listeners
-			if diff := cmp.Diff(tc.expectedListeners, actualListeners); diff != "" {
-				t.Errorf("unexpected Gateway listeners (-want +got):\n%s", diff)
+			redirectRouteKey := types.NamespacedName{Namespace: tc.ingress.Namespace, Name: routeKey.Name + "-http"}
+			if tc.expectedRedirectRoute != nil {
+				redirectCtx, ok := ir.HTTPRoutes[redirectRouteKey]
+				if !ok {
+					t.Errorf("expected redirect HTTPRoute %v to be present, but it was not", redirectRouteKey)
+				} else if diff := cmp.Diff(*tc.expectedRedirectRoute, redirectCtx.HTTPRoute); diff != "" {
+					t.Errorf("unexpected redirect HTTPRoute (-want +got):\n%s", diff)
+				}
+			} else {
+				if _, ok := ir.HTTPRoutes[redirectRouteKey]; ok {
+					t.Errorf("expected no redirect HTTPRoute %v, but one was found", redirectRouteKey)
+				}
+			}
+
+			// Assert the main HTTPRoute is pinned to the HTTPS listener when expected.
+			mainRoute := ir.HTTPRoutes[routeKey]
+			if tc.expectedMainRouteSectionName != nil {
+				if len(mainRoute.Spec.ParentRefs) == 0 || mainRoute.Spec.ParentRefs[0].SectionName == nil {
+					t.Errorf("expected main HTTPRoute parentRef to have sectionName %q, but it was nil", *tc.expectedMainRouteSectionName)
+				} else if *mainRoute.Spec.ParentRefs[0].SectionName != *tc.expectedMainRouteSectionName {
+					t.Errorf("expected main HTTPRoute sectionName %q, got %q", *tc.expectedMainRouteSectionName, *mainRoute.Spec.ParentRefs[0].SectionName)
+				}
+			} else {
+				if len(mainRoute.Spec.ParentRefs) > 0 && mainRoute.Spec.ParentRefs[0].SectionName != nil {
+					t.Errorf("expected main HTTPRoute parentRef to have no sectionName, but got %q", *mainRoute.Spec.ParentRefs[0].SectionName)
+				}
 			}
 		})
-	}
-}
-
-// ingressRuleValue is a test helper that builds an IngressRuleValue with a single path.
-func ingressRuleValue(path string, pathType *networkingv1.PathType, svcName string, port int32) networkingv1.IngressRuleValue {
-	return networkingv1.IngressRuleValue{
-		HTTP: &networkingv1.HTTPIngressRuleValue{
-			Paths: []networkingv1.HTTPIngressPath{{
-				Path:     path,
-				PathType: pathType,
-				Backend: networkingv1.IngressBackend{
-					Service: &networkingv1.IngressServiceBackend{
-						Name: svcName,
-						Port: networkingv1.ServiceBackendPort{Number: port},
-					},
-				},
-			}},
-		},
 	}
 }
