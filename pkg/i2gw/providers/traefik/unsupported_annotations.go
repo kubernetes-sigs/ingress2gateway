@@ -1,5 +1,5 @@
 /*
-Copyright 2024 The Kubernetes Authors.
+Copyright 2026 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package traefik
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
@@ -27,40 +28,33 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-// unsupportedAnnotationsFeature emits warning notifications for Traefik annotations
-// that have no direct Gateway API equivalent. This ensures users are aware of features
-// that require manual migration.
-func unsupportedAnnotationsFeature(notify notifications.NotifyFunc, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, _ *providerir.ProviderIR) field.ErrorList {
-	unsupported := []struct {
-		annotation string
-		hint       string
-	}{
-		{
-			RouterMiddlewaresAnnotation,
-			"Traefik Middlewares have no direct Gateway API equivalent. " +
-				"Consider using implementation-specific policy attachments (e.g. ExtensionRef filters) " +
-				"supported by your Gateway implementation.",
-		},
-		{
-			RouterPriorityAnnotation,
-			"Traefik router priority has no direct Gateway API equivalent. " +
-				"Gateway API uses rule ordering within an HTTPRoute for match precedence.",
-		},
-	}
+const traefikAnnotationPrefix = "traefik.ingress.kubernetes.io/"
 
+// supportedAnnotations is the set of Traefik annotations this provider converts.
+// Any annotation with the Traefik prefix that is NOT in this set triggers a warning.
+var supportedAnnotations = map[string]bool{
+	RouterTLSAnnotation:         true,
+	RouterEntrypointsAnnotation: true,
+}
+
+// unsupportedAnnotationsFeature emits a warning for every Traefik annotation that
+// the provider does not convert, so users know they need to handle it manually.
+func unsupportedAnnotationsFeature(notify notifications.NotifyFunc, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, _ *providerir.ProviderIR) field.ErrorList {
 	ruleGroups := common.GetRuleGroups(ingresses)
 	for _, rg := range ruleGroups {
 		for _, rule := range rg.Rules {
 			ing := rule.Ingress
-			for _, u := range unsupported {
-				if val, ok := ing.Annotations[u.annotation]; ok {
+			for annotation, val := range ing.Annotations {
+				if !strings.HasPrefix(annotation, traefikAnnotationPrefix) {
+					continue
+				}
+				if !supportedAnnotations[annotation] {
 					notify(
 						notifications.WarningNotification,
 						fmt.Sprintf(
-							"annotation %q (value: %q) on ingress %s/%s cannot be automatically converted: %s",
-							u.annotation, val,
-							ing.Namespace, ing.Name,
-							u.hint,
+							"annotation %q (value: %q) on ingress %s/%s is not supported by the Traefik provider and will not be converted. "+
+								"Please review the Gateway API equivalent manually.",
+							annotation, val, ing.Namespace, ing.Name,
 						),
 					)
 				}

@@ -12,6 +12,8 @@ The project supports translating [Traefik](https://traefik.io/) specific annotat
 
 ## Supported Annotations
 
+Traefik exposes a large number of [ingress annotations](https://doc.traefik.io/traefik/reference/routing-configuration/kubernetes/ingress/). Only the annotations listed below are supported by this provider. Any other annotation starting with `traefik.ingress.kubernetes.io/` is **not converted** — a warning is emitted and you will need to find a Gateway API equivalent manually.
+
 ### TLS
 
 - `traefik.ingress.kubernetes.io/router.tls`: When set to `true` and no `spec.tls` block is present in the Ingress, adds an HTTPS listener (port 443, `Terminate` mode) to the generated Gateway. A conventional placeholder secret name is generated from the hostname — `{hostname-with-dashes}-tls` (e.g. `my-app-example-com-tls`) — and used as the `certificateRef`. Create this secret (e.g. via cert-manager) before applying the output.
@@ -52,11 +54,7 @@ When multiple annotations are present, they are applied in this order:
 
 ### Not Converted (warnings emitted)
 
-- `traefik.ingress.kubernetes.io/router.middlewares`: **Recognized but not converted.** Traefik Middlewares are CRDs with no direct Gateway API equivalent. A warning is emitted. Consider using implementation-specific policy attachments (e.g. `ExtensionRef` filters) supported by your Gateway implementation.
-
-- `traefik.ingress.kubernetes.io/router.priority`: **Recognized but not converted.** Traefik router priority has no direct Gateway API equivalent. A warning is emitted. Use HTTPRoute rule ordering for match precedence instead.
-
-If you are reliant on any annotations not listed above, please open an issue. In the meantime you'll need to manually find a Gateway API equivalent.
+Any annotation starting with `traefik.ingress.kubernetes.io/` that is not listed above is not converted and will emit a warning. If you rely on an annotation that is not supported, please [open an issue](https://github.com/kubernetes-sigs/ingress2gateway/issues). In the meantime you'll need to manually find a Gateway API equivalent.
 
 ## Example
 

@@ -1,5 +1,5 @@
 /*
-Copyright 2024 The Kubernetes Authors.
+Copyright 2026 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,8 +16,7 @@ limitations under the License.
 
 package traefik
 
-
-// Well-known Traefik Ingress annotations.
+// Supported Traefik Ingress annotations.
 const (
 	// RouterTLSAnnotation enables TLS termination on the Traefik router.
 	// Value: "true" / "false"
@@ -26,13 +25,4 @@ const (
 	// RouterEntrypointsAnnotation specifies which Traefik entrypoints the router listens on.
 	// Value: comma-separated list, e.g. "web,websecure"
 	RouterEntrypointsAnnotation = "traefik.ingress.kubernetes.io/router.entrypoints"
-
-	// RouterMiddlewaresAnnotation attaches Traefik middlewares (CRDs) to the router.
-	// Value: comma-separated list of <namespace>-<middlewareName>@kubernetescrd
-	// No direct Gateway API equivalent — a warning is emitted.
-	RouterMiddlewaresAnnotation = "traefik.ingress.kubernetes.io/router.middlewares"
-
-	// RouterPriorityAnnotation sets the Traefik router match priority.
-	// No direct Gateway API equivalent — a warning is emitted.
-	RouterPriorityAnnotation = "traefik.ingress.kubernetes.io/router.priority"
 )
