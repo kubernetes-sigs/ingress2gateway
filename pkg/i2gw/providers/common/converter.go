@@ -92,7 +92,7 @@ func ToIR(httpIngresses []networkingv1.Ingress, grpcIngresses []networkingv1.Ing
 		HTTPRoutes:         httpRouteByKey,
 		Services:           make(map[types.NamespacedName]providerir.ProviderSpecificServiceIR),
 		GatewayClasses:     make(map[types.NamespacedName]gatewayv1.GatewayClass),
-		TLSRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
+		TLSRoutes:          make(map[types.NamespacedName]gatewayv1.TLSRoute),
 		TCPRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
 		UDPRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.UDPRoute),
 		GRPCRoutes:         grpcRouteByKey,
@@ -116,7 +116,7 @@ var (
 
 	TLSRouteGVK = schema.GroupVersionKind{
 		Group:   "gateway.networking.k8s.io",
-		Version: "v1alpha2",
+		Version: "v1",
 		Kind:    "TLSRoute",
 	}
 

@@ -73,6 +73,7 @@ func (p *Provider) ToIR() (emitterir.EmitterIR, field.ErrorList) {
 	p.applyCorsToEmitterIR(pIR, &eIR)
 	p.applyBodySizeToEmitterIR(pIR, &eIR)
 	p.addSSLAndTrailingSlashRedirects(p.storage.Ingresses.List(), &pIR, &eIR)
+	errs = append(errs, p.addWWWRedirect(&pIR, &eIR)...)
 	return eIR, errs
 }
 

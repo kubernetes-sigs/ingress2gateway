@@ -118,7 +118,7 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*i2gw.GatewayR
 	res := i2gw.GatewayResources{
 		Gateways:        make(map[types.NamespacedName]gatewayv1.Gateway),
 		HTTPRoutes:      make(map[types.NamespacedName]gatewayv1.HTTPRoute),
-		TLSRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
+		TLSRoutes:       make(map[types.NamespacedName]gatewayv1.TLSRoute),
 		TCPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
 		ReferenceGrants: make(map[types.NamespacedName]gatewayv1beta1.ReferenceGrant),
 	}
@@ -145,7 +145,7 @@ func readGatewayResourcesFromFile(t *testing.T, filename string) (*i2gw.GatewayR
 				Name:      httpRoute.Name,
 			}] = httpRoute
 		case "TLSRoute":
-			var tlsRoute gatewayv1alpha2.TLSRoute
+			var tlsRoute gatewayv1.TLSRoute
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), &tlsRoute); err != nil {
 				return nil, fmt.Errorf("failed to parse k8s gateway TLSRoute object: %w", err)
 			}

@@ -65,7 +65,7 @@ func (c *resourcesToIRConverter) convertToIR(storage *storage) (providerir.Provi
 	gatewayResources := providerir.ProviderIR{
 		Gateways:        make(map[types.NamespacedName]providerir.GatewayContext),
 		HTTPRoutes:      make(map[types.NamespacedName]providerir.HTTPRouteContext),
-		TLSRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
+		TLSRoutes:       make(map[types.NamespacedName]gatewayv1.TLSRoute),
 		TCPRoutes:       make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
 		ReferenceGrants: make(map[types.NamespacedName]gatewayv1beta1.ReferenceGrant),
 	}
@@ -827,8 +827,8 @@ func (c *resourcesToIRConverter) createHTTPRoutesWithRewrite(params createHTTPRo
 	return resHTTPRoutes
 }
 
-func (c *resourcesToIRConverter) convertVsTLSRoutes(virtualService metav1.ObjectMeta, istioTLSRoutes []*istiov1beta1.TLSRoute, fieldPath *field.Path) []*gatewayv1alpha2.TLSRoute {
-	var resTLSRoutes []*gatewayv1alpha2.TLSRoute
+func (c *resourcesToIRConverter) convertVsTLSRoutes(virtualService metav1.ObjectMeta, istioTLSRoutes []*istiov1beta1.TLSRoute, fieldPath *field.Path) []*gatewayv1.TLSRoute {
+	var resTLSRoutes []*gatewayv1.TLSRoute
 	vs := c.ctx.Value(virtualServiceKey).(*istioclientv1beta1.VirtualService)
 
 	for i, route := range istioTLSRoutes {
@@ -880,7 +880,7 @@ func (c *resourcesToIRConverter) convertVsTLSRoutes(virtualService metav1.Object
 
 		routeName := fmt.Sprintf("%v-idx-%v", virtualService.Name, i)
 
-		tlsRoute := &gatewayv1alpha2.TLSRoute{
+		tlsRoute := &gatewayv1.TLSRoute{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: apiVersion,
 				Kind:       kind,
@@ -893,9 +893,9 @@ func (c *resourcesToIRConverter) convertVsTLSRoutes(virtualService metav1.Object
 				OwnerReferences: virtualService.OwnerReferences,
 				Finalizers:      virtualService.Finalizers,
 			},
-			Spec: gatewayv1alpha2.TLSRouteSpec{
+			Spec: gatewayv1.TLSRouteSpec{
 				Hostnames: sets.List[gatewayv1.Hostname](sniHosts),
-				Rules: []gatewayv1alpha2.TLSRouteRule{
+				Rules: []gatewayv1.TLSRouteRule{
 					{
 						BackendRefs: backendRefs,
 					},
