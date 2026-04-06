@@ -976,6 +976,115 @@ func Test_convertToIR(t *testing.T) {
 			},
 			expectedErrors: field.ErrorList{},
 		},
+		{
+			name: "ingress with a Backend Config specifying Cloud CDN",
+			modify: func(storage *storage) {
+				testService := storage.Services[types.NamespacedName{Namespace: testNamespace, Name: testServiceName}]
+				testService.Annotations = map[string]string{
+					backendConfigKey: `{"default":"test-backendconfig"}`,
+				}
+				storage.Services[types.NamespacedName{Namespace: testNamespace, Name: testServiceName}] = testService
+
+				beConfigSpec := backendconfigv1.BackendConfigSpec{
+					Cdn: &backendconfigv1.CDNConfig{
+						CacheMode:         common.PtrTo("USE_ORIGIN_HEADERS"),
+						DefaultTtl:        common.PtrTo(int64(3600)),
+						MaxTtl:            common.PtrTo(int64(7200)),
+						ClientTtl:         common.PtrTo(int64(1800)),
+						RequestCoalescing: common.PtrTo(true),
+						ServeWhileStale:   common.PtrTo(int64(86400)),
+						NegativeCaching:   common.PtrTo(true),
+					},
+				}
+				storage.BackendConfigs = map[types.NamespacedName]*backendconfigv1.BackendConfig{
+					{Namespace: testNamespace, Name: testBackendConfigName}: getTestBackendConfig(beConfigSpec),
+				}
+			},
+			expectedIR: providerir.ProviderIR{
+				Gateways: map[types.NamespacedName]providerir.GatewayContext{
+					{Namespace: testNamespace, Name: gceIngressClass}: {
+						Gateway: gatewayv1.Gateway{
+							ObjectMeta: metav1.ObjectMeta{Name: gceIngressClass, Namespace: testNamespace},
+							Spec: gatewayv1.GatewaySpec{
+								GatewayClassName: gceL7GlobalExternalManagedGatewayClass,
+								Listeners: []gatewayv1.Listener{{
+									Name:     "test-mydomain-com-http",
+									Port:     80,
+									Protocol: gatewayv1.HTTPProtocolType,
+									Hostname: common.PtrTo(gatewayv1.Hostname(testHost)),
+								}},
+							},
+						},
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
+					{Namespace: testNamespace, Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName)}: {
+						HTTPRoute: gatewayv1.HTTPRoute{
+							ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-test-mydomain-com", testIngressName), Namespace: testNamespace},
+							Spec: gatewayv1.HTTPRouteSpec{
+								CommonRouteSpec: gatewayv1.CommonRouteSpec{
+									ParentRefs: []gatewayv1.ParentReference{{
+										Name: gceIngressClass,
+									}},
+								},
+								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
+								Rules: []gatewayv1.HTTPRouteRule{
+									{
+										Name: common.PtrTo(gatewayv1.SectionName("rule-0")),
+										Matches: []gatewayv1.HTTPRouteMatch{
+											{
+												Path: &gatewayv1.HTTPPathMatch{
+													Type:  common.PtrTo(gPathPrefix),
+													Value: common.PtrTo("/"),
+												},
+											},
+										},
+										BackendRefs: []gatewayv1.HTTPBackendRef{
+											{
+												BackendRef: gatewayv1.BackendRef{
+													BackendObjectReference: gatewayv1.BackendObjectReference{
+														Name: gatewayv1.ObjectName(testServiceName),
+														Port: common.PtrTo(gatewayv1.PortNumber(80)),
+													},
+												},
+											},
+										},
+										Filters: []gatewayv1.HTTPRouteFilter{
+											{
+												Type: gatewayv1.HTTPRouteFilterExtensionRef,
+												ExtensionRef: &gatewayv1.LocalObjectReference{
+													Group: "networking.gke.io",
+													Kind:  "GCPHTTPFilter",
+													Name:  "test-service-filter",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				Services: map[types.NamespacedName]providerir.ProviderSpecificServiceIR{
+					{Namespace: testNamespace, Name: testServiceName}: {
+						Gce: &gce.ServiceIR{
+							Cdn: &gce.CdnConfig{
+								CachePolicy: &gce.CachePolicy{
+									CacheMode:         "USE_ORIGIN_HEADERS",
+									DefaultTTL:        "3600s",
+									MaxTTL:            "7200s",
+									ClientTTL:         "1800s",
+									RequestCoalescing: common.PtrTo(true),
+									ServeWhileStale:   "86400s",
+									NegativeCaching:   common.PtrTo(true),
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
 	}
 
 	for _, tc := range testCases {
