@@ -1084,7 +1084,6 @@ func Test_ToIR(t *testing.T) {
 									ParentRefs: []gatewayv1.ParentReference{{Name: "nginx"}},
 								},
 								Rules: []gatewayv1.HTTPRouteRule{{
-									Name: ptrTo(gatewayv1.SectionName("rule-0")),
 									Matches: []gatewayv1.HTTPRouteMatch{{
 										Path: &gatewayv1.HTTPPathMatch{
 											Type:  &gPathPrefix,
