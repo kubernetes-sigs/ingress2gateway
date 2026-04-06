@@ -62,33 +62,39 @@ func sslPassthroughFeature(notify notifications.NotifyFunc, ingresses []networki
 		return nil
 	}
 
-	// Identify HTTPRoutes whose rules all come from passthrough ingresses.
-	// For each such route, create a TLSRoute and remove the HTTPRoute.
+	// Identify HTTPRoutes that have ANY backend source from a passthrough ingress.
+	// SSL passthrough operates at L4 and intercepts all TLS traffic for the SNI
+	// hostname before the L7 proxy sees it, so passthrough always wins when a
+	// host is shared between passthrough and non-passthrough ingresses. In that
+	// case we create a TLSRoute with only the passthrough backends and warn that
+	// the non-passthrough ingresses are overridden.
 	httpRoutesToDelete := []types.NamespacedName{}
 
 	for routeKey, httpRouteCtx := range ir.HTTPRoutes {
-		// Check if ALL backend sources for this route come from passthrough ingresses.
-		allPassthrough := true
+		hasPassthrough := false
+		hasNonPassthrough := false
 		for _, ruleSources := range httpRouteCtx.RuleBackendSources {
 			for _, src := range ruleSources {
 				if src.Ingress == nil {
-					allPassthrough = false
-					break
+					hasNonPassthrough = true
+					continue
 				}
 				ingKey := types.NamespacedName{Namespace: src.Ingress.Namespace, Name: src.Ingress.Name}
-				if _, ok := passthroughIngresses[ingKey]; !ok {
-					allPassthrough = false
-					break
+				if _, ok := passthroughIngresses[ingKey]; ok {
+					hasPassthrough = true
+				} else {
+					hasNonPassthrough = true
 				}
-			}
-			if !allPassthrough {
-				break
 			}
 		}
 
-		if !allPassthrough {
-			// Some rules come from non-passthrough ingresses. Warn and skip.
-			// This handles edge cases where hosts are shared across ingresses.
+		if !hasPassthrough {
+			continue
+		}
+
+		// Warn about non-passthrough ingresses whose L7 config will be dropped.
+		if hasNonPassthrough {
+			warned := map[types.NamespacedName]struct{}{}
 			for _, ruleSources := range httpRouteCtx.RuleBackendSources {
 				for _, src := range ruleSources {
 					if src.Ingress == nil {
@@ -96,18 +102,22 @@ func sslPassthroughFeature(notify notifications.NotifyFunc, ingresses []networki
 					}
 					ingKey := types.NamespacedName{Namespace: src.Ingress.Namespace, Name: src.Ingress.Name}
 					if _, ok := passthroughIngresses[ingKey]; ok {
-						notify(notifications.WarningNotification, fmt.Sprintf(
-							"Ingress %s/%s has ssl-passthrough enabled but shares a host with non-passthrough Ingress resources. "+
-								"The ssl-passthrough annotation will be ignored for this host.",
-							src.Ingress.Namespace, src.Ingress.Name), src.Ingress)
+						continue
 					}
+					if _, already := warned[ingKey]; already {
+						continue
+					}
+					warned[ingKey] = struct{}{}
+					notify(notifications.WarningNotification, fmt.Sprintf(
+						"Ingress %s/%s shares a host with ssl-passthrough Ingress; "+
+							"its L7 configuration will be ignored because ssl-passthrough operates at L4.",
+						src.Ingress.Namespace, src.Ingress.Name), src.Ingress)
 				}
 			}
-			continue
 		}
 
-		// All sources are passthrough — create a TLSRoute.
-		tlsRoute := buildTLSRoute(httpRouteCtx)
+		// Create a TLSRoute with only backends from passthrough ingresses.
+		tlsRoute := buildTLSRoute(httpRouteCtx, passthroughIngresses)
 		tlsRouteKey := types.NamespacedName{Namespace: tlsRoute.Namespace, Name: tlsRoute.Name}
 		ir.TLSRoutes[tlsRouteKey] = tlsRoute
 
@@ -115,18 +125,6 @@ func sslPassthroughFeature(notify notifications.NotifyFunc, ingresses []networki
 		addPassthroughListeners(ir, httpRouteCtx)
 
 		httpRoutesToDelete = append(httpRoutesToDelete, routeKey)
-
-		// Notify about L7 annotations being invalidated.
-		for _, ruleSources := range httpRouteCtx.RuleBackendSources {
-			for _, src := range ruleSources {
-				if src.Ingress == nil {
-					continue
-				}
-				notify(notifications.InfoNotification, fmt.Sprintf(
-					"Ingress %s/%s uses ssl-passthrough: converting to TLSRoute (L7 annotations are ignored for passthrough backends).",
-					src.Ingress.Namespace, src.Ingress.Name), src.Ingress)
-			}
-		}
 	}
 
 	// Remove the HTTPRoutes that have been replaced by TLSRoutes.
@@ -139,8 +137,9 @@ func sslPassthroughFeature(notify notifications.NotifyFunc, ingresses []networki
 
 // buildTLSRoute creates a TLSRoute from an HTTPRoute context. It uses the
 // hostnames and backend references from the HTTPRoute, keeping the same
-// parent refs so it attaches to the same Gateway.
-func buildTLSRoute(httpRouteCtx providerir.HTTPRouteContext) gatewayv1.TLSRoute {
+// parent refs so it attaches to the same Gateway. Only backends that originate
+// from passthrough ingresses are included in the TLSRoute.
+func buildTLSRoute(httpRouteCtx providerir.HTTPRouteContext, passthroughIngresses map[types.NamespacedName]*networkingv1.Ingress) gatewayv1.TLSRoute {
 	tlsRoute := gatewayv1.TLSRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      httpRouteCtx.HTTPRoute.Name + "-tls-passthrough",
@@ -177,12 +176,24 @@ func buildTLSRoute(httpRouteCtx providerir.HTTPRouteContext) gatewayv1.TLSRoute 
 
 	// Convert HTTP backend refs to TLS backend refs.
 	// SSL passthrough sends all traffic to the backend, so we consolidate
-	// all unique backends into a single rule.
+	// all unique backends into a single rule. Only backends sourced from
+	// passthrough ingresses are included.
 	seenBackends := map[string]struct{}{}
 	var backendRefs []gatewayv1.BackendRef
 
-	for _, rule := range httpRouteCtx.HTTPRoute.Spec.Rules {
-		for _, httpBackendRef := range rule.BackendRefs {
+	for ruleIdx, rule := range httpRouteCtx.HTTPRoute.Spec.Rules {
+		for backendIdx, httpBackendRef := range rule.BackendRefs {
+			// Filter: only include backends from passthrough ingresses.
+			if ruleIdx < len(httpRouteCtx.RuleBackendSources) &&
+				backendIdx < len(httpRouteCtx.RuleBackendSources[ruleIdx]) {
+				src := httpRouteCtx.RuleBackendSources[ruleIdx][backendIdx]
+				if src.Ingress != nil {
+					ingKey := types.NamespacedName{Namespace: src.Ingress.Namespace, Name: src.Ingress.Name}
+					if _, ok := passthroughIngresses[ingKey]; !ok {
+						continue
+					}
+				}
+			}
 			key := fmt.Sprintf("%s/%d", httpBackendRef.Name, *httpBackendRef.BackendRef.Port)
 			if _, exists := seenBackends[key]; exists {
 				continue

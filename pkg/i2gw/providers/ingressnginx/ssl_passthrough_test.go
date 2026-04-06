@@ -351,7 +351,7 @@ func TestSSLPassthroughFeature(t *testing.T) {
 		}
 	})
 
-	t.Run("mixed passthrough and non-passthrough on same host warns and skips", func(t *testing.T) {
+	t.Run("mixed passthrough and non-passthrough on same host: passthrough wins", func(t *testing.T) {
 		passthroughIngress := networkingv1.Ingress{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "passthrough-ingress",
@@ -361,6 +361,7 @@ func TestSSLPassthroughFeature(t *testing.T) {
 				},
 			},
 			Spec: networkingv1.IngressSpec{
+				IngressClassName: ptr.To("nginx"),
 				Rules: []networkingv1.IngressRule{{
 					Host: "example.com",
 				}},
@@ -372,6 +373,7 @@ func TestSSLPassthroughFeature(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: networkingv1.IngressSpec{
+				IngressClassName: ptr.To("nginx"),
 				Rules: []networkingv1.IngressRule{{
 					Host: "example.com",
 				}},
@@ -379,10 +381,25 @@ func TestSSLPassthroughFeature(t *testing.T) {
 		}
 
 		port443 := gatewayv1.PortNumber(443)
+		port80 := gatewayv1.PortNumber(80)
 		httpRouteKey := types.NamespacedName{Namespace: "default", Name: "mixed-route"}
+		gwKey := types.NamespacedName{Namespace: "default", Name: "nginx"}
 
 		ir := &providerir.ProviderIR{
-			Gateways: make(map[types.NamespacedName]providerir.GatewayContext),
+			Gateways: map[types.NamespacedName]providerir.GatewayContext{
+				gwKey: {
+					Gateway: gatewayv1.Gateway{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "nginx",
+							Namespace: "default",
+						},
+						Spec: gatewayv1.GatewaySpec{
+							GatewayClassName: "nginx",
+							Listeners:        []gatewayv1.Listener{},
+						},
+					},
+				},
+			},
 			HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 				httpRouteKey: {
 					HTTPRoute: gatewayv1.HTTPRoute{
@@ -391,23 +408,39 @@ func TestSSLPassthroughFeature(t *testing.T) {
 							Namespace: "default",
 						},
 						Spec: gatewayv1.HTTPRouteSpec{
-							Rules: []gatewayv1.HTTPRouteRule{{
-								BackendRefs: []gatewayv1.HTTPBackendRef{{
-									BackendRef: gatewayv1.BackendRef{
-										BackendObjectReference: gatewayv1.BackendObjectReference{
-											Name: "my-service",
-											Port: &port443,
+							CommonRouteSpec: gatewayv1.CommonRouteSpec{
+								ParentRefs: []gatewayv1.ParentReference{{Name: "nginx"}},
+							},
+							Hostnames: []gatewayv1.Hostname{"example.com"},
+							Rules: []gatewayv1.HTTPRouteRule{
+								{
+									// Backend from the passthrough ingress.
+									BackendRefs: []gatewayv1.HTTPBackendRef{{
+										BackendRef: gatewayv1.BackendRef{
+											BackendObjectReference: gatewayv1.BackendObjectReference{
+												Name: "passthrough-svc",
+												Port: &port443,
+											},
 										},
-									},
-								}},
-							}},
+									}},
+								},
+								{
+									// Backend from the normal ingress.
+									BackendRefs: []gatewayv1.HTTPBackendRef{{
+										BackendRef: gatewayv1.BackendRef{
+											BackendObjectReference: gatewayv1.BackendObjectReference{
+												Name: "normal-svc",
+												Port: &port80,
+											},
+										},
+									}},
+								},
+							},
 						},
 					},
 					RuleBackendSources: [][]providerir.BackendSource{
-						{
-							{Ingress: &passthroughIngress},
-							{Ingress: &normalIngress},
-						},
+						{{Ingress: &passthroughIngress}},
+						{{Ingress: &normalIngress}},
 					},
 				},
 			},
@@ -420,14 +453,29 @@ func TestSSLPassthroughFeature(t *testing.T) {
 			t.Fatalf("unexpected errors: %v", errs)
 		}
 
-		// HTTPRoute should still exist (not replaced).
-		if _, exists := ir.HTTPRoutes[httpRouteKey]; !exists {
-			t.Fatal("HTTPRoute should remain when passthrough is mixed with non-passthrough")
+		// HTTPRoute should be removed (passthrough wins).
+		if _, exists := ir.HTTPRoutes[httpRouteKey]; exists {
+			t.Fatal("HTTPRoute should be removed when passthrough wins on a shared host")
 		}
 
-		// No TLSRoute should be created.
-		if len(ir.TLSRoutes) != 0 {
-			t.Fatalf("expected 0 TLSRoutes, got %d", len(ir.TLSRoutes))
+		// TLSRoute should be created with only the passthrough backend.
+		tlsRouteKey := types.NamespacedName{Namespace: "default", Name: "mixed-route-tls-passthrough"}
+		tlsRoute, exists := ir.TLSRoutes[tlsRouteKey]
+		if !exists {
+			t.Fatalf("expected TLSRoute %v to be created", tlsRouteKey)
+		}
+
+		if len(tlsRoute.Spec.Rules) != 1 {
+			t.Fatalf("expected 1 rule, got %d", len(tlsRoute.Spec.Rules))
+		}
+		if len(tlsRoute.Spec.Rules[0].BackendRefs) != 1 {
+			t.Fatalf("expected 1 backend ref (passthrough only), got %d", len(tlsRoute.Spec.Rules[0].BackendRefs))
+		}
+		if tlsRoute.Spec.Rules[0].BackendRefs[0].Name != "passthrough-svc" {
+			t.Errorf("expected backend name passthrough-svc, got %s", tlsRoute.Spec.Rules[0].BackendRefs[0].Name)
+		}
+		if *tlsRoute.Spec.Rules[0].BackendRefs[0].Port != 443 {
+			t.Errorf("expected backend port 443, got %d", *tlsRoute.Spec.Rules[0].BackendRefs[0].Port)
 		}
 	})
 
