@@ -604,7 +604,7 @@ func parseYAMLOutput(t *testing.T, data []byte) []i2gw.GatewayResources {
 		GatewayClasses:     make(map[types.NamespacedName]gwapiv1.GatewayClass),
 		HTTPRoutes:         make(map[types.NamespacedName]gwapiv1.HTTPRoute),
 		GRPCRoutes:         make(map[types.NamespacedName]gwapiv1.GRPCRoute),
-		TLSRoutes:          make(map[types.NamespacedName]v1alpha2.TLSRoute),
+		TLSRoutes:          make(map[types.NamespacedName]gwapiv1.TLSRoute),
 		TCPRoutes:          make(map[types.NamespacedName]v1alpha2.TCPRoute),
 		UDPRoutes:          make(map[types.NamespacedName]v1alpha2.UDPRoute),
 		BackendTLSPolicies: make(map[types.NamespacedName]gwapiv1.BackendTLSPolicy),
@@ -659,8 +659,8 @@ func parseYAMLOutput(t *testing.T, data []byte) []i2gw.GatewayResources {
 			err := json.Unmarshal(objBytes, &gr)
 			require.NoError(t, err, "failed to unmarshal GRPCRoute")
 			res.GRPCRoutes[nn] = gr
-		case apiVersion == "gateway.networking.k8s.io/v1alpha2" && kind == "TLSRoute":
-			var tr v1alpha2.TLSRoute
+		case apiVersion == "gateway.networking.k8s.io/v1" && kind == "TLSRoute":
+			var tr gwapiv1.TLSRoute
 			err := json.Unmarshal(objBytes, &tr)
 			require.NoError(t, err, "failed to unmarshal TLSRoute")
 			res.TLSRoutes[nn] = tr

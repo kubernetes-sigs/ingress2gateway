@@ -1,4 +1,4 @@
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1
 kind: TLSRoute
 metadata:
   name: reviews-route-idx-0
@@ -12,7 +12,7 @@ spec:
         namespace: prod
         weight: 0
 ---
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1
 kind: TLSRoute
 metadata:
   name: reviews-route-idx-1

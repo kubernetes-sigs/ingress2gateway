@@ -57,7 +57,7 @@ func TCPIngressToGatewayIR(notify notifications.NotifyFunc, ingresses []kongv1be
 		tcpRouteByKey[key] = route
 	}
 
-	tlsRouteByKey := make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute)
+	tlsRouteByKey := make(map[types.NamespacedName]gatewayv1.TLSRoute)
 	for _, route := range tlsRoutes {
 		key := types.NamespacedName{Namespace: route.Namespace, Name: route.Name}
 		tlsRouteByKey[key] = route
@@ -109,9 +109,9 @@ func (a *tcpIngressAggregator) addIngressRule(namespace, name, ingressClass stri
 	rg.rules = append(rg.rules, ingressRule{rule: rule})
 }
 
-func (a *tcpIngressAggregator) toRoutesAndGateways() ([]gatewayv1alpha2.TCPRoute, []gatewayv1alpha2.TLSRoute, []gatewayv1.Gateway, field.ErrorList) {
+func (a *tcpIngressAggregator) toRoutesAndGateways() ([]gatewayv1alpha2.TCPRoute, []gatewayv1.TLSRoute, []gatewayv1.Gateway, field.ErrorList) {
 	var tcpRoutes []gatewayv1alpha2.TCPRoute
-	var tlsRoutes []gatewayv1alpha2.TLSRoute
+	var tlsRoutes []gatewayv1.TLSRoute
 
 	var errors field.ErrorList
 	listenersByNamespacedGateway := map[string][]gatewayv1.Listener{}
@@ -243,14 +243,14 @@ func (rg *tcpIngressRuleGroup) toTCPRoute() gatewayv1alpha2.TCPRoute {
 	return tcpRoute
 }
 
-func (rg *tcpIngressRuleGroup) toTLSRoute() gatewayv1alpha2.TLSRoute {
-	tlsRoute := gatewayv1alpha2.TLSRoute{
+func (rg *tcpIngressRuleGroup) toTLSRoute() gatewayv1.TLSRoute {
+	tlsRoute := gatewayv1.TLSRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      common.RouteName(rg.name, rg.host),
 			Namespace: rg.namespace,
 		},
-		Spec: gatewayv1alpha2.TLSRouteSpec{},
-		Status: gatewayv1alpha2.TLSRouteStatus{
+		Spec: gatewayv1.TLSRouteSpec{},
+		Status: gatewayv1.TLSRouteStatus{
 			RouteStatus: gatewayv1.RouteStatus{
 				Parents: []gatewayv1.RouteParentStatus{},
 			},
@@ -269,7 +269,7 @@ func (rg *tcpIngressRuleGroup) toTLSRoute() gatewayv1alpha2.TLSRoute {
 
 	for _, rule := range rg.rules {
 		tlsRoute.Spec.Rules = append(tlsRoute.Spec.Rules,
-			gatewayv1alpha2.TLSRouteRule{
+			gatewayv1.TLSRouteRule{
 				BackendRefs: []gatewayv1.BackendRef{
 					{
 						BackendObjectReference: gatewayv1.BackendObjectReference{

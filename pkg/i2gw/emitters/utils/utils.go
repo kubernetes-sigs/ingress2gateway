@@ -90,7 +90,7 @@ func ToGatewayResources(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.Er
 		HTTPRoutes:         make(map[types.NamespacedName]gatewayv1.HTTPRoute),
 		GatewayClasses:     make(map[types.NamespacedName]gatewayv1.GatewayClass),
 		GRPCRoutes:         make(map[types.NamespacedName]gatewayv1.GRPCRoute),
-		TLSRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.TLSRoute),
+		TLSRoutes:          make(map[types.NamespacedName]gatewayv1.TLSRoute),
 		TCPRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.TCPRoute),
 		UDPRoutes:          make(map[types.NamespacedName]gatewayv1alpha2.UDPRoute),
 		BackendTLSPolicies: make(map[types.NamespacedName]gatewayv1.BackendTLSPolicy),
