@@ -42,6 +42,7 @@ import (
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/nginx"
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/openapi3"
+	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/traefik"
 
 	// Call init for emitters
 	_ "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/agentgateway"
