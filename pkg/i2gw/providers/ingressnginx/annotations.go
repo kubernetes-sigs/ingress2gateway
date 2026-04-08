@@ -89,7 +89,7 @@ const (
 	SessionCookieExpiresAnnotation = "nginx.ingress.kubernetes.io/session-cookie-expires"
 
 	// SSL Passthrough annotation
-	SSLPassthroughAnnotation = "nginx.ingress.kubernetes.io/ssl-passthrough"
+	SSLPassthroughAnnotation = "nginx.ingress.kubernetes.io/ssl-passthrough" //nolint:gosec // This is an annotation key, not a secret
 )
 
 const ingressNGINXAnnotationsPrefix = "nginx.ingress.kubernetes.io/"
