@@ -45,6 +45,7 @@ func NewEmitter(conf *i2gw.EmitterConf) i2gw.Emitter {
 }
 
 func (e *Emitter) Emit(ir emitterir.EmitterIR) (gr i2gw.GatewayResources, errs field.ErrorList) {
+	utils.AddHTTPRouteRuleNames(ir)
 	for ns, gw := range ir.Gateways {
 		gw.Spec.GatewayClassName = emitterName
 		ir.Gateways[ns] = gw

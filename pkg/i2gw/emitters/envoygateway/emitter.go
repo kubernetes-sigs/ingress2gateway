@@ -44,6 +44,7 @@ func NewEmitter(conf *i2gw.EmitterConf) i2gw.Emitter {
 }
 
 func (e *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.ErrorList) {
+	utils.AddHTTPRouteRuleNames(ir)
 	gatewayResources, errs := utils.ToGatewayResources(ir)
 	if len(errs) != 0 {
 		return i2gw.GatewayResources{}, errs
