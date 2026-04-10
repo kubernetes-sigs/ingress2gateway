@@ -1,0 +1,21 @@
+# Unsupported annotation: converted as if the annotation were absent (warning emitted).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-app
+  namespace: default
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: "default-my-middleware@kubernetescrd"
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: foo.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: my-app
+            port:
+              number: 8080
