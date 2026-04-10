@@ -74,7 +74,7 @@ func DeployIstio(ctx context.Context,
 		"global": map[string]interface{}{
 			"istioNamespace": namespace,
 		},
-		// istio currently blocks attaching tlsroute to a gateway unless we have this env var set
+		// Istio currently blocks attaching tlsroute to a gateway unless we have this env var set.
 		"pilot": map[string]interface{}{
 			"env": map[string]interface{}{
 				"PILOT_ENABLE_ALPHA_GATEWAY_API": "true",
