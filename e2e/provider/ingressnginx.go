@@ -61,6 +61,12 @@ func DeployIngressNginx(
 					},
 				},
 			},
+			// Enable SSL passthrough so that ingresses with the
+			// nginx.ingress.kubernetes.io/ssl-passthrough annotation are handled
+			// correctly. This flag is safe for non-passthrough ingresses.
+			"extraArgs": map[string]interface{}{
+				"enable-ssl-passthrough": "",
+			},
 		},
 	}
 
