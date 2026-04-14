@@ -28,6 +28,7 @@ const (
 
 	// Rewrite annotations
 	RewriteTargetAnnotation = "nginx.ingress.kubernetes.io/rewrite-target"
+	AppRootAnnotation       = "nginx.ingress.kubernetes.io/app-root"
 
 	// Redirect annotations
 	PermanentRedirectAnnotation     = "nginx.ingress.kubernetes.io/permanent-redirect"
@@ -106,6 +107,7 @@ var parsedAnnotations = map[string]struct{}{
 	CanaryByHeaderPattern:           {},
 	CanaryByCookie:                  {},
 	RewriteTargetAnnotation:         {},
+	AppRootAnnotation:               {},
 	PermanentRedirectAnnotation:     {},
 	PermanentRedirectCodeAnnotation: {},
 	TemporalRedirectAnnotation:      {},

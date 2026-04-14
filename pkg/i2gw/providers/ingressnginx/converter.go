@@ -47,6 +47,7 @@ func newResourcesToIRConverter(notify notifications.NotifyFunc) *resourcesToIRCo
 			backendTLSFeature,
 			sessionAffinityFeature,
 			sslPassthroughFeature,
+			appRootFeature,
 		},
 		notify: notify,
 	}

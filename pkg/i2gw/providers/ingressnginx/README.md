@@ -21,6 +21,7 @@ To specify the name of the Ingress class to select, use `--ingress-nginx-ingress
 ### Rewrite
 
 - `nginx.ingress.kubernetes.io/rewrite-target`: Converts to a Gateway API `URLRewrite` filter with `ReplaceFullPath`. Note: path rewrites with capture group references (e.g. `$1`) are not supported and will be flagged.
+- `nginx.ingress.kubernetes.io/app-root`: Converts to an `HTTPRequestRedirect` filter (status code 302) with `ReplaceFullPath` set to the annotation value. Adds or updates a rule with an exact `"/"` path match to redirect requests to the specified path.
 
 ### Redirect
 
