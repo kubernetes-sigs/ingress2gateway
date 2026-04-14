@@ -1451,3 +1451,235 @@ func TestIngressNGINXRegex(t *testing.T) {
 		})
 	})
 }
+
+func TestIngressNGINXAppRoot(t *testing.T) {
+	t.Parallel()
+	t.Run("root path redirects to app-root", func(t *testing.T) {
+		suffix, err := framework.RandString()
+		require.NoError(t, err)
+		host := fmt.Sprintf("approot-%s.example.com", suffix)
+
+		runTestCase(t, &framework.TestCase{
+			GatewayImplementation: implementation.IstioName,
+			Providers:             []string{ingressnginx.Name},
+			ProviderFlags: map[string]map[string]string{
+				ingressnginx.Name: {
+					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
+				},
+			},
+			Ingresses: []*networkingv1.Ingress{
+				framework.BasicIngress().
+					WithName("approot").
+					WithHost(host).
+					WithIngressClass(ingressnginx.NginxIngressClass).
+					WithAnnotation(ingressnginx.AppRootAnnotation, "/dashboard").
+					Build(),
+			},
+			Verifiers: map[string][]framework.Verifier{
+				"approot": {
+					// Requesting "/" should produce a 302 redirect to "/dashboard".
+					&framework.HTTPRequestVerifier{
+						Host:         host,
+						Path:         "/",
+						AllowedCodes: []int{http.StatusFound},
+						HeaderMatches: []framework.HeaderMatch{
+							{
+								Name: "Location",
+								Patterns: []*framework.MaybeNegativePattern{
+									{Pattern: regexp.MustCompile(`/dashboard$`)},
+								},
+							},
+						},
+					},
+					// Requesting a sub-path should still reach the backend normally.
+					&framework.HTTPRequestVerifier{
+						Host: host,
+						Path: "/hostname",
+					},
+				},
+			},
+		})
+	})
+	t.Run("exact root path redirects to app-root", func(t *testing.T) {
+		suffix, err := framework.RandString()
+		require.NoError(t, err)
+		host := fmt.Sprintf("approot-exact-%s.example.com", suffix)
+		exactPathType := networkingv1.PathTypeExact
+
+		ing := framework.BasicIngress().
+			WithName("approot-exact").
+			WithHost(host).
+			WithIngressClass(ingressnginx.NginxIngressClass).
+			WithAnnotation(ingressnginx.AppRootAnnotation, "/app1").
+			Build()
+		ing.Spec.Rules[0].HTTP.Paths[0].PathType = &exactPathType
+
+		runTestCase(t, &framework.TestCase{
+			GatewayImplementation: implementation.IstioName,
+			Providers:             []string{ingressnginx.Name},
+			ProviderFlags: map[string]map[string]string{
+				ingressnginx.Name: {
+					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
+				},
+			},
+			Ingresses: []*networkingv1.Ingress{ing},
+			Verifiers: map[string][]framework.Verifier{
+				"approot-exact": {
+					// Requesting "/" should produce a 302 redirect to "/app1".
+					&framework.HTTPRequestVerifier{
+						Host:         host,
+						Path:         "/",
+						AllowedCodes: []int{http.StatusFound},
+						HeaderMatches: []framework.HeaderMatch{
+							{
+								Name: "Location",
+								Patterns: []*framework.MaybeNegativePattern{
+									{Pattern: regexp.MustCompile(`/app1$`)},
+								},
+							},
+						},
+					},
+				},
+			},
+		})
+	})
+	t.Run("no root path still redirects to app-root", func(t *testing.T) {
+		suffix, err := framework.RandString()
+		require.NoError(t, err)
+		host := fmt.Sprintf("approot-noroot-%s.example.com", suffix)
+
+		ing := framework.BasicIngress().
+			WithName("approot-noroot").
+			WithHost(host).
+			WithIngressClass(ingressnginx.NginxIngressClass).
+			WithPath("/foo").
+			WithAnnotation(ingressnginx.AppRootAnnotation, "/app1").
+			Build()
+
+		runTestCase(t, &framework.TestCase{
+			GatewayImplementation: implementation.IstioName,
+			Providers:             []string{ingressnginx.Name},
+			ProviderFlags: map[string]map[string]string{
+				ingressnginx.Name: {
+					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
+				},
+			},
+			Ingresses: []*networkingv1.Ingress{ing},
+			Verifiers: map[string][]framework.Verifier{
+				"approot-noroot": {
+					// app-root works at server level: GET / redirects even
+					// though no "/" path is defined in the ingress.
+					&framework.HTTPRequestVerifier{
+						Host:         host,
+						Path:         "/",
+						AllowedCodes: []int{http.StatusFound},
+						HeaderMatches: []framework.HeaderMatch{
+							{
+								Name: "Location",
+								Patterns: []*framework.MaybeNegativePattern{
+									{Pattern: regexp.MustCompile(`/app1$`)},
+								},
+							},
+						},
+					},
+					// The explicitly defined /foo path still works.
+					&framework.HTTPRequestVerifier{
+						Host: host,
+						Path: "/foo",
+					},
+				},
+			},
+		})
+	})
+	t.Run("absolute URL app-root is ignored", func(t *testing.T) {
+		suffix, err := framework.RandString()
+		require.NoError(t, err)
+		host := fmt.Sprintf("approot-abs-%s.example.com", suffix)
+
+		runTestCase(t, &framework.TestCase{
+			GatewayImplementation: implementation.IstioName,
+			Providers:             []string{ingressnginx.Name},
+			ProviderFlags: map[string]map[string]string{
+				ingressnginx.Name: {
+					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
+				},
+			},
+			Ingresses: []*networkingv1.Ingress{
+				framework.BasicIngress().
+					WithName("approot-abs").
+					WithHost(host).
+					WithIngressClass(ingressnginx.NginxIngressClass).
+					WithAnnotation(ingressnginx.AppRootAnnotation, "https://example.com/landing").
+					Build(),
+			},
+			Verifiers: map[string][]framework.Verifier{
+				"approot-abs": {
+					// Absolute URLs are rejected by ingress-nginx; no redirect
+					// should occur. GET / reaches the backend normally.
+					&framework.HTTPRequestVerifier{
+						Host: host,
+						Path: "/",
+					},
+				},
+			},
+		})
+	})
+	t.Run("app-root with separate app1 backend", func(t *testing.T) {
+		suffix, err := framework.RandString()
+		require.NoError(t, err)
+		host := fmt.Sprintf("approot-multi-%s.example.com", suffix)
+
+		runTestCase(t, &framework.TestCase{
+			GatewayImplementation: implementation.IstioName,
+			Providers:             []string{ingressnginx.Name},
+			Backends: []framework.Backend{
+				{Name: framework.DummyAppName1},
+				{Name: framework.DummyAppName2},
+			},
+			ProviderFlags: map[string]map[string]string{
+				ingressnginx.Name: {
+					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
+				},
+			},
+			Ingresses: []*networkingv1.Ingress{
+				framework.BasicIngress().
+					WithName("approot-main").
+					WithHost(host).
+					WithIngressClass(ingressnginx.NginxIngressClass).
+					WithBackend(framework.DummyAppName1).
+					WithAnnotation(ingressnginx.AppRootAnnotation, "/app1").
+					Build(),
+				framework.BasicIngress().
+					WithName("approot-app1").
+					WithHost(host).
+					WithPath("/app1").
+					WithIngressClass(ingressnginx.NginxIngressClass).
+					WithBackend(framework.DummyAppName2).
+					Build(),
+			},
+			Verifiers: map[string][]framework.Verifier{
+				"approot-main": {
+					// GET / should 302 redirect to /app1.
+					&framework.HTTPRequestVerifier{
+						Host:         host,
+						Path:         "/",
+						AllowedCodes: []int{http.StatusFound},
+						HeaderMatches: []framework.HeaderMatch{
+							{
+								Name: "Location",
+								Patterns: []*framework.MaybeNegativePattern{
+									{Pattern: regexp.MustCompile(`/app1$`)},
+								},
+							},
+						},
+					},
+					// Following the redirect: /app1 should reach the second backend.
+					&framework.HTTPRequestVerifier{
+						Host: host,
+						Path: "/app1",
+					},
+				},
+			},
+		})
+	})
+}
