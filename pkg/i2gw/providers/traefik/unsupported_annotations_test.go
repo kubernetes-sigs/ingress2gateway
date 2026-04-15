@@ -1,5 +1,5 @@
 /*
-Copyright 2026 The Kubernetes Authors.
+Copyright The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -73,7 +73,7 @@ func Test_unsupportedAnnotationsFeature(t *testing.T) {
 				},
 				Spec: networkingv1.IngressSpec{
 					IngressClassName: ptr.To("traefik"),
-					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", nil, "my-app", 80)}},
+					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue(nil, "my-app")}},
 				},
 			}
 

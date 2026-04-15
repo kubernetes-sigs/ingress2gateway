@@ -1,5 +1,5 @@
 /*
-Copyright 2026 The Kubernetes Authors.
+Copyright The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -56,8 +56,8 @@ func TestFileConversion(t *testing.T) {
 				t.Fatalf("failed to read input file %v: %v", d.Name(), err)
 			}
 
-			if err := traefikProvider.ReadResourcesFromFile(ctx, bytes.NewReader(data)); err != nil {
-				t.Fatalf("failed to read resources from file %v: %v", d.Name(), err)
+			if readErr := traefikProvider.ReadResourcesFromFile(ctx, bytes.NewReader(data)); readErr != nil {
+				t.Fatalf("failed to read resources from file %v: %v", d.Name(), readErr)
 			}
 
 			ir, errList := traefikProvider.ToIR()

@@ -1,5 +1,5 @@
 /*
-Copyright 2026 The Kubernetes Authors.
+Copyright The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -145,7 +145,7 @@ func routerEntrypointsFeature(notify notifications.NotifyFunc, ingresses []netwo
 
 			case hasWeb && hasWebsecure:
 				// Both entrypoints -- nothing to remove, this is the default Gateway API
-				// behaviour (HTTP + HTTPS listeners). No notification needed.
+				// behavior (HTTP + HTTPS listeners). No notification needed.
 
 			default:
 				// Non-standard entrypoint name (e.g. a custom Traefik entrypoint like

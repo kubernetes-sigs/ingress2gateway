@@ -1,5 +1,5 @@
 /*
-Copyright 2026 The Kubernetes Authors.
+Copyright The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -73,7 +73,7 @@ func Test_routerEntrypointsFeature(t *testing.T) {
 				},
 				Spec: networkingv1.IngressSpec{
 					IngressClassName: ptr.To("traefik"),
-					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80)}},
+					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue(&iPrefix, "my-app")}},
 				},
 			},
 			initialListeners:  bothListeners("foo.com"),
@@ -93,7 +93,7 @@ func Test_routerEntrypointsFeature(t *testing.T) {
 				},
 				Spec: networkingv1.IngressSpec{
 					IngressClassName: ptr.To("traefik"),
-					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80)}},
+					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue(&iPrefix, "my-app")}},
 				},
 			},
 			initialListeners: []gatewayv1.Listener{
@@ -113,7 +113,7 @@ func Test_routerEntrypointsFeature(t *testing.T) {
 				},
 				Spec: networkingv1.IngressSpec{
 					IngressClassName: ptr.To("traefik"),
-					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80)}},
+					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue(&iPrefix, "my-app")}},
 				},
 			},
 			initialListeners: bothListeners("foo.com"),
@@ -133,7 +133,7 @@ func Test_routerEntrypointsFeature(t *testing.T) {
 				},
 				Spec: networkingv1.IngressSpec{
 					IngressClassName: ptr.To("traefik"),
-					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80)}},
+					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue(&iPrefix, "my-app")}},
 				},
 			},
 			initialListeners:  bothListeners("foo.com"),
@@ -151,7 +151,7 @@ func Test_routerEntrypointsFeature(t *testing.T) {
 				},
 				Spec: networkingv1.IngressSpec{
 					IngressClassName: ptr.To("traefik"),
-					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80)}},
+					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue(&iPrefix, "my-app")}},
 				},
 			},
 			initialListeners:  bothListeners("foo.com"),
@@ -169,7 +169,7 @@ func Test_routerEntrypointsFeature(t *testing.T) {
 				},
 				Spec: networkingv1.IngressSpec{
 					IngressClassName: ptr.To("traefik"),
-					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80)}},
+					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue(&iPrefix, "my-app")}},
 				},
 			},
 			initialListeners:  bothListeners("foo.com"),
@@ -184,7 +184,7 @@ func Test_routerEntrypointsFeature(t *testing.T) {
 				},
 				Spec: networkingv1.IngressSpec{
 					IngressClassName: ptr.To("traefik"),
-					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80)}},
+					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue(&iPrefix, "my-app")}},
 				},
 			},
 			initialListeners:  bothListeners("foo.com"),
@@ -202,7 +202,7 @@ func Test_routerEntrypointsFeature(t *testing.T) {
 				},
 				Spec: networkingv1.IngressSpec{
 					IngressClassName: ptr.To("traefik"),
-					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80)}},
+					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue(&iPrefix, "my-app")}},
 				},
 			},
 			initialListeners:  bothListeners("foo.com"),
@@ -220,7 +220,7 @@ func Test_routerEntrypointsFeature(t *testing.T) {
 				},
 				Spec: networkingv1.IngressSpec{
 					IngressClassName: ptr.To("traefik"),
-					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80)}},
+					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue(&iPrefix, "my-app")}},
 				},
 			},
 			initialListeners:  bothListeners("foo.com"),
@@ -269,16 +269,16 @@ func Test_routerEntrypointsFeature(t *testing.T) {
 }
 
 // ingressRuleValue is a test helper that builds an IngressRuleValue with a single path.
-func ingressRuleValue(path string, pathType *networkingv1.PathType, svcName string, port int32) networkingv1.IngressRuleValue {
+func ingressRuleValue(pathType *networkingv1.PathType, svcName string) networkingv1.IngressRuleValue {
 	return networkingv1.IngressRuleValue{
 		HTTP: &networkingv1.HTTPIngressRuleValue{
 			Paths: []networkingv1.HTTPIngressPath{{
-				Path:     path,
+				Path:     "/",
 				PathType: pathType,
 				Backend: networkingv1.IngressBackend{
 					Service: &networkingv1.IngressServiceBackend{
 						Name: svcName,
-						Port: networkingv1.ServiceBackendPort{Number: port},
+						Port: networkingv1.ServiceBackendPort{Number: 80},
 					},
 				},
 			}},

@@ -1,5 +1,5 @@
 /*
-Copyright 2026 The Kubernetes Authors.
+Copyright The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -137,4 +137,3 @@ func listenerHostname(host string) *gatewayv1.Hostname {
 	h := gatewayv1.Hostname(host)
 	return &h
 }
-

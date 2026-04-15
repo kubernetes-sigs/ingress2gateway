@@ -1,5 +1,5 @@
 /*
-Copyright 2026 The Kubernetes Authors.
+Copyright The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -69,7 +69,7 @@ func Test_convertToIR_pathTypes(t *testing.T) {
 					IngressClassName: ptr.To("traefik"),
 					Rules: []networkingv1.IngressRule{{
 						Host:             "foo.com",
-						IngressRuleValue: ingressRuleValue("/", tc.pathType, "my-app", 80),
+						IngressRuleValue: ingressRuleValue(tc.pathType, "my-app"),
 					}},
 				},
 			}
@@ -120,7 +120,7 @@ func Test_convertToIR_routerTLSWithEntrypoints(t *testing.T) {
 			IngressClassName: ptr.To("traefik"),
 			Rules: []networkingv1.IngressRule{{
 				Host:             "grafana.example.com",
-				IngressRuleValue: ingressRuleValue("/", &iImplSpec, "grafana", 80),
+				IngressRuleValue: ingressRuleValue(&iImplSpec, "grafana"),
 			}},
 		},
 	}
@@ -172,7 +172,7 @@ func Test_convertToIR_routerTLSWithEntrypoints(t *testing.T) {
 
 	// Verify that forceHTTPSFeature generated a redirect HTTPRoute for port 80.
 	redirectRouteKey := types.NamespacedName{Namespace: "monitoring", Name: "grafana-grafana-example-com-http"}
-	if _, ok := ir.HTTPRoutes[redirectRouteKey]; !ok {
+	if _, exists := ir.HTTPRoutes[redirectRouteKey]; !exists {
 		t.Errorf("expected HTTP->HTTPS redirect HTTPRoute %v to be present", redirectRouteKey)
 	}
 
@@ -212,7 +212,7 @@ func Test_convertToIR_tlsSpecTakesPrecedence(t *testing.T) {
 			}},
 			Rules: []networkingv1.IngressRule{{
 				Host:             "foo.com",
-				IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80),
+				IngressRuleValue: ingressRuleValue(&iPrefix, "my-app"),
 			}},
 		},
 	}

@@ -1,5 +1,5 @@
 /*
-Copyright 2026 The Kubernetes Authors.
+Copyright The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -83,12 +83,12 @@ func Test_forceHTTPSFeature(t *testing.T) {
 	}
 
 	testCases := []struct {
-		name                       string
-		ingress                    networkingv1.Ingress
-		listeners                  []gatewayv1.Listener
-		expectedRedirectRoute      *gatewayv1.HTTPRoute
+		name                         string
+		ingress                      networkingv1.Ingress
+		listeners                    []gatewayv1.Listener
+		expectedRedirectRoute        *gatewayv1.HTTPRoute
 		expectedMainRouteSectionName *gatewayv1.SectionName // nil means no sectionName expected
-		expectedErrCount           int
+		expectedErrCount             int
 	}{
 		{
 			name: "websecure with HTTP+HTTPS listeners generates redirect route",
@@ -102,7 +102,7 @@ func Test_forceHTTPSFeature(t *testing.T) {
 				},
 				Spec: networkingv1.IngressSpec{
 					IngressClassName: ptr.To("traefik"),
-					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80)}},
+					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue(&iPrefix, "my-app")}},
 				},
 			},
 			listeners: bothListeners("foo.com"),
@@ -128,7 +128,7 @@ func Test_forceHTTPSFeature(t *testing.T) {
 				},
 				Spec: networkingv1.IngressSpec{
 					IngressClassName: ptr.To("traefik"),
-					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80)}},
+					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue(&iPrefix, "my-app")}},
 				},
 			},
 			listeners: []gatewayv1.Listener{
@@ -145,7 +145,7 @@ func Test_forceHTTPSFeature(t *testing.T) {
 				},
 				Spec: networkingv1.IngressSpec{
 					IngressClassName: ptr.To("traefik"),
-					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80)}},
+					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue(&iPrefix, "my-app")}},
 				},
 			},
 			listeners:             bothListeners("foo.com"),
@@ -163,7 +163,7 @@ func Test_forceHTTPSFeature(t *testing.T) {
 				},
 				Spec: networkingv1.IngressSpec{
 					IngressClassName: ptr.To("traefik"),
-					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80)}},
+					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue(&iPrefix, "my-app")}},
 				},
 			},
 			listeners:             bothListeners("foo.com"),
@@ -181,7 +181,7 @@ func Test_forceHTTPSFeature(t *testing.T) {
 				},
 				Spec: networkingv1.IngressSpec{
 					IngressClassName: ptr.To("traefik"),
-					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80)}},
+					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue(&iPrefix, "my-app")}},
 				},
 			},
 			listeners:             bothListeners("foo.com"),
@@ -199,7 +199,7 @@ func Test_forceHTTPSFeature(t *testing.T) {
 				},
 				Spec: networkingv1.IngressSpec{
 					IngressClassName: ptr.To("traefik"),
-					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80)}},
+					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue(&iPrefix, "my-app")}},
 				},
 			},
 			listeners: bothListeners("foo.com"),
@@ -224,7 +224,7 @@ func Test_forceHTTPSFeature(t *testing.T) {
 				},
 				Spec: networkingv1.IngressSpec{
 					IngressClassName: ptr.To("traefik"),
-					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue("/", &iPrefix, "my-app", 80)}},
+					Rules:            []networkingv1.IngressRule{{Host: "foo.com", IngressRuleValue: ingressRuleValue(&iPrefix, "my-app")}},
 				},
 			},
 			listeners: bothListeners("foo.com"),
@@ -261,7 +261,6 @@ func Test_forceHTTPSFeature(t *testing.T) {
 				HTTPRoutes: map[types.NamespacedName]providerir.HTTPRouteContext{
 					routeKey: {HTTPRoute: gatewayv1.HTTPRoute{
 						ObjectMeta: metav1.ObjectMeta{Name: routeKey.Name, Namespace: routeKey.Namespace},
-
 					}},
 				},
 			}
