@@ -1742,76 +1742,6 @@ func TestIngressNGINXSSLPassthrough(t *testing.T) {
 		})
 	})
 
-
-	// Test: When two ingresses share the same hostname but only one has
-	// ssl-passthrough, passthrough wins because it operates at L4 and
-	// intercepts all TLS traffic for the SNI hostname before the L7
-	// proxy sees it. The non-passthrough ingress's L7 annotations are
-	// ignored. We verify the passthrough backend is reachable via TLS.
-	t.Run("shared host passthrough wins over non-passthrough", func(t *testing.T) {
-		suffix, err := framework.RandString()
-		require.NoError(t, err, "creating host suffix")
-		host := "ssl-pt-mixed-" + suffix + ".example.com"
-
-		tlsSecret, err := framework.GenerateSelfSignedTLSSecret("backend-tls-mixed-"+suffix, host, []string{host})
-		require.NoError(t, err, "generating backend TLS secret")
-
-		providers := []string{ingressnginx.Name}
-		gwImpl := implementation.IstioName
-		env := setupTestEnv(t, providers, gwImpl)
-
-		env.Run(&framework.TestCase{
-			Providers:             providers,
-			GatewayImplementation: gwImpl,
-			Backends: []framework.Backend{
-				{Name: framework.DummyAppName1, ServerSecretName: "backend-tls-mixed-" + suffix},
-				{Name: framework.DummyAppName2},
-			},
-			ProviderFlags: map[string]map[string]string{
-				ingressnginx.Name: {
-					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
-				},
-			},
-			Secrets: []*corev1.Secret{tlsSecret.Secret},
-			Ingresses: []*networkingv1.Ingress{
-				framework.BasicIngress().
-					WithName("ssl-pt-mixed-passthrough").
-					WithHost(host).
-					WithIngressClass(ingressnginx.NginxIngressClass).
-					WithBackend(framework.DummyAppName1).
-					WithBackendPort(443).
-					WithAnnotation(ingressnginx.SSLPassthroughAnnotation, "true").
-					Build(),
-				framework.BasicIngress().
-					WithName("ssl-pt-mixed-normal").
-					WithHost(host).
-					WithPath("/normal").
-					WithIngressClass(ingressnginx.NginxIngressClass).
-					WithBackend(framework.DummyAppName2).
-					WithAnnotation("nginx.ingress.kubernetes.io/proxy-connect-timeout", "5").
-					WithAnnotation("nginx.ingress.kubernetes.io/proxy-read-timeout", "5").
-					Build(),
-			},
-			Verifiers: map[string][]framework.Verifier{
-				"ssl-pt-mixed-passthrough": {
-					&framework.HTTPRequestVerifier{
-						Host:      host,
-						Path:      "/",
-						UseTLS:    true,
-						CACertPEM: tlsSecret.CACert,
-					},
-				},
-				"ssl-pt-mixed-normal": {
-					&framework.HTTPRequestVerifier{
-						Host: host,
-						Path: "/normal",
-					},
-				},
-			},
-		})
-	})
-
-
 	// Test: Mixed termination modes on the same Gateway — one host uses TLS
 	// Passthrough (ssl-passthrough) while a different host uses normal HTTPS
 	// termination.
@@ -1880,6 +1810,160 @@ func TestIngressNGINXSSLPassthrough(t *testing.T) {
 					&framework.HTTPRequestVerifier{
 						Host: normalHost,
 						Path: "/hostname",
+					},
+				},
+			},
+		})
+	})
+
+	// Test: Two different hosts both using ssl-passthrough on the same Gateway.
+	// Verifies that multiple TLS Passthrough listeners can coexist and each
+	// TLSRoute routes to its own backend.
+	t.Run("multiple passthrough hosts on same gateway", func(t *testing.T) {
+		suffix, err := framework.RandString()
+		require.NoError(t, err, "creating host suffix")
+		hostA := "ssl-pt-multi-a-" + suffix + ".example.com"
+		hostB := "ssl-pt-multi-b-" + suffix + ".example.com"
+
+		tlsSecretA, err := framework.GenerateSelfSignedTLSSecret(
+			"backend-tls-multi-a-"+suffix, hostA, []string{hostA})
+		require.NoError(t, err, "generating backend TLS secret A")
+
+		tlsSecretB, err := framework.GenerateSelfSignedTLSSecret(
+			"backend-tls-multi-b-"+suffix, hostB, []string{hostB})
+		require.NoError(t, err, "generating backend TLS secret B")
+
+		providers := []string{ingressnginx.Name}
+		gwImpl := implementation.IstioName
+		env := setupTestEnv(t, providers, gwImpl)
+
+		env.Run(&framework.TestCase{
+			Providers:             providers,
+			GatewayImplementation: gwImpl,
+			Backends: []framework.Backend{
+				{Name: framework.DummyAppName1, ServerSecretName: "backend-tls-multi-a-" + suffix},
+				{Name: framework.DummyAppName2, ServerSecretName: "backend-tls-multi-b-" + suffix},
+			},
+			ProviderFlags: map[string]map[string]string{
+				ingressnginx.Name: {
+					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
+				},
+			},
+			Secrets: []*corev1.Secret{tlsSecretA.Secret, tlsSecretB.Secret},
+			Ingresses: []*networkingv1.Ingress{
+				framework.BasicIngress().
+					WithName("multi-pt-a").
+					WithHost(hostA).
+					WithIngressClass(ingressnginx.NginxIngressClass).
+					WithBackend(framework.DummyAppName1).
+					WithBackendPort(443).
+					WithAnnotation(ingressnginx.SSLPassthroughAnnotation, "true").
+					Build(),
+				framework.BasicIngress().
+					WithName("multi-pt-b").
+					WithHost(hostB).
+					WithIngressClass(ingressnginx.NginxIngressClass).
+					WithBackend(framework.DummyAppName2).
+					WithBackendPort(443).
+					WithAnnotation(ingressnginx.SSLPassthroughAnnotation, "true").
+					Build(),
+			},
+			Verifiers: map[string][]framework.Verifier{
+				"multi-pt-a": {
+					&framework.HTTPRequestVerifier{
+						Host:      hostA,
+						Path:      "/",
+						UseTLS:    true,
+						CACertPEM: tlsSecretA.CACert,
+					},
+				},
+				"multi-pt-b": {
+					&framework.HTTPRequestVerifier{
+						Host:      hostB,
+						Path:      "/",
+						UseTLS:    true,
+						CACertPEM: tlsSecretB.CACert,
+					},
+				},
+			},
+		})
+	})
+
+	// Test: Shared host — one passthrough ingress and two non-passthrough
+	// ingresses with different paths. Verifies that stripPassthroughRules
+	// preserves all non-passthrough HTTPRoute rules (not just the first one).
+	t.Run("shared host preserves multiple non-passthrough paths", func(t *testing.T) {
+		suffix, err := framework.RandString()
+		require.NoError(t, err, "creating host suffix")
+		host := "ssl-pt-multi-path-" + suffix + ".example.com"
+
+		tlsSecret, err := framework.GenerateSelfSignedTLSSecret(
+			"backend-tls-multi-path-"+suffix, host, []string{host})
+		require.NoError(t, err, "generating backend TLS secret")
+
+		providers := []string{ingressnginx.Name}
+		gwImpl := implementation.IstioName
+		env := setupTestEnv(t, providers, gwImpl)
+
+		env.Run(&framework.TestCase{
+			Providers:             providers,
+			GatewayImplementation: gwImpl,
+			Backends: []framework.Backend{
+				{Name: framework.DummyAppName1, ServerSecretName: "backend-tls-multi-path-" + suffix},
+				{Name: framework.DummyAppName2},
+			},
+			ProviderFlags: map[string]map[string]string{
+				ingressnginx.Name: {
+					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
+				},
+			},
+			Secrets: []*corev1.Secret{tlsSecret.Secret},
+			Ingresses: []*networkingv1.Ingress{
+				// Passthrough ingress on the shared host.
+				framework.BasicIngress().
+					WithName("multi-path-passthrough").
+					WithHost(host).
+					WithIngressClass(ingressnginx.NginxIngressClass).
+					WithBackend(framework.DummyAppName1).
+					WithBackendPort(443).
+					WithAnnotation(ingressnginx.SSLPassthroughAnnotation, "true").
+					Build(),
+				// First non-passthrough path on the same host.
+				framework.BasicIngress().
+					WithName("multi-path-normal-a").
+					WithHost(host).
+					WithPath("/path-a").
+					WithIngressClass(ingressnginx.NginxIngressClass).
+					WithBackend(framework.DummyAppName2).
+					Build(),
+				// Second non-passthrough path on the same host.
+				framework.BasicIngress().
+					WithName("multi-path-normal-b").
+					WithHost(host).
+					WithPath("/path-b").
+					WithIngressClass(ingressnginx.NginxIngressClass).
+					WithBackend(framework.DummyAppName2).
+					Build(),
+			},
+			Verifiers: map[string][]framework.Verifier{
+				"multi-path-passthrough": {
+					&framework.HTTPRequestVerifier{
+						Host:      host,
+						Path:      "/",
+						UseTLS:    true,
+						CACertPEM: tlsSecret.CACert,
+					},
+				},
+				"multi-path-normal-a": {
+					&framework.HTTPRequestVerifier{
+						Host: host,
+						Path: "/path-a",
+					},
+				},
+				"multi-path-normal-b": {
+					&framework.HTTPRequestVerifier{
+						Host: host,
+						Path: "/path-b",
 					},
 				},
 			},
