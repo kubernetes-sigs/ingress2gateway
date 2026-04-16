@@ -1686,68 +1686,6 @@ func TestIngressNGINXAppRoot(t *testing.T) {
 
 func TestIngressNGINXSSLPassthrough(t *testing.T) {
 	t.Parallel()
-	// Test: When two ingresses share the same hostname but only one has
-	// ssl-passthrough, passthrough wins because it operates at L4 and
-	// intercepts all TLS traffic for the SNI hostname before the L7
-	// proxy sees it. The non-passthrough ingress's L7 annotations are
-	// ignored. We verify the passthrough backend is reachable via TLS.
-	t.Run("shared host passthrough wins over non-passthrough", func(t *testing.T) {
-		suffix, err := framework.RandString()
-		require.NoError(t, err, "creating host suffix")
-		host := "ssl-pt-mixed-" + suffix + ".example.com"
-
-		tlsSecret, err := framework.GenerateSelfSignedTLSSecret("backend-tls-mixed-"+suffix, host, []string{host})
-		require.NoError(t, err, "generating backend TLS secret")
-
-		providers := []string{ingressnginx.Name}
-		gwImpl := implementation.IstioName
-		env := setupTestEnv(t, providers, gwImpl)
-
-		env.Run(&framework.TestCase{
-			Providers:             providers,
-			GatewayImplementation: gwImpl,
-			Backends: []framework.Backend{
-				{Name: framework.DummyAppName1, ServerSecretName: "backend-tls-mixed-" + suffix},
-				{Name: framework.DummyAppName2},
-			},
-			ProviderFlags: map[string]map[string]string{
-				ingressnginx.Name: {
-					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
-				},
-			},
-			Secrets: []*corev1.Secret{tlsSecret.Secret},
-			Ingresses: []*networkingv1.Ingress{
-				framework.BasicIngress().
-					WithName("ssl-pt-mixed-passthrough").
-					WithHost(host).
-					WithIngressClass(ingressnginx.NginxIngressClass).
-					WithBackend(framework.DummyAppName1).
-					WithBackendPort(443).
-					WithAnnotation(ingressnginx.SSLPassthroughAnnotation, "true").
-					Build(),
-				framework.BasicIngress().
-					WithName("ssl-pt-mixed-normal").
-					WithHost(host).
-					WithPath("/hostname").
-					WithIngressClass(ingressnginx.NginxIngressClass).
-					WithBackend(framework.DummyAppName2).
-					WithAnnotation("nginx.ingress.kubernetes.io/proxy-connect-timeout", "5").
-					WithAnnotation("nginx.ingress.kubernetes.io/proxy-read-timeout", "5").
-					Build(),
-			},
-			Verifiers: map[string][]framework.Verifier{
-				"ssl-pt-mixed-passthrough": {
-					&framework.HTTPRequestVerifier{
-						Host:      host,
-						Path:      "/",
-						UseTLS:    true,
-						CACertPEM: tlsSecret.CACert,
-					},
-				},
-			},
-		})
-	})
-
 	// Test: SSL passthrough sends TLS traffic directly to the backend without
 	// termination. The ingress2gateway tool should produce a TLSRoute with a
 	// Passthrough listener on the Gateway.
@@ -1804,6 +1742,76 @@ func TestIngressNGINXSSLPassthrough(t *testing.T) {
 		})
 	})
 
+
+	// Test: When two ingresses share the same hostname but only one has
+	// ssl-passthrough, passthrough wins because it operates at L4 and
+	// intercepts all TLS traffic for the SNI hostname before the L7
+	// proxy sees it. The non-passthrough ingress's L7 annotations are
+	// ignored. We verify the passthrough backend is reachable via TLS.
+	t.Run("shared host passthrough wins over non-passthrough", func(t *testing.T) {
+		suffix, err := framework.RandString()
+		require.NoError(t, err, "creating host suffix")
+		host := "ssl-pt-mixed-" + suffix + ".example.com"
+
+		tlsSecret, err := framework.GenerateSelfSignedTLSSecret("backend-tls-mixed-"+suffix, host, []string{host})
+		require.NoError(t, err, "generating backend TLS secret")
+
+		providers := []string{ingressnginx.Name}
+		gwImpl := implementation.IstioName
+		env := setupTestEnv(t, providers, gwImpl)
+
+		env.Run(&framework.TestCase{
+			Providers:             providers,
+			GatewayImplementation: gwImpl,
+			Backends: []framework.Backend{
+				{Name: framework.DummyAppName1, ServerSecretName: "backend-tls-mixed-" + suffix},
+				{Name: framework.DummyAppName2},
+			},
+			ProviderFlags: map[string]map[string]string{
+				ingressnginx.Name: {
+					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
+				},
+			},
+			Secrets: []*corev1.Secret{tlsSecret.Secret},
+			Ingresses: []*networkingv1.Ingress{
+				framework.BasicIngress().
+					WithName("ssl-pt-mixed-passthrough").
+					WithHost(host).
+					WithIngressClass(ingressnginx.NginxIngressClass).
+					WithBackend(framework.DummyAppName1).
+					WithBackendPort(443).
+					WithAnnotation(ingressnginx.SSLPassthroughAnnotation, "true").
+					Build(),
+				framework.BasicIngress().
+					WithName("ssl-pt-mixed-normal").
+					WithHost(host).
+					WithPath("/normal").
+					WithIngressClass(ingressnginx.NginxIngressClass).
+					WithBackend(framework.DummyAppName2).
+					WithAnnotation("nginx.ingress.kubernetes.io/proxy-connect-timeout", "5").
+					WithAnnotation("nginx.ingress.kubernetes.io/proxy-read-timeout", "5").
+					Build(),
+			},
+			Verifiers: map[string][]framework.Verifier{
+				"ssl-pt-mixed-passthrough": {
+					&framework.HTTPRequestVerifier{
+						Host:      host,
+						Path:      "/",
+						UseTLS:    true,
+						CACertPEM: tlsSecret.CACert,
+					},
+				},
+				"ssl-pt-mixed-normal": {
+					&framework.HTTPRequestVerifier{
+						Host: host,
+						Path: "/normal",
+					},
+				},
+			},
+		})
+	})
+
+
 	// Test: Mixed termination modes on the same Gateway — one host uses TLS
 	// Passthrough (ssl-passthrough) while a different host uses normal HTTPS
 	// termination.
@@ -1852,6 +1860,7 @@ func TestIngressNGINXSSLPassthrough(t *testing.T) {
 				framework.BasicIngress().
 					WithName("mixed-term-normal").
 					WithHost(normalHost).
+					WithPath("/hostname").
 					WithIngressClass(ingressnginx.NginxIngressClass).
 					WithBackend(framework.DummyAppName2).
 					Build(),
@@ -1870,7 +1879,7 @@ func TestIngressNGINXSSLPassthrough(t *testing.T) {
 					// Normal host: regular HTTP through the gateway.
 					&framework.HTTPRequestVerifier{
 						Host: normalHost,
-						Path: "/",
+						Path: "/hostname",
 					},
 				},
 			},
