@@ -1803,4 +1803,77 @@ func TestIngressNGINXSSLPassthrough(t *testing.T) {
 			},
 		})
 	})
+
+	// Test: Mixed termination modes on the same Gateway — one host uses TLS
+	// Passthrough (ssl-passthrough) while a different host uses normal HTTPS
+	// termination.
+	t.Run("mixed termination: passthrough host and normal HTTPS host on same gateway", func(t *testing.T) {
+		suffix, err := framework.RandString()
+		require.NoError(t, err, "creating host suffix")
+		passthroughHost := "ssl-pt-mixed-term-pt-" + suffix + ".example.com"
+		normalHost := "ssl-pt-mixed-term-normal-" + suffix + ".example.com"
+
+		// The passthrough backend needs a real TLS cert because the client
+		// talks TLS directly to it (no gateway termination).
+		tlsSecret, err := framework.GenerateSelfSignedTLSSecret(
+			"backend-tls-mixed-term-"+suffix, passthroughHost, []string{passthroughHost})
+		require.NoError(t, err, "generating backend TLS secret")
+
+		providers := []string{ingressnginx.Name}
+		gwImpl := implementation.IstioName
+		env := setupTestEnv(t, providers, gwImpl)
+
+		env.Run(&framework.TestCase{
+			Providers:             providers,
+			GatewayImplementation: gwImpl,
+			Backends: []framework.Backend{
+				// DummyApp1: passthrough backend with TLS
+				{Name: framework.DummyAppName1, ServerSecretName: "backend-tls-mixed-term-" + suffix},
+				// DummyApp2: normal HTTP backend
+				{Name: framework.DummyAppName2},
+			},
+			ProviderFlags: map[string]map[string]string{
+				ingressnginx.Name: {
+					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
+				},
+			},
+			Secrets: []*corev1.Secret{tlsSecret.Secret},
+			Ingresses: []*networkingv1.Ingress{
+				// Ingress A: passthrough host
+				framework.BasicIngress().
+					WithName("mixed-term-passthrough").
+					WithHost(passthroughHost).
+					WithIngressClass(ingressnginx.NginxIngressClass).
+					WithBackend(framework.DummyAppName1).
+					WithBackendPort(443).
+					WithAnnotation(ingressnginx.SSLPassthroughAnnotation, "true").
+					Build(),
+				// Ingress B: normal HTTPS host (no passthrough)
+				framework.BasicIngress().
+					WithName("mixed-term-normal").
+					WithHost(normalHost).
+					WithIngressClass(ingressnginx.NginxIngressClass).
+					WithBackend(framework.DummyAppName2).
+					Build(),
+			},
+			Verifiers: map[string][]framework.Verifier{
+				"mixed-term-passthrough": {
+					// Passthrough: TLS goes directly to the backend.
+					&framework.HTTPRequestVerifier{
+						Host:      passthroughHost,
+						Path:      "/",
+						UseTLS:    true,
+						CACertPEM: tlsSecret.CACert,
+					},
+				},
+				"mixed-term-normal": {
+					// Normal host: regular HTTP through the gateway.
+					&framework.HTTPRequestVerifier{
+						Host: normalHost,
+						Path: "/",
+					},
+				},
+			},
+		})
+	})
 }
