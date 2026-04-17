@@ -51,16 +51,16 @@ type CdnConfig struct {
 }
 
 type CachePolicy struct {
-	CacheKeyPolicy              *CacheKeyPolicy              `json:"cacheKeyPolicy,omitempty"`
-	RequestCoalescing           *bool                        `json:"requestCoalescing,omitempty"`
-	CacheMode                   string                       `json:"cacheMode,omitempty"`
-	DefaultTTL                  string                       `json:"defaultTTL,omitempty"`
-	MaxTTL                      string                       `json:"maxTTL,omitempty"`
-	ClientTTL                   string                       `json:"clientTTL,omitempty"`
-	NegativeCaching             *bool                        `json:"negativeCaching,omitempty"`
-	NegativeCachingPolicy       []NegativeCachingPolicy      `json:"negativeCachingPolicy,omitempty"`
-	BypassCacheOnRequestHeaders []BypassCacheOnRequestHeader `json:"bypassCacheOnRequestHeaders,omitempty"`
-	ServeWhileStale             string                       `json:"serveWhileStale,omitempty"`
+	CacheKeyPolicy                *CacheKeyPolicy         `json:"cacheKeyPolicy,omitempty"`
+	RequestCoalescing             *bool                   `json:"requestCoalescing,omitempty"`
+	CacheMode                     string                  `json:"cacheMode,omitempty"`
+	DefaultTTL                    string                  `json:"defaultTTL,omitempty"`
+	MaxTTL                        string                  `json:"maxTTL,omitempty"`
+	ClientTTL                     string                  `json:"clientTTL,omitempty"`
+	NegativeCaching               *bool                   `json:"negativeCaching,omitempty"`
+	NegativeCachingPolicy         []NegativeCachingPolicy `json:"negativeCachingPolicy,omitempty"`
+	CacheBypassRequestHeaderNames []string                `json:"cacheBypassRequestHeaderNames,omitempty"`
+	ServeWhileStale               string                  `json:"serveWhileStale,omitempty"`
 }
 
 type CacheKeyPolicy struct {
@@ -76,8 +76,4 @@ type CacheKeyPolicy struct {
 type NegativeCachingPolicy struct {
 	Code int    `json:"code"`
 	TTL  string `json:"ttl"`
-}
-
-type BypassCacheOnRequestHeader struct {
-	HeaderName string `json:"headerName,omitempty"`
 }
