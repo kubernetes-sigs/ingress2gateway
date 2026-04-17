@@ -1049,16 +1049,6 @@ func Test_convertToIR(t *testing.T) {
 												},
 											},
 										},
-										Filters: []gatewayv1.HTTPRouteFilter{
-											{
-												Type: gatewayv1.HTTPRouteFilterExtensionRef,
-												ExtensionRef: &gatewayv1.LocalObjectReference{
-													Group: "networking.gke.io",
-													Kind:  "GCPHTTPFilter",
-													Name:  "test-service-filter",
-												},
-											},
-										},
 									},
 								},
 							},

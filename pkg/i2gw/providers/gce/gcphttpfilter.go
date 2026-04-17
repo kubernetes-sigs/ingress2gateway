@@ -38,5 +38,18 @@ type GCPHTTPFilterSpec struct {
 func (in *GCPHTTPFilter) DeepCopyObject() runtime.Object {
 	out := new(GCPHTTPFilter)
 	*out = *in
+	if in.Spec.CachePolicy != nil {
+		out.Spec.CachePolicy = new(emittergce.CachePolicy)
+		*out.Spec.CachePolicy = *in.Spec.CachePolicy
+
+		if in.Spec.CachePolicy.RequestCoalescing != nil {
+			out.Spec.CachePolicy.RequestCoalescing = new(bool)
+			*out.Spec.CachePolicy.RequestCoalescing = *in.Spec.CachePolicy.RequestCoalescing
+		}
+		if in.Spec.CachePolicy.NegativeCaching != nil {
+			out.Spec.CachePolicy.NegativeCaching = new(bool)
+			*out.Spec.CachePolicy.NegativeCaching = *in.Spec.CachePolicy.NegativeCaching
+		}
+	}
 	return out
 }

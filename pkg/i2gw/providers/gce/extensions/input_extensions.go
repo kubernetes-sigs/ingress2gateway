@@ -95,15 +95,25 @@ func BuildIRCdnConfig(beConfig *backendconfigv1.BackendConfig) *gce.CdnConfig {
 	if beConfig.Spec.Cdn == nil {
 		return nil
 	}
+	var bypassHeaders []gce.BypassCacheOnRequestHeader
+	for _, h := range beConfig.Spec.Cdn.BypassCacheOnRequestHeaders {
+		if h != nil {
+			bypassHeaders = append(bypassHeaders, gce.BypassCacheOnRequestHeader{
+				HeaderName: h.HeaderName,
+			})
+		}
+	}
+
 	return &gce.CdnConfig{
 		CachePolicy: &gce.CachePolicy{
-			CacheMode:         stringPtrToString(beConfig.Spec.Cdn.CacheMode),
-			DefaultTTL:        int64PtrToDurationString(beConfig.Spec.Cdn.DefaultTtl),
-			MaxTTL:            int64PtrToDurationString(beConfig.Spec.Cdn.MaxTtl),
-			ClientTTL:         int64PtrToDurationString(beConfig.Spec.Cdn.ClientTtl),
-			RequestCoalescing: beConfig.Spec.Cdn.RequestCoalescing,
-			ServeWhileStale:   int64PtrToDurationString(beConfig.Spec.Cdn.ServeWhileStale),
-			NegativeCaching:   beConfig.Spec.Cdn.NegativeCaching,
+			CacheMode:                   stringPtrToString(beConfig.Spec.Cdn.CacheMode),
+			DefaultTTL:                  int64PtrToDurationString(beConfig.Spec.Cdn.DefaultTtl),
+			MaxTTL:                      int64PtrToDurationString(beConfig.Spec.Cdn.MaxTtl),
+			ClientTTL:                   int64PtrToDurationString(beConfig.Spec.Cdn.ClientTtl),
+			RequestCoalescing:           beConfig.Spec.Cdn.RequestCoalescing,
+			ServeWhileStale:             int64PtrToDurationString(beConfig.Spec.Cdn.ServeWhileStale),
+			NegativeCaching:             beConfig.Spec.Cdn.NegativeCaching,
+			BypassCacheOnRequestHeaders: bypassHeaders,
 		},
 	}
 }
