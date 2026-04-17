@@ -83,4 +83,8 @@ To specify the name of the Ingress class to select, use `--ingress-nginx-ingress
 - `nginx.ingress.kubernetes.io/proxy-ssl-verify-depth`: **Recognized but not converted.** TLS verification depth is not supported by Gateway API.
 - `nginx.ingress.kubernetes.io/proxy-ssl-protocols`: **Recognized but not converted.** TLS protocol configuration is not supported by Gateway API.
 
+### SSL Passthrough
+
+- `nginx.ingress.kubernetes.io/ssl-passthrough`: When set to `true`, the HTTPRoute for the Ingress is replaced by a `TLSRoute` with TLS passthrough mode. A new TLS listener (port 443, `Passthrough` mode) is added to the Gateway for each matching hostname.
+
 If you are reliant on any annotations not listed above, please open an issue. In the meantime you'll need to manually find a Gateway API equivalent.
