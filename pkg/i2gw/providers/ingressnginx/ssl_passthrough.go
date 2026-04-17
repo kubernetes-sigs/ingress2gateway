@@ -37,10 +37,6 @@ import (
 // directly to the backend without decryption. In Gateway API this maps to a
 // Gateway listener with protocol TLS and mode Passthrough, paired with a
 // TLSRoute that forwards traffic based on SNI hostname.
-//
-// Because SSL passthrough operates at L4, it invalidates all other L7
-// annotations. This feature parser therefore removes the corresponding
-// HTTPRoute entries from the IR and replaces them with TLSRoutes.
 func sslPassthroughFeature(notify notifications.NotifyFunc, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	// Build a set of ingresses that have ssl-passthrough enabled.
 	passthroughIngresses := map[types.NamespacedName]*networkingv1.Ingress{}
@@ -62,15 +58,6 @@ func sslPassthroughFeature(notify notifications.NotifyFunc, ingresses []networki
 		return nil
 	}
 
-	// Identify HTTPRoutes that have ANY backend source from a passthrough ingress.
-	// SSL passthrough operates at L4 and intercepts all TLS traffic for the SNI
-	// hostname before the L7 proxy sees it. However, HTTP (port 80) traffic is
-	// still served normally by ingress-nginx for all ingresses, including those
-	// with ssl-passthrough. So we:
-	//  1. Create a TLSRoute for the passthrough backends (port 443 L4).
-	//  2. Strip passthrough-sourced rules from the HTTPRoute but keep
-	//     non-passthrough rules (port 80 still works).
-	//  3. Only delete the HTTPRoute if no non-passthrough rules remain.
 	httpRoutesToDelete := []types.NamespacedName{}
 
 	for routeKey, httpRouteCtx := range ir.HTTPRoutes {

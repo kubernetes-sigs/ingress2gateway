@@ -453,9 +453,21 @@ func TestSSLPassthroughFeature(t *testing.T) {
 			t.Fatalf("unexpected errors: %v", errs)
 		}
 
-		// HTTPRoute should be removed (passthrough wins).
-		if _, exists := ir.HTTPRoutes[httpRouteKey]; exists {
-			t.Fatal("HTTPRoute should be removed when passthrough wins on a shared host")
+		// HTTPRoute should be preserved with only the non-passthrough backend.
+		// The passthrough backend is moved to the TLSRoute, but the normal
+		// ingress's HTTP rules remain for port 80 traffic.
+		httpRoute, exists := ir.HTTPRoutes[httpRouteKey]
+		if !exists {
+			t.Fatal("HTTPRoute should be preserved with non-passthrough rules")
+		}
+		if len(httpRoute.HTTPRoute.Spec.Rules) != 1 {
+			t.Fatalf("expected 1 remaining HTTPRoute rule, got %d", len(httpRoute.HTTPRoute.Spec.Rules))
+		}
+		if len(httpRoute.HTTPRoute.Spec.Rules[0].BackendRefs) != 1 {
+			t.Fatalf("expected 1 backend ref in remaining rule, got %d", len(httpRoute.HTTPRoute.Spec.Rules[0].BackendRefs))
+		}
+		if httpRoute.HTTPRoute.Spec.Rules[0].BackendRefs[0].Name != "normal-svc" {
+			t.Errorf("expected remaining backend normal-svc, got %s", httpRoute.HTTPRoute.Spec.Rules[0].BackendRefs[0].Name)
 		}
 
 		// TLSRoute should be created with only the passthrough backend.
