@@ -282,6 +282,9 @@ func beConfigToGceServiceIR(beConfig *backendconfigv1.BackendConfig) gce.Service
 	if beConfig.Spec.HealthCheck != nil {
 		gceServiceIR.HealthCheck = extensions.BuildIRHealthCheckConfig(beConfig)
 	}
+	if beConfig.Spec.Cdn != nil {
+		gceServiceIR.Cdn = extensions.BuildIRCdnConfig(beConfig)
+	}
 
 	return gceServiceIR
 }

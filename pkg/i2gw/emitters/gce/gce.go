@@ -23,6 +23,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate/gce"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitters/utils"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
+	providergce "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/gce"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -51,6 +52,12 @@ var (
 		Version: "v1",
 		Kind:    "HealthCheckPolicy",
 	}
+
+	GCPHTTPFilterGVK = schema.GroupVersionKind{
+		Group:   "networking.gke.io",
+		Version: "v1",
+		Kind:    "GCPHTTPFilter",
+	}
 )
 
 func init() {
@@ -74,6 +81,7 @@ func (c *Emitter) Emit(ir emitterir.EmitterIR) (i2gw.GatewayResources, field.Err
 	}
 	buildGceGatewayExtensions(c.notify, ir, &gatewayResources)
 	buildGceServiceExtensions(c.notify, ir, &gatewayResources)
+	patchHTTPRoutesWithFilters(ir, &gatewayResources)
 
 	return gatewayResources, nil
 }
@@ -160,6 +168,16 @@ func buildGceServiceExtensions(notify notifications.NotifyFunc, ir emitterir.Emi
 			}
 			gatewayResources.GatewayExtensions = append(gatewayResources.GatewayExtensions, *obj)
 		}
+
+		httpFilter := addGCPHTTPFilterIfConfigured(svcKey, gceServiceIR)
+		if httpFilter != nil {
+			obj, err := i2gw.CastToUnstructured(httpFilter)
+			if err != nil {
+				notify(notifications.ErrorNotification, "Failed to cast GCPHTTPFilter to unstructured", httpFilter)
+				continue
+			}
+			gatewayResources.GatewayExtensions = append(gatewayResources.GatewayExtensions, *obj)
+		}
 	}
 }
 
@@ -232,4 +250,67 @@ func addHealthCheckPolicyIfConfigured(serviceNamespacedName types.NamespacedName
 	}
 	healthCheckPolicy.SetGroupVersionKind(HealthCheckPolicyGVK)
 	return &healthCheckPolicy
+}
+
+func addGCPHTTPFilterIfConfigured(serviceNamespacedName types.NamespacedName, gceServiceIR *gce.ServiceIR) *providergce.GCPHTTPFilter {
+	if gceServiceIR == nil || gceServiceIR.Cdn == nil {
+		return nil
+	}
+
+	httpFilter := providergce.GCPHTTPFilter{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: serviceNamespacedName.Namespace,
+			Name:      serviceNamespacedName.Name + "-filter",
+		},
+		Spec: providergce.GCPHTTPFilterSpec{
+			CachePolicy: gceServiceIR.Cdn.CachePolicy,
+		},
+	}
+	httpFilter.SetGroupVersionKind(GCPHTTPFilterGVK)
+	return &httpFilter
+}
+
+func patchHTTPRoutesWithFilters(ir emitterir.EmitterIR, gatewayResources *i2gw.GatewayResources) {
+	for routeKey, route := range gatewayResources.HTTPRoutes {
+		for i := range route.Spec.Rules {
+			for j := range route.Spec.Rules[i].BackendRefs {
+				backendRef := route.Spec.Rules[i].BackendRefs[j]
+				if backendRef.Name == "" {
+					continue
+				}
+				svcKey := types.NamespacedName{Namespace: routeKey.Namespace, Name: string(backendRef.Name)}
+				gceSvc, exists := ir.GceServices[svcKey]
+				if !exists || gceSvc.Cdn == nil {
+					continue
+				}
+				// Found a backend with CDN enabled!
+				// Attach the filter to the HTTPRoute rule.
+				filter := gatewayv1.HTTPRouteFilter{
+					Type: gatewayv1.HTTPRouteFilterExtensionRef,
+					ExtensionRef: &gatewayv1.LocalObjectReference{
+						Group: "networking.gke.io",
+						Kind:  "GCPHTTPFilter",
+						Name:  gatewayv1.ObjectName(string(backendRef.Name) + "-filter"),
+					},
+				}
+				if route.Spec.Rules[i].Filters == nil {
+					route.Spec.Rules[i].Filters = make([]gatewayv1.HTTPRouteFilter, 0)
+				}
+				// Avoid adding duplicate filters
+				alreadyExists := false
+				for _, existingFilter := range route.Spec.Rules[i].Filters {
+					if existingFilter.Type == gatewayv1.HTTPRouteFilterExtensionRef &&
+						existingFilter.ExtensionRef != nil &&
+						existingFilter.ExtensionRef.Name == filter.ExtensionRef.Name {
+						alreadyExists = true
+						break
+					}
+				}
+				if !alreadyExists {
+					route.Spec.Rules[i].Filters = append(route.Spec.Rules[i].Filters, filter)
+				}
+			}
+		}
+		gatewayResources.HTTPRoutes[routeKey] = route
+	}
 }

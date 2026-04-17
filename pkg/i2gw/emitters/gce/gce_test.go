@@ -200,6 +200,22 @@ var (
 			},
 		},
 	}
+
+	testGCPHTTPFilterUnstructured = &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "networking.gke.io/v1",
+			"kind":       "GCPHTTPFilter",
+			"metadata": map[string]interface{}{
+				"namespace": testNamespace,
+				"name":      testServiceName + "-filter",
+			},
+			"spec": map[string]interface{}{
+				"cachePolicy": map[string]interface{}{
+					"cacheMode": "USE_ORIGIN_HEADERS",
+				},
+			},
+		},
+	}
 )
 
 func Test_irToGateway(t *testing.T) {
@@ -475,6 +491,84 @@ func Test_irToGateway(t *testing.T) {
 				},
 				GatewayExtensions: []unstructured.Unstructured{
 					getTestHealthCheckPolicyUnstrctured(testNamespace, testServiceName, protocolHTTP2),
+				},
+			},
+			expectedErrors: field.ErrorList{},
+		},
+		{
+			name: "ingress with a Backend Config specifying Cloud CDN",
+			ir: emitterir.EmitterIR{
+				Gateways: map[types.NamespacedName]emitterir.GatewayContext{
+					{Namespace: testNamespace, Name: testGatewayName}: {
+						Gateway: testGateway,
+					},
+				},
+				HTTPRoutes: map[types.NamespacedName]emitterir.HTTPRouteContext{
+					{Namespace: testNamespace, Name: testHTTPRouteName}: {
+						HTTPRoute: testHTTPRoute,
+					},
+				},
+				GceServices: map[types.NamespacedName]gce.ServiceIR{
+					{Namespace: testNamespace, Name: testServiceName}: {
+						Cdn: &gce.CdnConfig{
+							CachePolicy: &gce.CachePolicy{
+								CacheMode: "USE_ORIGIN_HEADERS",
+							},
+						},
+					},
+				},
+			},
+			expectedGatewayResources: i2gw.GatewayResources{
+				Gateways: map[types.NamespacedName]gatewayv1.Gateway{
+					{Namespace: testNamespace, Name: testGatewayName}: testGateway,
+				},
+				HTTPRoutes: map[types.NamespacedName]gatewayv1.HTTPRoute{
+					{Namespace: testNamespace, Name: testHTTPRouteName}: {
+						ObjectMeta: metav1.ObjectMeta{Name: testHTTPRouteName, Namespace: testNamespace},
+						Spec: gatewayv1.HTTPRouteSpec{
+							CommonRouteSpec: gatewayv1.CommonRouteSpec{
+								ParentRefs: []gatewayv1.ParentReference{{
+									Name: gatewayv1.ObjectName(testGatewayName),
+								}},
+							},
+							Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
+							Rules: []gatewayv1.HTTPRouteRule{
+								{
+									Matches: []gatewayv1.HTTPRouteMatch{
+										{
+											Path: &gatewayv1.HTTPPathMatch{
+												Type:  common.PtrTo(gPathPrefix),
+												Value: common.PtrTo("/"),
+											},
+										},
+									},
+									BackendRefs: []gatewayv1.HTTPBackendRef{
+										{
+											BackendRef: gatewayv1.BackendRef{
+												BackendObjectReference: gatewayv1.BackendObjectReference{
+													Name: gatewayv1.ObjectName(testServiceName),
+													Port: common.PtrTo(gatewayv1.PortNumber(80)),
+												},
+											},
+										},
+									},
+									Filters: []gatewayv1.HTTPRouteFilter{
+										{
+											Type: gatewayv1.HTTPRouteFilterExtensionRef,
+											ExtensionRef: &gatewayv1.LocalObjectReference{
+												Group: "networking.gke.io",
+												Kind:  "GCPHTTPFilter",
+												Name:  gatewayv1.ObjectName(testServiceName + "-filter"),
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				GatewayExtensions: []unstructured.Unstructured{
+					*testGCPHTTPFilterUnstructured,
 				},
 			},
 			expectedErrors: field.ErrorList{},

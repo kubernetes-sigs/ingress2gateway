@@ -27,6 +27,7 @@ type ServiceIR struct {
 	SessionAffinity *SessionAffinityConfig
 	SecurityPolicy  *SecurityPolicyConfig
 	HealthCheck     *HealthCheckConfig
+	Cdn             *CdnConfig
 }
 type SessionAffinityConfig struct {
 	AffinityType string
@@ -43,4 +44,36 @@ type HealthCheckConfig struct {
 	Type               *string
 	Port               *int64
 	RequestPath        *string
+}
+
+type CdnConfig struct {
+	CachePolicy *CachePolicy `json:"cachePolicy,omitempty"`
+}
+
+type CachePolicy struct {
+	CacheKeyPolicy                *CacheKeyPolicy         `json:"cacheKeyPolicy,omitempty"`
+	RequestCoalescing             *bool                   `json:"requestCoalescing,omitempty"`
+	CacheMode                     string                  `json:"cacheMode,omitempty"`
+	DefaultTTL                    string                  `json:"defaultTTL,omitempty"`
+	MaxTTL                        string                  `json:"maxTTL,omitempty"`
+	ClientTTL                     string                  `json:"clientTTL,omitempty"`
+	NegativeCaching               *bool                   `json:"negativeCaching,omitempty"`
+	NegativeCachingPolicy         []NegativeCachingPolicy `json:"negativeCachingPolicy,omitempty"`
+	CacheBypassRequestHeaderNames []string                `json:"cacheBypassRequestHeaderNames,omitempty"`
+	ServeWhileStale               string                  `json:"serveWhileStale,omitempty"`
+}
+
+type CacheKeyPolicy struct {
+	IncludeProtocol         *bool    `json:"includeProtocol,omitempty"`
+	IncludeHost             *bool    `json:"includeHost,omitempty"`
+	IncludeQueryString      *bool    `json:"includeQueryString,omitempty"`
+	ExcludedQueryParameters []string `json:"excludedQueryParameters,omitempty"`
+	IncludedQueryParameters []string `json:"includedQueryParameters,omitempty"`
+	IncludedHeaderNames     []string `json:"includedHeaderNames,omitempty"`
+	IncludedCookieNames     []string `json:"includedCookieNames,omitempty"`
+}
+
+type NegativeCachingPolicy struct {
+	Code int    `json:"code"`
+	TTL  string `json:"ttl"`
 }
