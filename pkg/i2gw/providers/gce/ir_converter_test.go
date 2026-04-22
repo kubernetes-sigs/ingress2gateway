@@ -1053,6 +1053,11 @@ func Test_convertToIR(t *testing.T) {
 									},
 								},
 							},
+							Status: gatewayv1.HTTPRouteStatus{
+								RouteStatus: gatewayv1.RouteStatus{
+									Parents: []gatewayv1.RouteParentStatus{},
+								},
+							},
 						},
 					},
 				},
