@@ -987,6 +987,7 @@ func Test_convertToIR(t *testing.T) {
 
 				beConfigSpec := backendconfigv1.BackendConfigSpec{
 					Cdn: &backendconfigv1.CDNConfig{
+						Enabled:           true,
 						CacheMode:         common.PtrTo("USE_ORIGIN_HEADERS"),
 						DefaultTtl:        common.PtrTo(int64(3600)),
 						MaxTtl:            common.PtrTo(int64(7200)),

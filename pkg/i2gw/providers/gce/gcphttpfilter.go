@@ -38,6 +38,7 @@ type GCPHTTPFilterSpec struct {
 func (in *GCPHTTPFilter) DeepCopyObject() runtime.Object {
 	out := new(GCPHTTPFilter)
 	*out = *in
+	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
 	if in.Spec.CachePolicy != nil {
 		out.Spec.CachePolicy = new(emittergce.CachePolicy)
 		*out.Spec.CachePolicy = *in.Spec.CachePolicy
@@ -49,6 +50,35 @@ func (in *GCPHTTPFilter) DeepCopyObject() runtime.Object {
 		if in.Spec.CachePolicy.NegativeCaching != nil {
 			out.Spec.CachePolicy.NegativeCaching = new(bool)
 			*out.Spec.CachePolicy.NegativeCaching = *in.Spec.CachePolicy.NegativeCaching
+		}
+		if in.Spec.CachePolicy.CacheKeyPolicy != nil {
+			out.Spec.CachePolicy.CacheKeyPolicy = new(emittergce.CacheKeyPolicy)
+			*out.Spec.CachePolicy.CacheKeyPolicy = *in.Spec.CachePolicy.CacheKeyPolicy
+			
+			if in.Spec.CachePolicy.CacheKeyPolicy.ExcludedQueryParameters != nil {
+				out.Spec.CachePolicy.CacheKeyPolicy.ExcludedQueryParameters = make([]string, len(in.Spec.CachePolicy.CacheKeyPolicy.ExcludedQueryParameters))
+				copy(out.Spec.CachePolicy.CacheKeyPolicy.ExcludedQueryParameters, in.Spec.CachePolicy.CacheKeyPolicy.ExcludedQueryParameters)
+			}
+			if in.Spec.CachePolicy.CacheKeyPolicy.IncludedQueryParameters != nil {
+				out.Spec.CachePolicy.CacheKeyPolicy.IncludedQueryParameters = make([]string, len(in.Spec.CachePolicy.CacheKeyPolicy.IncludedQueryParameters))
+				copy(out.Spec.CachePolicy.CacheKeyPolicy.IncludedQueryParameters, in.Spec.CachePolicy.CacheKeyPolicy.IncludedQueryParameters)
+			}
+			if in.Spec.CachePolicy.CacheKeyPolicy.IncludedHeaderNames != nil {
+				out.Spec.CachePolicy.CacheKeyPolicy.IncludedHeaderNames = make([]string, len(in.Spec.CachePolicy.CacheKeyPolicy.IncludedHeaderNames))
+				copy(out.Spec.CachePolicy.CacheKeyPolicy.IncludedHeaderNames, in.Spec.CachePolicy.CacheKeyPolicy.IncludedHeaderNames)
+			}
+			if in.Spec.CachePolicy.CacheKeyPolicy.IncludedCookieNames != nil {
+				out.Spec.CachePolicy.CacheKeyPolicy.IncludedCookieNames = make([]string, len(in.Spec.CachePolicy.CacheKeyPolicy.IncludedCookieNames))
+				copy(out.Spec.CachePolicy.CacheKeyPolicy.IncludedCookieNames, in.Spec.CachePolicy.CacheKeyPolicy.IncludedCookieNames)
+			}
+		}
+		if in.Spec.CachePolicy.NegativeCachingPolicy != nil {
+			out.Spec.CachePolicy.NegativeCachingPolicy = make([]emittergce.NegativeCachingPolicy, len(in.Spec.CachePolicy.NegativeCachingPolicy))
+			copy(out.Spec.CachePolicy.NegativeCachingPolicy, in.Spec.CachePolicy.NegativeCachingPolicy)
+		}
+		if in.Spec.CachePolicy.CacheBypassRequestHeaderNames != nil {
+			out.Spec.CachePolicy.CacheBypassRequestHeaderNames = make([]string, len(in.Spec.CachePolicy.CacheBypassRequestHeaderNames))
+			copy(out.Spec.CachePolicy.CacheBypassRequestHeaderNames, in.Spec.CachePolicy.CacheBypassRequestHeaderNames)
 		}
 	}
 	return out
