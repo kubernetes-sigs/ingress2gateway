@@ -54,7 +54,7 @@ func (in *GCPHTTPFilter) DeepCopyObject() runtime.Object {
 		if in.Spec.CachePolicy.CacheKeyPolicy != nil {
 			out.Spec.CachePolicy.CacheKeyPolicy = new(emittergce.CacheKeyPolicy)
 			*out.Spec.CachePolicy.CacheKeyPolicy = *in.Spec.CachePolicy.CacheKeyPolicy
-			
+
 			if in.Spec.CachePolicy.CacheKeyPolicy.ExcludedQueryParameters != nil {
 				out.Spec.CachePolicy.CacheKeyPolicy.ExcludedQueryParameters = make([]string, len(in.Spec.CachePolicy.CacheKeyPolicy.ExcludedQueryParameters))
 				copy(out.Spec.CachePolicy.CacheKeyPolicy.ExcludedQueryParameters, in.Spec.CachePolicy.CacheKeyPolicy.ExcludedQueryParameters)
