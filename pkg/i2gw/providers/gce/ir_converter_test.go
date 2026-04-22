@@ -1031,7 +1031,6 @@ func Test_convertToIR(t *testing.T) {
 								Hostnames: []gatewayv1.Hostname{gatewayv1.Hostname(testHost)},
 								Rules: []gatewayv1.HTTPRouteRule{
 									{
-										Name: common.PtrTo(gatewayv1.SectionName("rule-0")),
 										Matches: []gatewayv1.HTTPRouteMatch{
 											{
 												Path: &gatewayv1.HTTPPathMatch{
@@ -1053,11 +1052,7 @@ func Test_convertToIR(t *testing.T) {
 									},
 								},
 							},
-							Status: gatewayv1.HTTPRouteStatus{
-								RouteStatus: gatewayv1.RouteStatus{
-									Parents: []gatewayv1.RouteParentStatus{},
-								},
-							},
+							Status: gatewayv1.HTTPRouteStatus{},
 						},
 					},
 				},
