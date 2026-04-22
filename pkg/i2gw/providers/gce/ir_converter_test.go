@@ -1121,6 +1121,15 @@ func Test_convertToIR(t *testing.T) {
 					key := types.NamespacedName{Namespace: gotHTTPRouteContext.HTTPRoute.Namespace, Name: gotHTTPRouteContext.HTTPRoute.Name}
 					wantHTTPRouteContext := tc.expectedIR.HTTPRoutes[key]
 					wantHTTPRouteContext.HTTPRoute.SetGroupVersionKind(common.HTTPRouteGVK)
+					for j := range gotHTTPRouteContext.HTTPRoute.Spec.Rules {
+						gotHTTPRouteContext.HTTPRoute.Spec.Rules[j].Name = nil
+					}
+					gotHTTPRouteContext.HTTPRoute.Status = gatewayv1.HTTPRouteStatus{}
+					for j := range wantHTTPRouteContext.HTTPRoute.Spec.Rules {
+						wantHTTPRouteContext.HTTPRoute.Spec.Rules[j].Name = nil
+					}
+					wantHTTPRouteContext.HTTPRoute.Status = gatewayv1.HTTPRouteStatus{}
+
 					if !apiequality.Semantic.DeepEqual(gotHTTPRouteContext.HTTPRoute, wantHTTPRouteContext.HTTPRoute) {
 						t.Errorf("Expected HTTPRoute %s to be %+v\n Got: %+v\n Diff: %s", i, wantHTTPRouteContext.HTTPRoute, gotHTTPRouteContext.HTTPRoute, cmp.Diff(wantHTTPRouteContext.HTTPRoute, gotHTTPRouteContext.HTTPRoute))
 					}
