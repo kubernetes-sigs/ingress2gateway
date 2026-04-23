@@ -75,6 +75,11 @@ func TestGCPHTTPFilter_DeepCopyObject(t *testing.T) {
 		t.Errorf("Spec.CachePolicy was shallow copied")
 	}
 
+	*filter.Spec.CachePolicy.CacheKeyPolicy.IncludeHost = false
+	if *copyFilter.Spec.CachePolicy.CacheKeyPolicy.IncludeHost == false {
+		t.Errorf("CacheKeyPolicy.IncludeHost was shallow copied")
+	}
+
 	filter.Spec.CachePolicy.CacheKeyPolicy.ExcludedQueryParameters[0] = "mutated"
 	if copyFilter.Spec.CachePolicy.CacheKeyPolicy.ExcludedQueryParameters[0] == "mutated" {
 		t.Errorf("CacheKeyPolicy.ExcludedQueryParameters was shallow copied")

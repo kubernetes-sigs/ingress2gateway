@@ -55,6 +55,19 @@ func (in *GCPHTTPFilter) DeepCopyObject() runtime.Object {
 			out.Spec.CachePolicy.CacheKeyPolicy = new(emittergce.CacheKeyPolicy)
 			*out.Spec.CachePolicy.CacheKeyPolicy = *in.Spec.CachePolicy.CacheKeyPolicy
 
+			if in.Spec.CachePolicy.CacheKeyPolicy.IncludeProtocol != nil {
+				out.Spec.CachePolicy.CacheKeyPolicy.IncludeProtocol = new(bool)
+				*out.Spec.CachePolicy.CacheKeyPolicy.IncludeProtocol = *in.Spec.CachePolicy.CacheKeyPolicy.IncludeProtocol
+			}
+			if in.Spec.CachePolicy.CacheKeyPolicy.IncludeHost != nil {
+				out.Spec.CachePolicy.CacheKeyPolicy.IncludeHost = new(bool)
+				*out.Spec.CachePolicy.CacheKeyPolicy.IncludeHost = *in.Spec.CachePolicy.CacheKeyPolicy.IncludeHost
+			}
+			if in.Spec.CachePolicy.CacheKeyPolicy.IncludeQueryString != nil {
+				out.Spec.CachePolicy.CacheKeyPolicy.IncludeQueryString = new(bool)
+				*out.Spec.CachePolicy.CacheKeyPolicy.IncludeQueryString = *in.Spec.CachePolicy.CacheKeyPolicy.IncludeQueryString
+			}
+
 			if in.Spec.CachePolicy.CacheKeyPolicy.ExcludedQueryParameters != nil {
 				out.Spec.CachePolicy.CacheKeyPolicy.ExcludedQueryParameters = make([]string, len(in.Spec.CachePolicy.CacheKeyPolicy.ExcludedQueryParameters))
 				copy(out.Spec.CachePolicy.CacheKeyPolicy.ExcludedQueryParameters, in.Spec.CachePolicy.CacheKeyPolicy.ExcludedQueryParameters)
