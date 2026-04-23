@@ -26,6 +26,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/e2e/provider"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/traefik"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/kubernetes"
 	gwclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
@@ -70,6 +71,11 @@ func deployProviders(
 			// implementation or both. ResourceManager.Acquire deduplicates by key.
 			r = framework.GlobalResourceManager.Acquire(implementation.KongName, func() (framework.CleanupFunc, error) {
 				return provider.DeployKong(ctx, t, k8sClient, gwClient, kubeconfig, ns, skipCleanup)
+			})
+		case traefik.Name:
+			ns := fmt.Sprintf("%s-traefik", framework.E2EPrefix)
+			r = framework.GlobalResourceManager.Acquire(traefik.Name, func() (framework.CleanupFunc, error) {
+				return provider.DeployTraefik(ctx, t, k8sClient, kubeconfig, ns, skipCleanup)
 			})
 		default:
 			t.Fatalf("Unknown ingress provider: %s", p)

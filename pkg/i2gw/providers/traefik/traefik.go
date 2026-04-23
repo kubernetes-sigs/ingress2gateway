@@ -40,6 +40,9 @@ import (
 // Name is the provider name used on the CLI (--providers=traefik).
 const Name = "traefik"
 
+// TraefikIngressClass is the default IngressClass name used by Traefik.
+const TraefikIngressClass = "traefik"
+
 func init() {
 	i2gw.ProviderConstructorByName[Name] = NewProvider
 }

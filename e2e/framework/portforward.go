@@ -25,6 +25,7 @@ import (
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/traefik"
 	"golang.org/x/sync/semaphore"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -326,6 +327,7 @@ func findIngressControllerService(
 	serviceNames := map[string][]string{
 		ingressnginx.Name: {"ingress-nginx-controller"},
 		kong.Name:         {"kong-kong-proxy"},
+		traefik.Name:      {"traefik"},
 	}
 
 	names, ok := serviceNames[controllerName]

@@ -34,6 +34,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/traefik"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -353,6 +354,9 @@ func setUpIngressPortForwarding(
 			// Kong uses the same namespace for both ingress and gateway when both are enabled.
 			ingressNS = fmt.Sprintf("%s-kong", E2EPrefix)
 			ingressClass = kong.KongIngressClass
+		case traefik.Name:
+			ingressNS = fmt.Sprintf("%s-traefik", E2EPrefix)
+			ingressClass = traefik.TraefikIngressClass
 		default:
 			t.Fatalf("Unknown ingress provider: %s", p)
 		}

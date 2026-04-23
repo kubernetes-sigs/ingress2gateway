@@ -26,10 +26,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-// TraefikIngressClass contains TRAEFIK IngressClass names
-var TraefikIngressClass = sets.New(
-	"traefik",
-)
+// traefikIngressClasses is the set of IngressClass names that this provider handles.
+var traefikIngressClasses = sets.New(TraefikIngressClass)
 
 // resourceReader implements the i2gw.CustomResourceReader interface.
 type resourceReader struct {
@@ -46,7 +44,7 @@ func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
 func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage, error) {
 	storage := newResourcesStorage()
 
-	ingresses, err := common.ReadIngressesFromCluster(ctx, r.conf.Client, TraefikIngressClass)
+	ingresses, err := common.ReadIngressesFromCluster(ctx, r.conf.Client, traefikIngressClasses)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +67,7 @@ func (r *resourceReader) readResourcesFromFile(reader io.Reader) (*storage, erro
 		return nil, err
 	}
 
-	ingresses, err := common.ReadIngressesFromFile(bytes.NewReader(data), r.conf.Namespace, TraefikIngressClass)
+	ingresses, err := common.ReadIngressesFromFile(bytes.NewReader(data), r.conf.Namespace, traefikIngressClasses)
 	if err != nil {
 		return nil, err
 	}
