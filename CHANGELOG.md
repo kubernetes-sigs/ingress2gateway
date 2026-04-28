@@ -2,6 +2,7 @@
 
 ## Table of Contents
 
+- [v1.1.0](#v110)
 - [v1.0.0](#v100)
 - [v1.0.0-rc1](#v100-rc1)
 - [v0.5.0](#v050)
@@ -14,6 +15,26 @@
 - [v0.2.0-rc1](#v020-rc1)
 - [v0.1.0](#v010)
 - [v0.1.0-rc1](#v010-rc1)
+
+## v1.1.0
+
+## Changes by Kind
+
+### Feature
+
+- Added Traefik provider support with translation for Traefik Ingress resources and some annotations. (#400, @FarnazBGH)
+- GCE: Added Cloud CDN support via GCPHTTPFilter. (#403, @chakravardhan)
+- ingress-nginx: Added support for `from-to-www-redirect`. (#337, @chakravardhan)
+- ingress-nginx: Added support for `app-root`. (#405, @jgreeer)
+- ingress-nginx: Added support for `ssl-passthrough` using standard-channel TLSRoute resources. (#402, @jgreeer)
+
+### Other (Cleanup or Flake)
+
+- Moved HTTPRoute rule naming from common provider conversion into emitters. (#397, @jgreeer)
+- Updated TLSRoute usage to the standard Gateway API channel. (#404, @jgreeer)
+- Fixed GoReleaser configuration. (#395, @ponkio-o)
+- Updated GitHub Actions versions in build and release workflows. (#406, @sturman)
+- Docs: README correction. (#398, @ziyi-xuu)
 
 ## v1.0.0
 
