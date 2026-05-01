@@ -1,0 +1,48 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  namespace: bookinfo
+  name: cors
+spec:
+  gateways:
+    - bookinfo-gateway
+  hosts:
+    - bookinfo.example.com
+  http:
+    - name: all-fields
+      corsPolicy:
+        allowOrigins:
+          - exact: https://bookinfo.example.com
+          - prefix: https://dashboard.
+          # regex is ignored.
+          - regex: https://.*\.example\.com
+        allowMethods:
+          - GET
+          - POST
+        allowHeaders:
+          - x-custom-header
+          - authorization
+        exposeHeaders:
+          - x-request-id
+        maxAge: 24h
+        allowCredentials: true
+      match:
+        - uri:
+            prefix: /productpage
+      route:
+        - destination:
+            host: productpage.bookinfo.svc.cluster.local
+            port:
+              number: 9080
+    - name: minimal
+      corsPolicy:
+        allowOrigins:
+          - exact: https://example.com
+      match:
+        - uri:
+            prefix: /api
+      route:
+        - destination:
+            host: api.bookinfo.svc.cluster.local
+            port:
+              number: 8080
