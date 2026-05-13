@@ -167,6 +167,11 @@ func TestReportConcurrentAdd(t *testing.T) {
 			_ = r.Render()
 		}
 	})
+	wg.Go(func() {
+		for range 100 {
+			_ = r.Notifications()
+		}
+	})
 
 	wg.Wait()
 
@@ -175,6 +180,65 @@ func TestReportConcurrentAdd(t *testing.T) {
 	for _, provider := range providers {
 		assert.Equal(t, 100, strings.Count(result, "source: "+strings.ToUpper(provider)))
 	}
+
+	m := r.Notifications()
+	for _, provider := range providers {
+		assert.Len(t, m[provider], 100)
+	}
+}
+
+func TestReportNotifications(t *testing.T) {
+	t.Run("nil report returns nil", func(t *testing.T) {
+		var r *Report
+		assert.Nil(t, r.Notifications())
+	})
+
+	t.Run("empty report returns nil", func(t *testing.T) {
+		r := NewReport(true)
+		assert.Nil(t, r.Notifications())
+	})
+
+	t.Run("grouped by source", func(t *testing.T) {
+		r := NewReport(true)
+		r.Add("kong", Notification{Type: WarningNotification, Message: "kong-1"})
+		r.Add("istio", Notification{Type: InfoNotification, Message: "istio-1"})
+		r.Add("istio", Notification{Type: ErrorNotification, Message: "istio-2"})
+		r.Add("kong", Notification{Type: InfoNotification, Message: "kong-2"})
+
+		assert.Equal(t, map[string][]Notification{
+			"istio": {
+				{Type: InfoNotification, Message: "istio-1"},
+				{Type: ErrorNotification, Message: "istio-2"},
+			},
+			"kong": {
+				{Type: WarningNotification, Message: "kong-1"},
+				{Type: InfoNotification, Message: "kong-2"},
+			},
+		}, r.Notifications())
+	})
+
+	t.Run("returned map is a defensive copy of the report state", func(t *testing.T) {
+		ingress := &networkingv1.Ingress{
+			TypeMeta:   metav1.TypeMeta{Kind: "Ingress"},
+			ObjectMeta: metav1.ObjectMeta{Name: "ing", Namespace: "default"},
+		}
+		r := NewReport(true)
+		r.Add("p", Notification{Message: "first", CallingObjects: []client.Object{ingress}})
+
+		m := r.Notifications()
+		delete(m, "p")
+		m["evil"] = []Notification{{Message: "injected"}}
+
+		m2 := r.Notifications()
+		m2["p"][0].Message = "mutated"
+		m2["p"][0].CallingObjects[0] = nil
+
+		final := r.Notifications()
+		assert.Len(t, final, 1)
+		assert.NotContains(t, final, "evil")
+		assert.Equal(t, "first", final["p"][0].Message)
+		assert.Same(t, ingress, final["p"][0].CallingObjects[0])
+	})
 }
 
 func TestReportNotifier(t *testing.T) {

@@ -68,6 +68,29 @@ func (r *Report) Add(source string, n Notification) {
 	r.mu.Unlock()
 }
 
+func (r *Report) Notifications() map[string][]Notification {
+	if r == nil {
+		return nil
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if len(r.notifications) == 0 {
+		return nil
+	}
+
+	out := make(map[string][]Notification, len(r.notifications))
+	for source, ns := range r.notifications {
+		cloned := slices.Clone(ns)
+		for i := range cloned {
+			cloned[i].CallingObjects = slices.Clone(cloned[i].CallingObjects)
+		}
+		out[source] = cloned
+	}
+	return out
+}
+
 // Notifier returns a convenience function scoped to a single source name, eliminating the need for
 // per-package boilerplate.
 func (r *Report) Notifier(source string) NotifyFunc {
