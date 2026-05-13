@@ -107,14 +107,12 @@ func (r *Report) Notifier(source string) NotifyFunc {
 // after conversion completes. Notifications are sorted by source name for deterministic output.
 // Returns "" when r is nil or there are no notifications.
 func (r *Report) Render() string {
-	if r == nil {
+	notifications := r.Notifications()
+	if len(notifications) == 0 {
 		return ""
 	}
 
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	sources := slices.Sorted(maps.Keys(r.notifications))
+	sources := slices.Sorted(maps.Keys(notifications))
 
 	// Returns the ANSI code, or "" when color is disabled.
 	c := func(code string) string {
@@ -127,7 +125,7 @@ func (r *Report) Render() string {
 	var buf strings.Builder
 
 	for _, source := range sources {
-		for _, n := range r.notifications[source] {
+		for _, n := range notifications[source] {
 			label, lcolor := levelLabel(n.Type)
 
 			// Top border with level.
