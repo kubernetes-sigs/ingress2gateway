@@ -19,6 +19,7 @@ package istio
 import (
 	"context"
 	"fmt"
+	"math"
 	"testing"
 	"time"
 
@@ -26,6 +27,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"google.golang.org/protobuf/types/known/durationpb"
+	wrappers "google.golang.org/protobuf/types/known/wrapperspb"
 	istiov1beta1 "istio.io/api/networking/v1beta1"
 	istioclientv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -1376,6 +1378,114 @@ func Test_resourcesToIRConverter_convertVsHTTPRoutes(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "route.CorsPolicy is converted",
+			args: args{
+				virtualService: &istioclientv1beta1.VirtualService{
+					TypeMeta: metav1.TypeMeta{
+						Kind: "VirtualService",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "ns",
+					},
+				},
+				istioHTTPRoutes: []*istiov1beta1.HTTPRoute{
+					{
+						CorsPolicy: &istiov1beta1.CorsPolicy{
+							AllowOrigins: []*istiov1beta1.StringMatch{
+								{MatchType: &istiov1beta1.StringMatch_Exact{Exact: "https://example.com"}},
+								{MatchType: &istiov1beta1.StringMatch_Prefix{Prefix: "https://dashboard."}},
+								{MatchType: &istiov1beta1.StringMatch_Regex{Regex: `https://.*\.example\.com`}},
+							},
+							AllowMethods:     []string{"GET", "POST"},
+							AllowHeaders:     []string{"x-custom-header"},
+							ExposeHeaders:    []string{"x-request-id"},
+							MaxAge:           durationpb.New(24 * time.Hour),
+							AllowCredentials: wrappers.Bool(true),
+						},
+					},
+				},
+			},
+			want: []*gatewayv1.HTTPRoute{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "HTTPRoute",
+						APIVersion: "gateway.networking.k8s.io/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-idx-0",
+						Namespace: "ns",
+					},
+					Spec: gatewayv1.HTTPRouteSpec{
+						Rules: []gatewayv1.HTTPRouteRule{
+							{
+								Filters: []gatewayv1.HTTPRouteFilter{
+									{
+										Type: gatewayv1.HTTPRouteFilterCORS,
+										CORS: &gatewayv1.HTTPCORSFilter{
+											AllowOrigins:     []gatewayv1.CORSOrigin{"https://example.com", "https://dashboard.*"},
+											AllowMethods:     []gatewayv1.HTTPMethodWithWildcard{"GET", "POST"},
+											AllowHeaders:     []gatewayv1.HTTPHeaderName{"x-custom-header"},
+											ExposeHeaders:    []gatewayv1.HTTPHeaderName{"x-request-id"},
+											MaxAge:           86400,
+											AllowCredentials: common.PtrTo(true),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "route.CorsPolicy maxAge exceeding int32 is clamped",
+			args: args{
+				virtualService: &istioclientv1beta1.VirtualService{
+					TypeMeta: metav1.TypeMeta{
+						Kind: "VirtualService",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "ns",
+					},
+				},
+				istioHTTPRoutes: []*istiov1beta1.HTTPRoute{
+					{
+						CorsPolicy: &istiov1beta1.CorsPolicy{
+							MaxAge: &durationpb.Duration{Seconds: 3000000000},
+						},
+					},
+				},
+			},
+			want: []*gatewayv1.HTTPRoute{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "HTTPRoute",
+						APIVersion: "gateway.networking.k8s.io/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-idx-0",
+						Namespace: "ns",
+					},
+					Spec: gatewayv1.HTTPRouteSpec{
+						Rules: []gatewayv1.HTTPRouteRule{
+							{
+								Filters: []gatewayv1.HTTPRouteFilter{
+									{
+										Type: gatewayv1.HTTPRouteFilterCORS,
+										CORS: &gatewayv1.HTTPCORSFilter{
+											MaxAge: math.MaxInt32,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1857,7 +1967,8 @@ func Test_resourcesToIRConverter_isGatewayAllowedForVirtualService(t *testing.T)
 					Spec: istiov1beta1.VirtualService{
 						ExportTo: []string{"*"},
 						Hosts:    []string{"prod.com"},
-					}},
+					},
+				},
 			},
 			want: true,
 		},
@@ -1885,7 +1996,8 @@ func Test_resourcesToIRConverter_isGatewayAllowedForVirtualService(t *testing.T)
 					Spec: istiov1beta1.VirtualService{
 						ExportTo: []string{"*"},
 						Hosts:    []string{"prod.com"},
-					}},
+					},
+				},
 			},
 			want: true,
 		},
@@ -1913,7 +2025,8 @@ func Test_resourcesToIRConverter_isGatewayAllowedForVirtualService(t *testing.T)
 					Spec: istiov1beta1.VirtualService{
 						ExportTo: []string{"*"},
 						Hosts:    []string{"prod.com"},
-					}},
+					},
+				},
 			},
 			want: true,
 		},
@@ -1941,7 +2054,8 @@ func Test_resourcesToIRConverter_isGatewayAllowedForVirtualService(t *testing.T)
 					Spec: istiov1beta1.VirtualService{
 						ExportTo: []string{"*"},
 						Hosts:    []string{"prod.com"},
-					}},
+					},
+				},
 			},
 			want: false,
 		},
@@ -1997,7 +2111,8 @@ func Test_resourcesToIRConverter_generateReferences(t *testing.T) {
 						ExportTo: []string{"*"},
 						Hosts:    []string{"prod.com"},
 						Gateways: []string{"gateway", "prodv1/gateway"},
-					}},
+					},
+				},
 			},
 		},
 		{
@@ -2024,7 +2139,8 @@ func Test_resourcesToIRConverter_generateReferences(t *testing.T) {
 						ExportTo: []string{"*"},
 						Hosts:    []string{"prod.com"},
 						Gateways: []string{"prod/gateway"},
-					}},
+					},
+				},
 			},
 			wantParentReferences: []gatewayv1.ParentReference{
 				{
@@ -2072,7 +2188,8 @@ func Test_resourcesToIRConverter_generateReferences(t *testing.T) {
 						ExportTo: []string{"*"},
 						Hosts:    []string{"prod.com"},
 						Gateways: []string{"prod/gateway"},
-					}},
+					},
+				},
 			},
 			wantParentReferences: []gatewayv1.ParentReference{
 				{
