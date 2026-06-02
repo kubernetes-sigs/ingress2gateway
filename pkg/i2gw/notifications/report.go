@@ -68,6 +68,29 @@ func (r *Report) Add(source string, n Notification) {
 	r.mu.Unlock()
 }
 
+func (r *Report) Notifications() map[string][]Notification {
+	if r == nil {
+		return nil
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if len(r.notifications) == 0 {
+		return nil
+	}
+
+	out := make(map[string][]Notification, len(r.notifications))
+	for source, ns := range r.notifications {
+		cloned := slices.Clone(ns)
+		for i := range cloned {
+			cloned[i].CallingObjects = slices.Clone(cloned[i].CallingObjects)
+		}
+		out[source] = cloned
+	}
+	return out
+}
+
 // Notifier returns a convenience function scoped to a single source name, eliminating the need for
 // per-package boilerplate.
 func (r *Report) Notifier(source string) NotifyFunc {
@@ -84,14 +107,12 @@ func (r *Report) Notifier(source string) NotifyFunc {
 // after conversion completes. Notifications are sorted by source name for deterministic output.
 // Returns "" when r is nil or there are no notifications.
 func (r *Report) Render() string {
-	if r == nil {
+	notifications := r.Notifications()
+	if len(notifications) == 0 {
 		return ""
 	}
 
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	sources := slices.Sorted(maps.Keys(r.notifications))
+	sources := slices.Sorted(maps.Keys(notifications))
 
 	// Returns the ANSI code, or "" when color is disabled.
 	c := func(code string) string {
@@ -104,7 +125,7 @@ func (r *Report) Render() string {
 	var buf strings.Builder
 
 	for _, source := range sources {
-		for _, n := range r.notifications[source] {
+		for _, n := range notifications[source] {
 			label, lcolor := levelLabel(n.Type)
 
 			// Top border with level.
