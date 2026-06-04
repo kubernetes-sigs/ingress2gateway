@@ -123,7 +123,50 @@ func TestRegexFeature(t *testing.T) {
 			},
 		},
 		{
-			name: "Should map to RegularExpression when rewrite-target annotation is set",
+			name: "Should keep PathPrefix when path has no regex metacharacters",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "rewrite-static-ingress",
+					Namespace: "default",
+					Annotations: map[string]string{
+						RewriteTargetAnnotation: "/after/rewrite",
+					},
+				},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{
+						{
+							Host: "example.com",
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{
+										{
+											Path:     "/before/rewrite",
+											PathType: ptr.To(networkingv1.PathTypePrefix),
+											Backend: networkingv1.IngressBackend{
+												Service: &networkingv1.IngressServiceBackend{
+													Name: "service1",
+													Port: networkingv1.ServiceBackendPort{Number: 80},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: []gatewayv1.HTTPRouteMatch{
+				{
+					Path: &gatewayv1.HTTPPathMatch{
+						Type:  &prefixType,
+						Value: ptr.To("/before/rewrite"),
+					},
+				},
+			},
+		},
+		{
+			name: "Should map to RegularExpression when path contains regex metacharacters",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rewrite-regex-ingress",
