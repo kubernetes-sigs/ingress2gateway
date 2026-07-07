@@ -75,6 +75,16 @@ build: vet;$(info $(M)...Build the binary.)  @ ## Build the binary.
 install: vet;$(info $(M)...Install the binary.)  @ ## Build the binary.
 	go install $(LDFLAGS)
 
+# Generate the CLI flags tables in README.md from the cobra command definitions.
+.PHONY: gen-flags
+gen-flags: ;$(info $(M)...Generate the CLI flags documentation in README.md.)  @ ## Generate the CLI flags documentation in README.md.
+	go run ./cmd/gen-flags README.md
+
+# Verify that the CLI flags tables in README.md are up to date.
+.PHONY: verify-flags
+verify-flags: ;$(info $(M)...Verify the CLI flags documentation in README.md is up to date.)  @ ## Verify the CLI flags documentation in README.md is up to date.
+	hack/verify-flags.sh
+
 # Run static analysis.
 .PHONY: verify
 verify:

@@ -83,6 +83,12 @@ linters:
         linters:
           - revive
         text: "var-naming: don't use an underscore in package name"
+      # The flags doc generator is a build-time tool that reads/writes the
+      # README path passed on its command line; G304 file inclusion is by design.
+      - path: cmd/gen-flags/
+        linters:
+          - gosec
+        text: "G304"
       - path: '(.+)\.go$'
         text: "Using the variable on range scope `tc` in function literal"
       # Allow capitalized error messages

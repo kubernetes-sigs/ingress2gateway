@@ -124,29 +124,36 @@ The above command will:
 
 ## Options
 
+<!--
+The flags tables below are generated from the cobra command definitions.
+Do not edit them by hand; run `make gen-flags` to regenerate, and
+`make verify-flags` (run as part of `make verify`) to check they are up to date.
+-->
+<!-- BEGIN GENERATED FLAGS -->
 ### `print` command
 
-| Flag           | Short | Default Value           | Required | Description                                                  |
-| -------------- | ----- | ----------------------- | -------- | ------------------------------------------------------------ |
-| all-namespaces | -A    | false                   | No       | If present, list the requested object(s) across all namespaces. Namespace in the current context is ignored even if specified with --namespace. |
-| allow-experimental-gw-api | | false              | No       | If present, include Experimental Gateway API fields (e.g. URLRewrite) in the output. |
-| emitter        |       | standard                | No       | The emitter to use for generating Gateway API resources.      |
-| input-file     |       |                         | No       | Path to the manifest file(s). When set, the tool will read ingresses from the file(s) instead of reading from the cluster. Supports yaml and json. Can be specified multiple times. |
-| kubeconfig     |       |                         | No       | The kubeconfig file to use when talking to the cluster. If the flag is not set, a set of standard locations can be searched for an existing kubeconfig file. |
-| namespace      | -n    |                         | No       | If present, the namespace scope for the invocation.           |
-| no-color       |       | false                   | No       | Disable ANSI color codes in the output.                       |
-| output         | -o    | yaml                    | No       | The output format. One of: yaml, json, kyaml.                 |
-| providers      |       |                         | Yes      | Comma-separated list of providers.                            |
+| Flag | Short | Default Value | Required | Description |
+| ---- | ----- | ------------- | -------- | ----------- |
+| `--all-namespaces` | `-A` | `false` | No | If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even if specified with --namespace. |
+| `--allow-experimental-gw-api` |  | `false` | No | If present, the tool will include Experimental Gateway API fields (e.g. URLRewrite) in the output. Default is false. |
+| `--emitter` |  | `standard` | No | If present, the tool will try to use the specified emitter to generate the Gateway API resources, supported values are [agentgateway airlock-microgateway envoy-gateway gce kgateway standard]. The `standard` emitter will only output Gateway API |
+| `--input-file` |  | `[]` | No | Path to manifest files. When set, the tool will read ingresses from the files instead of reading from the cluster. Supported files are yaml and json. |
+| `--kubeconfig` |  |  | No | The kubeconfig file to use when talking to the cluster. If the flag is not set, a set of standard locations can be searched for an existing kubeconfig file. |
+| `--namespace` | `-n` |  | No | If present, the namespace scope for this CLI request. |
+| `--no-color` |  | `false` | No | Disable ANSI color codes in the output. |
+| `--output` | `-o` | `yaml` | No | Output format. One of: (yaml, json, kyaml). |
+| `--providers` |  | `[]` | Yes | If present, the tool will try to convert only resources related to the specified providers, supported values are [apisix cilium gce ingress-nginx istio kong nginx openapi3 traefik]. |
 
 #### Provider-specific flags
 
-| Flag           | Default Value           | Required | Description                                                  |
-| -------------- | ----------------------- | -------- | ------------------------------------------------------------ |
-| gce-gateway-class-name |                   | No       | Provider-specific: gce. The name of the GatewayClass to use for the Gateway. |
-| ingress-nginx-ingress-class | nginx          | No       | Provider-specific: ingress-nginx. The name of the ingress class to select. |
-| openapi3-backend     |                       | No       | Provider-specific: openapi3. The name of the backend service to use in the HTTPRoutes. |
-| openapi3-gateway-class-name |                | No       | Provider-specific: openapi3. The name of the gateway class to use in the Gateways. |
-| openapi3-tls-secret  |                       | No       | Provider-specific: openapi3. The name of the secret for the TLS certificate references in the Gateways. |
+| Flag | Default Value | Required | Description |
+| ---- | ------------- | -------- | ----------- |
+| `--gce-gateway-class-name` |  | No | Provider-specific: gce. The name of the GatewayClass to use for the Gateway |
+| `--ingress-nginx-ingress-class` | `nginx` | No | Provider-specific: ingress-nginx. The name of the ingress class to select. Defaults to 'nginx' |
+| `--openapi3-backend` |  | No | Provider-specific: openapi3. The name of the backend service to use in the HTTPRoutes. |
+| `--openapi3-gateway-class-name` |  | No | Provider-specific: openapi3. The name of the gateway class to use in the Gateways. |
+| `--openapi3-gateway-tls-secret` |  | No | Provider-specific: openapi3. The name of the secret for the TLS certificate references in the Gateways. |
+<!-- END GENERATED FLAGS -->
 
 
 ## Gateway API version support

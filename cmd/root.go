@@ -54,10 +54,19 @@ func getKubeconfig() {
 	}
 }
 
-func Execute() {
+// NewRootCommand assembles the full ingress2gateway command tree (the root
+// command and all of its subcommands). It is used both by Execute to run the
+// CLI and by the flags documentation generator (cmd/gen-flags) to introspect
+// the defined flags, ensuring the generated docs always match the real CLI.
+func NewRootCommand() *cobra.Command {
 	rootCmd := newRootCmd()
 	rootCmd.AddCommand(newPrintCommand())
 	rootCmd.AddCommand(versionCmd)
+	return rootCmd
+}
+
+func Execute() {
+	rootCmd := NewRootCommand()
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
