@@ -19,6 +19,7 @@ package istio
 import (
 	"context"
 	"fmt"
+	"math"
 	"net"
 	"regexp"
 	"strings"
@@ -595,9 +596,56 @@ func (c *resourcesToIRConverter) convertVsHTTPRoutes(virtualService metav1.Objec
 			c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpRouteFieldPath.Child("Fault")), vs)
 			klog.Infof("ignoring field: %v", httpRouteFieldPath.Child("Fault"))
 		}
-		if httpRoute.GetCorsPolicy() != nil {
-			c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpRouteFieldPath.Child("CorsPolicy")), vs)
-			klog.Infof("ignoring field: %v", httpRouteFieldPath.Child("CorsPolicy"))
+
+		if corsPolicy := httpRoute.GetCorsPolicy(); corsPolicy != nil {
+			corsFilter := &gatewayv1.HTTPCORSFilter{}
+
+			for _, origin := range corsPolicy.GetAllowOrigins() {
+				switch m := origin.GetMatchType().(type) {
+				case *istiov1beta1.StringMatch_Exact:
+					corsFilter.AllowOrigins = append(corsFilter.AllowOrigins, gatewayv1.CORSOrigin(m.Exact))
+				case *istiov1beta1.StringMatch_Prefix:
+					corsFilter.AllowOrigins = append(corsFilter.AllowOrigins, gatewayv1.CORSOrigin(m.Prefix+"*"))
+				case *istiov1beta1.StringMatch_Regex:
+					c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring regex AllowOrigin, only stricter pattern matching is allowed for CORSOrigin: %v", httpRouteFieldPath.Child("CorsPolicy").Child("AllowOrigins")), vs)
+					klog.Infof("ignoring regex AllowOrigin, only stricter pattern matching is allowed for CORSOrigin: %v", httpRouteFieldPath.Child("CorsPolicy").Child("AllowOrigins"))
+				default:
+					c.notify(notifications.WarningNotification, fmt.Sprintf("ignoring unsupported AllowOrigin match type in: %v", httpRouteFieldPath.Child("CorsPolicy").Child("AllowOrigins")), vs)
+					klog.Warningf("ignoring unsupported AllowOrigin match type in: %v", httpRouteFieldPath.Child("CorsPolicy").Child("AllowOrigins"))
+				}
+			}
+
+			for _, method := range corsPolicy.GetAllowMethods() {
+				corsFilter.AllowMethods = append(corsFilter.AllowMethods, gatewayv1.HTTPMethodWithWildcard(method))
+			}
+
+			for _, header := range corsPolicy.GetAllowHeaders() {
+				corsFilter.AllowHeaders = append(corsFilter.AllowHeaders, gatewayv1.HTTPHeaderName(header))
+			}
+
+			for _, header := range corsPolicy.GetExposeHeaders() {
+				corsFilter.ExposeHeaders = append(corsFilter.ExposeHeaders, gatewayv1.HTTPHeaderName(header))
+			}
+
+			if maxAge := corsPolicy.GetMaxAge(); maxAge != nil {
+				// maxAge in corsPolicy is an int64 but int32 in corsFilter.
+				// Just in case it's too large, clamp it to math.MaxInt32.
+				corsFilter.MaxAge = int32(min(maxAge.Seconds, math.MaxInt32))
+			}
+
+			if corsPolicy.GetAllowCredentials() != nil {
+				corsFilter.AllowCredentials = common.PtrTo(corsPolicy.GetAllowCredentials().GetValue())
+			}
+
+			if corsPolicy.GetUnmatchedPreflights() != istiov1beta1.CorsPolicy_UNSPECIFIED {
+				c.notify(notifications.InfoNotification, fmt.Sprintf("ignoring field: %v", httpRouteFieldPath.Child("CorsPolicy").Child("UnmatchedPreflights")), vs)
+				klog.Infof("ignoring field: %v", httpRouteFieldPath.Child("CorsPolicy").Child("UnmatchedPreflights"))
+			}
+
+			gwHTTPRouteFilters = append(gwHTTPRouteFilters, gatewayv1.HTTPRouteFilter{
+				Type: gatewayv1.HTTPRouteFilterCORS,
+				CORS: corsFilter,
+			})
 		}
 
 		if httpRoute.GetMirror() != nil && len(httpRoute.GetMirrors()) > 0 {
