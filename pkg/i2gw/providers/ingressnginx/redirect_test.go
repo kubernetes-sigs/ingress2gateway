@@ -1656,3 +1656,29 @@ func TestAddWWWRedirect_https_listener(t *testing.T) {
 		t.Fatalf("expected fourth listener to be HTTPS for www.example.com")
 	}
 }
+
+func Test_pathPrefixCovers(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		prefix string
+		path   string
+		want   bool
+	}{
+		// An Ingress path may be empty when pathType is ImplementationSpecific,
+		// and that value reaches here as a PathPrefix, where it used to index
+		// prefix[-1].
+		{name: "empty prefix covers nothing", prefix: "", path: "/foo", want: false},
+		{name: "empty prefix and empty path", prefix: "", path: "", want: false},
+		{name: "exact match", prefix: "/a", path: "/a", want: true},
+		{name: "segment boundary", prefix: "/a", path: "/a/b", want: true},
+		{name: "trailing slash prefix", prefix: "/a/", path: "/a/b", want: true},
+		{name: "not a segment boundary", prefix: "/a", path: "/ab", want: false},
+		{name: "unrelated path", prefix: "/a", path: "/b", want: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := pathPrefixCovers(tc.prefix, tc.path); got != tc.want {
+				t.Fatalf("pathPrefixCovers(%q, %q) = %v, want %v", tc.prefix, tc.path, got, tc.want)
+			}
+		})
+	}
+}

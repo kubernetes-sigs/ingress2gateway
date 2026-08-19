@@ -475,6 +475,13 @@ func pathPrefixCoveredByAny(prefixes []string, path string) bool {
 // would match path. Gateway API PathPrefix matching is segment-based:
 // PathPrefix "/a" matches "/a", "/a/", "/a/b" but NOT "/ab".
 func pathPrefixCovers(prefix, path string) bool {
+	// A Gateway API PathPrefix value has to start with "/", so an empty prefix
+	// cannot cover anything. It reaches here because an Ingress path may be
+	// empty when pathType is ImplementationSpecific, and returning early also
+	// keeps the prefix[len(prefix)-1] index below in range.
+	if prefix == "" {
+		return false
+	}
 	if !strings.HasPrefix(path, prefix) {
 		return false
 	}
