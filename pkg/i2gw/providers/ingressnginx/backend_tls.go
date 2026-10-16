@@ -79,7 +79,7 @@ func backendTLSFeature(notify notifications.NotifyFunc, ingresses []networkingv1
 					continue
 				}
 
-				backendProtocol := primaryIngress.Annotations[BackendProtocolAnnotation]
+				backendProtocol := strings.ToUpper(primaryIngress.Annotations[BackendProtocolAnnotation])
 				proxySSLVerify := primaryIngress.Annotations[ProxySSLVerifyAnnotation]
 				proxySSLSecret := primaryIngress.Annotations[ProxySSLSecretAnnotation]
 				proxySSLName := primaryIngress.Annotations[ProxySSLNameAnnotation]

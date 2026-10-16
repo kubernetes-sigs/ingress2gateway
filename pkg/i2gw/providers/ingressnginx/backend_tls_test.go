@@ -271,6 +271,128 @@ func TestBackendTLSFeature(t *testing.T) {
 			expectedPolicyTargeted: true,
 		},
 		{
+			name: "fully compliant strict TLS validation with lowercase backend-protocol",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "strict-tls-lowercase",
+					Namespace: "default",
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/backend-protocol":      "https",
+						"nginx.ingress.kubernetes.io/proxy-ssl-verify":      "on",
+						"nginx.ingress.kubernetes.io/proxy-ssl-secret":      "my-ca-secret",
+						"nginx.ingress.kubernetes.io/proxy-ssl-server-name": "on",
+						"nginx.ingress.kubernetes.io/proxy-ssl-name":        "strict.internal.com",
+					},
+				},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{{
+						Host: "example.com",
+						IngressRuleValue: networkingv1.IngressRuleValue{
+							HTTP: &networkingv1.HTTPIngressRuleValue{
+								Paths: []networkingv1.HTTPIngressPath{{
+									Path:     "/",
+									PathType: ptr.To(networkingv1.PathTypePrefix),
+									Backend: networkingv1.IngressBackend{
+										Service: &networkingv1.IngressServiceBackend{
+											Name: "test-service",
+											Port: networkingv1.ServiceBackendPort{Number: 80},
+										},
+									},
+								}},
+							},
+						},
+					}},
+				},
+			},
+			expectedPolicies: map[types.NamespacedName]gatewayv1.BackendTLSPolicy{
+				{Namespace: "default", Name: "test-service-backend-tls"}: {
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-service-backend-tls",
+						Namespace: "default",
+					},
+					Spec: gatewayv1.BackendTLSPolicySpec{
+						TargetRefs: []gatewayv1.LocalPolicyTargetReferenceWithSectionName{{
+							LocalPolicyTargetReference: gatewayv1.LocalPolicyTargetReference{
+								Group: "",
+								Kind:  "Service",
+								Name:  "test-service",
+							},
+						}},
+						Validation: gatewayv1.BackendTLSPolicyValidation{
+							Hostname: gatewayv1.PreciseHostname("strict.internal.com"),
+							CACertificateRefs: []gatewayv1.LocalObjectReference{{
+								Group: "",
+								Kind:  "ConfigMap",
+								Name:  "my-ca-secret",
+							}},
+						},
+					},
+				},
+			},
+			expectedPolicyTargeted: true,
+		},
+		{
+			name: "fully compliant strict TLS validation with mixed-case GRPCS backend-protocol",
+			ingress: networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "strict-tls-grpcs-mixedcase",
+					Namespace: "default",
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/backend-protocol":      "GrpcS",
+						"nginx.ingress.kubernetes.io/proxy-ssl-verify":      "on",
+						"nginx.ingress.kubernetes.io/proxy-ssl-secret":      "my-ca-secret",
+						"nginx.ingress.kubernetes.io/proxy-ssl-server-name": "on",
+						"nginx.ingress.kubernetes.io/proxy-ssl-name":        "strict.internal.com",
+					},
+				},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{{
+						Host: "example.com",
+						IngressRuleValue: networkingv1.IngressRuleValue{
+							HTTP: &networkingv1.HTTPIngressRuleValue{
+								Paths: []networkingv1.HTTPIngressPath{{
+									Path:     "/",
+									PathType: ptr.To(networkingv1.PathTypePrefix),
+									Backend: networkingv1.IngressBackend{
+										Service: &networkingv1.IngressServiceBackend{
+											Name: "test-service",
+											Port: networkingv1.ServiceBackendPort{Number: 80},
+										},
+									},
+								}},
+							},
+						},
+					}},
+				},
+			},
+			expectedPolicies: map[types.NamespacedName]gatewayv1.BackendTLSPolicy{
+				{Namespace: "default", Name: "test-service-backend-tls"}: {
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-service-backend-tls",
+						Namespace: "default",
+					},
+					Spec: gatewayv1.BackendTLSPolicySpec{
+						TargetRefs: []gatewayv1.LocalPolicyTargetReferenceWithSectionName{{
+							LocalPolicyTargetReference: gatewayv1.LocalPolicyTargetReference{
+								Group: "",
+								Kind:  "Service",
+								Name:  "test-service",
+							},
+						}},
+						Validation: gatewayv1.BackendTLSPolicyValidation{
+							Hostname: gatewayv1.PreciseHostname("strict.internal.com"),
+							CACertificateRefs: []gatewayv1.LocalObjectReference{{
+								Group: "",
+								Kind:  "ConfigMap",
+								Name:  "my-ca-secret",
+							}},
+						},
+					},
+				},
+			},
+			expectedPolicyTargeted: true,
+		},
+		{
 			name: "no relevant annotations",
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
