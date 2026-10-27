@@ -46,6 +46,7 @@ func ToEmitterIR(pIR ProviderIR) emitterir.EmitterIR {
 	}
 	for k, v := range pIR.HTTPRoutes {
 		ctx := emitterir.HTTPRouteContext{HTTPRoute: v.HTTPRoute}
+		copyBodySizeToEmitterIR(v.ProviderSpecificIR, &ctx)
 		eIR.HTTPRoutes[k] = ctx
 	}
 	for k, v := range pIR.GatewayClasses {
@@ -79,4 +80,11 @@ func ToEmitterIR(pIR ProviderIR) emitterir.EmitterIR {
 	}
 
 	return eIR
+}
+
+func copyBodySizeToEmitterIR(providerRoute ProviderSpecificHTTPRouteIR, emitterRoute *emitterir.HTTPRouteContext) {
+	if len(providerRoute.BodySizeByRuleIdx) == 0 {
+		return
+	}
+	emitterRoute.BodySizeByRuleIdx = providerRoute.BodySizeByRuleIdx
 }
