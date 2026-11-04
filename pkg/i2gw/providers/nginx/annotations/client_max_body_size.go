@@ -18,7 +18,6 @@ package annotations
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
 	networkingv1 "k8s.io/api/networking/v1"
@@ -31,37 +30,6 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
-
-// Regular expression that captures the number and unit for client body size
-var nginxSizeRegex = regexp.MustCompile(`^(?i)(\d+)([bkmg]?)$`)
-
-// convertNginxSizeToK8sQuantity converts nginx size format to Kubernetes resource.Quantity format.
-// NGINX uses binary units (e.g. k = 2^10) while in Kubernetes, k = 1000 and Ki = 2^10.
-func convertNginxSizeToK8sQuantity(nginxSize string) (string, error) {
-	nginxSize = strings.TrimSpace(nginxSize)
-
-	matches := nginxSizeRegex.FindStringSubmatch(nginxSize)
-	if matches == nil {
-		return "", fmt.Errorf("invalid nginx size format: %q", nginxSize)
-	}
-
-	number := matches[1]
-	unit := matches[2]
-
-	// Convert nginx unit to K8s Quantity unit
-	switch strings.ToLower(unit) {
-	case "b", "":
-		return number, nil
-	case "k":
-		return number + "Ki", nil
-	case "m":
-		return number + "Mi", nil
-	case "g":
-		return number + "Gi", nil
-	default:
-		return "", fmt.Errorf("unsupported nginx size unit: %q", unit)
-	}
-}
 
 func parseClientMaxBodySize(value string) (*resource.Quantity, error) {
 	k8sValue, err := convertNginxSizeToK8sQuantity(value)

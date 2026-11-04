@@ -2,7 +2,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   annotations:
-    gateway.networking.k8s.io/generator: ingress2gateway-afddc37-dirty
+    gateway.networking.k8s.io/generator: ingress2gateway-1947108-dirty
   name: nginx
   namespace: default
 spec:
@@ -17,7 +17,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   annotations:
-    gateway.networking.k8s.io/generator: ingress2gateway-afddc37-dirty
+    gateway.networking.k8s.io/generator: ingress2gateway-1947108-dirty
   name: client-max-body-size-ingress-client-max-body-size-example-com
   namespace: default
 spec:
