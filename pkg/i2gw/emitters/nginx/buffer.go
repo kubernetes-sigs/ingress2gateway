@@ -45,6 +45,10 @@ func (e *Emitter) emitClientSettingsPolicies(ir emitterir.EmitterIR, gatewayReso
 	for _, routeKey := range routeKeys {
 		route := ir.HTTPRoutes[routeKey]
 
+		if len(route.BodySizeByRuleIdx) == 0 {
+			continue
+		}
+
 		ruleIndexes := make([]int, 0, len(route.BodySizeByRuleIdx))
 		for ruleIdx := range route.BodySizeByRuleIdx {
 			ruleIndexes = append(ruleIndexes, ruleIdx)
