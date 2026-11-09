@@ -39,6 +39,7 @@ func TestImplementations(t *testing.T) {
 		{name: implementation.KgatewayName},
 		{name: implementation.EnvoyGatewayName},
 		{name: implementation.AgentgatewayName},
+		{name: implementation.NginxGatewayFabricName},
 	}
 
 	for _, impl := range implementations {

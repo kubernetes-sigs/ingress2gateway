@@ -24,21 +24,24 @@ import (
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
-)
-
-// NginxIngressClasses contains NGINX IngressClass names
-var NginxIngressClasses = sets.New(
-	"nginx",
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/nginx/annotations"
 )
 
 type resourceReader struct {
-	conf *i2gw.ProviderConf
+	conf           *i2gw.ProviderConf
+	ingressClasses sets.Set[string]
 }
 
 // newResourceReader returns a resourceReader instance
 func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
+	ingressClass := annotations.NginxIngressClass
+	if ps := conf.ProviderSpecificFlags[Name]; ps != nil && ps[NginxIngressClassFlag] != "" {
+		ingressClass = ps[NginxIngressClassFlag]
+	}
+
 	return &resourceReader{
-		conf: conf,
+		conf:           conf,
+		ingressClasses: sets.New(ingressClass),
 	}
 }
 
@@ -46,7 +49,7 @@ func newResourceReader(conf *i2gw.ProviderConf) *resourceReader {
 func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage, error) {
 	storage := newResourceStorage()
 
-	ingresses, err := common.ReadIngressesFromCluster(ctx, r.conf.Client, NginxIngressClasses)
+	ingresses, err := common.ReadIngressesFromCluster(ctx, r.conf.Client, r.ingressClasses)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +68,7 @@ func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage
 func (r *resourceReader) readResourcesFromFile(reader io.Reader) (*storage, error) {
 	storage := newResourceStorage()
 
-	ingresses, err := common.ReadIngressesFromFile(reader, r.conf.Namespace, NginxIngressClasses)
+	ingresses, err := common.ReadIngressesFromFile(reader, r.conf.Namespace, r.ingressClasses)
 	if err != nil {
 		return nil, err
 	}

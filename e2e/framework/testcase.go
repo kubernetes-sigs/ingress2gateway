@@ -40,6 +40,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/common"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/nginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/traefik"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -67,6 +68,12 @@ const DummyAppName1 = "dummy-app1"
 
 // DummyAppName2 is the name of the second dummy app.
 const DummyAppName2 = "dummy-app2"
+
+// NginxIngressClass is the ingress class used by NGINX Ingress Controller in the e2e tests.
+// ingress-nginx already owns the "nginx" ingress class in the test cluster and NGINX Ingress
+// Controller refuses to start if its IngressClass is owned by another controller, so a distinct
+// class is used. Pass it to the nginx provider via nginx.NginxIngressClassFlag.
+const NginxIngressClass = "nginx-ic"
 
 // Backend describes a backend application to deploy for a test case.
 type Backend struct {
@@ -316,6 +323,13 @@ func (env *TestEnv) Run(tc *TestCase) {
 	require.NoError(t, err, "creating gateway resources")
 	t.Cleanup(cleanupGatewayResources)
 
+	// Create any implementation-specific resources (e.g. policies) produced by the emitter.
+	for _, r := range res {
+		cleanupExtensions, err := createGatewayExtensions(ctx, t, env.restConfig, env.Namespace, r.GatewayExtensions, env.SkipCleanup)
+		require.NoError(t, err, "creating gateway extensions")
+		t.Cleanup(cleanupExtensions)
+	}
+
 	// Set up port forwarding to each gateway for verification.
 	gatewayPortForwarders, gwAddresses := setUpGatewayPortForwarding(
 		ctx,
@@ -364,6 +378,9 @@ func setUpIngressPortForwarding(
 		case traefik.Name:
 			ingressNS = fmt.Sprintf("%s-traefik", E2EPrefix)
 			ingressClass = traefik.TraefikIngressClass
+		case nginx.Name:
+			ingressNS = fmt.Sprintf("%s-nginx-ingress", E2EPrefix)
+			ingressClass = NginxIngressClass
 		default:
 			t.Fatalf("Unknown ingress provider: %s", p)
 		}

@@ -4,6 +4,8 @@ This provider converts [NGINX Ingress Controller](https://github.com/nginx/kuber
 
 **Note**: This provider is specifically for NGINX Ingress Controller, not the community [ingress-nginx](https://github.com/kubernetes/ingress-nginx) controller. If you're using the community ingress-nginx controller, please use the `ingress-nginx` provider instead.
 
+To specify the name of the Ingress class to select, use `--nginx-ingress-class=nginx-ic` (defaults to `nginx`).
+
 ## Supported Resources
 
 * **Ingress** - Core Kubernetes Ingress resources with NGINX-specific annotations
