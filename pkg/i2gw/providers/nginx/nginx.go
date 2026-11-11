@@ -26,12 +26,21 @@ import (
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/nginx/annotations"
 )
 
 const Name = "nginx"
 
+// NginxIngressClassFlag is the provider-specific flag used to select the ingress class.
+const NginxIngressClassFlag = "ingress-class"
+
 func init() {
 	i2gw.ProviderConstructorByName[Name] = NewProvider
+	i2gw.RegisterProviderSpecificFlag(Name, i2gw.ProviderSpecificFlag{
+		Name:         NginxIngressClassFlag,
+		Description:  "The name of the ingress class to select. Defaults to 'nginx'",
+		DefaultValue: annotations.NginxIngressClass,
+	})
 }
 
 type Provider struct {

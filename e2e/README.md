@@ -102,13 +102,14 @@ Tests that combine multiple providers in a single conversion (e.g. ingress-nginx
 using the Istio implementation and the standard emitter. Ensures that multiple providers can be
 used together without conflicts.
 
-#### Category 4 — emitter features (TODO)
+#### Category 4 — emitter features (`emitter_<name>_test.go`)
 
-One test per emitter-specific feature using the ingress-nginx provider paired with the
-emitter's corresponding implementation (e.g. `envoygateway` emitter with Envoy Gateway).
-Validates emitter-specific CRDs like `BackendTrafficPolicy` or `GCPGatewayPolicy`.
-
-Sample future files: `emitter_envoygateway_test.go`, `emitter_kgateway_test.go` etc.
+One test per emitter-specific feature, paired with the emitter's corresponding implementation
+(e.g. `envoygateway` emitter with Envoy Gateway). Validates emitter-specific CRDs like
+`BackendTrafficPolicy` or `ClientSettingsPolicy`. Emitter-specific resources are applied to the
+cluster alongside the standard Gateway API resources. Use the ingress-nginx provider unless the
+test exists to cover a mapping owned by a different provider (e.g. `emitter_nginx_test.go` uses
+the nginx provider to cover the `nginx.org/client-max-body-size` → `ClientSettingsPolicy` path).
 
 #### Category 5 — implementation smoke tests (`implementation_test.go`)
 
@@ -129,6 +130,15 @@ e2e/
 ├── *_test.go        # Test files, organized by category (see above)
 └── README.md
 ```
+
+### NGINX Ingress Controller ingress class
+
+Both ingress-nginx and NGINX Ingress Controller (the `nginx` provider) default to the `nginx`
+ingress class, and NGINX Ingress Controller refuses to start if its IngressClass is owned by
+another controller. Since all providers share one cluster, NGINX Ingress Controller is deployed
+with the `framework.NginxIngressClass` (`nginx-ic`) class instead. Tests using the `nginx`
+provider must set that class on their ingresses and pass it to i2gw via
+`nginx.NginxIngressClassFlag`.
 
 ### Auto-generated host field
 

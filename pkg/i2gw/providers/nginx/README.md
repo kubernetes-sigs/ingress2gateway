@@ -4,6 +4,8 @@ This provider converts [NGINX Ingress Controller](https://github.com/nginx/kuber
 
 **Note**: This provider is specifically for NGINX Ingress Controller, not the community [ingress-nginx](https://github.com/kubernetes/ingress-nginx) controller. If you're using the community ingress-nginx controller, please use the `ingress-nginx` provider instead.
 
+To specify the name of the Ingress class to select, use `--nginx-ingress-class=nginx-ic` (defaults to `nginx`).
+
 ## Supported Resources
 
 * **Ingress** - Core Kubernetes Ingress resources with NGINX-specific annotations
@@ -25,6 +27,7 @@ This provider converts [NGINX Ingress Controller](https://github.com/nginx/kuber
 * `nginx.org/hsts` - HTTP Strict Transport Security headers
 * `nginx.org/hsts-max-age` - HSTS max-age directive
 * `nginx.org/hsts-include-subdomains` - HSTS includeSubDomains directive
+* `nginx.org/client-max-body-size` - Set maximum request body size
 
 ## Usage
 
@@ -34,6 +37,8 @@ ingress2gateway print --providers=nginx
 
 # Convert from file
 ingress2gateway print --providers=nginx --input-file=nginx-ingress.yaml
+
+# Use the emitter when converting 
 ```
 
 ## Gateway API Mapping
@@ -51,6 +56,7 @@ ingress2gateway print --providers=nginx --input-file=nginx-ingress.yaml
 | `nginx.org/redirect-to-https`        | HTTPRoute RequestRedirect filter  |
 | `ingress.kubernetes.io/ssl-redirect` | HTTPRoute RequestRedirect filter  |
 | `nginx.org/hsts*`                    | HTTPRoute ResponseHeaderModifier  |
+| `nginx.org/client-max-body-size`     | ClientSettingsPolicy (NGINX Gateway Fabric)  |
 
 ## SSL Redirect Behavior
 

@@ -26,6 +26,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/e2e/provider"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/nginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/traefik"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/kubernetes"
@@ -77,6 +78,11 @@ func deployProviders(
 			r = framework.GlobalResourceManager.Acquire(traefik.Name, func() (framework.CleanupFunc, error) {
 				return provider.DeployTraefik(ctx, t, k8sClient, kubeconfig, ns, skipCleanup)
 			})
+		case nginx.Name:
+			ns := fmt.Sprintf("%s-nginx-ingress", framework.E2EPrefix)
+			r = framework.GlobalResourceManager.Acquire(nginx.Name, func() (framework.CleanupFunc, error) {
+				return provider.DeployNginxIngress(ctx, t, k8sClient, kubeconfig, ns, skipCleanup)
+			})
 		default:
 			t.Fatalf("Unknown ingress provider: %s", p)
 		}
@@ -123,6 +129,11 @@ func deployGatewayImplementation(
 		ns := fmt.Sprintf("%s-agentgateway-system", framework.E2EPrefix)
 		r = framework.GlobalResourceManager.Acquire(implementation.AgentgatewayName, func() (framework.CleanupFunc, error) {
 			return implementation.DeployAgentgateway(ctx, t, k8sClient, gwClient, kubeconfig, ns, skipCleanup)
+		})
+	case implementation.NginxGatewayFabricName:
+		ns := fmt.Sprintf("%s-nginx-gateway", framework.E2EPrefix)
+		r = framework.GlobalResourceManager.Acquire(implementation.NginxGatewayFabricName, func() (framework.CleanupFunc, error) {
+			return implementation.DeployNginxGatewayFabric(ctx, t, k8sClient, kubeconfig, ns, skipCleanup)
 		})
 	default:
 		t.Fatalf("Unknown gateway implementation: %s", gwImpl)

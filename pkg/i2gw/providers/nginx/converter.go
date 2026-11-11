@@ -45,6 +45,7 @@ func newResourcesToIRConverter(notify notifications.NotifyFunc) *resourcesToIRCo
 			annotations.WebSocketServicesFeature,
 			annotations.SSLServicesFeature,
 			annotations.GRPCServicesFeature,
+			annotations.BodySizeFeature,
 		},
 		implementationSpecificOptions: i2gw.ProviderImplementationSpecificOptions{},
 		notify:                        notify,

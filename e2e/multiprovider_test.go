@@ -23,6 +23,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/e2e/implementation"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/nginx"
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
@@ -47,6 +48,36 @@ func TestMultipleProviders(t *testing.T) {
 				framework.BasicIngress().
 					WithName("bar").
 					WithIngressClass(kong.KongIngressClass).
+					Build(),
+			},
+			Verifiers: map[string][]framework.Verifier{
+				"foo": {&framework.HTTPRequestVerifier{Path: "/"}},
+				"bar": {&framework.HTTPRequestVerifier{Path: "/"}},
+			},
+		})
+	})
+	// ingress-nginx and NGINX Ingress Controller are distinct controllers which both default to
+	// the "nginx" ingress class. Ensure each provider only picks up its own ingresses.
+	t.Run("ingress-nginx + nginx", func(t *testing.T) {
+		runTestCase(t, &framework.TestCase{
+			GatewayImplementation: implementation.IstioName,
+			Providers:             []string{ingressnginx.Name, nginx.Name},
+			ProviderFlags: map[string]map[string]string{
+				ingressnginx.Name: {
+					ingressnginx.NginxIngressClassFlag: ingressnginx.NginxIngressClass,
+				},
+				nginx.Name: {
+					nginx.NginxIngressClassFlag: framework.NginxIngressClass,
+				},
+			},
+			Ingresses: []*networkingv1.Ingress{
+				framework.BasicIngress().
+					WithName("foo").
+					WithIngressClass(ingressnginx.NginxIngressClass).
+					Build(),
+				framework.BasicIngress().
+					WithName("bar").
+					WithIngressClass(framework.NginxIngressClass).
 					Build(),
 			},
 			Verifiers: map[string][]framework.Verifier{
