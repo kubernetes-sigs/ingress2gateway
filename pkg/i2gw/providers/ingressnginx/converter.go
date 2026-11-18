@@ -18,6 +18,7 @@ package ingressnginx
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
@@ -118,9 +119,15 @@ func (c *resourcesToIRConverter) convert(notify notifications.NotifyFunc, storag
 	}
 
 	for _, ingress := range ingressList {
-		for annotation := range ingress.Annotations {
+		for annotation, value := range ingress.Annotations {
 			if _, ok := parsedAnnotations[annotation]; !ok && strings.HasPrefix(annotation, ingressNGINXAnnotationsPrefix) {
-				c.notify(notifications.WarningNotification, fmt.Sprintf("Unsupported annotation %v", annotation), &ingress)
+				warning := "Unsupported annotation " + annotation
+				if annotation == ForceSSLRedirectAnnotation {
+					if enabled, _ := strconv.ParseBool(value); enabled {
+						warning += ". Configure the HTTP-to-HTTPS redirect where TLS terminates, such as at the external load balancer, if it is not already enforced."
+					}
+				}
+				c.notify(notifications.WarningNotification, warning, &ingress)
 			}
 		}
 	}
