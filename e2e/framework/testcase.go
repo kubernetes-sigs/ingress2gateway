@@ -600,7 +600,7 @@ func runI2GW(
 
 	t.Logf("Running ingress2gateway: %s %v", binaryPath, args)
 
-	// #nosec G204 -- binaryPath is from trusted env var, args are constructed internally
+	// #nosec G204,G702 -- binaryPath is from trusted env var, args are constructed internally
 	cmd := exec.CommandContext(ctx, binaryPath, args...)
 
 	var stdout, stderr bytes.Buffer
