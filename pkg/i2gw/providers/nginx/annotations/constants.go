@@ -48,6 +48,9 @@ const (
 	nginxHSTSAnnotation                  = nginxOrgPrefix + "hsts"
 	nginxHSTSIncludeSubdomainsAnnotation = nginxOrgPrefix + "hsts-include-subdomains"
 	nginxHSTSMaxAgeAnnotation            = nginxOrgPrefix + "hsts-max-age"
+
+	// Body Size Annotations
+	nginxClientMaxBodySizeAnnotation = nginxOrgPrefix + "client-max-body-size"
 )
 
 // NginxIngressClass class name

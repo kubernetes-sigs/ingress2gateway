@@ -55,6 +55,7 @@ To contribute a new provider support - please read [CONTRIBUTING.md](CONTRIBUTIN
 * [envoy-gateway](https://gateway.envoyproxy.io/)
 * [gce](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/gateway-api)
 * [kgateway](https://kgateway.dev/)
+* [nginx](https://docs.nginx.com/nginx-gateway-fabric/)
 
 ## Installation
 
@@ -144,6 +145,7 @@ The above command will:
 | -------------- | ----------------------- | -------- | ------------------------------------------------------------ |
 | gce-gateway-class-name |                   | No       | Provider-specific: gce. The name of the GatewayClass to use for the Gateway. |
 | ingress-nginx-ingress-class | nginx          | No       | Provider-specific: ingress-nginx. The name of the ingress class to select. |
+| nginx-ingress-class  | nginx                 | No       | Provider-specific: nginx. The name of the ingress class to select. |
 | openapi3-backend     |                       | No       | Provider-specific: openapi3. The name of the backend service to use in the HTTPRoutes. |
 | openapi3-gateway-class-name |                | No       | Provider-specific: openapi3. The name of the gateway class to use in the Gateways. |
 | openapi3-tls-secret  |                       | No       | Provider-specific: openapi3. The name of the secret for the TLS certificate references in the Gateways. |

@@ -1,0 +1,53 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-1947108-dirty
+  name: nginx
+  namespace: default
+spec:
+  gatewayClassName: nginx
+  listeners:
+  - hostname: client-max-body-size.example.com
+    name: client-max-body-size-example-com-http
+    port: 80
+    protocol: HTTP
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  annotations:
+    gateway.networking.k8s.io/generator: ingress2gateway-1947108-dirty
+  name: client-max-body-size-ingress-client-max-body-size-example-com
+  namespace: default
+spec:
+  hostnames:
+  - client-max-body-size.example.com
+  parentRefs:
+  - name: nginx
+  rules:
+  - backendRefs:
+    - name: client-max-body-size-svc
+      port: 8080
+    matches:
+    - path:
+        type: PathPrefix
+        value: /helloworld.Greeter/SayHello
+    name: rule-0
+status:
+  parents: []
+---
+apiVersion: gateway.nginx.org/v1alpha1
+kind: ClientSettingsPolicy
+metadata:
+  name: client-max-body-size-ingress-client-max-body-size-example-com-client-settings
+  namespace: default
+spec:
+  body:
+    maxSize: 32m
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: client-max-body-size-ingress-client-max-body-size-example-com
+status:
+  ancestors: null

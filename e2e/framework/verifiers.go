@@ -17,6 +17,7 @@ limitations under the License.
 package framework
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -80,6 +81,8 @@ type HTTPRequestVerifier struct {
 	Method string
 	// RequestHeaders are additional headers to include in the request
 	RequestHeaders map[string]string
+	// RequestBody is an optional body to send with the request
+	RequestBody []byte
 	// AllowedCodes are the expected HTTP status codes (default 200)
 	AllowedCodes []int
 	// HeaderMatches specifies headers that must be present and match at all of the provided regex
@@ -135,7 +138,11 @@ func (v *HTTPRequestVerifier) verify(ctx context.Context, log Logger, addr addre
 	if method == "" {
 		method = http.MethodGet
 	}
-	req, err := http.NewRequestWithContext(ctx, method, fmt.Sprintf("%s://%s%s", scheme, targetAddr, v.Path), nil)
+	var reqBody io.Reader
+	if v.RequestBody != nil {
+		reqBody = bytes.NewReader(v.RequestBody)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, fmt.Sprintf("%s://%s%s", scheme, targetAddr, v.Path), reqBody)
 	if err != nil {
 		return fmt.Errorf("constructing HTTP request: %w", err)
 	}

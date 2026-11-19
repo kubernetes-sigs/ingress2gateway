@@ -16,7 +16,11 @@ limitations under the License.
 
 package annotations
 
-import "strings"
+import (
+	"fmt"
+	"regexp"
+	"strings"
+)
 
 // splitAndTrimCommaList splits a comma-separated string and trims whitespace from each part
 func splitAndTrimCommaList(input string) []string {
@@ -34,4 +38,35 @@ func splitAndTrimCommaList(input string) []string {
 	}
 
 	return result
+}
+
+// Regular expression that captures the number and unit for NGINX size (example: used for client body size)
+var nginxSizeRegex = regexp.MustCompile(`^(?i)(\d+)([bkmg]?)$`)
+
+// convertNginxSizeToK8sQuantity converts nginx size format to Kubernetes resource.Quantity format.
+// NGINX uses binary units (e.g. k = 2^10) while in Kubernetes, k = 1000 and Ki = 2^10.
+func convertNginxSizeToK8sQuantity(nginxSize string) (string, error) {
+	nginxSize = strings.TrimSpace(nginxSize)
+
+	matches := nginxSizeRegex.FindStringSubmatch(nginxSize)
+	if matches == nil {
+		return "", fmt.Errorf("invalid nginx size format: %q", nginxSize)
+	}
+
+	number := matches[1]
+	unit := matches[2]
+
+	// Convert nginx unit to K8s Quantity unit
+	switch strings.ToLower(unit) {
+	case "b", "":
+		return number, nil
+	case "k":
+		return number + "Ki", nil
+	case "m":
+		return number + "Mi", nil
+	case "g":
+		return number + "Gi", nil
+	default:
+		return "", fmt.Errorf("unsupported nginx size unit: %q", unit)
+	}
 }
