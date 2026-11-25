@@ -24,8 +24,15 @@ import (
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/discovery/cached/memory"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/restmapper"
 	gwapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 	"sigs.k8s.io/gateway-api/apis/v1alpha2"
 	"sigs.k8s.io/gateway-api/apis/v1beta1"
@@ -520,6 +527,109 @@ func createReferenceGrants(ctx context.Context, l Logger, client *gwclientset.Cl
 			err := client.GatewayV1beta1().ReferenceGrants(namespace).Delete(cleanupCtx, grant.Name, metav1.DeleteOptions{})
 			if err != nil {
 				log.Printf("Deleting ReferenceGrant %s: %v", grant.Name, err)
+			}
+		}
+	}, nil
+}
+
+// Creates implementation-specific resources (e.g. policies) produced by an emitter. These are
+// arbitrary CRDs, so a dynamic client is used together with a REST mapper which resolves each
+// object's GVK to a resource.
+func createGatewayExtensions(
+	ctx context.Context,
+	l Logger,
+	restConfig *rest.Config,
+	ns string,
+	extensions []unstructured.Unstructured,
+	skipCleanup bool,
+) (func(), error) {
+	if len(extensions) == 0 {
+		return func() {}, nil
+	}
+
+	dynamicClient, err := dynamic.NewForConfig(restConfig)
+	if err != nil {
+		return nil, fmt.Errorf("creating dynamic client: %w", err)
+	}
+
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(restConfig)
+	if err != nil {
+		return nil, fmt.Errorf("creating discovery client: %w", err)
+	}
+	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(discoveryClient))
+
+	type created struct {
+		resource  dynamic.NamespaceableResourceInterface
+		namespace string
+		name      string
+		kind      string
+		scoped    bool
+	}
+	var objs []created
+
+	for _, ext := range extensions {
+		obj := ext.DeepCopy()
+		gvk := obj.GroupVersionKind()
+
+		mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+		if err != nil {
+			return nil, fmt.Errorf("finding REST mapping for %s: %w", gvk.String(), err)
+		}
+
+		scoped := mapping.Scope.Name() == meta.RESTScopeNameNamespace
+		if scoped && obj.GetNamespace() == "" {
+			obj.SetNamespace(ns)
+		}
+
+		// Drop any empty status block emitted by i2gw, since status isn't writable on create
+		// for resources which have a status subresource.
+		unstructured.RemoveNestedField(obj.Object, "status")
+
+		y, err := toYAML(obj.Object)
+		if err != nil {
+			return nil, fmt.Errorf("converting %s to YAML: %w", gvk.Kind, err)
+		}
+
+		l.Logf("Creating %s:\n%s", gvk.Kind, y)
+
+		resource := dynamicClient.Resource(mapping.Resource)
+		if scoped {
+			_, err = resource.Namespace(obj.GetNamespace()).Create(ctx, obj, metav1.CreateOptions{})
+		} else {
+			_, err = resource.Create(ctx, obj, metav1.CreateOptions{})
+		}
+		if err != nil {
+			return nil, fmt.Errorf("creating %s %s: %w", gvk.Kind, obj.GetName(), err)
+		}
+
+		objs = append(objs, created{
+			resource:  resource,
+			namespace: obj.GetNamespace(),
+			name:      obj.GetName(),
+			kind:      gvk.Kind,
+			scoped:    scoped,
+		})
+	}
+
+	//nolint:contextcheck // Intentional background context in cleanup function
+	return func() {
+		if skipCleanup {
+			return
+		}
+
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+
+		for _, o := range objs {
+			log.Printf("Deleting %s %s/%s", o.kind, o.namespace, o.name)
+			var err error
+			if o.scoped {
+				err = o.resource.Namespace(o.namespace).Delete(cleanupCtx, o.name, metav1.DeleteOptions{})
+			} else {
+				err = o.resource.Delete(cleanupCtx, o.name, metav1.DeleteOptions{})
+			}
+			if err != nil {
+				log.Printf("Deleting %s %s: %v", o.kind, o.name, err)
 			}
 		}
 	}, nil

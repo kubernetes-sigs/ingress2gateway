@@ -104,6 +104,7 @@ func TestFileConvertion(t *testing.T) {
 
 		provider := NewProvider(providerConf)
 
+		// #nosec G122 -- path comes from the trusted test fixture directory
 		file, err := os.Open(filepath.Clean(path))
 		if err != nil {
 			t.Fatalf("failed to open test file %v: %v", d.Name(), err)

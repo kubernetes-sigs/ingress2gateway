@@ -23,6 +23,7 @@ import (
 	"github.com/kubernetes-sigs/ingress2gateway/e2e/implementation"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/ingressnginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/kong"
+	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/nginx"
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/providers/traefik"
 	networkingv1 "k8s.io/api/networking/v1"
 )
@@ -53,6 +54,15 @@ func TestProviders(t *testing.T) {
 		{
 			name:         traefik.Name,
 			ingressClass: traefik.TraefikIngressClass,
+		},
+		{
+			name:         nginx.Name,
+			ingressClass: framework.NginxIngressClass,
+			providerFlags: map[string]map[string]string{
+				nginx.Name: {
+					nginx.NginxIngressClassFlag: framework.NginxIngressClass,
+				},
+			},
 		},
 	}
 

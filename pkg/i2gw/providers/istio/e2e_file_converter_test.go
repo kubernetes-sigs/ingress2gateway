@@ -52,6 +52,7 @@ func TestFileConversion(t *testing.T) {
 
 		istioProvider := NewProvider(&i2gw.ProviderConf{})
 
+		// #nosec G122 -- path comes from the trusted test fixture directory
 		data, err := os.ReadFile(filepath.Clean(path))
 		if err != nil {
 			t.Fatalf("Failed to read input file %v: %v", d.Name(), err)

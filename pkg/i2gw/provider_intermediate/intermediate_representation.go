@@ -73,6 +73,7 @@ type HTTPRouteContext struct {
 }
 
 type ProviderSpecificHTTPRouteIR struct {
+	BodySizeByRuleIdx map[int]*emitterir.BodySize
 }
 
 // GRPCRouteContext contains the Gateway-API GRPCRoute object and GRPCRouteIR,

@@ -59,7 +59,7 @@ func retry(
 			return nil
 		}
 
-		log.Logf(attemptMsg(i+1, cfg.maxAttempts, err))
+		log.Logf("%s", attemptMsg(i+1, cfg.maxAttempts, err))
 
 		select {
 		case <-ctx.Done():
@@ -92,7 +92,7 @@ func retryWithData[T any](
 			return result, nil
 		}
 
-		log.Logf(attemptMsg(i+1, cfg.maxAttempts, err))
+		log.Logf("%s", attemptMsg(i+1, cfg.maxAttempts, err))
 
 		select {
 		case <-ctx.Done():
