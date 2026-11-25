@@ -17,6 +17,7 @@ limitations under the License.
 package ingressnginx
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -1211,6 +1212,57 @@ func Test_ToIR(t *testing.T) {
 
 func ptrTo[T any](a T) *T {
 	return &a
+}
+
+func Test_ForceSSLRedirectWarning(t *testing.T) {
+	const manifest = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: demo
+  namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "ENABLED"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: demo
+            port:
+              number: 80
+`
+	for _, enabled := range []string{"true", "false"} {
+		t.Run(enabled, func(t *testing.T) {
+			report := notifications.NewReport(true)
+			provider := NewProvider(&i2gw.ProviderConf{
+				Report: report,
+				ProviderSpecificFlags: map[string]map[string]string{
+					Name: {NginxIngressClassFlag: NginxIngressClass},
+				},
+			})
+			input := strings.NewReader(strings.ReplaceAll(manifest, "ENABLED", enabled))
+			if err := provider.ReadResourcesFromFile(context.Background(), input); err != nil {
+				t.Fatal(err)
+			}
+			if _, errs := provider.ToIR(); len(errs) != 0 {
+				t.Fatalf("Unexpected conversion errors: %v", errs)
+			}
+
+			rendered := report.Render()
+			if !strings.Contains(rendered, "Unsupported annotation nginx.ingress.kubernetes.io/force-ssl-redirect") {
+				t.Fatalf("Expected an unsupported annotation warning, got report:\n%s", rendered)
+			}
+			if got, want := strings.Contains(rendered, "Configure the HTTP-to-HTTPS redirect where TLS terminates"), enabled == "true"; got != want {
+				t.Errorf("Got redirect migration guidance: %t, want %t. Report:\n%s", got, want, rendered)
+			}
+		})
+	}
 }
 
 func Test_TLSWarningForHostsWithoutCert(t *testing.T) {

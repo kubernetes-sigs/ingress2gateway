@@ -30,6 +30,7 @@ To specify the name of the Ingress class to select, use `--ingress-nginx-ingress
 - `nginx.ingress.kubernetes.io/temporal-redirect`: Converts to an `HTTPRequestRedirect` filter (default status code 302). Takes priority over permanent redirect.
 - `nginx.ingress.kubernetes.io/temporal-redirect-code`: Overrides the status code for temporal redirects (supported: 301, 302, 303, 307).
 - `nginx.ingress.kubernetes.io/ssl-redirect`: When set to `false`, disables the automatic HTTP-to-HTTPS redirect (308) that is otherwise added for TLS-configured Ingresses.
+- `nginx.ingress.kubernetes.io/force-ssl-redirect`: **Not converted.** If TLS terminates at an external load balancer, verify that it redirects HTTP to HTTPS before switching traffic.
 - `nginx.ingress.kubernetes.io/proxy-redirect-from`: **Recognized but not converted.** A warning is emitted.
 - `nginx.ingress.kubernetes.io/proxy-redirect-to`: **Recognized but not converted.** A warning is emitted.
 
