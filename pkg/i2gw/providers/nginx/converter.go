@@ -60,6 +60,16 @@ func (c *resourcesToIRConverter) convert(storage *storage) (providerir.ProviderI
 		}
 	}
 
+	for i := range storage.VirtualServers {
+		ingress, err := virtualServerToIngress(c.notify, &storage.VirtualServers[i])
+		if err != nil {
+			return providerir.ProviderIR{}, field.ErrorList{field.InternalError(field.NewPath("spec"), err)}
+		}
+		if ingress != nil {
+			ingressList = append(ingressList, *ingress)
+		}
+	}
+
 	ir, errorList := common.ToIR(ingressList, []networkingv1.Ingress{}, storage.ServicePorts, c.implementationSpecificOptions)
 	if len(errorList) > 0 {
 		return providerir.ProviderIR{}, errorList

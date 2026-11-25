@@ -17,6 +17,7 @@ limitations under the License.
 package nginx
 
 import (
+	"bytes"
 	"context"
 	"io"
 
@@ -55,6 +56,11 @@ func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage
 	}
 	storage.Ingresses = ingresses
 
+	storage.VirtualServers, err = readVirtualServersFromCluster(ctx, r.conf.Client, r.ingressClasses)
+	if err != nil {
+		return nil, err
+	}
+
 	services, err := common.ReadServicesFromCluster(ctx, r.conf.Client)
 	if err != nil {
 		return nil, err
@@ -68,13 +74,23 @@ func (r *resourceReader) readResourcesFromCluster(ctx context.Context) (*storage
 func (r *resourceReader) readResourcesFromFile(reader io.Reader) (*storage, error) {
 	storage := newResourceStorage()
 
-	ingresses, err := common.ReadIngressesFromFile(reader, r.conf.Namespace, r.ingressClasses)
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	ingresses, err := common.ReadIngressesFromFile(bytes.NewReader(data), r.conf.Namespace, r.ingressClasses)
 	if err != nil {
 		return nil, err
 	}
 	storage.Ingresses = ingresses
 
-	services, err := common.ReadServicesFromFile(reader, r.conf.Namespace)
+	storage.VirtualServers, err = readVirtualServersFromFile(bytes.NewReader(data), r.conf.Namespace, r.ingressClasses)
+	if err != nil {
+		return nil, err
+	}
+
+	services, err := common.ReadServicesFromFile(bytes.NewReader(data), r.conf.Namespace)
 	if err != nil {
 		return nil, err
 	}

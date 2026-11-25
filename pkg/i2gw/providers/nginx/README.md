@@ -10,6 +10,7 @@ To specify the name of the Ingress class to select, use `--nginx-ingress-class=n
 
 * **Ingress** - Core Kubernetes Ingress resources with NGINX-specific annotations
 * **Service** - Kubernetes Services referenced by Ingress backend configurations
+* **VirtualServer** - Basic host, TLS and path routing only, see [VirtualServer](#virtualserver)
 
 ## Supported Annotations
 
@@ -57,6 +58,25 @@ ingress2gateway print --providers=nginx --input-file=nginx-ingress.yaml
 | `ingress.kubernetes.io/ssl-redirect` | HTTPRoute RequestRedirect filter  |
 | `nginx.org/hsts*`                    | HTTPRoute ResponseHeaderModifier  |
 | `nginx.org/client-max-body-size`     | ClientSettingsPolicy (NGINX Gateway Fabric)  |
+
+## VirtualServer
+
+`VirtualServer` resources (`k8s.nginx.org/v1`) are converted for basic routing. Every other field in the spec is left out and reported as a warning, so review the output before applying it.
+
+| VirtualServer field                   | Gateway API                                            |
+|---------------------------------------|--------------------------------------------------------|
+| `spec.host`                           | Gateway listener hostname and HTTPRoute `hostnames`    |
+| `spec.tls.secret`                     | HTTPS listener `certificateRefs`                       |
+| `spec.ingressClassName`               | Gateway name and `gatewayClassName` (`nginx` if unset) |
+| `spec.upstreams[].service` / `.port`  | HTTPRoute `backendRefs`                                |
+| `spec.routes[].path` (`/prefix`)      | HTTPRoute `PathPrefix` match                           |
+| `spec.routes[].path` (`=/exact`)      | HTTPRoute `Exact` match                                |
+| `spec.routes[].action.pass`           | Upstream used as the rule's `backendRefs`              |
+| `spec.routes[].action.proxy.upstream` | Same as `pass`, only when `proxy` sets nothing else    |
+
+Not converted: regex paths, `splits`, `matches`, the `redirect` and `return` actions, `proxy` options such as `rewritePath` or headers, policies, upstream settings such as `tls`, and `VirtualServerRoute` delegation. Routes that rely on them are skipped.
+
+NGINX matches a prefix path against the start of the URI, so `/tea` also matches `/teapot`. A Gateway API `PathPrefix` only matches whole path segments.
 
 ## SSL Redirect Behavior
 
