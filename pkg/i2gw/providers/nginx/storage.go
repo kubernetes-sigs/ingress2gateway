@@ -18,12 +18,14 @@ package nginx
 
 import (
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 type storage struct {
-	Ingresses    map[types.NamespacedName]*networkingv1.Ingress
-	ServicePorts map[types.NamespacedName]map[string]int32
+	Ingresses      map[types.NamespacedName]*networkingv1.Ingress
+	VirtualServers []unstructured.Unstructured
+	ServicePorts   map[types.NamespacedName]map[string]int32
 }
 
 // newResourceStorage creates a new storage instance
