@@ -57,7 +57,23 @@ To specify the name of the Ingress class to select, use `--ingress-nginx-ingress
 
 ### Regex
 
-- `nginx.ingress.kubernetes.io/use-regex`: When set to `true`, path match types are converted to `PathMatchRegularExpression`.
+- `nginx.ingress.kubernetes.io/use-regex`: When set to `true`, path matches are converted to `RegularExpression`.
+
+For a non-canary Ingress with a hostname, `use-regex: "true"` or a non-empty
+`rewrite-target` enables regex matching for paths on that host, including paths
+from other Ingresses for the same host. The provider adds the case-insensitive
+flag `(?i)` before each path and appends `.*`. For example, `/[A-Z]{3}` becomes
+`(?i)/[A-Z]{3}.*` in the generated HTTPRoute.
+
+Gateway API regular expression matching is implementation-specific: support for
+the `(?i)` flag and other syntax varies between Gateway implementations. For
+example, [NGINX Gateway Fabric 2.8.1][ngf-regex-validation] requires regex paths
+to start with `/` and disallows `{` and `}`, so it rejects the example above.
+The `nginx` emitter currently leaves these paths unchanged. Check the generated
+paths against your target implementation and verify route acceptance and request
+matching in a test environment before applying the result.
+
+[ngf-regex-validation]: https://github.com/nginx/nginx-gateway-fabric/blob/v2.8.1/internal/controller/nginx/config/validation/common.go#L14-L16
 
 ### CORS
 

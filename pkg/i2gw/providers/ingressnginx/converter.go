@@ -135,6 +135,7 @@ func (c *resourcesToIRConverter) convert(notify notifications.NotifyFunc, storag
 		// Append the parsing errors to the error list.
 		errs = append(errs, parseErrs...)
 	}
+	warnRegexCompatibility(c.notify, &pIR)
 
 	return pIR, errs
 }

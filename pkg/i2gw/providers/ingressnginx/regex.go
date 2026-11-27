@@ -18,6 +18,7 @@ package ingressnginx
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/notifications"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
@@ -54,9 +55,7 @@ func regexHosts(ingresses []networkingv1.Ingress) map[string]struct{} {
 
 // regexFeature converts ingress-nginx regex-driving annotations
 // to Gateway API HTTPRoute RegularExpression path match.
-func regexFeature(notify notifications.NotifyFunc, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
-	var errs field.ErrorList
-
+func regexFeature(_ notifications.NotifyFunc, ingresses []networkingv1.Ingress, _ map[types.NamespacedName]map[string]int32, ir *providerir.ProviderIR) field.ErrorList {
 	hostsWithRegex := regexHosts(ingresses)
 
 	for _, httpRouteCtx := range ir.HTTPRoutes {
@@ -76,12 +75,35 @@ func regexFeature(notify notifications.NotifyFunc, ingresses []networkingv1.Ingr
 				if path.Path != nil {
 					// Ingress nginx regex path matches are prefix matches by default
 					httpRouteCtx.Spec.Rules[i].Matches[j].Path.Type = ptr.To[gatewayv1.PathMatchType](gatewayv1.PathMatchRegularExpression)
-					// All engines I could find support (?i) (other than javascript).
+					// The inline flag gives case-insensitive matching. Support varies by implementation.
 					httpRouteCtx.Spec.Rules[i].Matches[j].Path.Value = ptr.To("(?i)" + *httpRouteCtx.Spec.Rules[i].Matches[j].Path.Value + ".*")
 				}
 			}
 		}
-		notify(notifications.InfoNotification, "Using case-insensitive regex path matches. You may want to change this.", &httpRouteCtx.HTTPRoute)
 	}
-	return errs
+	return nil
+}
+
+func warnRegexCompatibility(notify notifications.NotifyFunc, ir *providerir.ProviderIR) {
+	for _, httpRouteCtx := range ir.HTTPRoutes {
+		if !hasCaseInsensitiveRegexPath(httpRouteCtx.Spec.Rules) {
+			continue
+		}
+		notify(notifications.WarningNotification,
+			"Case-insensitive regex path matches use the (?i) flag. Support and accepted syntax vary by Gateway implementation. Please verify the generated paths against your target implementation.",
+			&httpRouteCtx.HTTPRoute)
+	}
+}
+
+func hasCaseInsensitiveRegexPath(rules []gatewayv1.HTTPRouteRule) bool {
+	for _, rule := range rules {
+		for _, match := range rule.Matches {
+			path := match.Path
+			if path != nil && ptr.Deref(path.Type, "") == gatewayv1.PathMatchRegularExpression &&
+				strings.HasPrefix(ptr.Deref(path.Value, ""), "(?i)") {
+				return true
+			}
+		}
+	}
+	return false
 }

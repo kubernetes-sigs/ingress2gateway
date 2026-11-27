@@ -17,6 +17,7 @@ limitations under the License.
 package ingressnginx
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -35,12 +36,14 @@ func TestRegexFeature(t *testing.T) {
 	prefixType := gatewayv1.PathMatchPathPrefix
 
 	testCases := []struct {
-		name     string
-		ingress  networkingv1.Ingress
-		expected []gatewayv1.HTTPRouteMatch
+		name            string
+		ingress         networkingv1.Ingress
+		expected        []gatewayv1.HTTPRouteMatch
+		expectedWarning bool
 	}{
 		{
-			name: "Should map to RegularExpression when use-regex annotation is true",
+			name:            "Should map to RegularExpression when use-regex annotation is true",
+			expectedWarning: true,
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "regex-ingress",
@@ -123,7 +126,8 @@ func TestRegexFeature(t *testing.T) {
 			},
 		},
 		{
-			name: "Should map to RegularExpression when rewrite-target annotation is set",
+			name:            "Should map to RegularExpression when rewrite-target annotation is set",
+			expectedWarning: true,
 			ingress: networkingv1.Ingress{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rewrite-regex-ingress",
@@ -166,6 +170,19 @@ func TestRegexFeature(t *testing.T) {
 			},
 		},
 	}
+
+	// A quantified expression may be rejected by some Gateway implementations.
+	quantified := testCases[0]
+	quantified.name = "Should warn when regex path contains a quantifier"
+	quantified.ingress = *quantified.ingress.DeepCopy()
+	quantified.ingress.Spec.Rules[0].HTTP.Paths[0].Path = "/[A-Z]{3}"
+	quantified.expected = []gatewayv1.HTTPRouteMatch{{
+		Path: &gatewayv1.HTTPPathMatch{
+			Type:  &regexType,
+			Value: ptr.To("(?i)/[A-Z]{3}.*"),
+		},
+	}}
+	testCases = append(testCases, quantified)
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -221,7 +238,25 @@ func TestRegexFeature(t *testing.T) {
 				},
 			}
 
-			regexFeature(notifications.NoopNotify, []networkingv1.Ingress{tc.ingress}, nil, &ir)
+			report := notifications.NewReport(true)
+			regexFeature(report.Notifier("ingress-nginx"), []networkingv1.Ingress{tc.ingress}, nil, &ir)
+			warnRegexCompatibility(report.Notifier("ingress-nginx"), &ir)
+			messages := report.Notifications()["ingress-nginx"]
+			if tc.expectedWarning {
+				if len(messages) != 1 || messages[0].Type != notifications.WarningNotification {
+					t.Fatalf("expected a regex compatibility warning, got %#v", messages)
+				}
+				for _, text := range []string{"(?i)", "Gateway implementation", "verify"} {
+					if !strings.Contains(messages[0].Message, text) {
+						t.Errorf("warning %q does not mention %q", messages[0].Message, text)
+					}
+				}
+				if len(messages[0].CallingObjects) != 1 || messages[0].CallingObjects[0].GetName() != key.Name {
+					t.Errorf("warning does not identify the generated HTTPRoute: %#v", messages[0].CallingObjects)
+				}
+			} else if len(messages) != 0 {
+				t.Fatalf("expected no regex compatibility warning, got %#v", messages)
+			}
 
 			// We expect only 1 route
 			if len(ir.HTTPRoutes) != 1 {
